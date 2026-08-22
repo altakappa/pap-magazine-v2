@@ -12,6 +12,7 @@ const { embedAndStoreEditorial } = require('../_lib/embeddings');
 const { recordContentChange, attachAuthorship } = require('../_lib/audit');
 const { normalizeCreditsArray } = require('../_lib/credits');  // QA #301
 const { sanitizeInstaLogoSettings } = require('../_lib/instaLogoSettings');  // 2026-07-28
+const edAccess = require('../_lib/editorialAccess');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -234,6 +235,21 @@ module.exports = async function handler(req, res) {
         // QA #202 — batch-resolve created_by / updated_by into
         // _creator / _editor objects (one extra query, not N).
         await attachAuthorship(data);
+      }
+
+      /* ── 열람 게이트 (2026-08-21) ─────────────────────────────
+       * 공개 목록은 엣지 캐시(s-maxage=300)에 얹혀 모두에게 같은 몸통이 나간다.
+       * 그래서 여기서는 **사람마다 달라질 수 있는 것을 절대 싣지 않는다** —
+       * 이미지 세트(gallery)는 통째로 뺀다. 대신 '몇 장인지'와 '어느 등급이
+       * 필요한지'만 남긴다. 둘 다 보는 사람과 무관한 값이라 캐시해도 안전하다.
+       *
+       * 이미지는 상세 API(/api/editorials/:id, private·no-store)만 내준다.
+       * 이 줄을 빼면 상세를 잠가도 목록으로 전부 새 나간다. */
+      if (requestedStatus === 'published' && Array.isArray(data)) {
+        const freeIds = await edAccess.latestFreeIds(supabaseAdmin);
+        for (let i = 0; i < data.length; i++) {
+          data[i] = edAccess.slimForPublicList(data[i], { freeIds });
+        }
       }
 
       return res.status(200).json({

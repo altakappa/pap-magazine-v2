@@ -7,7 +7,8 @@
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
-const { requireAdmin } = require('../_lib/auth');
+const { requireAdmin, verifyToken } = require('../_lib/auth');
+const edAccess = require('../_lib/editorialAccess');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { embedAndStoreEditorial } = require('../_lib/embeddings');
 const { sendEmail, templates } = require('../_lib/email');
@@ -207,7 +208,40 @@ module.exports = async function handler(req, res) {
         data.description_i18n = _di;
       } catch (_) { /* best-effort */ }
 
-      return res.status(200).json({ data });
+      /* ── 열람 게이트 (2026-08-21) ─────────────────────────────
+       * 비회원 불가 / FREE 최신 10편 / STANDARD 현재+직전 2볼륨 / PREMIUM 전체.
+       * 근거와 등급표는 _lib/editorialAccess.js 주석에 있다.
+       *
+       * 응답이 사람마다 달라지므로 캐시를 끈다. 이걸 빠뜨리면 프리미엄 회원의
+       * 응답(이미지 전체)이 엣지에 얹혀 비회원에게 그대로 나간다. */
+      res.setHeader('Cache-Control', 'private, no-store');
+      try {
+        const viewer = verifyToken(req);
+        let profile = null;
+        let role = '';
+        if (viewer && viewer.id) {
+          const { data: pf } = await supabaseAdmin.from('profiles')
+            .select('role, subscription_plan, subscription_status')
+            .eq('id', viewer.id).single();
+          profile = pf || null;
+          role = String((pf && pf.role) || '').toLowerCase();   // 토큰이 아니라 DB 의 최신 역할
+        }
+        const tier = edAccess.tierOf(viewer && { id: viewer.id, role }, profile);
+        const freeIds = await edAccess.latestFreeIds(supabaseAdmin);
+        const verdict = edAccess.canView(tier, data, { freeIds });
+        const shaped = edAccess.stripLocked(data, verdict);
+        return res.status(200).json({
+          data: shaped,
+          access: { tier, allowed: verdict.allowed, required_tier: verdict.requiredTier, reason: verdict.reason },
+        });
+      } catch (gateErr) {
+        // 게이트가 고장 나면 여는 게 아니라 잠근다. 열어두면 조용히 전부 공개된다.
+        console.error('[editorial gate] 판정 실패 — 잠금으로 처리:', gateErr && gateErr.message);
+        return res.status(200).json({
+          data: edAccess.stripLocked(data, { allowed: false, reason: 'gate-error', requiredTier: 'free' }),
+          access: { tier: 'anon', allowed: false, required_tier: 'free', reason: 'gate-error' },
+        });
+      }
     } catch (err) {
       console.error('Editorial GET error:', err);
       return res.status(500).json({ error: 'Failed to fetch editorial' });

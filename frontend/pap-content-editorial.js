@@ -1571,7 +1571,12 @@ function _openEditorialInner(title,thumb){
       if(typeof x === 'object') return !!(x.ko || x.en);
       return false;
     })();
-    var _needsHydrate = (!_imgs && _credsArr.length === 0 && !_hasDesc);
+    /* 2026-08-21 — 이미지가 없으면 무조건 상세를 부른다.
+     * 열람 게이트가 생기면서 공개 목록(엣지 캐시)은 gallery 를 아예 싣지 않는다.
+     * 이미지를 내주는 곳은 상세 API 하나뿐인데, 종전 조건('이미지·크레딧·설명이
+     * 셋 다 없을 때만')이면 크레딧이나 설명이 있는 화보는 상세를 영영 안 부르고
+     * 빈 갤러리만 남는다. 잠긴 화보인지 아닌지도 알 수 없게 된다. */
+    var _needsHydrate = (!_imgs) || (_credsArr.length === 0 && !_hasDesc);
     // 2026-07-26 — 다국어: 활성 언어가 ko가 아니고 해당 언어 요약이 없고 아직
     // 하이드레이트 안 했으면 상세 GET 으로 description_i18n 을 당겨온다(1회).
     var _edL2 = (function(){try{return localStorage.getItem('pap-lang')||'ko';}catch(e){return 'ko';}})();
@@ -1598,9 +1603,21 @@ function _openEditorialInner(title,thumb){
       .then(function(j){
         var full = j && (j.data || j.editorial);
         if(!full) return;
+        /* 2026-08-21 — 열람 게이트. 서버가 잠갔다고 하면 그 사실을 카탈로그에
+         * 남긴다. 이걸 안 남기면 다음 열람 때 캐시된 빈 갤러리만 보이고
+         * 사람은 왜 안 보이는지 알 수 없다. */
+        var _acc = j && j.access;
+        var dstLocked = !!(_acc && _acc.allowed === false);
         // Merge the rich fields back onto edDetails[title] so subsequent
         // opens hit the populated cache.
         var dst = edDetails[title] || {};
+        if(dstLocked){
+          dst.locked = true;
+          dst.requiredTier = (_acc && _acc.required_tier) || 'free';
+          dst.galleryCount = Number(full.gallery_count || 0);
+        } else {
+          dst.locked = false;
+        }
         dst.id    = full.id || dst.id || '';
         dst.slug  = full.slug || dst.slug || '';
         dst.thumb = dst.thumb || full.cover_image || full.thumbnail || full.thumbnail_url || '';
@@ -1737,6 +1754,7 @@ function _openEditorialInner(title,thumb){
   //      going blank on hover.
   var gal=document.getElementById('edDetailGallery');
   gal.innerHTML='';
+  _papEdApplyLock(det, gal);   // 잠긴 화보면 안내 패널을 넣고 images 를 비운다
   var imgCreditsMap = (det.imageCredits && typeof det.imageCredits === 'object') ? det.imageCredits : {};
   // 중간 IG 창 자리 — 두 자리 모두 홀수 idx (왼쪽/오른쪽 칸 규칙은 루프 안 주석)
   var _papMidSlots = (function(n){
@@ -1976,6 +1994,43 @@ function _openEditorialInner(title,thumb){
 // has no DB slug (static-snapshot rows that pre-date the slug column).
 // Keeps Korean characters because the SSR endpoint resolves them via
 // decodeURIComponent + title-fallback lookup (api/seo/editorial/[slug].js).
+/* ── 에디토리얼 열람 잠금 패널 (2026-08-21) ────────────────────────────
+ * 서버(/api/editorials/:id)가 access.allowed=false 로 응답하면 이미지 세트를
+ * 아예 안 내려준다. 여기서는 그 사실을 사람에게 설명하고 다음 행동을 준다.
+ *
+ * 표지·제목·크레딧은 그대로 보인다 — 뭘 놓치는지 보여야 가입할 이유가 생긴다.
+ * det.images 를 비우는 방식이라 아래 갤러리 루프는 자연히 아무것도 안 그린다.
+ * (제어 흐름을 건드리지 않으려는 의도 — 렌더 경로가 둘이라 분기를 늘리면 어긋난다) */
+function _papEdApplyLock(det, gal){
+  if(!det || !det.locked || !gal) return false;
+  det.images = [];
+  var need = String(det.requiredTier || 'free');
+  var total = Number(det.galleryCount || 0);
+  var msg, cta, sub;
+  if(need === 'free'){
+    msg = '로그인하면 볼 수 있습니다';
+    sub = '최신 에디토리얼 10편은 회원이면 무료입니다.';
+    cta = '가입하고 보기';
+  } else if(need === 'standard'){
+    msg = 'STANDARD 멤버부터 볼 수 있습니다';
+    sub = '최신 6개월 에디토리얼 열람 · 이미지 다운로드 포함.';
+    cta = '멤버십 보기';
+  } else {
+    msg = 'PREMIUM 멤버부터 볼 수 있습니다';
+    sub = '2019년부터의 전체 아카이브가 열립니다.';
+    cta = '멤버십 보기';
+  }
+  var count = total > 0 ? ('<div style="font-size:12px;letter-spacing:.12em;opacity:.55;margin-bottom:18px">' + total + ' IMAGES</div>') : '';
+  gal.innerHTML =
+    '<div class="ed-locked" style="grid-column:1/-1;text-align:center;padding:64px 24px;border:1px solid rgba(255,255,255,.14);border-radius:2px">' +
+      count +
+      '<div style="font-size:17px;font-weight:600;margin-bottom:8px">' + msg + '</div>' +
+      '<div style="font-size:13px;opacity:.6;margin-bottom:24px;line-height:1.6">' + sub + '</div>' +
+      '<a href="/subscribe" style="display:inline-block;padding:13px 30px;border:1px solid currentColor;border-radius:2px;font-size:12px;letter-spacing:.14em;text-decoration:none;color:inherit">' + cta + '</a>' +
+    '</div>';
+  return true;
+}
+
 function _editorialTitleToSlug(t){
   return String(t||'')
     .toLowerCase()
@@ -2013,6 +2068,7 @@ function _openEditorialInner_noPush(title,thumb){
   if(descEl){var lang=localStorage.getItem('pap-lang')||'ko';var descText=typeof det.desc==='object'?(det.desc[lang]||det.desc.en||det.desc.ko||''):det.desc;descEl.innerHTML=descText;}
   var gal=document.getElementById('edDetailGallery');
   gal.innerHTML='';
+  _papEdApplyLock(det, gal);   // 잠긴 화보면 안내 패널을 넣고 images 를 비운다
   // Same per-image credit priority as the main openEditorial path:
   // admin's "이미지별 착장 크레딧" string wins, then rotating brand fallback.
   var imgCreditsMap = (det.imageCredits && typeof det.imageCredits === 'object') ? det.imageCredits : {};

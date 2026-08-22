@@ -109,7 +109,13 @@ module.exports = async function handler(req, res) {
           seen.add(cover);
           imgs.push({ src: cover, caption: (ed.title || '') + ' — Cover' });
         }
-        const gallery = Array.isArray(ed.gallery) ? ed.gallery : [];
+        /* 2026-08-21 — 본편 이미지는 더 이상 광고하지 않는다.
+         * 에디토리얼 열람이 로그인·구독 게이트 뒤로 들어갔는데, 이 사이트맵은
+         * 편당 최대 29장의 원본 URL 을 인증 없이 공개 XML 로 뿌리고 있었다.
+         * 게이트를 걸어도 여기서 아카이브 전체가 그대로 새 나간다.
+         * 표지는 목록에서도 보이는 것이라 남긴다 — 페이지 색인과 브랜드
+         * 이미지 검색은 표지만으로 유지된다. */
+        const gallery = [];
         gallery.forEach((src, i) => {
           if (typeof src !== 'string' || !src || seen.has(src)) return;
           if (imgs.length >= 30) return;

@@ -64,7 +64,18 @@ function page(title, body) {
 </style></head><body><div class="wrap">${body}</div></body></html>`;
 }
 
+const { requireAdmin } = require('./_lib/auth');
+
 module.exports = async function handler(req, res) {
+  /* 2026-08-21 — 관리자 전용으로 잠근다.
+   * 이 킷은 에디토리얼 본편 이미지 8장 + 크레딧을 통째로 내주는데
+   * 인증이 하나도 없었다. 에디토리얼 열람에 게이트를 건 이상, 여기가
+   * 열려 있으면 게이트가 무의미하다. 도메니코가 브라우저(관리자 세션)로
+   * 여는 도구라 requireAdmin 으로 충분하다. */
+  {
+    const _admin = await requireAdmin(req, res);
+    if (!_admin) return;
+  }
   if (handleCors(req, res)) return;
 
   try {
