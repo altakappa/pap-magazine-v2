@@ -10,12 +10,21 @@
  * 받는 길이 통째로 없어서 이 흐름의 1번 칸이 비어 있었다. 이 파일이 그 칸이다.
  *
  * ── 무엇을 하나 (그리고 안 하나) ────────────────────────────
- * 한다:   업데이트 검증 → 인스타 링크 추출 → celeb_brief_queue 적재 → 200
+ * 한다:   업데이트 검증 → 인스타 링크 추출 → celeb_brief_queue 적재
+ *         → 처리 크론을 **즉시 깨우기**(응답은 안 기다림) → 200
  * 안 한다: 기사 생성·이미지 렌더·회신. 그건 크론(api/cron/celeb-brief.js)이 한다.
  *
  * 왜 나누나: 텔레그램은 webhook 응답이 늦으면(기본 ~60초) 같은 업데이트를
  * **재전송**한다. 여기서 AI 호출·이미지 렌더까지 하면 재전송 → 중복 기사 →
  * 중복 텔레그램 전송이 된다. 수신은 즉시 200 을 돌려주고 일은 큐에 남긴다.
+ *
+ * ── 그런데 왜 즉시 깨우나 (2026-08-23) ──────────────────────
+ * 도메니코: "너무 느린데, 링크를 받자마자 빠른 속도로 대답할 순 없어?"
+ * 10분 주기만 있으면 최악 10분을 기다린다. 그래서 큐에 넣은 **직후**
+ * 크론 URL 을 한 번 친다. 다른 함수 실행이라 이 핸들러가 끝나도 계속 돈다.
+ * 응답은 기다리지 않는다(짧은 타임아웃 후 끊고 200 반환) — 여기서 기다리면
+ * 텔레그램 재전송 위험이 그대로 돌아온다.
+ * 깨우기가 실패해도 **10분 주기 스케줄이 안전망**으로 남아 있다.
  *
  * ── 보안 ────────────────────────────────────────────────────
  * /api/* 는 공개 URL 이다. 세 겹으로 막는다.
@@ -39,6 +48,32 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const celebBrief = require('../_lib/celebBrief');
 
 const OK = (res, body) => res.status(200).json(body || { ok: true });
+
+const TRIGGER_URL = () => (process.env.CELEB_BRIEF_TRIGGER_URL
+  || 'https://www.pap-magazine.com/api/cron/celeb-brief') + '?now=1';
+const WAKE_TIMEOUT_MS = Number(process.env.CELEB_BRIEF_WAKE_TIMEOUT_MS || 2500);
+
+/* 처리 크론을 깨운다. 요청이 나가기만 하면 그 함수는 자기 수명(300초) 동안
+   독립적으로 돈다 — 그래서 응답을 끝까지 기다리지 않는다. 타임아웃으로 끊는 건
+   실패가 아니라 **정상 경로**다. 깨우기가 아예 실패해도 조용히 넘어간다
+   (10분 주기 스케줄이 안전망). */
+async function wakeProcessor() {
+  const secret = String(process.env.CRON_SECRET || '').trim();
+  if (!secret) { console.warn('[tg-webhook] CRON_SECRET 미설정 — 즉시 깨우기 생략'); return false; }
+  try {
+    await fetch(TRIGGER_URL(), {
+      method: 'GET',
+      headers: { Authorization: 'Bearer ' + secret },
+      signal: AbortSignal.timeout(WAKE_TIMEOUT_MS),
+    });
+    return true;
+  } catch (e) {
+    const name = e && e.name;
+    if (name === 'TimeoutError' || name === 'AbortError') return true;   // 이미 출발했다
+    console.warn('[tg-webhook] 즉시 깨우기 실패(스케줄이 받아줌):', (e && e.message) || e);
+    return false;
+  }
+}
 
 function allowedChats() {
   return [process.env.TELEGRAM_PERSONAL_CHAT_ID, process.env.TELEGRAM_CHAT_ID]
@@ -110,6 +145,9 @@ module.exports = async function handler(req, res) {
     console.error('[tg-webhook] 큐 적재 실패:', error.message);
     return OK(res, { ok: true, queued: 0, error: error.message });
   }
+
+  // 처리 크론을 즉시 깨운다. 실패해도 스케줄(10분)이 받아준다.
+  await wakeProcessor();
 
   return OK(res, { ok: true, queued: rows.length, batch: batchKey });
 };

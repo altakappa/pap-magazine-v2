@@ -1,6 +1,6 @@
 /**
  * PAP Magazine — 셀럽 속보 브리프 처리 (2026-08-23 신설)
- * Route: /api/cron/celeb-brief        (10분 주기 · ?dry=1 로 전송 없이 점검)
+ * Route: /api/cron/celeb-brief        (10분 주기 · ?now=1 즉시처리 · ?dry=1 전송없이 점검)
  *
  * ── 흐름 (도메니코 2026-08-23 확정) ──────────────────────────
  *   ① 도메니코가 인스타 링크를 텔레그램으로 보낸다 (비슷한 링크 여러 개 가능)
@@ -73,6 +73,11 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     if (!user) return;
   }
   const dry = !!(req.query && req.query.dry);
+  /* ?now=1 — webhook 이 링크를 받자마자 깨울 때. 합치기 대기를 건너뛴다.
+     도메니코 2026-08-23: "링크를 받자마자 빠른 속도로 대답할 순 없어?"
+     10분 주기 스케줄은 그대로 두어 **안전망**으로 남긴다 — 즉시 깨우기가
+     실패해도(네트워크·콜드스타트) 늦어도 10분 안에는 반드시 처리된다. */
+  const nowMode = !!(req.query && req.query.now);
 
   if (!process.env.IG_ACCESS_TOKEN || !process.env.IG_USER_ID) {
     return res.status(200).json({ ok: true, note: note(res, 'IG_ACCESS_TOKEN/IG_USER_ID 미설정 — 건너뜀') });
@@ -106,7 +111,7 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
      다음 회차에 처리한다 — 첫 링크만으로 브리프를 보내면 나머지가 버려진다. */
   const newest = Math.max(...rows.map((r) => new Date(r.created_at).getTime()));
   const age = Date.now() - newest;
-  if (age < BATCH_WAIT_MS) {
+  if (!nowMode && age < BATCH_WAIT_MS) {
     return res.status(200).json({ ok: true, note: note(res, '방금 들어온 브리프 — 다음 회차에 처리 (' + Math.round(age / 1000) + '초)') });
   }
 
@@ -118,9 +123,21 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     return res.status(200).json({ ok: true, note: note(res, '재시도 상한 도달 — failed 처리') });
   }
 
-  const ids = rows.map((r) => r.id);
-  await supabaseAdmin.from('celeb_brief_queue')
-    .update({ status: 'working', attempts: (rows[0].attempts || 0) + 1 }).in('id', ids);
+  /* 자리를 **원자적으로** 찜한다. webhook 즉시 깨우기와 스케줄 크론이 겹쳐 돌 수 있어
+     select→update 로 나누면 둘 다 같은 행을 집어 브리프가 두 번 전송된다.
+     UPDATE ... WHERE status='queued' 는 한 쪽만 성공한다. 반환이 비면 남이 가져간 것. */
+  const wantIds = rows.map((r) => r.id);
+  const { data: claimed, error: claimErr } = await supabaseAdmin.from('celeb_brief_queue')
+    .update({ status: 'working', attempts: (rows[0].attempts || 0) + 1 })
+    .eq('status', 'queued').in('id', wantIds).select('id');
+  if (claimErr) {
+    note(res, '클레임 실패: ' + String(claimErr.message).slice(0, 150));
+    return res.status(500).json({ ok: false, error: 'claim failed' });
+  }
+  if (!claimed || !claimed.length) {
+    return res.status(200).json({ ok: true, note: note(res, '다른 실행이 이미 가져감 — 건너뜀') });
+  }
+  const ids = claimed.map((r) => r.id);
 
   const fail = async (msg) => {
     await supabaseAdmin.from('celeb_brief_queue')
@@ -147,7 +164,8 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     const perPost = posts.map((m) => celebBrief.collectMediaUrls(m));
     const mediaUrls = celebBrief.mergeMediaUrls(perPost);
     if (!mediaUrls.length) {
-      return await fail('이미지가 없습니다 (동영상 전용 게시물일 수 있습니다).');
+      return await fail('이 게시물엔 사진이 없습니다 — 영상(릴스) 전용 게시물입니다.'
+        + ' 사진이 들어 있는 게시물 링크로 다시 보내주세요.');
     }
 
     // ── 3. 기사 생성 (PAP 말투는 papVoice 가 담당) ────────────

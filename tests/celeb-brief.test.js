@@ -240,4 +240,34 @@ t('실패해도 사람에게 알린다 (무응답이 가장 나쁜 실패)', () 
   assert.ok(/MAX_ATTEMPTS/.test(CRON_CODE), '무한 재시도 방지 장치가 없다');
 });
 
+
+/* ⑧ 즉시 응답 (2026-08-23 도메니코: "링크를 받자마자 빠른 속도로") */
+t('webhook 이 큐에 넣은 직후 처리 크론을 깨운다', () => {
+  assert.ok(/wakeProcessor\(\)/.test(WEBHOOK_CODE), '즉시 깨우기가 없다 — 최악 10분을 기다리게 된다');
+  assert.ok(/\?now=1/.test(WEBHOOK_CODE), '깨울 때 now=1 이 없으면 합치기 대기에 걸려 아무것도 안 한다');
+  assert.ok(/Bearer ' \+ secret/.test(WEBHOOK_CODE), 'CRON_SECRET 없이는 크론이 관리자 인증을 요구한다');
+});
+
+t('깨우기는 응답을 끝까지 기다리지 않는다 (재전송 방지)', () => {
+  assert.ok(/AbortSignal\.timeout\(WAKE_TIMEOUT_MS\)/.test(WEBHOOK_CODE), '타임아웃이 없으면 텔레그램이 재전송한다');
+  assert.ok(/TimeoutError' \|\| name === 'AbortError'/.test(WEBHOOK_CODE), '타임아웃을 실패로 보면 안 된다 — 요청은 이미 나갔다');
+});
+
+t('깨우기가 실패해도 스케줄 안전망이 남아 있다', () => {
+  const c = (VERCEL.crons || []).find((x) => x.path === '/api/cron/celeb-brief');
+  assert.ok(c, '스케줄이 없으면 깨우기 실패 = 영영 처리 안 됨');
+  assert.ok(!/return res\.status\(50\d\)[\s\S]{0,80}wake/.test(WEBHOOK_CODE), '깨우기 실패로 500 을 내면 텔레그램이 재전송한다');
+});
+
+t('now=1 이면 합치기 대기를 건너뛴다', () => {
+  assert.ok(/nowMode/.test(CRON_CODE), 'now 모드가 없다');
+  assert.ok(/if \(!nowMode && age < BATCH_WAIT_MS\)/.test(CRON_CODE), '대기 검사를 건너뛰지 않으면 즉시 깨워도 소용없다');
+});
+
+t('겹쳐 돌아도 브리프가 두 번 안 나간다 (원자적 클레임)', () => {
+  assert.ok(/\.eq\('status', 'queued'\)\.in\('id', wantIds\)\.select\('id'\)/.test(CRON_CODE),
+    'select→update 로 나누면 즉시 깨우기와 스케줄이 같은 행을 집어 두 번 전송된다');
+  assert.ok(/다른 실행이 이미 가져감/.test(CRON), '클레임 실패 시 조용히 빠지는 경로가 없다');
+});
+
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');
