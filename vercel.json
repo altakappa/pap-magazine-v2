@@ -1520,9 +1520,6 @@
     "api/**/*.js": {
       "maxDuration": 120,
       "memory": 1024
-    },
-    "api/cron/celeb-account-watch.js": {
-      "maxDuration": 120
     }
   },
   "cleanUrls": false,

@@ -22,9 +22,15 @@ t('크론이 등록돼 있고 celeb-brief(:00 주기)와 어긋난다', () => {
   assert.strictEqual(c.schedule, '12,32,52 * * * *');
 });
 
-t('함수 상한이 있다 (12계정 폴링이 기본 상한에서 죽지 않게)', () => {
-  const fn = VERCEL.functions['api/cron/celeb-account-watch.js'];
-  assert.ok(fn && fn.maxDuration >= 60);
+t('함수 상한이 글롭으로 보장된다 (12계정 폴링이 기본 상한에서 죽지 않게)', () => {
+  /* 2026-08-23 배포 사고: 전용 functions 항목을 api 전체 글롭 뒤에 추가하자
+     Vercel 이 "pattern doesn't match any Serverless Functions" 로 빌드를 거부했다
+     (배포 2건 연속 Error). 글롭이 이미 maxDuration 120 을 주므로 전용 항목은
+     불필요했다 — 중복 항목을 다시 넣으면 같은 사고가 재발한다. */
+  const glob = VERCEL.functions['api/**/*.js'];
+  assert.ok(glob && glob.maxDuration >= 60, '글롭 상한이 사라졌다');
+  assert.ok(!VERCEL.functions['api/cron/celeb-account-watch.js'],
+    '전용 항목이 다시 생겼다 — 글롭 뒤 중복 항목은 Vercel 빌드를 깨뜨린다');
 });
 
 t('기준선 장치 — 첫 폴링은 브리프를 만들지 않는다', () => {
