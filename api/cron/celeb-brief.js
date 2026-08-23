@@ -199,7 +199,13 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     const media = [];
     const cover = await fetchBuffer(coverUrl, 20000);
     const { renderThumb } = require('../_lib/celebThumb');
-    media.push({ kind: 'photo', buffer: await renderThumb(cover, gen.title_ko || gen.title, gen.title_en || '') });
+    /* 판형은 게시물이 정한다 — 영상이면 릴스(9:16), 사진이면 피드(4:5).
+       릴스를 4:5 로 뽑으면 인스타에 릴스로 올릴 때 위아래가 잘린다. */
+    const variant = items[0].type === 'video' ? 'reels' : 'feed';
+    media.push({
+      kind: 'photo',
+      buffer: await renderThumb(cover, gen.title_ko || gen.title, gen.title_en || '', { variant }),
+    });
 
     /* 첫 슬라이드가 사진이면 그 원본은 커버로 이미 쓴 셈이라 다시 넣지 않는다.
        영상이면 커버는 프레임일 뿐이므로 **영상 본체를 이어서 넣는다.** */

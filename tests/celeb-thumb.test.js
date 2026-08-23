@@ -37,6 +37,11 @@ t('실측 상수가 그대로다', () => {
     '그림자 (0,485)': /SHADOW_XY = \[0, 485\]/,
     '심볼 (505,1219)': /SYMBOL_XY = \[505, 1219\]/,
     '최대 2줄': /MAX_LINES = 2/,
+    '릴스 캔버스 1080×1920': /reels:[\s\S]{0,60}W: 1080, H: 1920/,
+    '릴스 국문 기준선 1101': /koBase: 1101\.0/,
+    '릴스 영문 기준선 1238.6': /enBase: 1238\.6/,
+    '릴스 그림자 (1,695)': /shadowXY: \[1, 695\]/,
+    '릴스 심볼 (506,1469)': /symbolXY: \[506, 1469\]/,
   };
   for (const [label, re] of Object.entries(expect)) {
     assert.ok(re.test(SRC), '실측 상수가 바뀌었다: ' + label);
@@ -95,6 +100,25 @@ t('한 줄에 들어가면 나누지 않는다', () => {
   assert.deepStrictEqual(cb.wrapHeadline('짧은 제목', 500, m10, 2), ['짧은 제목']);
 });
 
+t('두 판형이 같은 글자 규격을 쓴다', () => {
+  /* 릴스는 "다른 디자인" 이 아니라 같은 규격을 세로 판형에 옮긴 것이다.
+     폰트·크기·행간·자간이 판형별로 갈리기 시작하면 두 벌을 관리하게 된다. */
+  const thumb = require('../api/_lib/celebThumb');
+  for (const v of ['feed', 'reels']) {
+    assert.ok(thumb.VARIANTS[v], '판형 없음: ' + v);
+  }
+  assert.strictEqual(thumb.VARIANTS.feed.W, thumb.VARIANTS.reels.W, '폭은 1080 으로 같다');
+  for (const k of ['koBase', 'enBase', 'shadow', 'shadowXY', 'symbolXY', 'H']) {
+    assert.notDeepStrictEqual(thumb.VARIANTS.feed[k], thumb.VARIANTS.reels[k],
+      '판형이 갈려야 하는 값이 같다: ' + k);
+  }
+  const SRC2 = SRC.replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const shared of ['KO_PX = 64', 'EN_PX = 42', 'KO_LEAD = 78', 'EN_LEAD = 50', 'EN_TRACK = -40']) {
+    assert.strictEqual((SRC2.match(new RegExp(shared.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g')) || []).length, 1,
+      '글자 규격이 판형별로 복제됐다: ' + shared);
+  }
+});
+
 /* ④ 실제 렌더 대조 — node_modules 있을 때만 */
 let deps = true;
 try { require('sharp'); require('opentype.js'); } catch (_e) { deps = false; }
@@ -107,23 +131,32 @@ if (!deps) {
   if (!fs.existsSync(ref) || !fs.existsSync(photo)) {
     throw new Error('대조용 fixture 가 없다: tests/fixtures/celeb/');
   }
+  const KO = '이번 주, 파리에서 주목해야 할 것들';
+  const EN = 'Your guide to the most exciting shows, events, and moments unfolding across the city.';
+  const CASES = [
+    { variant: 'feed',  photo, ref },
+    { variant: 'reels',
+      photo: path.join(ROOT, 'tests/fixtures/celeb/reels_photo.jpg'),
+      ref:   path.join(ROOT, 'tests/fixtures/celeb/reels_reference.png') },
+  ];
   (async () => {
     const sharp = require('sharp');
     const thumb = require('../api/_lib/celebThumb');
-    const out = await thumb.renderThumb(
-      fs.readFileSync(photo),
-      '이번 주, 파리에서 주목해야 할 것들',
-      'Your guide to the most exciting shows, events, and moments unfolding across the city.',
-    );
-    const a = await sharp(ref).removeAlpha().raw().toBuffer();
-    const b = await sharp(out).raw().toBuffer();
-    assert.strictEqual(a.length, b.length, '캔버스 크기가 다르다');
-    let sum = 0;
-    for (let i = 0; i < a.length; i++) sum += Math.abs(a[i] - b[i]);
-    const mae = sum / a.length;
-    console.log('  ✓ PSD 합성본과 평균절대오차 ' + mae.toFixed(3) + '/255');
-    assert.ok(mae <= 2, '템플릿과 어긋났다 (평균절대오차 ' + mae.toFixed(3) + ' > 2)');
-    n++;
+    for (const c of CASES) {
+      if (!fs.existsSync(c.ref) || !fs.existsSync(c.photo)) {
+        throw new Error('대조용 fixture 가 없다: ' + c.variant);
+      }
+      const out = await thumb.renderThumb(fs.readFileSync(c.photo), KO, EN, { variant: c.variant });
+      const a = await sharp(c.ref).removeAlpha().raw().toBuffer();
+      const b = await sharp(out).raw().toBuffer();
+      assert.strictEqual(a.length, b.length, c.variant + ' 캔버스 크기가 다르다');
+      let sum = 0;
+      for (let i = 0; i < a.length; i++) sum += Math.abs(a[i] - b[i]);
+      const mae = sum / a.length;
+      console.log('  ✓ [' + c.variant + '] PSD 합성본과 평균절대오차 ' + mae.toFixed(3) + '/255');
+      assert.ok(mae <= 2, c.variant + ' 템플릿과 어긋났다 (평균절대오차 ' + mae.toFixed(3) + ' > 2)');
+      n++;
+    }
     console.log('\n셀럽 썸네일 렌더러: ' + n + '건 통과');
   })().catch((e) => { console.error('  ✗ ' + e.message); process.exit(1); });
 }

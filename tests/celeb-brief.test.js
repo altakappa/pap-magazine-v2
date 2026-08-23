@@ -234,6 +234,12 @@ t('영상 게시물도 받는다 — 커버에만 디자인, 영상은 원본', 
   assert.strictEqual(cb.pickCoverUrl(items), 'https://cdn/t.jpg', '커버는 영상의 프레임을 쓴다');
 });
 
+t('영상이면 릴스 판형(9:16), 사진이면 피드 판형(4:5)', () => {
+  assert.ok(/const variant = items\[0\]\.type === 'video' \? 'reels' : 'feed';/.test(CRON_CODE),
+    '릴스를 4:5 로 뽑으면 인스타 릴스 업로드 때 위아래가 잘린다');
+  assert.ok(/renderThumb\([\s\S]{0,120}\{ variant \}/.test(CRON_CODE), '판형이 렌더러에 안 전달된다');
+});
+
 t('영상이 첫 장이면 영상 본체도 함께 보낸다', () => {
   assert.ok(/items\[0\]\.type === 'image' \? items\.slice\(1\) : items/.test(CRON_CODE),
     '영상일 때 items 를 통째로 넘기지 않으면 영상이 빠진다 (커버 프레임만 가는 사고)');

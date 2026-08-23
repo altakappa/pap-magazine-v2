@@ -1,16 +1,25 @@
 /**
  * PAP Magazine — 셀럽 속보 썸네일 렌더러 (2026-08-23 신설)
  *
- * (일반1) 썸네일 PSD 를 **픽셀 실측**해 재현한다.
+ * PSD 를 **픽셀 실측**해 재현한다. 판형 두 가지.
  * 도메니코 지시(2026-08-23): "이 양식으로 섬네일을 통일해주면 돼."
- * 실측 원본: 📌 PAP/📓 레이아웃/(일반1) 썸네일.psd  (헤더 version=2 = PSB)
+ *                            "이게 릴스용 섬네일이야"
+ * 실측 원본: (일반1) 썸네일.psd · 스토리릴스 본문용.psd
  * 실측표 전문: 볼트 60_Agents/PAP-셀럽속보-톤앤디자인.md §4-7
  *
- *   캔버스 1080×1350 · 글자 #FFFFFF · 좌측 x≈101
- *   그림자 레이어 op 51 + 그라디언트 마스크, y 485~1350
- *   국문  Pretendard-SemiBold 64px / 행간 78 / 자간   0  · 첫 베이스라인 (99.7, 851.0)
- *   영문  Inter-LightItalic   42px / 행간 50 / 자간 −40  · 첫 베이스라인 (101.5, 988.6)
- *   심볼  70×70 @ (505,1219) — PSD 레이어 이름이 "심볼 (만지지 X)". 위치 고정.
+ *   글자 #FFFFFF · 좌측 x≈101 · 폰트/크기/행간/자간은 **두 판형이 동일하다**
+ *   국문 Pretendard-SemiBold 64px / 행간 78 / 자간   0
+ *   영문 Inter-LightItalic   42px / 행간 50 / 자간 −40
+ *
+ *              feed (사진 게시물)      reels (영상 게시물)
+ *   캔버스     1080 × 1350 (4:5)      1080 × 1920 (9:16)
+ *   국문 기준선 (99.7,  851.0)         (99.7, 1101.0)
+ *   영문 기준선 (101.5, 988.6)         (101.5, 1238.6)
+ *   그림자     op51 @ (0,485)          op51 @ (1,695)
+ *   심볼       70×70 @ (505,1219)      70×70 @ (506,1469)
+ *
+ *   ※ 릴스 판형은 글자가 아래로 250px 내려간 것뿐이다. 규격이 갈린 게 아니라
+ *     같은 규격을 세로 판형에 옮긴 것 — 그래서 상수만 다르고 로직은 하나다.
  *
  * ── 왜 opentype.js 로 글자를 path 로 바꾸나 ────────────────────
  * sharp 프리빌트 바이너리에 글자 그리기가 없다. 2026-08-23 실측:
@@ -31,7 +40,7 @@ const path = require('path');
 
 const ASSETS = path.join(__dirname, '..', '_assets', 'celeb');
 
-const W = 1080, H = 1350;
+const W = 1080, H = 1350;                             // feed 기본값 (하위 호환 · 테스트가 읽는다)
 const KO_PX = 64, KO_LEAD = 78, KO_TRACK = 0;
 const EN_PX = 42, EN_LEAD = 50, EN_TRACK = -40;      // 자간 단위: PSD 1/1000 em
 const KO_X = 99.7,  KO_BASE = 851.0;
@@ -41,6 +50,21 @@ const EN_MAX_W = 860;                                 // bbox (103,957)~(933,104
 const SHADOW_XY = [0, 485];
 const SYMBOL_XY = [505, 1219];
 const MAX_LINES = 2;
+
+const VARIANTS = {
+  feed: {
+    W: 1080, H: 1350,
+    koBase: 851.0, enBase: 988.6,
+    shadow: 'shadow.png',       shadowXY: [0, 485],
+    symbolXY: [505, 1219],
+  },
+  reels: {
+    W: 1080, H: 1920,
+    koBase: 1101.0, enBase: 1238.6,
+    shadow: 'shadow_reels.png', shadowXY: [1, 695],
+    symbolXY: [506, 1469],
+  },
+};
 
 // 폰트는 모듈 스코프에 한 번만 파싱한다 (콜드스타트 1회).
 let _fonts = null;
@@ -89,10 +113,12 @@ function lineToPath(font, text, x, baseline, size, trackPx) {
  * @param {Buffer} photoBuffer  배경 사진(원본). 가운데 크롭해 풀블리드로 채운다.
  * @param {string} titleKo      국문 제목 (자동 2줄 줄바꿈)
  * @param {string} titleEn      영문 제목 (자동 2줄 줄바꿈)
+ * @param {{variant?: 'feed'|'reels'}} opts  판형. 기본 feed(4:5). 영상 게시물은 reels(9:16).
  * @returns {Promise<Buffer>} JPEG
  * @throws 제목이 2줄에 안 들어가면 던진다 — 폰트를 줄이지 않는다(§4-7).
  */
-async function renderThumb(photoBuffer, titleKo, titleEn) {
+async function renderThumb(photoBuffer, titleKo, titleEn, opts) {
+  const V = VARIANTS[(opts && opts.variant) || 'feed'] || VARIANTS.feed;
   const sharp = require('sharp');                                  // 지연 로드
   const { wrapHeadline } = require('./celebBrief');
   const F = fonts();
@@ -105,23 +131,23 @@ async function renderThumb(photoBuffer, titleKo, titleEn) {
   if (!enLines) throw new Error('영문 제목이 2줄을 넘습니다. 제목을 줄여주세요: ' + titleEn);
 
   const paths = [];
-  koLines.forEach((l, i) => paths.push(lineToPath(F.ko, l, KO_X, KO_BASE + i * KO_LEAD, KO_PX, koTrackPx)));
-  enLines.forEach((l, i) => paths.push(lineToPath(F.en, l, EN_X, EN_BASE + i * EN_LEAD, EN_PX, enTrackPx)));
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">'
+  koLines.forEach((l, i) => paths.push(lineToPath(F.ko, l, KO_X, V.koBase + i * KO_LEAD, KO_PX, koTrackPx)));
+  enLines.forEach((l, i) => paths.push(lineToPath(F.en, l, EN_X, V.enBase + i * EN_LEAD, EN_PX, enTrackPx)));
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + V.W + '" height="' + V.H + '">'
     + '<path fill="#ffffff" d="' + paths.join(' ') + '"/></svg>';
 
   // 1) 사진 — 가운데 크롭 풀블리드
   const base = await sharp(photoBuffer, { failOn: 'none' })
     .rotate()
-    .resize(W, H, { fit: 'cover', position: 'centre' })
+    .resize(V.W, V.H, { fit: 'cover', position: 'centre' })
     .toBuffer();
 
   // 2) 그림자 → 3) 글자 → 4) 심볼
   return sharp(base)
     .composite([
-      { input: path.join(ASSETS, 'shadow.png'), left: SHADOW_XY[0], top: SHADOW_XY[1] },
+      { input: path.join(ASSETS, V.shadow), left: V.shadowXY[0], top: V.shadowXY[1] },
       { input: Buffer.from(svg), left: 0, top: 0 },
-      { input: path.join(ASSETS, 'symbol70.png'), left: SYMBOL_XY[0], top: SYMBOL_XY[1] },
+      { input: path.join(ASSETS, 'symbol70.png'), left: V.symbolXY[0], top: V.symbolXY[1] },
     ])
     .jpeg({ quality: 92 })
     .toBuffer();
@@ -129,6 +155,7 @@ async function renderThumb(photoBuffer, titleKo, titleEn) {
 
 module.exports = {
   renderThumb,
+  VARIANTS,
   measureWith,
   _fonts: fonts,
   W, H, KO_PX, KO_LEAD, KO_TRACK, EN_PX, EN_LEAD, EN_TRACK,
