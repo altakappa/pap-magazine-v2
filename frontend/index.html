@@ -943,7 +943,7 @@
      (첫 화면 심볼 오버레이 제거). 되살리려면 아래 스크립트 주석 해제.
 <script src="/pap-splash-loader.js?v=3"></script>
 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=16" defer></script><script src="/pap-social.js?v=8" defer></script><script src="/pap-utils.js?v=6" defer></script><script src="/pap-i18n.js?v=8" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=3" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=77" defer></script><script src="/pap-content-film.js?v=14" defer></script><script src="/pap-content-article.js?v=50" defer></script><script src="/pap-content-creator-shorts.js?v=14" defer></script><script src="/pap-content-api-sync.js?v=125" defer></script><script src="/pap-content-seo.js?v=9" defer></script><script src="/pap-shell-bootstrap.js?v=11" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script><script src="/pap-inclick.js?v=3" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=16" defer></script><script src="/pap-social.js?v=8" defer></script><script src="/pap-utils.js?v=7" defer></script><script src="/pap-i18n.js?v=8" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=3" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=78" defer></script><script src="/pap-content-film.js?v=14" defer></script><script src="/pap-content-article.js?v=51" defer></script><script src="/pap-content-creator-shorts.js?v=14" defer></script><script src="/pap-content-api-sync.js?v=125" defer></script><script src="/pap-content-seo.js?v=9" defer></script><script src="/pap-shell-bootstrap.js?v=11" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script><script src="/pap-inclick.js?v=3" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">
@@ -1196,6 +1196,11 @@
       <div id="artDetailTitle" style="font-family:'Montserrat',sans-serif;font-size:26px;font-weight:700;color:#fff;letter-spacing:.04em;line-height:1.35"></div>
       <div id="artDetailSub" style="font-size:14px;color:#aaa;margin-top:12px;line-height:1.6"></div>
       <div id="artDetailCat" style="font-size:11px;color:#888;letter-spacing:.12em;text-transform:uppercase;margin-top:14px"></div>
+      <!-- 2026-08-22 상단 IG 진입점 (도메니코: "인스타그램 유입 최우선").
+           비워 두고 JS(_papIgTopHtml)가 채운다 — 원본 게시물이 있으면 게시물로,
+           없으면 프로필로. src=spa_top 으로 따로 세어 SSR 상단(ssr_top)·
+           하단(article/editorial)과 직접 비교한다. -->
+      <div id="artDetailIgTop"></div>
     </div>
     <div id="artDetailDesc" style="padding:0 0 32px;font-size:16px;line-height:1.9;color:#ccc;letter-spacing:.02em"></div>
     <div id="artDetailCredits" style="padding:24px 0;border-top:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.8"></div>
@@ -1278,6 +1283,11 @@
     <div class="ed-hero-info">
       <div class="ed-hero-title" id="edDetailTitle"></div>
       <div class="ed-hero-issue" id="edDetailIssue"></div>
+      <!-- 2026-08-22 상단 IG 진입점 (도메니코: "인스타그램 유입 최우선").
+           비워 두고 JS(_papIgTopHtml)가 채운다 — 원본 게시물이 있으면 게시물로,
+           없으면 프로필로. src=spa_top 으로 따로 세어 SSR 상단(ssr_top)·
+           하단(article/editorial)과 직접 비교한다. -->
+      <div id="edDetailIgTop"></div>
     </div>
   </div>
 

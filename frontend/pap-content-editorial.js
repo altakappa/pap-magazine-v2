@@ -1743,6 +1743,14 @@ function _openEditorialInner(title,thumb){
   heroImg.src=det.thumb;
   document.getElementById('edDetailTitle').textContent=title;
   document.getElementById('edDetailIssue').textContent=det.issue;
+  /* 2026-08-22 상단 IG 진입점 (spa_top). 갤러리 중간 임베드(editorial_mid)는
+     그대로 둔다 — 저건 '보여주기', 이건 '넘어가기'다. 둘 다 따로 세어진다. */
+  try {
+    var _igTopEd = document.getElementById('edDetailIgTop');
+    if (_igTopEd && typeof window.papIgTopHtml === 'function') {
+      _igTopEd.innerHTML = window.papIgTopHtml(det && det.ig, { src: 'spa_top' });
+    }
+  } catch(_){}
   // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).
   if(typeof _papRenderEdIg==='function'){try{_papRenderEdIg(det.ig,title);}catch(_){}}
   // 수익화 2.0 — SHOP THE STORY (착장 브랜드 구매 링크).
@@ -2070,6 +2078,14 @@ function _openEditorialInner_noPush(title,thumb){
   heroImg.src=det.thumb;
   document.getElementById('edDetailTitle').textContent=title;
   document.getElementById('edDetailIssue').textContent=det.issue;
+  /* 2026-08-22 상단 IG 진입점 (spa_top). 갤러리 중간 임베드(editorial_mid)는
+     그대로 둔다 — 저건 '보여주기', 이건 '넘어가기'다. 둘 다 따로 세어진다. */
+  try {
+    var _igTopEd = document.getElementById('edDetailIgTop');
+    if (_igTopEd && typeof window.papIgTopHtml === 'function') {
+      _igTopEd.innerHTML = window.papIgTopHtml(det && det.ig, { src: 'spa_top' });
+    }
+  } catch(_){}
   // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).
   if(typeof _papRenderEdIg==='function'){try{_papRenderEdIg(det.ig,title);}catch(_){}}
   // 수익화 2.0 — SHOP THE STORY (착장 브랜드 구매 링크).

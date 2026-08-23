@@ -910,6 +910,8 @@ function renderSeoHtml(kind, record, opts) {
       srcBtn: '인스타그램에서 보기 ↗',
       niche: (nm) => `${nm.topic} 소식은 <b>@${nm.acct}</b>에서,<br>PAP의 화보와 매거진 전체는 <b>@pap_magazine</b>에서 편하게 보실 수 있습니다.`,
       main: 'PAP의 화보와 필름, 패션·셀럽 소식을<br><b>인스타그램</b>에서 편하게 만나보세요.',
+      topPost: '이 기사의 인스타그램 원본 보기',
+      topProfile: 'PAP 인스타그램 팔로우',
       pin: 'Pinterest에 저장',
       sub: '전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼 · <a href="' + SITE + '/network" style="color:inherit">PAP 인스타그램 네트워크 →</a>',
     },
@@ -918,6 +920,8 @@ function renderSeoHtml(kind, record, opts) {
       srcBtn: 'View on Instagram ↗',
       niche: (nm) => `More ${nm.topic} on <b>@${nm.acct}</b>,<br>and the full magazine on <b>@pap_magazine</b>.`,
       main: 'Editorials, films, fashion and celebrity news —<br>all in one place on <b>Instagram</b>.',
+      topPost: 'See the original post on Instagram',
+      topProfile: 'Follow PAP on Instagram',
       pin: 'Save to Pinterest',
       sub: '20+ editorials a month with creative teams worldwide · <a href="' + SITE + '/network" style="color:inherit">PAP Instagram network →</a>',
     },
@@ -926,6 +930,8 @@ function renderSeoHtml(kind, record, opts) {
       srcBtn: 'Guarda su Instagram ↗',
       niche: (nm) => `Ti è piaciuta questa storia <b>${nm.topic}</b>? —<br>Altro ${nm.topic} su <b>@${nm.acct}</b>, e i nuovi editoriali prima di tutti su <b>@pap_magazine</b>, ogni giorno.`,
       main: 'Editoriali quotidiani, moda e celebrity news —<br>scoprili <b>prima su Instagram</b>.',
+      topPost: 'Guarda il post originale su Instagram',
+      topProfile: 'Segui PAP su Instagram',
       pin: 'Salva su Pinterest',
       sub: '20+ editoriali al mese con team creativi da tutto il mondo · <a href="' + SITE + '/network" style="color:inherit">Il network Instagram di PAP →</a>',
     },
@@ -934,6 +940,8 @@ function renderSeoHtml(kind, record, opts) {
       srcBtn: 'Voir sur Instagram ↗',
       niche: (nm) => `Cette histoire <b>${nm.topic}</b> vous a plu ? —<br>Plus de ${nm.topic} sur <b>@${nm.acct}</b>, et les nouveaux éditoriaux en avant-première sur <b>@pap_magazine</b>, chaque jour.`,
       main: 'Éditoriaux quotidiens, mode et actus célébrités —<br>découvrez-les <b>d’abord sur Instagram</b>.',
+      topPost: 'Voir le post original sur Instagram',
+      topProfile: 'Suivre PAP sur Instagram',
       pin: 'Enregistrer sur Pinterest',
       sub: '20+ éditoriaux par mois avec des équipes créatives du monde entier · <a href="' + SITE + '/network" style="color:inherit">Le réseau Instagram de PAP →</a>',
     },
@@ -942,6 +950,8 @@ function renderSeoHtml(kind, record, opts) {
       srcBtn: 'Ver en Instagram ↗',
       niche: (nm) => `¿Te gustó esta historia de <b>${nm.topic}</b>? —<br>Más ${nm.topic} en <b>@${nm.acct}</b>, y los nuevos editoriales primero en <b>@pap_magazine</b>, cada día.`,
       main: 'Editoriales diarios, moda y noticias de celebridades —<br>descúbrelos <b>primero en Instagram</b>.',
+      topPost: 'Ver la publicación original en Instagram',
+      topProfile: 'Seguir a PAP en Instagram',
       pin: 'Guardar en Pinterest',
       sub: '20+ editoriales al mes con equipos creativos de todo el mundo · <a href="' + SITE + '/network" style="color:inherit">La red de Instagram de PAP →</a>',
     },
@@ -950,6 +960,8 @@ function renderSeoHtml(kind, record, opts) {
       srcBtn: 'Instagramで見る ↗',
       niche: (nm) => `この<b>${nm.topic}</b>のストーリーが気に入ったら —<br>${nm.topic}専門アカウント<b>@${nm.acct}</b>でもっと${nm.topic}コンテンツを、<b>@pap_magazine</b>で毎日新しいエディトリアルを誰よりも早く。`,
       main: '毎日更新されるエディトリアルとファッション・セレブニュースを、<br><b>Instagramで真っ先に</b>チェック。',
+      topPost: 'この記事のInstagram原文を見る',
+      topProfile: 'PAPのInstagramをフォロー',
       pin: 'Pinterestに保存',
       sub: '世界中のクリエイティブチームと制作する月20本以上のエディトリアル · <a href="' + SITE + '/network" style="color:inherit">PAP Instagramネットワーク →</a>',
     },
@@ -958,6 +970,8 @@ function renderSeoHtml(kind, record, opts) {
       srcBtn: 'Auf Instagram ansehen ↗',
       niche: (nm) => `Diese <b>${nm.topic}</b>-Story gefallen? —<br>Mehr ${nm.topic} auf <b>@${nm.acct}</b>, und die neuesten Editorials zuerst auf <b>@pap_magazine</b>, jeden Tag.`,
       main: 'Tägliche Editorials, Mode und Promi-News —<br>entdecke sie <b>zuerst auf Instagram</b>.',
+      topPost: 'Originalbeitrag auf Instagram ansehen',
+      topProfile: 'PAP auf Instagram folgen',
       pin: 'Auf Pinterest speichern',
       sub: '20+ Editorials im Monat mit Kreativteams weltweit · <a href="' + SITE + '/network" style="color:inherit">Das Instagram-Netzwerk von PAP →</a>',
     },
@@ -966,6 +980,8 @@ function renderSeoHtml(kind, record, opts) {
       srcBtn: '在 Instagram 查看 ↗',
       niche: (nm) => `喜欢这篇 <b>${nm.topic}</b> 报道吗？—<br>在 <b>@${nm.acct}</b> 查看更多 ${nm.topic} 内容，在 <b>@pap_magazine</b> 每天抢先看最新大片。`,
       main: '每日更新的时尚大片、时装与名人资讯，<br><b>抢先在 Instagram 上</b>查看。',
+      topPost: '查看 Instagram 原帖',
+      topProfile: '关注 PAP Instagram',
       pin: '保存到 Pinterest',
       sub: '每月与全球创意团队合作产出 20+ 时尚大片 · <a href="' + SITE + '/network" style="color:inherit">PAP Instagram 网络 →</a>',
     },
@@ -974,6 +990,8 @@ function renderSeoHtml(kind, record, opts) {
       srcBtn: 'Смотреть в Instagram ↗',
       niche: (nm) => `Понравилась эта история <b>${nm.topic}</b>? —<br>Больше ${nm.topic} на <b>@${nm.acct}</b>, а новые эдиториалы первыми — на <b>@pap_magazine</b>, каждый день.`,
       main: 'Ежедневные эдиториалы, мода и новости о знаменитостях —<br>открывайте их <b>первыми в Instagram</b>.',
+      topPost: 'Смотреть оригинал в Instagram',
+      topProfile: 'Подписаться на PAP в Instagram',
       pin: 'Сохранить в Pinterest',
       sub: '20+ эдиториалов в месяц с креативными командами со всего мира · <a href="' + SITE + '/network" style="color:inherit">Instagram-сеть PAP →</a>',
     },
@@ -1678,6 +1696,17 @@ ${ogImage && !(cfg.schemaType === 'VideoObject' && isValidYtId)
   /* 검색 유입 → 인스타그램 전환 모듈 (2026-07). 구글/네이버에서 기사로
      들어온 방문자에게 팔로우 CTA 노출 — 스트릿/셀럽/패션위크 주제 검색
      트래픽을 IG 팔로워로 전환하는 깔때기의 착지점. */
+  /* 2026-08-22 상단 IG 진입점 — 인라인 크리티컬 CSS 에 둔다.
+   pap-styles.css 는 preload→onload 로 늦게 오므로(098be3b), 여기 없으면
+   첫 화면에서 모양이 무너진다. 본문을 가리지 않는 얇은 한 줄이다
+   (구글 침입형 인터스티셜 규정을 건드리지 않는 크기). */
+  .ig-top{display:flex;align-items:center;gap:10px;max-width:800px;margin:18px auto 0;padding:12px 16px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.03);color:#fff;text-decoration:none;font-size:12.5px;letter-spacing:.02em;line-height:1.4;transition:background .25s,border-color .25s}
+  .ig-top:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.4)}
+  .ig-top-mark{flex:0 0 auto;font-size:15px;opacity:.9}
+  .ig-top-txt{flex:1 1 auto;min-width:0}
+  .ig-top-go{flex:0 0 auto;opacity:.6;font-size:13px}
+  @media(max-width:600px){.ig-top{margin:14px 16px 0;padding:11px 13px;font-size:12px}}
+  @media(prefers-reduced-motion:reduce){.ig-top{transition:none}}
   .ig-funnel{max-width:800px;margin:56px auto 0;padding:36px 28px;border:1px solid rgba(255,255,255,.16);text-align:center}
   .ig-funnel .igf-kicker{font-size:10px;letter-spacing:.32em;text-transform:uppercase;opacity:.55;margin-bottom:14px}
   .ig-funnel .igf-copy{font-size:15px;line-height:1.75;margin-bottom:22px}
@@ -1871,6 +1900,36 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
       <p class="seo-desc-primary">${escText(descDisplay)}</p>
       ${!isEn && descAltDisplay && descAltDisplay !== descDisplay ? `<p class="seo-desc-en">${escText(descAltDisplay)}</p>` : ''}
     </div>
+    ${/* ── 상단 IG 진입점 (2026-08-22, 도메니코: "인스타그램 유입 최우선") ──
+        [왜 여기] 지금 IG 진입점은 **페이지 맨 아래**에 있다 — 갤러리·크레딧·
+        별점·참여·SHOP·다운로드·브랜드·관련글·태그·FAQ 를 전부 지나야 나온다.
+        모바일에서 수천 픽셀 아래다. 그런데도 웹→IG 아웃클릭의 3/4 를 만든다.
+        위로 올리면 어떻게 되는지는 **아무도 모른다.** 그래서 재게 만든다.
+
+        [무엇을 근거로 게시물 링크인가] 같은 페이지·같은 방문자로 이미 비교돼 있다.
+            게시물(to=post)    30일 약 1,394
+            프로필(to=profile) 30일 약  421
+        3.3 대 1 이다. 노출이 같은 두 CTA 라 이건 공정한 비교다.
+        그래서 상단은 게시물을 앞세우고, 원본이 없을 때만 프로필로 떨어진다.
+        (원본 보유율 실측: 화보 95.0% · 기사 87.7%)
+
+        [왜 얇게] 구글의 침입형 인터스티셜 규정을 건드리지 않는 크기로 둔다.
+        본문을 가리면 순위를 잃고, 순위를 잃으면 IG 로 보낼 사람 자체가 준다.
+
+        [계측] src 를 ssr_top 으로 따로 둔다. 7일 뒤 ssr_top 대 ssr_article 을
+        비교하면 '위가 나은가'가 추측이 아니라 숫자로 판정된다. */ ''}
+    ${(() => {
+      const igUrl = String(record.source_instagram_url || '');
+      const hasPost = /instagram\.com/.test(igUrl);
+      const href = hasPost
+        ? `/api/ig-out?src=ssr_top&to=post&url=${encodeURIComponent(igUrl.split('?')[0])}`
+        : `/api/ig-out?src=ssr_top&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F`;
+      return `<a class="ig-top" href="${href}" target="_blank" rel="noopener">
+      <span class="ig-top-mark" aria-hidden="true">◎</span>
+      <span class="ig-top-txt">${escText(hasPost ? FT.topPost : FT.topProfile)}</span>
+      <span class="ig-top-go" aria-hidden="true">↗</span>
+    </a>`;
+    })()}
     ${bodyHtml}
     ${galleryHtml}
     ${videoHtml}

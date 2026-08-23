@@ -45,7 +45,12 @@ const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.c
 // ssr_film 은 같은 분리 작업의 나머지 한 조각(필름 SSR).
 // 2026-08-08 — 'newsletter' 추가: 이메일의 FOLLOW @PAP_MAGAZINE 버튼이 ig-out 을
 // 경유하게 바꿨다 (이메일→IG 도 플라이휠 흐름이므로 계측한다 — email.js).
-const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', 'ssr_article', 'ssr_film', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel', 'spa_fallback', 'pepperit-article', 'pepperit-spa', 'pepperit-footer', 'youtube', 'brand', 'locale_home', 'submission_done', 'newsletter', 'boost', 'push']);
+const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', 'ssr_article', 'ssr_film', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel', 'spa_fallback', 'pepperit-article', 'pepperit-spa', 'pepperit-footer', 'youtube', 'brand', 'locale_home', 'submission_done', 'newsletter', 'boost', 'push',
+  /* 2026-08-22 — 상단 진입점 (도메니코: "인스타그램 유입 최우선").
+     기존 진입점은 전부 페이지 맨 아래다. 위로 올리면 어떻게 되는지 모르니
+     라벨을 따로 둬서 **아래(ssr_article·article·editorial)와 직접 비교**한다.
+     이게 없으면 위아래가 한 통에 섞여 판정 자체가 불가능하다. */
+  'ssr_top', 'spa_top']);
 const IG_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 
 /* 경로형 단축 링크 /ig/:src (2026-07-30 신설).

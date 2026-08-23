@@ -546,6 +546,15 @@ function _renderArticleDetail(a,det){
   var _locTitle=_papLocTitle(a);
   var _locSub=_papLocSub(a);
   document.getElementById('artDetailTitle').textContent=_locTitle;
+  /* 2026-08-22 상단 IG 진입점 — 원본 게시물이 있으면 게시물로, 없으면 프로필로.
+     src=spa_top 으로 따로 세어 '위가 나은가'를 아래(article)와 비교 판정한다.
+     자리가 없는 옛 마크업이면 조용히 건너뛴다. */
+  try {
+    var _igTop = document.getElementById('artDetailIgTop');
+    if (_igTop && typeof window.papIgTopHtml === 'function') {
+      _igTop.innerHTML = window.papIgTopHtml(a && a.ig, { src: 'spa_top' });
+    }
+  } catch(_){}
   // 2026-07-20 QA 표기통일 — 상세도 홈/목록과 동일 포맷 (Title - DD Mon YYYY).
   // 기존엔 원본 소문자 카테고리 + ISO 날짜(2026-03-02)라 3면이 전부 달랐다.
   document.getElementById('artDetailCat').textContent=papFmtMeta(a.cat, a.d);

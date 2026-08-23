@@ -69,7 +69,14 @@ console.log('\n[4] 실패 격리 — 푸시가 부스트를 못 막는다');
 console.log('\n[5] 계측 — 성장 헌법 3조');
 {
   t('알림 클릭은 ig-out?src=push 경유', /ig-out\?src=push&to=post/.test(wp));
-  t("ig-out 화이트리스트에 'push' 등록", /'boost', 'push'\]\)/.test(igOut));
+  /* 2026-08-22 — 화이트리스트에 상단 진입점(ssr_top·spa_top)이 추가되면서
+     'push' 가 더 이상 배열 마지막이 아니다. 검사할 사실은 "push 가 등록돼
+     있는가" 지 "마지막에 있는가" 가 아니다. 집합을 실제로 만들어 확인한다. */
+  t("ig-out 화이트리스트에 'push' 등록", (() => {
+    const m = igOut.match(/const SRC_WHITELIST = new Set\(\[[\s\S]*?\]\);/);
+    if (!m) return false;
+    return new Function(m[0] + '; return SRC_WHITELIST;')().has('push');
+  })());
   t('추적 쿼리 제거 후 인코딩', /split\('\?'\)\[0\]/.test(wp));
 }
 

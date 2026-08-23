@@ -383,3 +383,58 @@ function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
   // next arrow
   btn('›',currentPage+1,false,currentPage===totalPages);
 }
+
+/* ── 상단 IG 진입점 (2026-08-22) ────────────────────────────────────────
+   도메니코: "모든 파이프라인에서 웹이 아닌 인스타그램에 유입되는 걸 최우선.
+   웹에서도 기사와 에디토리얼에서 인스타그램으로 넘어오기 좋은 디자인으로."
+
+   [무엇을 근거로 게시물인가] 같은 페이지·같은 방문자로 이미 비교돼 있다(30일):
+       게시물(to=post)    약 1,394
+       프로필(to=profile) 약   421      → 3.3 대 1
+   노출이 같은 두 CTA 라 공정한 비교다. 그래서 원본이 있으면 게시물로 보내고,
+   없을 때만 프로필로 떨어진다. (원본 보유율 실측: 화보 95.0% · 기사 87.7%)
+
+   [왜 위인가 — 아직 모른다] 기존 진입점은 전부 페이지 맨 아래다. 위가 나은지는
+   아무도 재본 적이 없다. 그래서 src 를 spa_top 으로 따로 둔다. 7일 뒤
+   spa_top(위) 대 article·editorial(아래), ssr_top(위) 대 ssr_article(아래)을
+   나란히 놓으면 판정이 숫자로 나온다. 추측으로 배치를 바꾸지 않는다.
+
+   [규칙이 두 벌이 되지 않게] SSR(seoRenderer)과 SPA 가 같은 모양·같은 문구를
+   쓰도록 여기 한 곳에만 둔다. 한쪽만 고쳐지는 사고를 막는다.
+
+   반환: HTML 문자열. 넣을 자리가 없으면 호출부가 알아서 무시한다. */
+function papIgTopHtml(igUrl, opts){
+  opts = opts || {};
+  var src = opts.src || 'spa_top';
+  var raw = String(igUrl || '');
+  var hasPost = /instagram\.com/.test(raw);
+  var href = hasPost
+    ? '/api/ig-out?src=' + encodeURIComponent(src) + '&to=post&url=' + encodeURIComponent(raw.split('?')[0])
+    : '/api/ig-out?src=' + encodeURIComponent(src) + '&to=profile&url=' + encodeURIComponent('https://www.instagram.com/pap_magazine/');
+  var lang = 'ko';
+  try { lang = localStorage.getItem('pap-lang') || 'ko'; } catch(_){}
+  var T = {
+    ko: { post: '이 기사의 인스타그램 원본 보기', prof: 'PAP 인스타그램 팔로우' },
+    ja: { post: 'この記事のInstagram原文を見る',   prof: 'PAPのInstagramをフォロー' },
+    zh: { post: '查看 Instagram 原帖',            prof: '关注 PAP Instagram' },
+    it: { post: 'Guarda il post originale su Instagram', prof: 'Segui PAP su Instagram' },
+    fr: { post: 'Voir le post original sur Instagram',   prof: 'Suivre PAP sur Instagram' },
+    es: { post: 'Ver la publicación original en Instagram', prof: 'Seguir a PAP en Instagram' },
+    de: { post: 'Originalbeitrag auf Instagram ansehen', prof: 'PAP auf Instagram folgen' },
+    ru: { post: 'Смотреть оригинал в Instagram',  prof: 'Подписаться на PAP в Instagram' },
+    en: { post: 'See the original post on Instagram',    prof: 'Follow PAP on Instagram' }
+  };
+  var t = T[lang] || T.en;
+  var label = hasPost ? t.post : t.prof;
+  /* 인라인 스타일로 그린다 — pap-styles.css 는 SSR 에서 늦게 오고(preload→onload),
+     이 줄은 첫 화면에 보여야 한다. SSR 쪽 .ig-top 과 같은 모양을 맞춘 값이다. */
+  return '<a href="' + href + '" target="_blank" rel="noopener" class="ig-top" '
+       + 'style="display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:11px 14px;'
+       + 'border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.03);color:#fff;'
+       + 'text-decoration:none;font-size:12.5px;line-height:1.4">'
+       + '<span aria-hidden="true" style="flex:0 0 auto;font-size:15px;opacity:.9">◎</span>'
+       + '<span style="flex:1 1 auto;min-width:0">' + label + '</span>'
+       + '<span aria-hidden="true" style="flex:0 0 auto;opacity:.6;font-size:13px">↗</span>'
+       + '</a>';
+}
+try { window.papIgTopHtml = papIgTopHtml; } catch(_){}

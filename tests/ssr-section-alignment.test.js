@@ -32,6 +32,9 @@ function rule(sel) {
 const SECTIONS = [
   '.seo-meta', '.seo-body', '.seo-tags', '.seo-faq',
   '.seo-credits', '.seo-fashion', '.seo-related', '.seo-back', '.ig-funnel',
+  /* 2026-08-22 상단 IG 진입점 — 본문 폭·가운데 정렬 규칙을 똑같이 지켜야 한다.
+     여기 빼두면 다음 사람이 폭을 안 맞춰도 아무도 모른다. */
+  '.ig-top',
 ];
 
 console.log('SSR 본문 블록 정렬');
