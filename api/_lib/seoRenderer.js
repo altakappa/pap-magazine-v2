@@ -1608,7 +1608,12 @@ ${ogImage && !(cfg.schemaType === 'VideoObject' && isValidYtId)
   .seo-meta time{opacity:.5;font-size:11px;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:0}
   .seo-meta .seo-desc-primary{font-size:15px;line-height:1.8;margin:32px 0 12px;white-space:pre-line}
   .seo-meta .seo-desc-en{font-size:13px;line-height:1.75;margin:0 0 12px;opacity:.6;white-space:pre-line;padding-top:14px;border-top:1px dashed rgba(255,255,255,.12)}
-  .seo-tags{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:24px 0}
+  /* 2026-08-22 — 가운데 정렬이 빠져 있었다. <article> 직계 자식인데 형제들(.seo-meta·
+     .seo-body·.seo-faq…)과 달리 max-width/auto 마진이 없어서, 주소로 직접 들어간
+     SSR 페이지에서만 태그 줄이 화면 왼쪽 끝까지 붙어 본문과 어긋났다.
+     (홈에서 클릭해 들어오면 SPA 가 그리므로 이 클래스 자체가 안 쓰인다 —
+      그래서 '주소로 들어갈 때만' 이상해 보였다) */
+  .seo-tags{max-width:800px;margin:24px auto;padding:0 24px;display:flex;flex-wrap:wrap;gap:8px;list-style:none}
   .seo-tags li{padding:4px 10px;border:1px solid rgba(255,255,255,.2);font-size:12px}
   /* QA #177 — structured credits / fashion / per-image credits to match SPA overlay */
   .seo-byline{font-size:13px;opacity:.75;margin:6px 0 0;letter-spacing:.02em}
@@ -1700,6 +1705,7 @@ ${ogImage && !(cfg.schemaType === 'VideoObject' && isValidYtId)
   .seo-kind-article .seo-hero{max-width:800px;margin:40px auto 0;padding:0 20px}
   .seo-kind-article .seo-hero img{width:auto;max-width:100%;max-height:75vh;height:auto;margin:0 auto;background:#111}
   .seo-kind-article .seo-meta{max-width:800px;padding:0 20px}
+  .seo-kind-article .seo-tags{max-width:800px;padding:0 20px}
   .seo-kind-article .seo-meta h1{font-family:'Montserrat',sans-serif;font-size:26px;font-weight:700;letter-spacing:.04em;line-height:1.35;margin:0}
   .seo-kind-article .seo-meta .alt{font-style:normal;font-size:14px;color:#aaa;opacity:1;margin:12px 0 0;line-height:1.6}
   .seo-kind-article .seo-meta time{font-size:11px;color:#888;letter-spacing:.12em;margin-top:14px;opacity:1}
