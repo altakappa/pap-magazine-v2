@@ -2,12 +2,16 @@
  * PAP Magazine — 영상에 PAP 디자인 굽기 (2026-08-23 신설)
  *
  * 도메니코(2026-08-23):
- *   "영상 자체에 디자인을 올려서 릴스로 올릴 수는 없을까?" → "앞 2-3초"
+ *   "영상 자체에 디자인을 올려서 릴스로 올릴 수는 없을까?" → 처음엔 "앞 2-3초"
+ *   → 실물을 보고 바꿈: **"섬네일은 3초 후에 사라지지 않고 계속 유지하자"**
  *   그리고 앞서: "영상은 릴스형으로 확대해서 잘라주고"
  *
  * 두 요청을 **한 번의 인코딩**으로 처리한다. 어차피 재인코딩이라 따로 할 이유가 없다.
  *   ① 9:16 로 확대 후 중앙 크롭 (scale force_original_aspect_ratio=increase → crop)
- *   ② 앞 N초 동안 투명 오버레이를 얹고 끝에서 부드럽게 사라지게
+ *   ② 오버레이를 **영상 전체 구간**에 얹는다 (seconds: 0)
+ *
+ * seconds 를 0 이 아닌 값으로 주면 앞 N초만 얹고 끝에서 페이드아웃한다 —
+ * 지금은 안 쓰지만 되돌릴 길을 남겨 둔다(도메니코가 한 번 바꿨으니 또 바꿀 수 있다).
  *
  * ── 왜 ffmpeg-static 인가 ────────────────────────────────────
  * Vercel 런타임에는 ffmpeg 가 없다(_lib/mp4Mute.js 머리말). 영상 위에 그림을
@@ -25,8 +29,8 @@
 'use strict';
 
 const DEFAULTS = {
-  seconds: 3,        // 오버레이가 보이는 시간 (도메니코: 앞 2-3초)
-  fade: 0.6,         // 끝에서 사라지는 시간
+  seconds: 0,        // 0 = 영상 전체 구간 (도메니코 2026-08-23: "계속 유지하자")
+  fade: 0.6,         // seconds > 0 일 때만 쓰는 페이드아웃 시간
   width: 1080,
   height: 1920,
   crf: 23,
@@ -47,12 +51,17 @@ function ffmpegPath() {
   }
 }
 
-/* enable 식과 fade 시작점은 seconds 에서 파생된다 — 한 곳에서만 계산한다. */
+/* seconds === 0 이면 전체 구간(페이드·enable 없음), 아니면 앞 N초 + 페이드아웃.
+   두 경우의 식이 한 곳에서만 만들어지게 둔다. */
 function buildFilter(o) {
+  const scale = '[0:v]scale=' + o.width + ':' + o.height
+    + ':force_original_aspect_ratio=increase,crop=' + o.width + ':' + o.height + '[bg]';
+  if (!o.seconds) {
+    return [scale, '[1:v]format=rgba[ov]', '[bg][ov]overlay=0:0[v]'].join(';');
+  }
   const fadeStart = Math.max(0, o.seconds - o.fade);
   return [
-    '[0:v]scale=' + o.width + ':' + o.height
-      + ':force_original_aspect_ratio=increase,crop=' + o.width + ':' + o.height + '[bg]',
+    scale,
     '[1:v]format=rgba,fade=out:st=' + fadeStart.toFixed(2) + ':d=' + o.fade.toFixed(2) + ':alpha=1[ov]',
     "[bg][ov]overlay=0:0:enable='lte(t," + o.seconds + ")'[v]",
   ].join(';');

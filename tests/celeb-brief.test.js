@@ -627,14 +627,25 @@ t('기본은 꺼져 있고 환경변수로만 켠다 (되돌릴 길을 먼저 �
   assert.ok(/videoOverlay\.isEnabled\(\)/.test(CRON_CODE), '크론이 스위치를 안 본다');
 });
 
-t('한 번의 인코딩으로 9:16 크롭 + 앞 3초 오버레이', () => {
+t('한 번의 인코딩으로 9:16 크롭 + 전체 구간 오버레이', () => {
+  /* 도메니코 2026-08-23: 처음엔 "앞 2-3초" 였다가 실물을 보고
+     "섬네일은 3초 후에 사라지지 않고 계속 유지하자" 로 바꿨다. */
   const vo = require('../api/_lib/videoOverlay');
   const f = vo.buildFilter(vo.DEFAULTS);
   assert.ok(/scale=1080:1920:force_original_aspect_ratio=increase/.test(f), '확대가 없다');
   assert.ok(/crop=1080:1920/.test(f), '크롭이 없다');
-  assert.ok(/fade=out:st=2\.40:d=0\.60:alpha=1/.test(f), '끝에서 사라지지 않는다');
-  assert.ok(/enable='lte\(t,3\)'/.test(f), '앞 3초 제한이 없다');
-  assert.strictEqual(vo.DEFAULTS.seconds, 3, '도메니코 지시는 앞 2-3초다');
+  assert.strictEqual(vo.DEFAULTS.seconds, 0, '0 이어야 전체 구간이다');
+  assert.ok(!/fade=out/.test(f), '전체 구간인데 페이드아웃이 남아 있다');
+  assert.ok(!/enable=/.test(f), '전체 구간인데 시간 제한이 남아 있다');
+  assert.ok(/\[bg\]\[ov\]overlay=0:0\[v\]/.test(f), '오버레이가 안 얹힌다');
+});
+
+t('앞 N초 모드로 되돌릴 수 있다', () => {
+  /* 도메니코가 한 번 바꿨으니 또 바꿀 수 있다 — 되돌릴 길을 남겨 둔다. */
+  const vo = require('../api/_lib/videoOverlay');
+  const f = vo.buildFilter({ ...vo.DEFAULTS, seconds: 3 });
+  assert.ok(/fade=out:st=2\.40:d=0\.60:alpha=1/.test(f), '페이드아웃이 없다');
+  assert.ok(/enable='lte\(t,3\)'/.test(f), '시간 제한이 없다');
 });
 
 t('굽기가 실패해도 원본으로 브리프는 나간다', () => {
