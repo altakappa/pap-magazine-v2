@@ -272,12 +272,12 @@ function extractMentions(text, limit) {
  *   URL 포함                          0/92 =   0%
  *   평균 958자 · 첫 줄 21자
  *
- * ⚠️ 해시태그는 캡션 끝에 나열하지 않는다. 후킹 문장 안에 녹인다:
- *      '#랄프로렌 과 #김우빈 오늘도 완벽하십니다'
- *      '무대 위의 #태용 은 언제나 강하다'
- *    조사 앞을 띄우는 것도 규칙이다(#태용 은 / #써네이 의) — 안 띄우면
- *    해시태그가 조사까지 먹는다. 이건 후킹을 쓰는 쪽(기사 생성)의 몫이고,
- *    이 함수는 태그를 기계적으로 붙이지 않는다.
+ * ⚠️ 해시태그는 **어디에도 넣지 않는다.**
+ *    실측상 셀럽기사 22% 가 후킹 문장 안에 태그를 녹여 쓰긴 한다
+ *    ('무대 위의 #태용 은 언제나 강하다'). 하지만 도메니코가 2026-08-23 에
+ *    직접 물렸다: "해시태그 후킹 문장 안에 녹이는 거는 더 이상하지 않아."
+ *    실측이 곧 정답은 아니다 — 발행자가 아니라고 하면 아닌 것이다.
+ *    기사 생성기가 후킹에 태그를 달아 보내면 여기서 벗겨낸다.
  *
  * ⚠️ 광고·협찬 표기(#광고 · #제작지원)는 다루지 않는다.
  *    도메니코 2026-08-23: 협찬은 너에게 맡기지 않는다.
@@ -298,11 +298,26 @@ function extractMentions(text, limit) {
  *    실제와 전혀 달랐다. 해시태그는 2%, URL 은 0건이다.
  *    인스타 캡션에 링크를 넣어도 클릭되지 않으니 애초에 안 쓴다.
  */
+/* 후킹에서 해시태그를 벗긴다.
+   '#' 만 지우면 '무대 위의 태용 은 언제나' 처럼 조사 앞 공백이 남는다
+   (원문이 태그가 조사를 먹지 않게 일부러 띄워 놓기 때문). 그래서 '#낱말'
+   바로 뒤에 오는 '공백 + 조사' 는 공백까지 함께 붙여 준다. */
+const _JOSA = '은|는|이|가|을|를|의|과|와|도|만|에|에서|에게|으로|로|부터|까지|이나|나|이라|라';
+const _HASH_JOSA = new RegExp('#([0-9A-Za-z가-힣_]+)\\s+(' + _JOSA + ')(?=\\s|[,.!?)\\]]|$)', 'g');
+
+function stripHashtags(text) {
+  return String(text || '')
+    .replace(_HASH_JOSA, '$1$2')
+    .replace(/#(?=[0-9A-Za-z가-힣_])/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
 const FOR_MORE = 'FOR MORE ARTICLES | @pap_magazine';
 
 function buildBriefCaption(brief) {
   const b = brief || {};
-  const hook = htmlToPlain(b.hook || b.title);
+  const hook = stripHashtags(htmlToPlain(b.hook || b.title));
   const ko = htmlToPlain(b.bodyKo || b.body);
   const en = htmlToPlain(b.bodyEn);   // 실측 100% — 비면 호출부가 사람에게 알린다
   const mentions = (Array.isArray(b.mentions) ? b.mentions : [])
@@ -342,6 +357,7 @@ function splitCaptionForTelegram(caption) {
 
 module.exports = {
   htmlToPlain,
+  stripHashtags,
   extractMentions,
   FOR_MORE,
   collectMediaItems,
