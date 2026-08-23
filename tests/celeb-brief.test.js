@@ -407,4 +407,54 @@ t('겹쳐 돌아도 브리프가 두 번 안 나간다 (원자적 클레임)', (
   assert.ok(/다른 실행이 이미 가져감/.test(CRON), '클레임 실패 시 조용히 빠지는 경로가 없다');
 });
 
+
+/* ⑩ 댓글 / 대댓글 (2026-08-23 도메니코: 댓글=질문 · 대댓글=해시태그) */
+t('본문 마지막 독자 질문을 떼어 댓글로 옮긴다', () => {
+  const r = cb.splitClosingQuestion('첫 단락.<br><br>둘째 단락. 당신은 어떤 마음으로 재생 버튼을 누를 것인가?');
+  assert.strictEqual(r.question, '당신은 어떤 마음으로 재생 버튼을 누를 것인가?');
+  assert.strictEqual(r.body, '첫 단락.\n\n둘째 단락.', '본문에 질문이 남으면 캡션과 댓글이 겹친다');
+});
+
+t('물음표로 안 끝나면 억지로 질문을 만들지 않는다', () => {
+  const r = cb.splitClosingQuestion('첫 단락.<br><br>딱 일주일만 더 기다려보자.');
+  assert.strictEqual(r.question, '');
+  assert.strictEqual(r.body, '첫 단락.\n\n딱 일주일만 더 기다려보자.', '본문을 건드리면 안 된다');
+});
+
+t('해시태그 블록이 가이드 규격을 지킨다', () => {
+  const block = cb.buildHashtagBlock({ seed: 'ABC' });
+  const tags = block.split('\n');
+  assert.ok(tags.length >= 12 && tags.length <= 15, '12~15개가 아니다: ' + tags.length);
+  assert.strictEqual(tags[0], '#PAPMAGAZINE', '#PAPMAGAZINE 이 1번이 아니다');
+  assert.ok(tags.every((x) => /^#[0-9A-Za-z가-힣_]+$/.test(x)), '태그 형식이 깨졌다');
+  assert.strictEqual(new Set(tags.map((x) => x.toUpperCase())).size, tags.length, '중복 태그가 있다');
+  assert.ok(!tags.some((x) => /^#(KPOP|패션|FASHION|아이돌)$/i.test(x)), '초대형 태그가 섞였다 (가이드: 중형 니치 위주)');
+});
+
+t('게시물마다 세트가 돌고, 같은 게시물은 늘 같다 (도배 금지 + 재현성)', () => {
+  const a1 = cb.buildHashtagBlock({ seed: 'DcSbkRuJZ4S' });
+  const a2 = cb.buildHashtagBlock({ seed: 'DcSbkRuJZ4S' });
+  const b = cb.buildHashtagBlock({ seed: 'XyZ12345678' });
+  assert.strictEqual(a1, a2, '같은 게시물인데 결과가 달라진다 — 재시도 때 태그가 바뀐다');
+  assert.notStrictEqual(a1, b, '게시물이 달라도 같은 세트다 — 도배가 된다');
+  assert.strictEqual(a1.split('\n')[0], b.split('\n')[0], '코어는 고정이어야 한다');
+});
+
+t('캡션은 해시태그 없이, 태그는 대댓글로만', () => {
+  const c = cb.buildComments({ question: '당신은 어떤가?', seed: 'S' });
+  assert.strictEqual(c.comment, '당신은 어떤가?');
+  assert.ok(c.reply.startsWith('#PAPMAGAZINE'), '대댓글이 해시태그 블록이 아니다');
+  const cap = cb.buildBriefCaption({ hook: 'h', bodyKo: 'k', bodyEn: 'e', mentions: ['x'] });
+  assert.ok(!/#[0-9A-Za-z가-힣_]/.test(cap), '캡션에 해시태그가 남았다 (볼트 톤앤매너: 셀럽 캡션엔 안 붙인다)');
+});
+
+t('크론이 댓글·대댓글을 따로 보낸다', () => {
+  assert.ok(/splitClosingQuestion\(gen\.body_ko\)/.test(CRON_CODE), '질문을 떼어내지 않는다');
+  assert.ok(/bodyKo: koSplit\.body/.test(CRON_CODE), '질문이 캡션에 그대로 남는다');
+  assert.ok(/💬 댓글/.test(CRON) && /↳ 대댓글/.test(CRON), '댓글 안내 라벨이 없다');
+  const sends = (CRON_CODE.match(/sendTextToChatSafe\(/g) || []).length;
+  assert.ok(sends >= 3, '댓글·대댓글을 각각 따로 보내야 한다 (한 덩어리면 복사가 번거롭다)');
+  assert.ok(/seed: rows\[0\]\.shortcode/.test(CRON_CODE), '게시물별 로테이션 시드가 없다');
+});
+
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');

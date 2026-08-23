@@ -313,6 +313,86 @@ function stripHashtags(text) {
     .trim();
 }
 
+/* ── 댓글 / 대댓글 (2026-08-23) ────────────────────────────────
+ * 도메니코: "댓글과 대댓글 해시태그를 학습해달라" → 댓글=질문 / 대댓글=해시태그.
+ *
+ * 볼트 근거:
+ *   50_Brand/톤앤매너.md
+ *     "해시태그는 자체 에디토리얼 캡션에만 붙인다. 뉴스·큐레이션·셀럽 기사
+ *      캡션에는 넣지 않는다 (실게시물 50개 검증)."  → 캡션은 깨끗하게 둔다.
+ *   50_Brand/PAP-브랜드-가이드.md
+ *     해시태그 블록 — 대문자·줄바꿈 구분, 12~15개, #PAPMAGAZINE 을 항상 1번.
+ *     초대형 태그 회피, 중형 니치 위주, 세트는 로테이션(도배 금지).
+ *   40_Community/한국인-댓글-작전-2026-07-29.md
+ *     "댓글창 첫 댓글을 우리가 단다 — 질문 한 줄을 고정 댓글로.
+ *      캡션을 건드리지 않고 대화를 여는 가장 싼 방법."
+ *
+ * 질문은 새로 지어내지 않는다. §1 말투 규칙상 본문 마지막 문장이 이미
+ * 독자 호명이다("당신은 ~인가?"). 그 문장을 본문에서 **떼어내** 댓글로 옮긴다.
+ * 새로 지으면 톤이 갈리고, 그대로 두면 캡션과 댓글이 겹친다.
+ * 물음표로 끝나지 않으면 옮기지 않는다 — 억지로 질문을 만들지 않는다.
+ */
+
+/* 초대형 태그(#KPOP·#패션 같은)는 뺐다 — 가이드의 "초대형 회피, 중형 니치" 지시.
+   코어 3개는 항상 이 순서로 맨 앞. #PAPMAGAZINE 이 1번이어야 한다. */
+const HASHTAG_CORE = ['PAPMAGAZINE', '팝매거진', '패션뉴스'];
+const HASHTAG_POOL_CELEB = [
+  '케이팝화보', '셀럽패션', 'KPOPFASHION', '셀럽스타일', 'CELEBSTYLE',
+  'KPOPSTYLE', '아이돌패션', '셀럽뉴스', '패션매거진', 'FASHIONNEWS',
+  'EDITORIAL', 'FASHIONEDITORIAL', 'SEOULFASHION', '독립매거진', '스타일링',
+  '케이팝패션', 'KPOPMAGAZINE', '패션에디토리얼', 'CELEBFASHION', '뮤직뉴스',
+];
+
+/* 회차마다 세트를 돌린다(도배 금지). 같은 게시물은 몇 번을 돌려도 같은 결과가
+   나와야 하므로 난수를 쓰지 않고 seed 문자열에서 결정적으로 뽑는다. */
+function _seedNum(seed) {
+  let h = 0;
+  for (const ch of String(seed || '')) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return h;
+}
+
+function buildHashtagBlock(opts) {
+  const o = opts || {};
+  const want = Math.max(12, Math.min(15, o.count || 14));
+  const pool = Array.isArray(o.pool) && o.pool.length ? o.pool.slice() : HASHTAG_POOL_CELEB.slice();
+  const start = _seedNum(o.seed) % pool.length;
+  const out = HASHTAG_CORE.slice();
+  const seen = new Set(out.map((t) => t.toUpperCase()));
+  for (let i = 0; i < pool.length && out.length < want; i++) {
+    const t = pool[(start + i) % pool.length];
+    if (seen.has(t.toUpperCase())) continue;
+    seen.add(t.toUpperCase());
+    out.push(t);
+  }
+  return out.map((t) => '#' + t).join('\n');   // 가이드: 줄바꿈 구분
+}
+
+/* 본문 마지막 문장이 독자 호명 질문이면 떼어낸다.
+   반환: { body, question } — question 이 없으면 본문은 그대로다. */
+function splitClosingQuestion(bodyKo) {
+  const text = htmlToPlain(bodyKo);
+  if (!text) return { body: '', question: '' };
+  const paras = text.split(/\n{2,}/);
+  const last = paras[paras.length - 1];
+  const sentences = last.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const tail = sentences[sentences.length - 1] || '';
+  if (!/\?\s*$/.test(tail)) return { body: text, question: '' };
+  sentences.pop();
+  paras[paras.length - 1] = sentences.join(' ').trim();
+  const body = paras.filter((p) => p.trim()).join('\n\n');
+  return { body, question: tail.trim() };
+}
+
+/* 브리프에 딸려 나가는 댓글 두 개.
+   반환: { comment, reply } — comment 는 질문(없으면 빈 문자열), reply 는 해시태그 블록. */
+function buildComments(opts) {
+  const o = opts || {};
+  return {
+    comment: String(o.question || '').trim(),
+    reply: buildHashtagBlock({ seed: o.seed, count: o.count, pool: o.pool }),
+  };
+}
+
 const FOR_MORE = 'FOR MORE ARTICLES | @pap_magazine';
 
 function buildBriefCaption(brief) {
@@ -357,6 +437,11 @@ function splitCaptionForTelegram(caption) {
 
 module.exports = {
   htmlToPlain,
+  buildHashtagBlock,
+  splitClosingQuestion,
+  buildComments,
+  HASHTAG_CORE,
+  HASHTAG_POOL_CELEB,
   stripHashtags,
   extractMentions,
   FOR_MORE,

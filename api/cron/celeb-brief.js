@@ -14,6 +14,9 @@
  *      → 1장만 renderThumb, 2장부터는 원본 바이트 그대로 보낸다.
  *      영상은 **영상 그대로** 보낸다. 디자인은 커버 프레임(thumbnail_url)에만 얹는다
  *      (2026-08-23 도메니코 "영상은 불가능해?" — 첫 실전이 릴스였다).
+ *   "댓글과 대댓글 해시태그" → 캡션은 해시태그 없이 깨끗하게 두고,
+ *      **댓글 = 독자 질문 한 줄 · 대댓글 = 해시태그 블록** 을 따로 보낸다
+ *      (볼트 50_Brand/톤앤매너 · PAP-브랜드-가이드 · 40_Community/댓글-작전).
  *   "비슷한 링크를 몇 개 보낼 수도 있어. 그럼 그 이미지들로 나열하면 돼"
  *      → 같은 batch_key 를 한 브리프로 묶어 보낸 순서대로 이어붙인다.
  *
@@ -195,12 +198,20 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
        조용히 넘기지 않고 사람에게 알린다(브리프 자체는 계속 보낸다 —
        국문이라도 있는 게 아무것도 없는 것보다 낫다). */
     const missingEn = !String(gen.body_en || '').trim();
+    /* 본문 마지막의 독자 호명 질문을 떼어 **첫 댓글**로 옮긴다.
+       캡션과 댓글에 같은 문장이 두 번 나오지 않게 하려는 것이고,
+       질문을 새로 지어내지 않으므로 톤도 갈리지 않는다. */
+    const koSplit = celebBrief.splitClosingQuestion(gen.body_ko);
     const caption = celebBrief.buildBriefCaption({
       hook: gen.title_ko || gen.title,          // 프롬프트가 '후킹 한 줄 10~26자'로 만든다
-      bodyKo: gen.body_ko,
+      bodyKo: koSplit.body,
       bodyEn: gen.body_en,
       mentions,
       creditKind: items[0].type === 'video' ? 'video' : 'photo',
+    });
+    const comments = celebBrief.buildComments({
+      question: koSplit.question,
+      seed: rows[0].shortcode,                  // 같은 게시물은 항상 같은 세트, 게시물마다 회전
     });
 
     // ── 4. 미디어 준비 — 커버 1장만 디자인, 나머지는 원본 그대로 ──
@@ -245,6 +256,10 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     const split = celebBrief.splitCaptionForTelegram(capWithNote);
     await tg.sendMediaToTelegram(media, split.caption, rows[0].chat_id);
     if (split.overflow) await tg.sendTextToChatSafe(rows[0].chat_id, split.overflow);
+    /* 댓글·대댓글은 **각각 따로** 보낸다 — 한 덩어리로 보내면 인스타에 붙일 때
+       필요한 부분만 골라 복사하기 번거롭다. */
+    if (comments.comment) await tg.sendTextToChatSafe(rows[0].chat_id, '💬 댓글\n' + comments.comment);
+    if (comments.reply) await tg.sendTextToChatSafe(rows[0].chat_id, '↳ 대댓글\n' + comments.reply);
 
     await supabaseAdmin.from('celeb_brief_queue').update({
       status: 'done', processed_at: new Date().toISOString(), error: null,
@@ -252,6 +267,7 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
         slides: media.length, title: gen.title_ko, title_en: gen.title_en, variant,
         videos: media.filter((m) => m.kind === 'video').length,
         video_skipped_too_big: tooBig, missing_en: missingEn,
+        has_comment: !!comments.comment,
       },
     }).in('id', ids);
 
@@ -259,6 +275,7 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
       ok: true, slides: media.length, title: gen.title_ko, variant,
       note: note(res, '브리프 1건 전송(' + variant + ')'
         + (missingEn ? ' ⚠️영문 누락' : '')
+        + (comments.comment ? '' : ' ⚠️댓글 질문 없음')
         + (tooBig ? (' ⚠️영상 ' + tooBig + '건 용량초과 제외') : '')
         + ': ' + String(gen.title_ko || '').slice(0, 60) + ' (' + media.length + '장)'),
     });
