@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "@vercel/functions": "^3.9.5",
     "formidable": "^3.5.1",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^9.0.3",
