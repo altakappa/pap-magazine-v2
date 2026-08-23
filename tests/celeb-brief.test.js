@@ -750,4 +750,80 @@ t('두 줄 강제가 한계폭을 깨지 않는다', () => {
   });
 });
 
+/* ─── 대댓글 해시태그: 인물·브랜드 포커스 (도메니코 2026-08-23) ─────────── */
+
+t('대댓글은 인물·브랜드를 영문·한글 병기로 단다', () => {
+  const c = cb.buildComments({
+    question: '어떤가?',
+    entities: [{ ko: '지수', en: 'JISOO' }, { ko: '블랙핑크', en: 'BLACKPINK' }],
+  });
+  assert.strictEqual(c.reply, '#PAPMAGAZINE #JISOO #지수 #BLACKPINK #블랙핑크');
+});
+
+t('주체가 있으면 일반 키워드는 섞지 않는다', () => {
+  const c = cb.buildComments({
+    question: '어떤가?',
+    entities: [{ ko: '지수', en: 'JISOO' }],
+    tags: ['sportychic', 'pinkstyling', 'athleisure'],
+  });
+  assert.ok(!/SPORTYCHIC|PINKSTYLING|ATHLEISURE/.test(c.reply),
+    '스타일 키워드가 섞였다 — 인물·브랜드에 포커스가 아니다: ' + c.reply);
+});
+
+t('한글 표기가 없는 브랜드는 영문만 단다', () => {
+  const c = cb.buildComments({ question: '어떤가?', entities: [{ ko: '', en: 'SKYLRK' }] });
+  assert.strictEqual(c.reply, '#PAPMAGAZINE #SKYLRK');
+});
+
+t('주체를 하나도 못 뽑으면 예전 방식으로 메운다 (빈 대댓글 방지)', () => {
+  const c = cb.buildComments({ question: '어떤가?', entities: [], tags: ['셀럽패션'] });
+  const tags = c.reply.split(' ');
+  assert.strictEqual(tags.length, cb.HASHTAG_COUNT);
+  assert.ok(tags.includes('#셀럽패션'), '기사 태그를 안 썼다: ' + c.reply);
+});
+
+t('기사가 질문으로 안 끝나도 댓글이 비지 않는다', () => {
+  /* 실측: News 기사의 67% 만 질문으로 끝난다. 나머지 33% 는 댓글이 비었고,
+     댓글이 비면 addComment 가 실패해 **대댓글 해시태그까지 통째로 못 달렸다**.
+     브리프 9·10번이 실제로 그렇게 나갔다. */
+  const c = cb.buildComments({
+    question: '',
+    fallbackQuestion: '당신의 하루는 어떤 리듬으로 흐르는가?',
+    entities: [{ ko: '지수', en: 'JISOO' }],
+  });
+  assert.ok(c.comment, '댓글이 비었다');
+  assert.ok(/나요\?$/.test(c.comment), '존댓말 변환이 안 됐다: ' + c.comment);
+});
+
+t('기사 질문이 있으면 그걸 우선한다', () => {
+  const c = cb.buildComments({ question: '이 룩 어떤가?', fallbackQuestion: '다른 질문인가?' });
+  assert.ok(/이 룩/.test(c.comment), '기사 질문을 안 썼다: ' + c.comment);
+});
+
+t('크론이 주체와 예비 질문을 넘긴다', () => {
+  assert.ok(/entities: gen\.entities/.test(CRON_CODE), '주체를 안 넘기면 해시태그가 스타일 키워드로 돌아간다');
+  assert.ok(/fallbackQuestion: gen\.comment_question/.test(CRON_CODE), '예비 질문을 안 넘기면 댓글이 빈다');
+});
+
+t('기사 생성 프롬프트가 주체와 질문을 요구한다', () => {
+  const IMP = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/instagramImport.js'), 'utf8');
+  assert.ok(/"entities"/.test(IMP), '프롬프트에 entities 가 없다');
+  assert.ok(/"comment_question"/.test(IMP), '프롬프트에 comment_question 이 없다');
+  assert.ok(/entities: Array\.isArray\(parsed\.entities\)/.test(IMP), 'entities 파싱이 없다');
+  assert.ok(/comment_question: String\(parsed\.comment_question/.test(IMP), 'comment_question 파싱이 없다');
+});
+
+t('게시 실패한 건도 "올려" 로 다시 잡힌다', () => {
+  /* 2026-08-23: 권한 부족으로 실패하자 그 행이 publish_failed 로 굳었고,
+     토큰을 고쳐도 "올려" 가 그 건을 못 집었다 (엉뚱한 옛 브리프가 잡혔다). */
+  assert.ok(/\.in\('status', \['done', 'publish_failed'\]\)/.test(WEBHOOK_CODE),
+    '실패한 건을 재시도 대상에서 빠뜨렸다');
+});
+
+t('게시 실패 메시지가 할 일을 알려준다', () => {
+  assert.ok(/function publishHint/.test(CRON_CODE), 'publishHint 가 없다');
+  assert.ok(/instagram_content_publish/.test(CRON_CODE), '권한 오류 안내가 없다');
+  assert.ok(/publishHint\(msg\)/.test(CRON_CODE), '실패 알림에 안내를 안 붙였다');
+});
+
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');

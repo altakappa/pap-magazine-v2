@@ -503,6 +503,18 @@ async function generateArticleFromPost(post, opts){
     '(the system will skip importing it — editorials are uploaded separately).',
     'Otherwise NEVER use "Editorial".',
     '  "tags": ["5-10 lowercase keyword tags"],',
+    /* 2026-08-23 — 도메니코: "대댓글 해시태그는 인물이나 브랜드에 포커스 맞춰서."
+       tags 는 일반 키워드라 #SPORTYCHIC #PINKSTYLING 같은 게 섞였다.
+       주체만 따로 받는다. 인스타 해시태그는 한글·영문 검색이 갈리므로 둘 다 받는다. */
+    '  "entities": [  // 이 기사의 주체. **인물 · 그룹 · 브랜드만.**',
+    '    // 스타일/컬러/장소/분위기 키워드는 절대 넣지 말 것 (그건 tags 로 간다).',
+    '    // 중요한 순서로 최대 4개. 한글 표기가 없는 브랜드는 ko 를 "" 로.',
+    '    {"ko": "지수", "en": "JISOO"}, {"ko": "블랙핑크", "en": "BLACKPINK"}, {"ko": "알로", "en": "ALO"}',
+    '  ],',
+    /* 2026-08-23 — 첫 댓글은 우리가 직접 단다. 기사 마지막이 질문으로 끝나는 비율이
+       실측 67% 뿐이라, 나머지 33% 는 댓글이 비고 그러면 대댓글 해시태그까지 통째로 못 달렸다.
+       (브리프 9·10번이 실제로 그랬다) 그래서 질문을 따로 항상 받는다. */
+    '  "comment_question": "(독자에게 던지는 질문 한 문장. 반드시 ? 로 끝낼 것. 기사 내용에 붙어 있어야 한다. 20~40자)",',
     '  "slug": "english-url-friendly-slug-from-title",',
     '  "faq": [  // AEO: 독자가 검색엔진/AI에 실제로 물어볼 자연어 질문 3개 (한국어)',
     '    {"q": "자연어 질문 (예: 발렌시아가 2026 쿠튀르 쇼는 어디서 열렸나요?)",',
@@ -608,6 +620,14 @@ async function generateArticleFromPost(post, opts){
     body_en:  String(parsed.body_en  || '').trim(),
     category: String(parsed.category || 'News').trim(),
     tags:     Array.isArray(parsed.tags) ? parsed.tags.map((t) => String(t).toLowerCase().replace(/^#+/, '').trim()).filter(Boolean).slice(0, 10) : [],
+    // 해시태그용 주체(인물·그룹·브랜드). ko/en 각각 없을 수 있다.
+    entities: Array.isArray(parsed.entities)
+      ? parsed.entities
+          .map((e) => ({ ko: String((e && e.ko) || '').trim(), en: String((e && e.en) || '').trim() }))
+          .filter((e) => e.ko || e.en)
+          .slice(0, 4)
+      : [],
+    comment_question: String(parsed.comment_question || '').trim(),
     slug:     String(parsed.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || null,
     // AEO FAQ (2026-07-16) — {q,a} 검증 후 최대 5개
     faq: Array.isArray(parsed.faq)

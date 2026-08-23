@@ -164,7 +164,10 @@ module.exports = async function handler(req, res) {
     const { data: latest, error: findErr } = await supabaseAdmin
       .from('celeb_brief_queue')
       .select('id, batch_key, result, status')
-      .eq('chat_id', parsed.chatId).eq('status', 'done')
+      /* publish_failed 도 대상에 넣는다 — 2026-08-23: 권한 부족으로 한 번 실패하자
+         그 행이 publish_failed 로 굳어, 토큰을 고쳐도 "올려" 가 그 건을 다시 못 집었다.
+         (대신 그 앞의 오래된 done 브리프가 잡혀서 엉뚱한 걸 올릴 뻔했다) */
+      .eq('chat_id', parsed.chatId).in('status', ['done', 'publish_failed'])
       .order('processed_at', { ascending: false }).limit(1);
     const row = latest && latest[0];
     if (findErr || !row) {
@@ -174,8 +177,8 @@ module.exports = async function handler(req, res) {
       return OK(res, { ok: true, skipped: 'no_brief_to_publish' });
     }
     const { error: markErr } = await supabaseAdmin.from('celeb_brief_queue')
-      .update({ status: 'publish_queued' })
-      .eq('id', row.id).eq('status', 'done');
+      .update({ status: 'publish_queued', error: null })
+      .eq('id', row.id).in('status', ['done', 'publish_failed']);
     if (markErr) {
       await say(parsed.chatId, '게시 접수 실패: ' + String(markErr.message).slice(0, 150));
       return OK(res, { ok: true, skipped: 'publish_mark_failed' });

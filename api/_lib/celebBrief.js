@@ -447,8 +447,20 @@ function buildHashtagBlock(opts) {
     out.push(n);
   };
   HASHTAG_CORE.forEach(push);
-  (Array.isArray(o.tags) ? o.tags : []).forEach(push);
-  if (out.length < want) HASHTAG_POOL_CELEB.forEach(push);   // 기사 태그가 없을 때만
+  /* 도메니코 2026-08-23: "대댓글 해시태그는 인물이나 브랜드에 포커스."
+     주체를 중요한 순서로, 각각 영문 → 한글 병기로 넣는다
+     (인스타는 #JISOO 와 #지수 의 검색 결과가 완전히 다르다).
+     예: #PAPMAGAZINE #JISOO #지수 #BLACKPINK #블랙핑크 */
+  (Array.isArray(o.entities) ? o.entities : []).forEach((e) => {
+    if (!e) return;
+    push(e.en);
+    push(e.ko);
+  });
+  // 주체를 하나도 못 뽑은 기사에서만 예전 방식으로 메운다 — 빈 대댓글보다는 낫다.
+  if (out.length <= HASHTAG_CORE.length) {
+    (Array.isArray(o.tags) ? o.tags : []).forEach(push);
+    HASHTAG_POOL_CELEB.forEach(push);
+  }
   return out.map((t) => '#' + t).join(' ');
 }
 
@@ -500,9 +512,13 @@ function toPolite(question) {
    반환: { comment, reply } — comment 는 질문(없으면 빈 문자열), reply 는 해시태그 블록. */
 function buildComments(opts) {
   const o = opts || {};
+  /* 기사 마지막이 질문으로 끝나는 비율은 실측 67% 뿐이다. 나머지는 question 이 비고,
+     그러면 댓글이 안 달려 **대댓글 해시태그까지 통째로 사라진다**(브리프 9·10번).
+     그래서 모델이 따로 만들어 준 fallbackQuestion 을 받는다. */
+  const q = String(o.question || '').trim() || String(o.fallbackQuestion || '').trim();
   return {
-    comment: toPolite(o.question),
-    reply: buildHashtagBlock({ tags: o.tags, count: o.count }),
+    comment: toPolite(q),
+    reply: buildHashtagBlock({ entities: o.entities, tags: o.tags, count: o.count }),
   };
 }
 

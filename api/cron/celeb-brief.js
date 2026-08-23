@@ -84,6 +84,26 @@ async function tell(text) {
  * 실패는 전부 사람에게 알린다. 특히 **게시는 됐는데 댓글이 실패한 경우**를
  * 성공으로 뭉뚱그리지 않는다 — 해시태그가 안 붙은 걸 모르면 그대로 방치된다.
  */
+/* Graph 오류를 "그래서 뭘 해야 하나" 로 번역한다.
+   2026-08-23: 첫 게시가 (#10) instagram_content_publish 로 죽었는데
+   텔레그램에는 Graph 원문만 떠서 도메니코가 할 일을 알 수 없었다. */
+function publishHint(msg) {
+  const m = String(msg || '');
+  if (/instagram_content_publish|\(#10\)|code 10/i.test(m)) {
+    return '\n\n👉 토큰에 게시 권한이 없습니다. Graph API Explorer 에서'
+      + ' instagram_content_publish 를 포함해 토큰을 다시 받고'
+      + ' Vercel 의 IG_ACCESS_TOKEN 을 교체한 뒤 Redeploy 해주세요.'
+      + '\n(교체 시 하위 5계정 토큰도 같이 확인)';
+  }
+  if (/expired|malformed|OAuth|190/i.test(m)) {
+    return '\n\n👉 토큰이 만료됐거나 잘못됐습니다. 재발급이 필요합니다.';
+  }
+  if (/too big|너무 큽니다/i.test(m)) {
+    return '\n\n👉 영상 용량 문제입니다. 원본이 짧은 게시물로 다시 시도해주세요.';
+  }
+  return '';
+}
+
 async function runPublish(row, res, dry) {
   const igPublish = require('../_lib/igPublish');
   const pub = (row.result && row.result.publish) || null;
@@ -91,7 +111,7 @@ async function runPublish(row, res, dry) {
   const pubFail = async (msg) => {
     await supabaseAdmin.from('celeb_brief_queue')
       .update({ status: 'publish_failed', error: String(msg).slice(0, 400) }).eq('id', row.id);
-    await tell('인스타 게시 실패 — ' + msg);
+    await tell('인스타 게시 실패 — ' + msg + publishHint(msg));
     return res.status(200).json({
       ok: false, error: String(msg).slice(0, 300),
       note: note(res, '게시 실패: ' + String(msg).slice(0, 150)),
@@ -340,8 +360,10 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
       creditKind: items[0].type === 'video' ? 'video' : 'photo',
     });
     const comments = celebBrief.buildComments({
-      question: koSplit.question,
-      tags: gen.tags,        // 기사에서 나온 키워드 — 공용 풀 돌려쓰기 대신(도메니코 2026-08-23)
+      question: koSplit.question,               // 기사 마지막이 질문이면 그걸 그대로 쓴다
+      fallbackQuestion: gen.comment_question,   // 아니면 모델이 따로 만든 질문 (댓글이 비면 대댓글도 못 단다)
+      entities: gen.entities,                   // 인물·그룹·브랜드 — 대댓글 해시태그의 본체(도메니코 2026-08-23)
+      tags: gen.tags,                           // 주체를 하나도 못 뽑았을 때만 쓰인다
     });
 
     // ── 4. 미디어 준비 — 커버 1장만 디자인, 나머지는 원본 그대로 ──
