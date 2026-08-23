@@ -460,12 +460,40 @@ function splitClosingQuestion(bodyKo) {
   return { body, question: tail.trim() };
 }
 
+/* 댓글은 존댓말로 (2026-08-23 도메니코 지시).
+
+   기사 본문은 §1 규칙대로 평서체 반말(~다)이고 마지막 문장도 '~인가?' 로 끝난다.
+   그 문장을 그대로 댓글로 옮기면 독자에게 반말로 말을 거는 셈이 된다.
+   브랜드 가이드의 댓글 트리거 예시도 존댓말이다
+   ("이 룩, 저장할 이유가 하나라도 있었나요? 댓글로.").
+
+   질문을 새로 짓지 않고 **어미만** 바꾼다 — 새로 지으면 기사와 톤이 갈린다.
+   실측(2026-08-03 이후 News 60건 마지막 문장)에서 나온 어미는 세 갈래뿐이었다.
+     ~는가  → ~나요    (있는가·하는가·동의하는가·됐는가·통했는가)
+     ~가    → ~가요    (싶은가·궁금한가·언제인가·것인가·예정인가)
+     ~까    → ~까요    (일까·될까·있을까)
+   어느 것도 안 걸리면 손대지 않는다. 억지로 바꾸면 문장이 깨진다. */
+function toPolite(question) {
+  const raw = String(question || '').trim();
+  if (!raw) return '';
+  const body = raw.replace(/[.?!\s]+$/, '');
+  if (!body) return '';
+  if (/(요|니다|니까|세요|나요|까요|가요|지요)$/.test(body)) return body + '?';   // 이미 존댓말
+  let out = body;
+  if (/는가$/.test(body)) out = body.replace(/는가$/, '나요');
+  else if (/까$/.test(body)) out = body + '요';
+  else if (/가$/.test(body)) out = body + '요';
+  else if (/지$/.test(body)) out = body + '요';
+  else return raw;                                    // 모르는 어미는 건드리지 않는다
+  return out + '?';
+}
+
 /* 브리프에 딸려 나가는 댓글 두 개.
    반환: { comment, reply } — comment 는 질문(없으면 빈 문자열), reply 는 해시태그 블록. */
 function buildComments(opts) {
   const o = opts || {};
   return {
-    comment: String(o.question || '').trim(),
+    comment: toPolite(o.question),
     reply: buildHashtagBlock({ tags: o.tags, count: o.count }),
   };
 }
@@ -514,6 +542,7 @@ function splitCaptionForTelegram(caption) {
 
 module.exports = {
   htmlToPlain,
+  toPolite,
   normalizeTag,
   HASHTAG_COUNT,
   parsePublishCommand,

@@ -468,7 +468,7 @@ t('크론이 기사 태그를 넘긴다', () => {
 
 t('캡션은 해시태그 없이, 태그는 대댓글로만', () => {
   const c = cb.buildComments({ question: '당신은 어떤가?', seed: 'S' });
-  assert.strictEqual(c.comment, '당신은 어떤가?');
+  assert.strictEqual(c.comment, '당신은 어떤가요?');
   assert.ok(c.reply.startsWith('#PAPMAGAZINE'), '대댓글이 해시태그 블록이 아니다');
   const cap = cb.buildBriefCaption({ hook: 'h', bodyKo: 'k', bodyEn: 'e', mentions: ['x'] });
   assert.ok(!/#[0-9A-Za-z가-힣_]/.test(cap), '캡션에 해시태그가 남았다 (볼트 톤앤매너: 셀럽 캡션엔 안 붙인다)');
@@ -689,6 +689,36 @@ t('오버레이는 썸네일과 같은 조판을 쓴다 (두 벌로 갈리지 �
   assert.ok(/function _layers\(/.test(TH), '공통 조판 함수가 없다');
   assert.ok(/renderOverlay/.test(TH) && /_layers\(titleKo, titleEn, opts\)/.test(TH),
     'renderOverlay 가 공통 조판을 안 쓴다');
+});
+
+t('댓글은 존댓말로 나간다', () => {
+  /* 도메니코 2026-08-23: "댓글은 존댓말로 써줘."
+     기사 마무리 문장(News 60건 실측)에 실제로 쓰인 어미는 ~는가 / ~가 / ~까 세 갈래뿐이다. */
+  assert.strictEqual(cb.toPolite('당신의 하루는 어떤 리듬으로 흐르고 있는가?'),
+    '당신의 하루는 어떤 리듬으로 흐르고 있나요?');
+  assert.strictEqual(cb.toPolite('여러분이 기억하는 가장 따뜻한 순간은 언제인가.'),
+    '여러분이 기억하는 가장 따뜻한 순간은 언제인가요?');
+  assert.strictEqual(cb.toPolite('당신도 이 무대를 견뎌낼 수 있었을까'),
+    '당신도 이 무대를 견뎌낼 수 있었을까요?');
+});
+
+t('이미 존댓말이면 두 번 붙이지 않는다', () => {
+  assert.strictEqual(cb.toPolite('이 룩, 저장할 이유가 있었나요?'), '이 룩, 저장할 이유가 있었나요?');
+  assert.strictEqual(cb.toPolite('어떻게 보셨나요'), '어떻게 보셨나요?');
+  assert.strictEqual(cb.toPolite('무엇을 기대하십니까?'), '무엇을 기대하십니까?');
+});
+
+t('모르는 어미는 건드리지 않는다 (억지 변형 금지)', () => {
+  const odd = '알 수 없는 어미로 끝나는 문장이다';
+  assert.strictEqual(cb.toPolite(odd), odd);
+  assert.strictEqual(cb.toPolite(''), '');
+  assert.strictEqual(cb.toPolite(null), '');
+});
+
+t('buildComments 가 존댓말 변환을 거친다 (원문 그대로 새면 안 된다)', () => {
+  const c = cb.buildComments({ question: '이 조합, 당신이라면 소화할 수 있는가?', tags: ['셀럽패션'] });
+  assert.ok(/나요\?$/.test(c.comment), '반말 어미가 그대로 나갔다: ' + c.comment);
+  assert.ok(!/는가\?/.test(c.comment), '~는가 가 남아 있다');
 });
 
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');
