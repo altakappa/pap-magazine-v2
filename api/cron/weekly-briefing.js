@@ -25,6 +25,10 @@ const { briefingEmailHtml, briefingRecipients } = require('../_lib/mdEmail');
 // 2026-08-08 — 성장 가이드라인 6번: 채널 성적은 "두 도달점(IG·웹)으로 몇 명을
 // 보냈나"로만 잰다. 결정론 집계(AI 아님)라 서사 생성이 실패해도 성적표는 나간다.
 const { buildChannelScorecard, renderScorecardMd } = require('../_lib/channelScorecard');
+// 2026-08-22 — IG 일별 장부. 팔로워 증가의 61% 가 게시물로 설명 안 되는데
+// (릴스는 인스타가 per-media 지표를 안 줌 — 확정), 그 사각지대를 하루 단위
+// 잔차로 재는 유일한 계기다. 성적표와 같은 원칙: 결정론 집계라 AI 가 죽어도 나간다.
+const { buildIgLedger, renderIgLedgerMd } = require('../_lib/igLedger');
 
 const SYSTEM = [
   '너는 PAP 매거진(아트 기반 패션·뷰티·컬쳐 디지털 매거진, IG @pap_magazine 38만, 웹 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만 — 두 매체 지표는 절대 합산 금지)의 주간 경영 브리핑을 쓰는 전략 컨설턴트다.',
@@ -91,6 +95,11 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     try { scorecard = await buildChannelScorecard(Date.now()); }
     catch (e) { console.warn('[weekly-briefing] scorecard failed:', e && e.message); }
 
+    // IG 일별 장부 — best-effort, 실패해도 브리핑 본체를 막지 않는다.
+    let igLedger = null;
+    try { igLedger = await buildIgLedger(28); }
+    catch (e) { console.warn('[weekly-briefing] igLedger failed:', e && e.message); }
+
     const rows = reports.data || [];
     const thisWeek = rows.filter((r) => r.report_date >= d7).map((r) => ({ d: r.report_date, s: r.audit && r.audit.summary }));
     const lastWeek = rows.filter((r) => r.report_date < d7).map((r) => ({ d: r.report_date, s: r.audit && r.audit.summary }));
@@ -106,6 +115,8 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       '어필리에이트 클릭(7일): ' + (clicks.error ? '집계 실패(0 아님 — 원인 확인 필요)' : (clicks.count || 0)),
       // 성적표 원자료도 AI 서사의 근거로 넘긴다 (표 자체는 아래에서 결정론으로 붙는다).
       '채널 성적표(7일 vs 전 7일 — 두 도달점 유입):', JSON.stringify(scorecard || {}),
+      'IG 일별 장부 요약(28일 — 팔로워 증가 출처, 잔차=릴스·스토리·프로필):',
+      JSON.stringify((igLedger && igLedger.summary) || {}),
     ].join('\n');
 
     const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
@@ -133,6 +144,10 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       const scMd = renderScorecardMd(scorecard);
       briefing = briefing ? (briefing + '\n\n---\n\n' + scMd) : scMd;
     }
+    if (igLedger) {
+      const lgMd = renderIgLedgerMd(igLedger);
+      if (lgMd) briefing = briefing ? (briefing + '\n\n---\n\n' + lgMd) : lgMd;
+    }
 
     const metrics = {
       daily_reports: thisWeek.length,
@@ -144,6 +159,10 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       ig_out_7d: scorecard ? scorecard.igOut.cur : null,
       new_members_7d: scorecard ? scorecard.newMembers.cur : null,
       paid_total: scorecard ? scorecard.paidTotal : null,
+      // 2026-08-22 — 장부 요약 (대시보드 시계열용): 팔로워 증가·게시물 귀속·잔차
+      ig_follower_delta_28d: igLedger ? igLedger.summary.totalDelta : null,
+      ig_attributed_28d: igLedger ? igLedger.summary.totalAttributed : null,
+      ig_residual_28d: igLedger ? igLedger.summary.totalResidual : null,
     };
     const { error } = await supabaseAdmin.from('weekly_briefings').upsert({
       week_start: weekStart, briefing, metrics,
