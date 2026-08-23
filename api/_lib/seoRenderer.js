@@ -1918,15 +1918,42 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
 
         [계측] src 를 ssr_top 으로 따로 둔다. 7일 뒤 ssr_top 대 ssr_article 을
         비교하면 '위가 나은가'가 추측이 아니라 숫자로 판정된다. */ ''}
+    ${/* ── 목적지 반반 나누기 (2026-08-22) ─────────────────────────────
+        [왜 나누나] 어제 이 CTA 를 만들 때 '게시물(post)' 을 골랐다. 근거는
+        클릭 수였다 — 게시물 1,394 대 프로필 421, 3.3배.
+        그런데 도메니코가 원하는 건 클릭이 아니라 **팔로워**다.
+        오늘 실측이 그 둘을 가른다 (31일, 일별 상관):
+            프로필 클릭 ↔ 일일 팔로워 증가   r = **+0.323**
+            게시물 클릭 ↔ 일일 팔로워 증가   r = **-0.191**
+        n=31 이라 통계적으로 확정은 아니다(p≈0.08). **그래서 확정하러 간다.**
+        방향이 반대라는 것만으로도 "클릭 3.3배" 를 근거로 게시물을 고정할 수는 없다.
+        팔로우 버튼은 프로필에 있다. 게시물에는 없다.
+
+        [어떻게] 기사 id 로 결정적 반반. 같은 글은 늘 같은 쪽이라 새로고침해도
+        화면이 안 흔들리고, 전체로는 절반씩 나뉜다. 라벨(src)은 같고 to_type 만
+        갈리므로 **같은 자리·같은 기간·같은 방문자층**에서 공정하게 비교된다.
+        7일 뒤 to_type 별 클릭과 그날의 팔로워 증가를 나란히 놓으면 답이 나온다.
+
+        [왜 랜덤이 아닌가] 매 요청 랜덤이면 CDN 캐시가 한쪽으로 굳고, 같은 글을
+        두 번 본 사람이 다른 화면을 본다. id 해시는 캐시와 무관하게 안정적이다. */ ''}
     ${(() => {
       const igUrl = String(record.source_instagram_url || '');
       const hasPost = /instagram\.com/.test(igUrl);
-      const href = hasPost
+      /* 결정적 반반 — id 문자 코드 합의 홀짝. 암호학적일 필요가 없다.
+         원본이 없으면 선택지가 프로필뿐이라 나눌 것도 없다. */
+      let bucketPost = hasPost;
+      if (hasPost) {
+        let h = 0;
+        const key = String(record.id || record.slug || '');
+        for (let i = 0; i < key.length; i++) h = (h + key.charCodeAt(i)) % 1000;
+        bucketPost = (h % 2) === 0;
+      }
+      const href = bucketPost
         ? `/api/ig-out?src=ssr_top&to=post&url=${encodeURIComponent(igUrl.split('?')[0])}`
         : `/api/ig-out?src=ssr_top&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F`;
       return `<a class="ig-top" href="${href}" target="_blank" rel="noopener">
       <span class="ig-top-mark" aria-hidden="true">◎</span>
-      <span class="ig-top-txt">${escText(hasPost ? FT.topPost : FT.topProfile)}</span>
+      <span class="ig-top-txt">${escText(bucketPost ? FT.topPost : FT.topProfile)}</span>
       <span class="ig-top-go" aria-hidden="true">↗</span>
     </a>`;
     })()}

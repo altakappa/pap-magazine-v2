@@ -52,15 +52,46 @@ console.log('\n=== 1. 위·아래가 섞이지 않는다 (판정 가능성) ==='
     ['ssr_article', 'ssr', 'article', 'editorial', 'editorial_mid'].every((x) => wl.has(x)));
 }
 
-console.log('\n=== 2. 게시물 우선 · 없으면 프로필 폴백 ===');
+console.log('\n=== 2. 목적지 반반 (팔로워 판정용) · 없으면 프로필 폴백 ===');
 {
+  /* 2026-08-22 — 게시물 고정에서 반반으로 바꿨다.
+     클릭은 게시물이 3.3배 많지만(1,394:421), 일별 상관은 팔로워와 반대다:
+         프로필 r=+0.323 · 게시물 r=-0.191 (31일, p≈0.08 — 확정 아님)
+     도메니코가 원하는 건 클릭이 아니라 팔로워다. 팔로우 버튼은 프로필에 있다.
+     그래서 고정하지 않고 갈라서 잰다. */
+  let post = 0, prof = 0;
+  const seen = {};
+  for (let i = 0; i < 400; i++) {
+    const rec = Object.assign({}, WITH_IG, { id: 'id-' + i, slug: 's' + i });
+    const m = renderSeoHtml('article', rec, { lang: 'ko' }).match(/src=ssr_top&to=(post|profile)/);
+    if (!m) continue;
+    m[1] === 'post' ? post++ : prof++;
+    seen['id-' + i] = m[1];
+  }
+  t('400편이 대략 반반으로 갈린다 (한쪽 40~60%)',
+    post > 160 && post < 240 && prof > 160 && prof < 240, `post ${post} / profile ${prof}`);
+  t('둘 다 실제로 나온다 (한쪽으로 굳지 않았다)', post > 0 && prof > 0);
+
+  /* 같은 글이 매번 다른 쪽이면 화면이 흔들리고 CDN 캐시와도 싸운다 */
+  const again = renderSeoHtml('article', Object.assign({}, WITH_IG, { id: 'id-7', slug: 's7' }), { lang: 'ko' })
+    .match(/src=ssr_top&to=(post|profile)/)[1];
+  t('같은 글은 늘 같은 쪽 (결정적 — 새로고침해도 안 흔들린다)', again === seen['id-7'], again + ' vs ' + seen['id-7']);
+
   const withIg = renderSeoHtml('article', WITH_IG, { lang: 'ko' });
-  const m = withIg.match(/ig-out\?src=ssr_top&to=(post|profile)&url=([^"]*)/);
-  t('원본이 있으면 to=post', !!m && m[1] === 'post', m && m[1]);
-  t('추적 쿼리(?igsh=)를 떼고 보낸다', !!m && m[2].indexOf('igsh') === -1, m && m[2].slice(0, 80));
+  const mu = withIg.match(/ig-out\?src=ssr_top&to=(post|profile)&url=([^"]*)/);
+  t('추적 쿼리(?igsh=)를 떼고 보낸다', !!mu && mu[2].indexOf('igsh') === -1, mu && mu[2].slice(0, 80));
   const noIg = renderSeoHtml('article', BASE, { lang: 'ko' });
   const m2 = noIg.match(/ig-out\?src=ssr_top&to=(post|profile)/);
-  t('원본이 없으면 to=profile 로 떨어진다 (빈 자리 없음)', !!m2 && m2[1] === 'profile', m2 && m2[1]);
+  t('원본이 없으면 to=profile (선택지가 하나뿐 — 나눌 것이 없다)', !!m2 && m2[1] === 'profile', m2 && m2[1]);
+  t('문구가 목적지와 맞는다 (프로필인데 "원본 보기" 라고 하지 않는다)', (() => {
+    for (let i = 0; i < 60; i++) {
+      const h = renderSeoHtml('article', Object.assign({}, WITH_IG, { id: 'q-' + i, slug: 'q' + i }), { lang: 'ko' });
+      const to = h.match(/src=ssr_top&to=(post|profile)/)[1];
+      const wantsPost = h.indexOf('이 기사의 인스타그램 원본 보기') > -1;
+      if ((to === 'post') !== wantsPost) return false;
+    }
+    return true;
+  })());
   t('화보에도 붙는다', /src=ssr_top/.test(renderSeoHtml('editorial', WITH_IG, { lang: 'ko' })));
 }
 
@@ -73,19 +104,33 @@ console.log('\n=== 3. SSR 과 SPA 가 같은 말을 한다 (규칙 두 벌 방�
   const papIgTopHtml = make(LS, {});
   const spa = papIgTopHtml('https://www.instagram.com/p/ABC/?x=1', { src: 'spa_top' });
   t('SPA 헬퍼가 spa_top 을 쓴다', /src=spa_top/.test(spa));
-  t('SPA 도 게시물 우선', /to=post/.test(spa));
   t('SPA 도 쿼리를 떼고 보낸다', spa.indexOf('%3Fx%3D1') === -1);
+  {
+    /* SSR 과 같은 반반 규칙이어야 한다 — 한쪽만 고정이면 판정이 오염된다 */
+    let p2 = 0, f2 = 0;
+    for (let i = 0; i < 400; i++) {
+      const o = papIgTopHtml('https://www.instagram.com/p/A' + i + '/', { src: 'spa_top' });
+      /to=post/.test(o) ? p2++ : f2++;
+    }
+    t('SPA 도 반반으로 갈린다', p2 > 160 && p2 < 240 && f2 > 160 && f2 < 240, `post ${p2} / profile ${f2}`);
+    const one = papIgTopHtml('https://www.instagram.com/p/ZZ/', { src: 'spa_top' });
+    t('SPA 도 같은 글은 늘 같은 쪽', one === papIgTopHtml('https://www.instagram.com/p/ZZ/', { src: 'spa_top' }));
+  }
   const spaNo = papIgTopHtml('', { src: 'spa_top' });
   t('SPA 도 원본 없으면 프로필', /to=profile/.test(spaNo));
 
   /* 문구가 갈라지면 두 화면이 다른 약속을 한다 */
   const ssr = renderSeoHtml('article', WITH_IG, { lang: 'ko' });
-  const koPost = '이 기사의 인스타그램 원본 보기';
-  t('SSR·SPA 가 같은 한국어 문구를 쓴다', ssr.indexOf(koPost) > -1 && spa.indexOf(koPost) > -1);
+  /* 목적지가 갈리므로 '한 문구'가 아니라 '두 문구 세트'가 같아야 한다 */
+  const KO = ['이 기사의 인스타그램 원본 보기', 'PAP 인스타그램 팔로우'];
+  t('SSR 이 한국어 문구 세트 안에서 말한다', KO.some((k) => ssr.indexOf(k) > -1));
+  t('SPA 가 같은 문구 세트를 쓴다', KO.some((k) => spa.indexOf(k) > -1));
+  t('두 화면이 프로필 문구도 같이 갖고 있다',
+    read('api/_lib/seoRenderer.js').indexOf(KO[1]) > -1 && read('frontend/pap-utils.js').indexOf(KO[1]) > -1);
   const en = make({ getItem: () => 'en' }, {})('https://www.instagram.com/p/A/', { src: 'spa_top' });
   const ssrEn = renderSeoHtml('article', WITH_IG, { lang: 'en' });
-  const enPost = 'See the original post on Instagram';
-  t('영어도 같은 문구', ssrEn.indexOf(enPost) > -1 && en.indexOf(enPost) > -1);
+  const EN = ['See the original post on Instagram', 'Follow PAP on Instagram'];
+  t('영어도 같은 문구 세트', EN.some((k) => ssrEn.indexOf(k) > -1) && EN.some((k) => en.indexOf(k) > -1));
   t('9개 언어가 모두 있다',
     ['ko','en','ja','zh','it','fr','es','de','ru'].every((lg) => new RegExp("\\n    " + lg + ": \\{[\\s\\S]*?topPost:").test(read('api/_lib/seoRenderer.js'))));
 }

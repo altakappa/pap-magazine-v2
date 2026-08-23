@@ -408,7 +408,20 @@ function papIgTopHtml(igUrl, opts){
   var src = opts.src || 'spa_top';
   var raw = String(igUrl || '');
   var hasPost = /instagram\.com/.test(raw);
-  var href = hasPost
+  /* 목적지 반반 (2026-08-22) — SSR(seoRenderer)과 **같은 규칙**이어야 한다.
+     클릭은 게시물이 3.3배 많지만, 일별 상관은 팔로워 증가와 반대 방향이다:
+         프로필 클릭 r=+0.323 · 게시물 클릭 r=-0.191 (31일, p≈0.08)
+     도메니코가 원하는 건 클릭이 아니라 팔로워다. 팔로우 버튼은 프로필에 있다.
+     확정이 아니므로 고정하지 않고 반반으로 갈라 7일 뒤 to_type 별로 판정한다.
+     id 해시라 같은 글은 늘 같은 쪽 — 새로고침해도 화면이 안 흔들린다. */
+  var bucketPost = hasPost;
+  if (hasPost) {
+    var h = 0;
+    var key = String((opts && opts.key) || raw);
+    for (var i = 0; i < key.length; i++) h = (h + key.charCodeAt(i)) % 1000;
+    bucketPost = (h % 2) === 0;
+  }
+  var href = bucketPost
     ? '/api/ig-out?src=' + encodeURIComponent(src) + '&to=post&url=' + encodeURIComponent(raw.split('?')[0])
     : '/api/ig-out?src=' + encodeURIComponent(src) + '&to=profile&url=' + encodeURIComponent('https://www.instagram.com/pap_magazine/');
   var lang = 'ko';
@@ -425,7 +438,7 @@ function papIgTopHtml(igUrl, opts){
     en: { post: 'See the original post on Instagram',    prof: 'Follow PAP on Instagram' }
   };
   var t = T[lang] || T.en;
-  var label = hasPost ? t.post : t.prof;
+  var label = bucketPost ? t.post : t.prof;
   /* 인라인 스타일로 그린다 — pap-styles.css 는 SSR 에서 늦게 오고(preload→onload),
      이 줄은 첫 화면에 보여야 한다. SSR 쪽 .ig-top 과 같은 모양을 맞춘 값이다. */
   return '<a href="' + href + '" target="_blank" rel="noopener" class="ig-top" '

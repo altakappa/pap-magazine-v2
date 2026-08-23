@@ -178,7 +178,24 @@ async function fetchPostInsights(mediaId, mediaType, token) {
    * 비용: 전환 지표가 빠진 건에 대해서만 1콜 추가. 3시간마다 최대 25건이므로
    * 하루 200콜 미만이다. 아래 __conv 집계가 여러 번 돌아도 계속 'unsupported'
    * 뿐이면 그때 이 재시도를 꺼라 — 답이 나온 뒤에는 낭비다. */
-  if (out.follows === undefined && out.profile_visits === undefined) {
+  /* ── 2026-08-22: 답이 나왔다. 영상에는 더 묻지 않는다 ────────────────
+     위 2026-08-16 주석이 남긴 지시 그대로다 —
+       "__conv 집계가 여러 번 돌아도 계속 'unsupported' 뿐이면 그때 이 재시도를
+        꺼라 — 답이 나온 뒤에는 낭비다."
+     재시도 도입(08-16) 이후 실측:
+         CAROUSEL  3,568건 캡처 → follows 3,568건 수집 (100%)
+         IMAGE        54건      → 54건 (100%)
+         VIDEO     1,078건 (20편) → **0건**
+     따로 물어도 한 번도 오지 않았다. 인스타가 릴스/영상에 per-media 전환
+     지표를 주지 않는다 — **영구 사각지대로 확정.** 추측이 사라졌다.
+     그래서 영상에는 추가 호출을 하지 않는다(하루 수백 콜 절약).
+     이미지·캐러셀은 계단이 가끔 떨어지므로(60일 402건 NULL) 재시도를 유지한다.
+     ⚠ 인스타가 나중에 지표를 열어 주면 이 가드를 풀면 된다. 그때는
+        VIDEO 의 follows 가 다른 경로(수동 확인)로 보이기 시작할 것이다. */
+  const convRetryAllowed = !(mt === 'VIDEO' || mt === 'REELS');
+  if (!convRetryAllowed && out.follows === undefined && out.profile_visits === undefined) {
+    out.__conv = 'unsupported_video';   // 물어보지 않았다 (확정된 사각지대)
+  } else if (out.follows === undefined && out.profile_visits === undefined) {
     const conv = await fetchInsightSet(mediaId, CONVERSION_METRICS, token);
     if (conv && (conv.follows !== undefined || conv.profile_visits !== undefined)) {
       Object.assign(out, conv);
