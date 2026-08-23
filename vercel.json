@@ -698,6 +698,10 @@
       "destination": "/digital-magazine.html"
     },
     {
+      "source": "/instagram-magazine",
+      "destination": "/instagram-magazine.html"
+    },
+    {
       "source": "/korean-digital-magazines",
       "destination": "/en-korean-digital-magazines.html"
     },
@@ -743,6 +747,11 @@
     {
       "source": "/digital-magazine.html",
       "destination": "/digital-magazine",
+      "statusCode": 301
+    },
+    {
+      "source": "/instagram-magazine.html",
+      "destination": "/instagram-magazine",
       "statusCode": 301
     },
     {

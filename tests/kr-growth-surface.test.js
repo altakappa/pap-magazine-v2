@@ -996,6 +996,37 @@ console.log('\n[20] 언어별 진입 페이지 /ja · /en');
     /<title>PAP Magazine \(팝매거진\) — Art Fashion, Beauty & Culture Magazine<\/title>/.test(home));
 }
 
+
+/* ─── [21] /instagram-magazine — "인스타그램 매거진" 전용 페이지 (2026-08-23) ──
+   실측: "인스타그램 매거진"(월 200, 카테고리 최대 검색어) SERP 1페이지가
+   정의형·리스트형 글로 채워져 있고 우리는 20위 안에 없었다. 그 형태의 전용
+   페이지를 만들고 색인 경로(사이트맵·SSR nav·교차링크)를 처음부터 전부 깐다
+   — /studio·/digital-magazine 이 겪은 '고아 페이지' 재발 방지. */
+{
+  const im = R('frontend/instagram-magazine.html');
+  t('/instagram-magazine 페이지가 존재한다', im.length > 3000);
+  t('제목·H1 이 검색어를 정면으로 받는다', /<title>인스타그램 매거진이란\?/.test(im) && /<h1>인스타그램 매거진이란\?/.test(im));
+  t('대표 계정 리스트에 실측 팔로워가 있다 (경쟁 문서엔 없는 재료)',
+    /134만/.test(im) && /@eyesmag/.test(im) && /@dailyfashion_news/.test(im) && /@pap_magazine/.test(im));
+  t('PAP 을 실제 순위 자리에 정직하게 넣었다 (끼워넣기 티가 나면 신뢰를 잃는다)',
+    /뉴소스매거진[\s\S]{0,400}PAP 매거진[\s\S]{0,400}글로우업/.test(im));
+  t('FAQ 화면과 JSON-LD 가 함께 있다', /<details>/.test(im) && /"@type": "FAQPage"/.test(im));
+  t('ItemList 스키마가 있다 (리스트형 질의 대응)', /"@type": "ItemList"/.test(im));
+  t('IG 아웃링크가 ig-out 계측을 탄다 (성장 헌법 3항)',
+    /\/api\/ig-out\?src=instamag/.test(im) && !/href="https:\/\/www\.instagram\.com/.test(im));
+  t('사이트맵에 등재됐다', /path: '\/instagram-magazine'/.test(R('api/sitemap.js')));
+  t('SSR nav 에서 링크된다 (고아 방지)', /\/instagram-magazine">Instagram Magazine</.test(R('api/_lib/seoRenderer.js')));
+  t('llms.txt 에 등재됐다', /instagram-magazine/.test(R('frontend/llms.txt')));
+  t('digital-magazine 과 상호 링크된다',
+    /href="\/instagram-magazine"/.test(R('frontend/digital-magazine.html')) && /href="\/digital-magazine"/.test(im));
+  t('라우팅·리다이렉트가 있다', (function(){
+    const v = JSON.parse(R('vercel.json'));
+    return (v.rewrites||[]).some((r)=>r.source==='/instagram-magazine')
+        && (v.redirects||[]).some((r)=>r.source==='/instagram-magazine.html');
+  })());
+  t('최상급 표현이 없다 (비교 근거는 실측 수치만)', !/국내 최고|최대 규모|1위 매체/.test(im));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');
