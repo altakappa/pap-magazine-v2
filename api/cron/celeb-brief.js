@@ -37,6 +37,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const celebBrief = require('../_lib/celebBrief');
 const igDiscovery = require('../_lib/igDiscovery');
+const videoOverlay = require('../_lib/videoOverlay');   // ffmpeg 는 이 안에서 지연 로드
 
 /* 링크를 여러 메시지로 나눠 보내는 경우가 있다(도메니코: "비슷한 링크를 몇 개
    보낼 수도 있어"). 메시지마다 batch_key 가 달라지므로, **같은 채팅에서
@@ -131,9 +132,14 @@ async function runPublish(row, res, dry) {
     if (pub.variant === 'reels') {
       const vid = (pub.items || []).find((i) => i.type === 'video');
       if (!vid) return await pubFail('릴스인데 영상을 못 찾았습니다.');
-      const buf = await fetchBuffer(vid.url, 60000);
-      if (buf.length > VIDEO_MAX_BYTES) return await pubFail('영상이 너무 큽니다(' + Math.round(buf.length / 1048576) + 'MB).');
-      const videoUrl = await igPublish.uploadPublic(buf, base + '/clip.mp4', 'video/mp4');
+      /* 브리프 때 구워서 보관해 둔 영상이 있으면 그대로 쓴다.
+         여기서 다시 구우면 릴스 컨테이너 폴링(최대 180초)과 합쳐 함수 상한을 넘긴다. */
+      let videoUrl = pub.burnedVideoUrl || null;
+      if (!videoUrl) {
+        const buf = await fetchBuffer(vid.url, 60000);
+        if (buf.length > VIDEO_MAX_BYTES) return await pubFail('영상이 너무 큽니다(' + Math.round(buf.length / 1048576) + 'MB).');
+        videoUrl = await igPublish.uploadPublic(buf, base + '/clip.mp4', 'video/mp4');
+      }
       mediaId = await igPublish.publishReel(videoUrl, pub.caption, coverUrl);
     } else {
       /* 캐러셀: 1번은 디자인 커버, 그다음 원본 사진.
@@ -362,6 +368,9 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
        영상이면 커버는 프레임일 뿐이므로 **영상 본체를 이어서 넣는다.** */
     const rest = items[0].type === 'image' ? items.slice(1) : items;
     let tooBig = 0;
+    let burnedCount = 0;
+    let burnFailed = 0;
+    const burnedVideos = [];
     const videoSizes = [];      // 크롭이 정말 필요한지 숫자로 보기 위해 기록한다
     for (const it of rest) {
       try {
@@ -379,9 +388,34 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
             console.warn('[celeb-brief] 영상 해상도 읽기 실패:', (e && e.message) || e);
           }
         }
-        media.push(it.type === 'video'
-          ? { kind: 'video', buffer: buf, thumb: videoThumb }
-          : { kind: 'photo', buffer: buf });
+        if (it.type === 'video') {
+          /* 영상에 PAP 디자인을 앞 3초만 굽는다 + 같은 인코딩에서 9:16 확대·크롭.
+             도메니코 2026-08-23: "영상 자체에 디자인을 올려서" · "앞 2-3초".
+             기본은 꺼져 있고 CELEB_BURN_OVERLAY=on 일 때만 돈다.
+             실패하면 **원본으로 계속 간다** — 굽기가 안 된다고 브리프가 사라지면 안 된다.
+
+             굽기를 게시할 때가 아니라 **여기서** 하는 이유: 게시 경로는 릴스
+             컨테이너 폴링에만 최대 180초를 쓴다. 거기에 인코딩(최대 240초)까지
+             얹으면 함수 상한 300초를 넘긴다. 여기서 한 번 굽고 결과를 저장해
+             게시는 그대로 가져다 쓴다. */
+          let vbuf = buf;
+          if (videoOverlay.isEnabled()) {
+            try {
+              const { renderOverlay } = require('../_lib/celebThumb');
+              const ov = await renderOverlay(gen.title_ko || gen.title, gen.title_en || '', { variant: 'reels' });
+              const burned = await videoOverlay.burnIntro(buf, ov);
+              if (burned) { vbuf = burned; burnedCount++; }
+              else burnFailed++;
+            } catch (e) {
+              burnFailed++;
+              console.error('[celeb-brief] 디자인 굽기 실패(원본으로 진행):', (e && e.message) || e);
+            }
+          }
+          media.push({ kind: 'video', buffer: vbuf, thumb: videoThumb });
+          if (vbuf !== buf) burnedVideos.push(vbuf);
+        } else {
+          media.push({ kind: 'photo', buffer: buf });
+        }
       } catch (e) {
         console.warn('[celeb-brief] 미디어 건너뜀:', (e && e.message) || e);
       }
@@ -393,6 +427,18 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
          + (offRatio.length ? ' ⚠️9:16 아님' : ' (9:16)'))
       : '';
     const buffers = media;   // 아래 dry 응답 호환
+
+    /* 구운 영상은 Storage 에 올려 둔다 — 게시할 때 다시 굽지 않기 위해서다. */
+    let burnedVideoUrl = null;
+    if (burnedVideos.length) {
+      try {
+        const igPublish = require('../_lib/igPublish');
+        burnedVideoUrl = await igPublish.uploadPublic(
+          burnedVideos[0], 'celeb-burn/' + rows[0].shortcode + '-' + rows[0].id + '.mp4', 'video/mp4');
+      } catch (e) {
+        console.error('[celeb-brief] 구운 영상 보관 실패(게시 때 다시 굽는다):', (e && e.message) || e);
+      }
+    }
 
     if (dry) {
       await supabaseAdmin.from('celeb_brief_queue').update({ status: 'queued' }).in('id', ids);
@@ -426,7 +472,7 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
            전부 저장하면 낭비다. 원본 URL 과 제목만 남기면 커버는 다시 렌더해도
            **결정적으로 같은 그림**이 나온다(렌더러에 난수가 없다). */
         publish: {
-          variant, coverUrl,
+          variant, coverUrl, burnedVideoUrl,
           items: items.map((i) => ({ type: i.type, url: i.url })),
           caption, comment: comments.comment, reply: comments.reply,
           titleKo: gen.title_ko || gen.title || '', titleEn: gen.title_en || '',
@@ -439,6 +485,8 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
       note: note(res, '브리프 1건 전송(' + variant + ')'
         + (missingEn ? ' ⚠️영문 누락' : '')
         + (comments.comment ? '' : ' ⚠️댓글 질문 없음')
+        + (burnedCount ? (' · 디자인 굽기 ' + burnedCount + '건') : '')
+        + (burnFailed ? (' ⚠️굽기 실패 ' + burnFailed + '건(원본 사용)') : '')
         + (tooBig ? (' ⚠️영상 ' + tooBig + '건 용량초과 제외') : '')
         + ': ' + String(gen.title_ko || '').slice(0, 60) + ' (' + media.length + '장)' + sizeNote),
     });

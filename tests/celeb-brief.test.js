@@ -596,4 +596,73 @@ t('무거운 의존은 지연 로드다', () => {
   assert.ok(!top.some((l) => /supabase/.test(l)), '최상단에서 supabase 를 로드한다 (CI 가 죽는다)');
 });
 
+
+/* ⑬ 영상에 디자인 굽기 (2026-08-23 도메니코: "앞 2-3초") */
+const VOV = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/videoOverlay.js'), 'utf8');
+const VOV_CODE = VOV.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+t('기본은 꺼져 있고 환경변수로만 켠다 (되돌릴 길을 먼저 둔다)', () => {
+  const vo = require('../api/_lib/videoOverlay');
+  const before = process.env.CELEB_BURN_OVERLAY;
+  delete process.env.CELEB_BURN_OVERLAY;
+  assert.strictEqual(vo.isEnabled(), false, '환경변수 없이 켜져 있다');
+  process.env.CELEB_BURN_OVERLAY = 'on';
+  assert.strictEqual(vo.isEnabled(), true);
+  if (before === undefined) delete process.env.CELEB_BURN_OVERLAY; else process.env.CELEB_BURN_OVERLAY = before;
+  assert.ok(/videoOverlay\.isEnabled\(\)/.test(CRON_CODE), '크론이 스위치를 안 본다');
+});
+
+t('한 번의 인코딩으로 9:16 크롭 + 앞 3초 오버레이', () => {
+  const vo = require('../api/_lib/videoOverlay');
+  const f = vo.buildFilter(vo.DEFAULTS);
+  assert.ok(/scale=1080:1920:force_original_aspect_ratio=increase/.test(f), '확대가 없다');
+  assert.ok(/crop=1080:1920/.test(f), '크롭이 없다');
+  assert.ok(/fade=out:st=2\.40:d=0\.60:alpha=1/.test(f), '끝에서 사라지지 않는다');
+  assert.ok(/enable='lte\(t,3\)'/.test(f), '앞 3초 제한이 없다');
+  assert.strictEqual(vo.DEFAULTS.seconds, 3, '도메니코 지시는 앞 2-3초다');
+});
+
+t('굽기가 실패해도 원본으로 브리프는 나간다', () => {
+  /* burnIntro 안에서는 던져도 되지만(검증·ffmpeg 오류), **밖으로 새면 안 된다**.
+     catch 가 null 을 돌려주는지로 본다. */
+  const body = VOV_CODE.split('async function burnIntro')[1] || '';
+  assert.ok(/catch \(e\) \{[\s\S]{0,200}return null;/.test(body),
+    'burnIntro 의 catch 가 null 을 돌려주지 않는다 — 예외가 밖으로 새면 브리프가 통째로 죽는다');
+  const vo2 = require('../api/_lib/videoOverlay');
+  assert.strictEqual(typeof vo2.burnIntro, 'function');
+  assert.ok(/원본으로 진행/.test(CRON), '크론에 원본 폴백이 없다');
+  assert.ok(/굽기 실패/.test(CRON), '굽기 실패가 사람에게 안 알려진다');
+});
+
+t('임시 파일을 반드시 지운다', () => {
+  assert.ok(/finally \{[\s\S]{0,160}rmSync/.test(VOV_CODE), 'finally 에서 임시 폴더를 안 지운다 — /tmp 가 찬다');
+});
+
+t('오디오는 다시 만들지 않는다', () => {
+  assert.ok(/'-c:a', 'copy'/.test(VOV_CODE), '오디오를 재인코딩하면 인스타 음원이 상한다');
+});
+
+t('굽기는 브리프 때 한 번만 — 게시는 저장본을 쓴다', () => {
+  assert.ok(/burnedVideoUrl/.test(CRON_CODE), '구운 영상을 보관하지 않는다');
+  assert.ok(/let videoUrl = pub\.burnedVideoUrl \|\| null;/.test(CRON_CODE),
+    '게시가 저장본을 안 쓰면 다시 굽게 되고, 릴스 폴링 180초와 합쳐 함수 상한을 넘는다');
+  const pubPart = CRON_CODE.split('async function runPublish')[1].split('module.exports')[0];
+  assert.ok(!/burnIntro/.test(pubPart), '게시 경로에서 다시 굽는다');
+});
+
+t('인코딩 상한이 함수 상한보다 짧다', () => {
+  const vo = require('../api/_lib/videoOverlay');
+  const fn = VERCEL.functions['api/cron/celeb-brief.js'];
+  assert.ok(fn && fn.maxDuration, '함수 상한이 없다');
+  assert.ok(vo.DEFAULTS.timeoutMs / 1000 < fn.maxDuration,
+    '인코딩 상한(' + vo.DEFAULTS.timeoutMs / 1000 + 's)이 함수 상한(' + fn.maxDuration + 's) 이상이다');
+});
+
+t('오버레이는 썸네일과 같은 조판을 쓴다 (두 벌로 갈리지 않게)', () => {
+  const TH = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/celebThumb.js'), 'utf8');
+  assert.ok(/function _layers\(/.test(TH), '공통 조판 함수가 없다');
+  assert.ok(/renderOverlay/.test(TH) && /_layers\(titleKo, titleEn, opts\)/.test(TH),
+    'renderOverlay 가 공통 조판을 안 쓴다');
+});
+
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');

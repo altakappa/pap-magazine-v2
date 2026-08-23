@@ -117,6 +117,50 @@ function lineToPath(font, text, x, baseline, size, trackPx) {
  * @returns {Promise<Buffer>} JPEG
  * @throws 제목이 2줄에 안 들어가면 던진다 — 폰트를 줄이지 않는다(§4-7).
  */
+/* 글자·그림자·심볼만 담은 **투명 배경** 레이어 목록을 만든다.
+   renderThumb(사진 위)과 renderOverlay(영상 위)가 같은 조판을 쓰게 하기 위한 것 —
+   두 벌로 갈라지면 한쪽만 고쳐지는 날이 온다. */
+function _layers(titleKo, titleEn, opts) {
+  const V = VARIANTS[(opts && opts.variant) || 'feed'] || VARIANTS.feed;
+  const { wrapHeadline } = require('./celebBrief');
+  const F = fonts();
+
+  const koTrackPx = KO_TRACK / 1000 * KO_PX;
+  const enTrackPx = EN_TRACK / 1000 * EN_PX;
+  const koLines = wrapHeadline(titleKo, KO_MAX_W, measureWith(F.ko, KO_PX, koTrackPx), MAX_LINES);
+  const enLines = wrapHeadline(titleEn, EN_MAX_W, measureWith(F.en, EN_PX, enTrackPx), MAX_LINES);
+  if (!koLines) throw new Error('국문 제목이 2줄을 넘습니다. 제목을 줄여주세요: ' + titleKo);
+  if (!enLines) throw new Error('영문 제목이 2줄을 넘습니다. 제목을 줄여주세요: ' + titleEn);
+
+  const paths = [];
+  koLines.forEach((l, i) => paths.push(lineToPath(F.ko, l, KO_X, V.koBase + i * KO_LEAD, KO_PX, koTrackPx)));
+  enLines.forEach((l, i) => paths.push(lineToPath(F.en, l, EN_X, V.enBase + i * EN_LEAD, EN_PX, enTrackPx)));
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + V.W + '" height="' + V.H + '">'
+    + '<path fill="#ffffff" d="' + paths.join(' ') + '"/></svg>';
+
+  return {
+    V,
+    composite: [
+      { input: path.join(ASSETS, V.shadow), left: V.shadowXY[0], top: V.shadowXY[1] },
+      { input: Buffer.from(svg), left: 0, top: 0 },
+      { input: path.join(ASSETS, 'symbol70.png'), left: V.symbolXY[0], top: V.symbolXY[1] },
+    ],
+  };
+}
+
+/**
+ * 영상 위에 얹을 **투명 배경 오버레이 PNG**.
+ * 도메니코 2026-08-23: "영상 자체에 디자인을 올려서 릴스로" · "앞 2-3초".
+ * 사진이 없다는 것만 빼면 썸네일과 완전히 같은 조판이다(같은 _layers 를 쓴다).
+ */
+async function renderOverlay(titleKo, titleEn, opts) {
+  const sharp = require('sharp');
+  const { V, composite } = _layers(titleKo, titleEn, opts);
+  return sharp({
+    create: { width: V.W, height: V.H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  }).composite(composite).png().toBuffer();
+}
+
 async function renderThumb(photoBuffer, titleKo, titleEn, opts) {
   const V = VARIANTS[(opts && opts.variant) || 'feed'] || VARIANTS.feed;
   const sharp = require('sharp');                                  // 지연 로드
@@ -155,6 +199,7 @@ async function renderThumb(photoBuffer, titleKo, titleEn, opts) {
 
 module.exports = {
   renderThumb,
+  renderOverlay,
   VARIANTS,
   measureWith,
   _fonts: fonts,
