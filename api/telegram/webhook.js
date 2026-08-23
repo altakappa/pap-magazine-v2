@@ -49,6 +49,17 @@ const celebBrief = require('../_lib/celebBrief');
 
 const OK = (res, body) => res.status(200).json(body || { ok: true });
 
+/* 허용된 채팅만 받는다. 모르는 사람이 봇을 찾아 링크를 던져도 큐에 안 들어간다.
+   ⚠️ 2026-08-23: 깨우기 코드를 갈아끼우면서 이 함수를 통째로 지웠고,
+      webhook 이 11분 동안 모든 메시지에 500 을 냈다(ReferenceError).
+      소스를 문자열로만 검사하는 테스트는 이걸 못 잡는다 —
+      tests 에 **핸들러를 실제로 실행하는** 검사를 넣어 재발을 막는다. */
+function allowedChats() {
+  return [process.env.TELEGRAM_PERSONAL_CHAT_ID, process.env.TELEGRAM_CHAT_ID]
+    .map((v) => String(v || '').trim())
+    .filter(Boolean);
+}
+
 const TRIGGER_URL = () => (process.env.CELEB_BRIEF_TRIGGER_URL
   || 'https://www.pap-magazine.com/api/cron/celeb-brief') + '?now=1';
 /* 폴백 경로에서만 쓰는 상한. 크론 콜드스타트(sharp·supabase 로드)가 넘어가지
