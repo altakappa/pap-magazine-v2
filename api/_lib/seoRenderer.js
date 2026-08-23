@@ -1805,6 +1805,42 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
   })();
 </script>` : ''}
 
+${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id || '')) ? `<script>
+  /* ── SSR 조회 비콘 (2026-08-22) ────────────────────────────────────
+     [왜] 웹→IG 아웃클릭 30일 1,950건 중 SSR 화면이 3/4 를 만든다
+          (ssr_article→post 833 · 7일 679 / 전체 928).
+          같은 기사를 SPA 로 보면 68건이다. 12배 차이.
+          그런데 **그건 절대량이지 전환율이 아니다** — SSR 페이지는 지금까지
+          조회 비콘을 아예 쏘지 않아서 분모가 없다. 분모 없이 구조를 갈아엎으면
+          추측 위에 추측을 쌓는다.
+
+     [무엇을 세나] '리다이렉트하지 않고 SSR 에 남은 사람' 만 센다.
+          그게 ssr_* 아웃클릭을 만드는 바로 그 모집단이다.
+          리다이렉트로 SPA 에 넘어간 사람은 SPA 쪽 비콘이 센다(surface=spa).
+          → 두 화면이 겹치지 않고 한 번씩만 세어진다.
+
+     [비용] 남은 사람 수만큼만 함수가 돈다. 봇은 서버가 UA 로 걸러 204 로 끝낸다.
+     [안전] 실패해도 조용히. 계측이 화면을 막지 않는다. */
+  (function(){
+    try {
+      if (document.documentElement.classList.contains('js-redirecting')) return;
+      var _p = ${JSON.stringify(kind === 'article' ? '/api/articles/' : '/api/editorials/')}
+             + ${JSON.stringify(String(record.id))} + '/view?surface=ssr';
+      var _go = function(){
+        try {
+          fetch(_p, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, keepalive: true })
+            .catch(function(){});
+        } catch(_){}
+      };
+      /* 리다이렉트 판단은 위 스크립트가 동기로 끝낸다. 그래도 한 틱 늦춰
+         '넘어갈 사람'을 세지 않는다 — 중복 집계가 제일 나쁜 계측이다. */
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _go, { once: true });
+      } else { setTimeout(_go, 0); }
+    } catch(_){}
+  })();
+</script>` : ''}
+
 <main class="seo-content">
   <article>
     ${heroHtml}

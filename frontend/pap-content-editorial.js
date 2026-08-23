@@ -1683,7 +1683,8 @@ function _openEditorialInner(title,thumb){
   // so browser-back doesn't double-count.
   if(d && d.id){
     try {
-      fetch('/api/editorials/' + encodeURIComponent(d.id) + '/view', {
+      /* 2026-08-22 surface=spa — 화면별 분모 (SSR 쪽은 seoRenderer 가 쏜다) */
+      fetch('/api/editorials/' + encodeURIComponent(d.id) + '/view?surface=spa', {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
       }).catch(function(){ /* analytics must not break UX */ });

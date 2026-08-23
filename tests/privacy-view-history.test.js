@@ -32,7 +32,15 @@ ok(/verifyToken/.test(vw) && /let viewerId = null/.test(vw),
    '로그인일 때만 user_id — 기본값은 익명(null)');
 ok(/error\.code === '23503' && viewerId/.test(vw),
    '탈퇴 토큰(FK 위반)이면 익명으로 강등해 재기록한다');
-ok(/user_id: null \}\)/.test(vw), '강등 재시도가 실제로 익명 insert 다');
+/* 2026-08-22 — surface 계측이 붙으면서 insert 인자가 늘었다(user_id: null, surface).
+   검사할 사실은 "재시도가 익명으로 넣는가" 지 인자 개수가 아니다.
+   23503 블록 안의 insert 만 잘라서 user_id: null 을 확인한다. */
+{
+  const i = vw.indexOf("error.code === '23503'");
+  const ins = i > -1 ? vw.indexOf('insert({', i) : -1;
+  const call = ins > -1 ? vw.slice(ins, vw.indexOf('})', ins) + 2) : '';
+  ok(/user_id:\s*null/.test(call), '강등 재시도가 실제로 익명 insert 다');
+}
 ok(vw.indexOf("error.code === '23503' && viewerId") < vw.indexOf("if (error) {"),
    '강등 처리가 일반 오류 처리보다 먼저다 (조회를 잃지 않는다)');
 

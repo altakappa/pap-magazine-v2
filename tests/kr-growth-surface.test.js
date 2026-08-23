@@ -494,8 +494,12 @@ console.log('\n[13] 기사 조회 계측 — 참여의 분모 (2026-08-12)');
   t('마이그레이션에 되돌리기 방법이 적혀 있다', /DROP TABLE public\.article_views/i.test(mig));
 
   // ④ 프론트 호출 — 상세를 열 때, 정적 스냅샷은 건너뛴다
+  /* 2026-08-22 — 화면별 분모를 재려고 '/view' 에 ?surface=spa 를 붙였다.
+     검사할 사실은 "상세를 열 때 그 기사 id 로 조회를 보낸다" 이지 URL 이
+     정확히 '/view' 로 끝나느냐가 아니다. 쿼리 유무에 안 깨지게 고친다. */
   t('기사 상세를 열 때 조회를 보낸다',
-     /\/api\/articles\/' \+ encodeURIComponent\(a\._api_id\) \+ '\/view'/.test(art));
+     /\/api\/articles\/' \+ encodeURIComponent\(a\._api_id\) \+ '\/view(\?[a-z=]+)?'/.test(art));
+  t('그 조회에 화면 라벨(surface=spa)이 붙는다', /\/view\?surface=spa'/.test(art));
   t('id 없는 정적 항목은 건너뛴다', /if\(a\._api_id && !_papArtRerender\)\{/.test(art));
   /* 2026-08-13 — 언어 변경 재렌더가 조회를 부풀리고 있었다.
      'pap:langchange' 핸들러가 같은 기사를 다시 그리는데 그 경로도 이 함수를

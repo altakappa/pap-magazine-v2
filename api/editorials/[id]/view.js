@@ -26,6 +26,15 @@ const { isBot } = require('../../_lib/botDetect');
    실패해도 조회 기록 자체를 막지 않는다 — 토큰이 없거나 깨져도 익명으로 남는다. */
 const { verifyToken } = require('../../_lib/auth');
 
+/* 2026-08-22 — 화면(SSR/SPA) 구분. 웹→IG 전환율을 화면별로 재려면
+   분자(아웃클릭)뿐 아니라 분모(조회)도 화면별로 있어야 한다.
+   모르는 값은 넣지 않는다 — 틀린 라벨보다 빈 칸이 낫다. */
+function readSurface(req) {
+  var v = (req.body && req.body.surface) || (req.query && req.query.surface) || '';
+  v = String(v).toLowerCase();
+  return (v === 'ssr' || v === 'spa') ? v : null;
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') {
@@ -56,10 +65,12 @@ module.exports = async function handler(req, res) {
     else if (claims && claims.sub) viewerId = claims.sub;
   } catch (_e) { /* 토큰 문제로 조회 기록을 잃지 않는다 */ }
 
+  const surface = readSurface(req);
+
   try {
     let { error } = await supabaseAdmin
       .from('editorial_views')
-      .insert({ editorial_id: id, user_id: viewerId });
+      .insert({ editorial_id: id, user_id: viewerId, surface });
 
     /* 2026-08-08 — user_id 에 FK(ON DELETE SET NULL)를 걸었더니 새 경계가
        생겼다: 탈퇴한 계정의 아직 유효한 토큰(7일)으로 조회하면 profiles 에
@@ -70,7 +81,15 @@ module.exports = async function handler(req, res) {
       viewerId = null;
       ({ error } = await supabaseAdmin
         .from('editorial_views')
-        .insert({ editorial_id: id, user_id: null }));
+        .insert({ editorial_id: id, user_id: null, surface }));
+    }
+
+    /* 마이그레이션 133 미실행 — surface 컬럼이 아직 없다(42703).
+       계측 하나 때문에 조회 기록 전체를 잃지 않는다. surface 를 빼고 한 번 더. */
+    if (error && error.code === '42703' && surface) {
+      ({ error } = await supabaseAdmin
+        .from('editorial_views')
+        .insert({ editorial_id: id, user_id: viewerId }));
     }
 
     if (error) {

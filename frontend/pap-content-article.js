@@ -748,7 +748,9 @@ function _openArticleDetailInner(idx){
      한쪽만 고쳐진다")의 재발. 계측을 붙인 2026-08-12 에 내가 놓쳤다. */
   if(a._api_id && !_papArtRerender){
     try{
-      fetch('/api/articles/' + encodeURIComponent(a._api_id) + '/view', {
+      /* 2026-08-22 surface=spa — 웹→IG 전환율을 화면별로 재기 위한 분모.
+         쿼리로 보낸다(본문 파싱에 기대지 않는다). */
+      fetch('/api/articles/' + encodeURIComponent(a._api_id) + '/view?surface=spa', {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
       }).catch(function(){ /* 계측이 UX 를 깨지 않는다 */ });
