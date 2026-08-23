@@ -436,23 +436,34 @@ t('물음표로 안 끝나면 억지로 질문을 만들지 않는다', () => {
   assert.strictEqual(r.body, '첫 단락.\n\n딱 일주일만 더 기다려보자.', '본문을 건드리면 안 된다');
 });
 
-t('해시태그 블록이 가이드 규격을 지킨다', () => {
-  const block = cb.buildHashtagBlock({ seed: 'ABC' });
-  const tags = block.split('\n');
-  assert.ok(tags.length >= 12 && tags.length <= 15, '12~15개가 아니다: ' + tags.length);
+t('해시태그는 5개, 기사 내용에서 뽑는다 (도메니코 2026-08-23)', () => {
+  const block = cb.buildHashtagBlock({ tags: ['제니', '블랙핑크', 'fallen angel', 'k-pop', '뮤직비디오', '여름'] });
+  const tags = block.split(' ');
+  assert.strictEqual(tags.length, cb.HASHTAG_COUNT, '5개가 아니다: ' + tags.length);
   assert.strictEqual(tags[0], '#PAPMAGAZINE', '#PAPMAGAZINE 이 1번이 아니다');
-  assert.ok(tags.every((x) => /^#[0-9A-Za-z가-힣_]+$/.test(x)), '태그 형식이 깨졌다');
-  assert.strictEqual(new Set(tags.map((x) => x.toUpperCase())).size, tags.length, '중복 태그가 있다');
-  assert.ok(!tags.some((x) => /^#(KPOP|패션|FASHION|아이돌)$/i.test(x)), '초대형 태그가 섞였다 (가이드: 중형 니치 위주)');
+  assert.ok(tags.includes('#제니') && tags.includes('#블랙핑크'), '기사 태그가 안 들어갔다: ' + block);
+  assert.ok(tags.includes('#FALLENANGEL'), '공백이 든 태그가 안 붙었다 (해시태그는 공백에서 끊긴다)');
+  assert.ok(!tags.includes('#여름'), '5개를 넘겼다');
+  assert.strictEqual(new Set(tags).size, tags.length, '중복 태그가 있다');
 });
 
-t('게시물마다 세트가 돌고, 같은 게시물은 늘 같다 (도배 금지 + 재현성)', () => {
-  const a1 = cb.buildHashtagBlock({ seed: 'DcSbkRuJZ4S' });
-  const a2 = cb.buildHashtagBlock({ seed: 'DcSbkRuJZ4S' });
-  const b = cb.buildHashtagBlock({ seed: 'XyZ12345678' });
-  assert.strictEqual(a1, a2, '같은 게시물인데 결과가 달라진다 — 재시도 때 태그가 바뀐다');
-  assert.notStrictEqual(a1, b, '게시물이 달라도 같은 세트다 — 도배가 된다');
-  assert.strictEqual(a1.split('\n')[0], b.split('\n')[0], '코어는 고정이어야 한다');
+t('영문은 대문자, 한글은 그대로', () => {
+  assert.strictEqual(cb.normalizeTag('fallen angel'), 'FALLENANGEL');
+  assert.strictEqual(cb.normalizeTag('#K-Pop'), 'KPOP');
+  assert.strictEqual(cb.normalizeTag('케이팝 화보'), '케이팝화보');
+  assert.strictEqual(cb.normalizeTag('   '), '');
+});
+
+t('기사 태그가 없으면 셀럽 공용 풀로 채운다 (빈 대댓글보다 낫다)', () => {
+  const block = cb.buildHashtagBlock({ tags: [] });
+  const tags = block.split(' ');
+  assert.strictEqual(tags.length, cb.HASHTAG_COUNT);
+  assert.strictEqual(tags[0], '#PAPMAGAZINE');
+});
+
+t('크론이 기사 태그를 넘긴다', () => {
+  assert.ok(/tags: gen\.tags/.test(CRON_CODE), '공용 풀만 돌려쓰면 기사와 무관한 태그가 달린다');
+  assert.ok(!/seed: rows\[0\]\.shortcode/.test(CRON_CODE), '옛 로테이션 시드가 남아 있다');
 });
 
 t('캡션은 해시태그 없이, 태그는 대댓글로만', () => {
@@ -463,13 +474,17 @@ t('캡션은 해시태그 없이, 태그는 대댓글로만', () => {
   assert.ok(!/#[0-9A-Za-z가-힣_]/.test(cap), '캡션에 해시태그가 남았다 (볼트 톤앤매너: 셀럽 캡션엔 안 붙인다)');
 });
 
-t('크론이 댓글·대댓글을 따로 보낸다', () => {
+t('댓글은 우리가 단다 — 브리프에는 검토용으로만 보여준다', () => {
+  /* 도메니코 2026-08-23: "댓글은 내가 다는 게 아니라 기사가 올라가고 나서
+     즉시 너가 직접 다는 거야." 게시 경로에 addComment 가 있는 건 그대로고,
+     텔레그램 라벨이 '붙여넣으세요' 처럼 읽히지 않게 못박는다. */
   assert.ok(/splitClosingQuestion\(gen\.body_ko\)/.test(CRON_CODE), '질문을 떼어내지 않는다');
   assert.ok(/halveBody\(koSplit\.body\)/.test(CRON_CODE), '질문이 캡션에 그대로 남는다');
-  assert.ok(/💬 댓글/.test(CRON) && /↳ 대댓글/.test(CRON), '댓글 안내 라벨이 없다');
-  const sends = (CRON_CODE.match(/sendTextToChatSafe\(/g) || []).length;
-  assert.ok(sends >= 3, '댓글·대댓글을 각각 따로 보내야 한다 (한 덩어리면 복사가 번거롭다)');
-  assert.ok(/seed: rows\[0\]\.shortcode/.test(CRON_CODE), '게시물별 로테이션 시드가 없다');
+  assert.ok(/게시하면 아래가 자동으로 달립니다/.test(CRON), '자동으로 달린다는 안내가 없다 — 손으로 달아야 하는 줄 안다');
+  assert.ok(/💬 댓글/.test(CRON) && /↳ 대댓글/.test(CRON), '무엇이 댓글이고 대댓글인지 구분이 없다');
+  const pubPart = CRON_CODE.split('async function runPublish')[1].split('module.exports')[0];
+  assert.ok(/addComment\(mediaId, pub\.comment\)/.test(pubPart), '게시 후 댓글을 안 단다');
+  assert.ok(/replyToComment\(cid, pub\.reply\)/.test(pubPart), '대댓글을 안 단다');
 });
 
 

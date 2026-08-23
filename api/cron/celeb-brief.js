@@ -341,7 +341,7 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     });
     const comments = celebBrief.buildComments({
       question: koSplit.question,
-      seed: rows[0].shortcode,                  // 같은 게시물은 항상 같은 세트, 게시물마다 회전
+      tags: gen.tags,        // 기사에서 나온 키워드 — 공용 풀 돌려쓰기 대신(도메니코 2026-08-23)
     });
 
     // ── 4. 미디어 준비 — 커버 1장만 디자인, 나머지는 원본 그대로 ──
@@ -455,10 +455,16 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     const split = celebBrief.splitCaptionForTelegram(capWithNote);
     await tg.sendMediaToTelegram(media, split.caption, rows[0].chat_id);
     if (split.overflow) await tg.sendTextToChatSafe(rows[0].chat_id, split.overflow);
-    /* 댓글·대댓글은 **각각 따로** 보낸다 — 한 덩어리로 보내면 인스타에 붙일 때
-       필요한 부분만 골라 복사하기 번거롭다. */
-    if (comments.comment) await tg.sendTextToChatSafe(rows[0].chat_id, '💬 댓글\n' + comments.comment);
-    if (comments.reply) await tg.sendTextToChatSafe(rows[0].chat_id, '↳ 대댓글\n' + comments.reply);
+    /* 댓글·대댓글은 **검토용**으로 보여준다. 도메니코가 붙여넣는 게 아니라
+       "올려" 하면 게시 직후 우리가 직접 단다(도메니코 2026-08-23 확인).
+       그래서 라벨에 그 사실을 적는다 — 안 적으면 손으로 달아야 하는 줄 안다. */
+    if (comments.comment || comments.reply) {
+      const preview = ['📝 게시하면 아래가 자동으로 달립니다']
+        .concat(comments.comment ? ['', '💬 댓글', comments.comment] : [])
+        .concat(comments.reply ? ['', '↳ 대댓글', comments.reply] : [])
+        .join('\n');
+      await tg.sendTextToChatSafe(rows[0].chat_id, preview);
+    }
 
     await supabaseAdmin.from('celeb_brief_queue').update({
       status: 'done', processed_at: new Date().toISOString(), error: null,

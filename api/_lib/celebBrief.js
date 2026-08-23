@@ -400,38 +400,48 @@ function takeParagraphs(text, n) {
  * 물음표로 끝나지 않으면 옮기지 않는다 — 억지로 질문을 만들지 않는다.
  */
 
-/* 초대형 태그(#KPOP·#패션 같은)는 뺐다 — 가이드의 "초대형 회피, 중형 니치" 지시.
-   코어 3개는 항상 이 순서로 맨 앞. #PAPMAGAZINE 이 1번이어야 한다. */
-const HASHTAG_CORE = ['PAPMAGAZINE', '팝매거진', '패션뉴스'];
-const HASHTAG_POOL_CELEB = [
-  '케이팝화보', '셀럽패션', 'KPOPFASHION', '셀럽스타일', 'CELEBSTYLE',
-  'KPOPSTYLE', '아이돌패션', '셀럽뉴스', '패션매거진', 'FASHIONNEWS',
-  'EDITORIAL', 'FASHIONEDITORIAL', 'SEOULFASHION', '독립매거진', '스타일링',
-  '케이팝패션', 'KPOPMAGAZINE', '패션에디토리얼', 'CELEBFASHION', '뮤직뉴스',
-];
+/* 해시태그 — 5개, 기사 내용에서 뽑는다 (2026-08-23 도메니코 지시).
+   "대댓글 해시태그는 5개면 충분하고 기사에 관련된 내용으로 해줘."
 
-/* 회차마다 세트를 돌린다(도배 금지). 같은 게시물은 몇 번을 돌려도 같은 결과가
-   나와야 하므로 난수를 쓰지 않고 seed 문자열에서 결정적으로 뽑는다. */
-function _seedNum(seed) {
-  let h = 0;
-  for (const ch of String(seed || '')) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-  return h;
+   이전에는 셀럽 공용 풀에서 12~15개를 돌려 썼다. 브랜드 가이드의 숫자였지만
+   그건 **에디토리얼** 기준이고, 셀럽 속보에는 기사와 무관한 태그가 섞였다.
+   이제 기사 생성기가 뽑은 tags(제목·본문에서 나온 키워드)를 쓴다.
+
+   #PAPMAGAZINE 은 1번 자리에 고정한다 — 브랜드 가이드의 유일한 고정 규칙이고
+   계정을 찾아오는 통로다. 나머지 4개가 기사 몫이다.
+   기사 태그가 하나도 없을 때만 셀럽 공용 풀로 채운다(빈 대댓글보다 낫다). */
+const HASHTAG_CORE = ['PAPMAGAZINE'];
+const HASHTAG_POOL_CELEB = [
+  '케이팝화보', '셀럽패션', 'KPOPFASHION', '셀럽스타일', '패션뉴스',
+];
+const HASHTAG_COUNT = 5;
+
+/* 태그 한 개를 인스타 표기로 정리한다.
+   영문은 대문자(브랜드 가이드), 한글은 그대로. 공백·특수문자는 뺀다
+   (해시태그는 공백에서 끊기므로 'fallen angel' → 'FALLENANGEL'). */
+function normalizeTag(t) {
+  const raw = String(t || '').replace(/^#+/, '').trim();
+  if (!raw) return '';
+  const cleaned = raw.replace(/[^0-9A-Za-z가-힣_]+/g, '');
+  if (!cleaned) return '';
+  return /[가-힣]/.test(cleaned) ? cleaned : cleaned.toUpperCase();
 }
 
 function buildHashtagBlock(opts) {
   const o = opts || {};
-  const want = Math.max(12, Math.min(15, o.count || 14));
-  const pool = Array.isArray(o.pool) && o.pool.length ? o.pool.slice() : HASHTAG_POOL_CELEB.slice();
-  const start = _seedNum(o.seed) % pool.length;
-  const out = HASHTAG_CORE.slice();
-  const seen = new Set(out.map((t) => t.toUpperCase()));
-  for (let i = 0; i < pool.length && out.length < want; i++) {
-    const t = pool[(start + i) % pool.length];
-    if (seen.has(t.toUpperCase())) continue;
-    seen.add(t.toUpperCase());
-    out.push(t);
-  }
-  return out.map((t) => '#' + t).join('\n');   // 가이드: 줄바꿈 구분
+  const want = Math.max(1, o.count || HASHTAG_COUNT);
+  const out = [];
+  const seen = new Set();
+  const push = (t) => {
+    const n = normalizeTag(t);
+    if (!n || seen.has(n.toUpperCase()) || out.length >= want) return;
+    seen.add(n.toUpperCase());
+    out.push(n);
+  };
+  HASHTAG_CORE.forEach(push);
+  (Array.isArray(o.tags) ? o.tags : []).forEach(push);
+  if (out.length < want) HASHTAG_POOL_CELEB.forEach(push);   // 기사 태그가 없을 때만
+  return out.map((t) => '#' + t).join(' ');
 }
 
 /* 본문 마지막 문장이 독자 호명 질문이면 떼어낸다.
@@ -456,7 +466,7 @@ function buildComments(opts) {
   const o = opts || {};
   return {
     comment: String(o.question || '').trim(),
-    reply: buildHashtagBlock({ seed: o.seed, count: o.count, pool: o.pool }),
+    reply: buildHashtagBlock({ tags: o.tags, count: o.count }),
   };
 }
 
@@ -504,6 +514,8 @@ function splitCaptionForTelegram(caption) {
 
 module.exports = {
   htmlToPlain,
+  normalizeTag,
+  HASHTAG_COUNT,
   parsePublishCommand,
   halveBody,
   takeParagraphs,
