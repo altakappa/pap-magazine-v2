@@ -211,7 +211,7 @@ t('크론이 소스 계정을 멘션 맨 앞에 둔다', () => {
   assert.ok(/const mentions = \[rows\[0\]\.username\]/.test(CRON_CODE), '소스 계정이 빠지면 크레딧이 틀린다');
   assert.ok(/creditKind: items\[0\]\.type === 'video' \? 'video' : 'photo'/.test(CRON_CODE),
     '영상인데 📸 로 나가면 크레딧이 거짓이 된다');
-  assert.ok(/bodyEn: gen\.body_en/.test(CRON_CODE), '영문 본문이 빠지면 국문만 나간다');
+  assert.ok(/bodyEn: enShort/.test(CRON_CODE), '영문 본문이 빠지면 국문만 나간다');
 });
 
 t('캡션에 HTML 이 남지 않는다 (인스타에 그대로 붙여넣는 글이다)', () => {
@@ -462,11 +462,54 @@ t('캡션은 해시태그 없이, 태그는 대댓글로만', () => {
 
 t('크론이 댓글·대댓글을 따로 보낸다', () => {
   assert.ok(/splitClosingQuestion\(gen\.body_ko\)/.test(CRON_CODE), '질문을 떼어내지 않는다');
-  assert.ok(/bodyKo: koSplit\.body/.test(CRON_CODE), '질문이 캡션에 그대로 남는다');
+  assert.ok(/halveBody\(koSplit\.body\)/.test(CRON_CODE), '질문이 캡션에 그대로 남는다');
   assert.ok(/💬 댓글/.test(CRON) && /↳ 대댓글/.test(CRON), '댓글 안내 라벨이 없다');
   const sends = (CRON_CODE.match(/sendTextToChatSafe\(/g) || []).length;
   assert.ok(sends >= 3, '댓글·대댓글을 각각 따로 보내야 한다 (한 덩어리면 복사가 번거롭다)');
   assert.ok(/seed: rows\[0\]\.shortcode/.test(CRON_CODE), '게시물별 로테이션 시드가 없다');
+});
+
+
+/* ⑪ 캡션 길이 · 영상 커버 (2026-08-23) */
+t('캡션 본문을 절반으로 줄인다 (단락 단위)', () => {
+  const body = ['가'.repeat(100), '나'.repeat(100), '다'.repeat(100), '라'.repeat(100)].join('\n\n');
+  const h = cb.halveBody(body);
+  assert.ok(h.text.length <= body.length * 0.6, '절반 근처로 안 줄었다: ' + h.text.length);
+  assert.strictEqual(h.paras, 2);
+  assert.ok(h.text.startsWith('가'), '앞 단락(리드)을 남겨야 한다');
+  assert.ok(!/[다라]/.test(h.text), '뒤 단락이 남았다');
+  assert.ok(!/\n\n$/.test(h.text), '끝에 빈 줄이 남았다');
+});
+
+t('단락 중간에서 자르지 않는다', () => {
+  const h = cb.halveBody('한 단락뿐이고 꽤 길다.'.repeat(20));
+  assert.strictEqual(h.paras, 1, '단락이 하나면 통째로 남긴다');
+  assert.ok(h.text.endsWith('길다.'), '문장 중간에서 잘렸다');
+});
+
+t('영문 단락 수를 국문에 맞춘다', () => {
+  const ko = cb.halveBody(['가'.repeat(80), '나'.repeat(80), '다'.repeat(80)].join('\n\n'));
+  const en = cb.takeParagraphs('P1.<br><br>P2.<br><br>P3.', ko.paras);
+  assert.strictEqual(en.split('\n\n').length, ko.paras, '국·영문 단락 수가 어긋난다');
+});
+
+t('크론이 캡션에 줄인 본문을 쓴다', () => {
+  assert.ok(/halveBody\(koSplit\.body\)/.test(CRON_CODE), '본문을 줄이지 않는다');
+  assert.ok(/bodyKo: koShort\.text/.test(CRON_CODE), '캡션이 원본 본문을 쓴다');
+  assert.ok(/takeParagraphs\(gen\.body_en, koShort\.paras\)/.test(CRON_CODE), '영문 단락 수를 안 맞춘다');
+});
+
+t('영상 미리보기에 디자인 커버를 얹는다', () => {
+  assert.ok(/thumb: videoThumb/.test(CRON_CODE), '영상에 커버가 안 붙는다');
+  assert.ok(/resize\(\{ width: 320 \}\)/.test(CRON_CODE),
+    '텔레그램 thumbnail 은 320px 이하 JPEG 여야 한다 — 원본을 넘기면 무시된다');
+  const TG = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/telegram.js'), 'utf8');
+  assert.ok(/form\.append\('thumbnail'/.test(TG), 'sendVideo 에 thumbnail 이 없다');
+  assert.ok(/m\.thumbnail = 'attach:\/\/' \+ tn/.test(TG), 'sendMediaGroup 에 thumbnail 이 없다');
+});
+
+t('커버 축소가 실패해도 브리프는 나간다', () => {
+  assert.ok(/영상 커버 축소 실패\(커버 없이 진행\)/.test(CRON), '커버 실패가 전체를 막으면 안 된다');
 });
 
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');

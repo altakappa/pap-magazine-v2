@@ -313,6 +313,46 @@ function stripHashtags(text) {
     .trim();
 }
 
+/* 캡션용 본문 줄이기 (2026-08-23).
+   도메니코: "너무 캡션이 길다. 기사내용은 절반으로 줄여달라."
+
+   웹사이트 본문은 600~800자로 쓰인다(papVoice LENGTH_ARTICLE). 인스타 캡션은
+   국문+영문이 함께 들어가서 두 배가 되고, 실측 셀럽기사 평균이 958자인데
+   우리 캡션은 그걸 훌쩍 넘겼다.
+
+   문장 중간에서 자르지 않는다 — **단락 단위**로 앞에서부터 담다가 목표 길이를
+   넘으면 멈춘다. 앞 단락이 리드(누가·언제·무엇을)라 앞을 남기는 게 맞다.
+   최소 한 단락은 남긴다. 국문·영문은 **같은 단락 수**로 맞춘다 — 실제 캡션이
+   국·영문 단락 수를 맞춰 쓴다(papVoice 프롬프트도 그렇게 지시한다). */
+function halveBody(text, opts) {
+  const ratio = (opts && opts.ratio) || 0.5;
+  const t = htmlToPlain(text);
+  if (!t) return { text: '', paras: 0 };
+  const paras = t.split(/\n{2,}/).map((x) => x.trim()).filter(Boolean);
+  if (paras.length <= 1) return { text: paras.join(''), paras: paras.length };
+  const target = t.length * ratio;
+  /* 목표를 넘자마자 멈추면 한 단락을 통째로 더 담아 과하게 길어진다
+     (100자 4단락 · 목표 203 → 3단락 304자). 목표에 **가장 가까운** 단락 수를
+     고른다. 최소 한 단락은 남긴다. */
+  let acc = 0;
+  let best = 1;
+  let bestGap = Infinity;
+  for (let i = 0; i < paras.length; i++) {
+    acc += paras[i].length;
+    const gap = Math.abs(acc - target);
+    if (gap < bestGap) { bestGap = gap; best = i + 1; }
+  }
+  const keep = paras.slice(0, best);
+  return { text: keep.join('\n\n'), paras: keep.length };
+}
+
+/* 단락 수를 n 개로 맞춘다 (국문에서 정한 수에 영문을 맞출 때). */
+function takeParagraphs(text, n) {
+  const t = htmlToPlain(text);
+  if (!t || !n) return t || '';
+  return t.split(/\n{2,}/).map((x) => x.trim()).filter(Boolean).slice(0, n).join('\n\n');
+}
+
 /* ── 댓글 / 대댓글 (2026-08-23) ────────────────────────────────
  * 도메니코: "댓글과 대댓글 해시태그를 학습해달라" → 댓글=질문 / 대댓글=해시태그.
  *
@@ -437,6 +477,8 @@ function splitCaptionForTelegram(caption) {
 
 module.exports = {
   htmlToPlain,
+  halveBody,
+  takeParagraphs,
   buildHashtagBlock,
   splitClosingQuestion,
   buildComments,

@@ -202,10 +202,15 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
        캡션과 댓글에 같은 문장이 두 번 나오지 않게 하려는 것이고,
        질문을 새로 지어내지 않으므로 톤도 갈리지 않는다. */
     const koSplit = celebBrief.splitClosingQuestion(gen.body_ko);
+    /* 캡션은 절반으로 줄인다 (2026-08-23 도메니코: "너무 캡션이 길다.
+       기사내용은 절반으로 줄여달라"). 웹 본문은 그대로 두고 캡션만 줄인다 —
+       단락 단위로 앞에서부터 남기고, 영문은 국문과 같은 단락 수로 맞춘다. */
+    const koShort = celebBrief.halveBody(koSplit.body);
+    const enShort = celebBrief.takeParagraphs(gen.body_en, koShort.paras);
     const caption = celebBrief.buildBriefCaption({
       hook: gen.title_ko || gen.title,          // 프롬프트가 '후킹 한 줄 10~26자'로 만든다
-      bodyKo: koSplit.body,
-      bodyEn: gen.body_en,
+      bodyKo: koShort.text,
+      bodyEn: enShort,
       mentions,
       creditKind: items[0].type === 'video' ? 'video' : 'photo',
     });
@@ -221,10 +226,18 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     /* 판형은 게시물이 정한다 — 영상이면 릴스(9:16), 사진이면 피드(4:5).
        릴스를 4:5 로 뽑으면 인스타에 릴스로 올릴 때 위아래가 잘린다. */
     const variant = items[0].type === 'video' ? 'reels' : 'feed';
-    media.push({
-      kind: 'photo',
-      buffer: await renderThumb(cover, gen.title_ko || gen.title, gen.title_en || '', { variant }),
-    });
+    const coverDesigned = await renderThumb(cover, gen.title_ko || gen.title, gen.title_en || '', { variant });
+    media.push({ kind: 'photo', buffer: coverDesigned });
+
+    /* 영상 미리보기 커버로 쓸 축소본. 텔레그램 thumbnail 은 JPEG · 320px 이하
+       · 200KB 이하가 권장 규격이라 그대로 넘기면 무시된다. */
+    let videoThumb = null;
+    try {
+      const sharpLib = require('sharp');
+      videoThumb = await sharpLib(coverDesigned).resize({ width: 320 }).jpeg({ quality: 80 }).toBuffer();
+    } catch (e) {
+      console.warn('[celeb-brief] 영상 커버 축소 실패(커버 없이 진행):', (e && e.message) || e);
+    }
 
     /* 첫 슬라이드가 사진이면 그 원본은 커버로 이미 쓴 셈이라 다시 넣지 않는다.
        영상이면 커버는 프레임일 뿐이므로 **영상 본체를 이어서 넣는다.** */
@@ -234,7 +247,9 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
       try {
         const buf = await fetchBuffer(it.url, it.type === 'video' ? 60000 : 20000);
         if (it.type === 'video' && buf.length > VIDEO_MAX_BYTES) { tooBig++; continue; }
-        media.push({ kind: it.type === 'video' ? 'video' : 'photo', buffer: buf });
+        media.push(it.type === 'video'
+          ? { kind: 'video', buffer: buf, thumb: videoThumb }
+          : { kind: 'photo', buffer: buf });
       } catch (e) {
         console.warn('[celeb-brief] 미디어 건너뜀:', (e && e.message) || e);
       }

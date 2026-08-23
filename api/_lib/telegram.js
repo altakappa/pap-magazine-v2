@@ -277,7 +277,7 @@ async function sendTextToChatSafe(chatId, text) {
 
 
 /* ── 사진·영상 섞어 보내기 (2026-08-23, 셀럽 속보 릴스 대응) ──
-   items: [{ kind:'photo'|'video', buffer }]
+   items: [{ kind:'photo'|'video', buffer, thumb? }]  — thumb 는 영상 미리보기 커버(JPEG)
    텔레그램 미디어 그룹은 사진과 영상을 **한 묶음에 섞을 수 있다**(10개까지).
    캡션은 첫 묶음의 첫 항목에만 단다. */
 async function sendMediaToTelegram(items, caption, chatId) {
@@ -301,6 +301,12 @@ async function sendMediaToTelegram(items, caption, chatId) {
       form.append(isVid ? 'video' : 'photo',
         new Blob([one.buffer], { type: isVid ? 'video/mp4' : 'image/jpeg' }),
         isVid ? 'clip.mp4' : 'photo.jpg');
+      /* 영상 미리보기에 PAP 디자인 커버를 얹는다 (2026-08-23 도메니코:
+         "영상 위에 섬네일을 올려주면 돼"). 텔레그램은 thumbnail 을 JPEG 로만
+         받고 320px 이하를 권장한다 — 호출부가 줄여서 넘긴다. */
+      if (isVid && one.thumb && one.thumb.length) {
+        form.append('thumbnail', new Blob([one.thumb], { type: 'image/jpeg' }), 'cover.jpg');
+      }
       const r = await fetch('https://api.telegram.org/bot' + token + (isVid ? '/sendVideo' : '/sendPhoto'),
         { method: 'POST', body: form });
       const j = await r.json().catch(() => ({}));
@@ -314,6 +320,11 @@ async function sendMediaToTelegram(items, caption, chatId) {
       form.append(name, new Blob([it.buffer], { type: isVid ? 'video/mp4' : 'image/jpeg' }),
         name + (isVid ? '.mp4' : '.jpg'));
       const m = { type: isVid ? 'video' : 'photo', media: 'attach://' + name };
+      if (isVid && it.thumb && it.thumb.length) {
+        const tn = 'thumb' + i;
+        form.append(tn, new Blob([it.thumb], { type: 'image/jpeg' }), tn + '.jpg');
+        m.thumbnail = 'attach://' + tn;
+      }
       if (i === 0 && cap) m.caption = cap;
       return m;
     });
