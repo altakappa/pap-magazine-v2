@@ -1009,7 +1009,9 @@ console.log('\n[20] 언어별 진입 페이지 /ja · /en');
   t('대표 계정 리스트에 실측 팔로워가 있다 (경쟁 문서엔 없는 재료)',
     /134만/.test(im) && /@eyesmag/.test(im) && /@dailyfashion_news/.test(im) && /@pap_magazine/.test(im));
   t('PAP 을 실제 순위 자리에 정직하게 넣었다 (끼워넣기 티가 나면 신뢰를 잃는다)',
-    /뉴소스매거진[\s\S]{0,400}PAP 매거진[\s\S]{0,400}글로우업/.test(im));
+    /* 2026-08-23 도메니코: HIP·뉴소스·글로우업·디에디트는 뺀다 — 패션 매거진 4곳으로 조인다.
+       PAP 은 팔로워 순 마지막 자리 그대로: 패스트페이퍼 뒤. */
+    /패스트페이퍼[\s\S]{0,400}PAP 매거진/.test(im) && !/글로우업|hipkr_|newsourcemag/.test(im));
   t('FAQ 화면과 JSON-LD 가 함께 있다', /<details>/.test(im) && /"@type": "FAQPage"/.test(im));
   t('ItemList 스키마가 있다 (리스트형 질의 대응)', /"@type": "ItemList"/.test(im));
   t('IG 아웃링크가 ig-out 계측을 탄다 (성장 헌법 3항)',
