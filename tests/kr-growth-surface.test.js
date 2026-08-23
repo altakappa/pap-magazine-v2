@@ -975,6 +975,27 @@ console.log('\n[20] 언어별 진입 페이지 /ja · /en');
     /s-maxage=1800, stale-while-revalidate=86400/.test(lh));
 }
 
+
+/* ─── [20] 홈이 "웹매거진"이라는 말을 갖고 있는가 (2026-08-23) ─────────────
+   실측: 구글 "한국 패션 웹매거진" 1페이지 상위 7개가 전부 매체 홈페이지다
+   (보그·엘르·하입비스트·아이즈매거진·마리끌레르·GQ·W). 우리 홈은 그 자리에
+   없고, 대신 /digital-magazine 이 8위로 들어가 있다.
+   아이즈는 홈 설명문에 "웹 매거진"을 명시한다. 우리 홈에는 그 말이 한 곳도
+   없었다 — 카테고리 질의가 걸릴 표면 자체가 없었던 것.
+   도메니코 2026-08-23 승인: title(브랜드 자산)은 그대로, 설명문만 고친다. */
+{
+  const home = R('frontend/index.html');
+  const m = home.match(/<meta name="description" content="([^"]+)"/);
+  t('홈에 description 이 있다', !!m);
+  const desc = m ? m[1] : '';
+  t('홈 설명문이 "웹매거진"을 말한다 (카테고리 질의가 걸릴 표면)',
+    /웹매거진|웹 매거진/.test(desc), desc.slice(0, 60));
+  t('그러면서 "디지털 매거진"도 유지한다 (기존에 잡히던 말을 버리지 않는다)',
+    /디지털 매거진/.test(desc));
+  t('브랜드 title 은 건드리지 않았다',
+    /<title>PAP Magazine \(팝매거진\) — Art Fashion, Beauty & Culture Magazine<\/title>/.test(home));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');
