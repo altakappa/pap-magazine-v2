@@ -161,4 +161,22 @@ if (!deps) {
   })().catch((e) => { console.error('  ✗ ' + e.message); process.exit(1); });
 }
 
-if (!deps) console.log('\n셀럽 썸네일 렌더러: ' + n + '건 통과 (렌더 대조 제외)');
+if (!deps) 
+t('썸네일도 오버레이도 MIN_LINES=2 로 조판한다', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/celebThumb.js'), 'utf8');
+  assert.ok(/const MIN_LINES = 2;/.test(src), 'MIN_LINES 상수가 없다');
+  const calls = src.match(/wrapHeadline\([^)]*\)/g) || [];
+  assert.ok(calls.length >= 2, 'wrapHeadline 호출을 못 찾았다');
+  calls.forEach((c) => assert.ok(/MIN_LINES/.test(c), '두 줄 강제가 빠진 호출이 있다: ' + c));
+});
+
+t('renderThumb 이 조판을 다시 짜지 않는다 (_layers 한 벌)', () => {
+  /* 2026-08-23: 실제로 갈라져 있었다. MIN_LINES 를 두 곳에 넣어야 했고,
+     한쪽만 고치면 영상 오버레이와 썸네일이 다른 줄바꿈을 갖게 된다. */
+  const src = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/celebThumb.js'), 'utf8');
+  const body = src.split('async function renderThumb(')[1].split('module.exports')[0];
+  assert.ok(/_layers\(titleKo, titleEn, opts\)/.test(body), 'renderThumb 이 _layers 를 안 쓴다');
+  assert.ok(!/wrapHeadline\(/.test(body), 'renderThumb 안에 조판 코드가 복제돼 있다');
+});
+
+console.log('\n셀럽 썸네일 렌더러: ' + n + '건 통과 (렌더 대조 제외)');

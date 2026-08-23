@@ -50,6 +50,7 @@ const EN_MAX_W = 860;                                 // bbox (103,957)~(933,104
 const SHADOW_XY = [0, 485];
 const SYMBOL_XY = [505, 1219];
 const MAX_LINES = 2;
+const MIN_LINES = 2;
 
 const VARIANTS = {
   feed: {
@@ -127,8 +128,10 @@ function _layers(titleKo, titleEn, opts) {
 
   const koTrackPx = KO_TRACK / 1000 * KO_PX;
   const enTrackPx = EN_TRACK / 1000 * EN_PX;
-  const koLines = wrapHeadline(titleKo, KO_MAX_W, measureWith(F.ko, KO_PX, koTrackPx), MAX_LINES);
-  const enLines = wrapHeadline(titleEn, EN_MAX_W, measureWith(F.en, EN_PX, enTrackPx), MAX_LINES);
+  /* MIN_LINES=2 — 국문·영문 모두 두 줄로 앉힌다(도메니코 2026-08-23).
+     조판이 2줄 전제라 한 줄로 떨어지면 국문과 영문 사이가 한 줄 벌어진다. */
+  const koLines = wrapHeadline(titleKo, KO_MAX_W, measureWith(F.ko, KO_PX, koTrackPx), MAX_LINES, MIN_LINES);
+  const enLines = wrapHeadline(titleEn, EN_MAX_W, measureWith(F.en, EN_PX, enTrackPx), MAX_LINES, MIN_LINES);
   if (!koLines) throw new Error('국문 제목이 2줄을 넘습니다. 제목을 줄여주세요: ' + titleKo);
   if (!enLines) throw new Error('영문 제목이 2줄을 넘습니다. 제목을 줄여주세요: ' + titleEn);
 
@@ -162,23 +165,10 @@ async function renderOverlay(titleKo, titleEn, opts) {
 }
 
 async function renderThumb(photoBuffer, titleKo, titleEn, opts) {
-  const V = VARIANTS[(opts && opts.variant) || 'feed'] || VARIANTS.feed;
   const sharp = require('sharp');                                  // 지연 로드
-  const { wrapHeadline } = require('./celebBrief');
-  const F = fonts();
-
-  const koTrackPx = KO_TRACK / 1000 * KO_PX;
-  const enTrackPx = EN_TRACK / 1000 * EN_PX;
-  const koLines = wrapHeadline(titleKo, KO_MAX_W, measureWith(F.ko, KO_PX, koTrackPx), MAX_LINES);
-  const enLines = wrapHeadline(titleEn, EN_MAX_W, measureWith(F.en, EN_PX, enTrackPx), MAX_LINES);
-  if (!koLines) throw new Error('국문 제목이 2줄을 넘습니다. 제목을 줄여주세요: ' + titleKo);
-  if (!enLines) throw new Error('영문 제목이 2줄을 넘습니다. 제목을 줄여주세요: ' + titleEn);
-
-  const paths = [];
-  koLines.forEach((l, i) => paths.push(lineToPath(F.ko, l, KO_X, V.koBase + i * KO_LEAD, KO_PX, koTrackPx)));
-  enLines.forEach((l, i) => paths.push(lineToPath(F.en, l, EN_X, V.enBase + i * EN_LEAD, EN_PX, enTrackPx)));
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + V.W + '" height="' + V.H + '">'
-    + '<path fill="#ffffff" d="' + paths.join(' ') + '"/></svg>';
+  /* 조판은 _layers 한 곳에서만 만든다 — 여기서 다시 짜면 오버레이와 갈라진다.
+     2026-08-23: 실제로 갈라져 있었고, MIN_LINES 를 두 곳에 넣어야 했다. 합쳤다. */
+  const { V, composite } = _layers(titleKo, titleEn, opts);
 
   // 1) 사진 — 가운데 크롭 풀블리드
   const base = await sharp(photoBuffer, { failOn: 'none' })
@@ -186,15 +176,8 @@ async function renderThumb(photoBuffer, titleKo, titleEn, opts) {
     .resize(V.W, V.H, { fit: 'cover', position: 'centre' })
     .toBuffer();
 
-  // 2) 그림자 → 3) 글자 → 4) 심볼
-  return sharp(base)
-    .composite([
-      { input: path.join(ASSETS, V.shadow), left: V.shadowXY[0], top: V.shadowXY[1] },
-      { input: Buffer.from(svg), left: 0, top: 0 },
-      { input: path.join(ASSETS, 'symbol70.png'), left: V.symbolXY[0], top: V.symbolXY[1] },
-    ])
-    .jpeg({ quality: 92 })
-    .toBuffer();
+  // 2) 그림자 → 3) 글자 → 4) 심볼 (전부 _layers 가 준 것)
+  return sharp(base).composite(composite).jpeg({ quality: 92 }).toBuffer();
 }
 
 module.exports = {
@@ -204,5 +187,5 @@ module.exports = {
   measureWith,
   _fonts: fonts,
   W, H, KO_PX, KO_LEAD, KO_TRACK, EN_PX, EN_LEAD, EN_TRACK,
-  KO_X, KO_BASE, EN_X, EN_BASE, SHADOW_XY, SYMBOL_XY, MAX_LINES,
+  KO_X, KO_BASE, EN_X, EN_BASE, SHADOW_XY, SYMBOL_XY, MAX_LINES, MIN_LINES,
 };

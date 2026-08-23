@@ -203,8 +203,13 @@ function mergeMediaUrls(perPost, opts) {
      ③ 두 줄 폭이 가장 고르게 되는 지점 — 한쪽만 길면 디자인이 무너진다
    어느 것도 2줄에 못 담으면 **자르지 않고 null** 을 준다. 폰트를 줄이는 대신
    제목을 줄이라는 뜻이고, 그 판단은 사람이 한다. */
-function wrapHeadline(text, maxWidth, measure, maxLines) {
+/* minLines: 한 줄에 다 들어가도 굳이 두 줄로 쪼갠다.
+   도메니코 2026-08-23: "섬네일 타이틀은 이전처럼 두 줄로."
+   왜 — 조판이 2줄 전제다. 국문 baseline 아래 EN_LEAD 만큼 내려 영문을 그리는데,
+   국문이 1줄로 떨어지면 국문과 영문 사이에 빈 줄 하나가 뜬다(레이아웃이 깨진다). */
+function wrapHeadline(text, maxWidth, measure, maxLines, minLines) {
   const limit = maxLines || 2;
+  const floor = Math.min(minLines || 1, limit);
   const raw = String(text || '').trim();
   if (!raw) return [];
 
@@ -218,9 +223,11 @@ function wrapHeadline(text, maxWidth, measure, maxLines) {
   }
 
   const words = raw.split(/\s+/).filter(Boolean);
+  // 쪼갤 단어가 하나뿐이면 두 줄로 만들 방법이 없다 — 억지로 자르지 않는다.
   if (words.length === 1) return measure(raw) <= maxWidth ? [raw] : null;
-  if (measure(raw) <= maxWidth) return [raw];
-  if (limit < 2) return null;
+  const oneLine = measure(raw) <= maxWidth;
+  if (oneLine && floor < 2) return [raw];
+  if (limit < 2) return oneLine ? [raw] : null;
 
   // 단어 경계 후보 전부를 2줄로 놓고 본다.
   const cand = [];
@@ -229,7 +236,8 @@ function wrapHeadline(text, maxWidth, measure, maxLines) {
     const b = words.slice(i).join(' ');
     if (measure(a) <= maxWidth && measure(b) <= maxWidth) cand.push({ a, b, i });
   }
-  if (!cand.length) return null;
+  // 한 줄엔 들어가는데 고른 2줄 후보가 없다면(예: 한 단어가 너무 길다) 한 줄로 둔다.
+  if (!cand.length) return oneLine ? [raw] : null;
 
   const mostBalanced = (list) => {
     let best = list[0];

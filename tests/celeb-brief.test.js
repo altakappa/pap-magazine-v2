@@ -721,4 +721,33 @@ t('buildComments 가 존댓말 변환을 거친다 (원문 그대로 새면 안 
   assert.ok(!/는가\?/.test(c.comment), '~는가 가 남아 있다');
 });
 
+t('minLines=2 — 한 줄에 들어가도 두 줄로 앉힌다', () => {
+  /* 도메니코 2026-08-23: "섬네일 타이틀은 이전처럼 두 줄로."
+     조판이 2줄 전제라(국문 baseline 아래 고정 위치에 영문을 그린다)
+     국문이 1줄로 떨어지면 국문과 영문 사이가 한 줄 벌어진다. */
+  const m = (s) => [...s].reduce((a, c) => a + (/[가-힣]/.test(c) ? 64 : 34), 0);
+  const out = cb.wrapHeadline('지수가 선택한 하루의 리듬', 860, m, 2, 2);
+  assert.strictEqual(out.length, 2, '두 줄이 아니다: ' + JSON.stringify(out));
+  assert.deepStrictEqual(out, ['지수가 선택한', '하루의 리듬']);
+});
+
+t('minLines 를 안 주면 예전대로 한 줄 (하위호환)', () => {
+  const m = (s) => [...s].reduce((a, c) => a + (/[가-힣]/.test(c) ? 64 : 34), 0);
+  assert.deepStrictEqual(cb.wrapHeadline('지수가 선택한 하루의 리듬', 860, m, 2), ['지수가 선택한 하루의 리듬']);
+});
+
+t('쪼갤 단어가 하나뿐이면 억지로 자르지 않는다', () => {
+  const m = (s) => s.length * 30;
+  assert.deepStrictEqual(cb.wrapHeadline('BIGBANG', 860, m, 2, 2), ['BIGBANG']);
+});
+
+t('두 줄 강제가 한계폭을 깨지 않는다', () => {
+  const m = (s) => [...s].reduce((a, c) => a + (/[가-힣]/.test(c) ? 64 : 34), 0);
+  ['BTS는 왜 제미나이를 불렀나', '색을 지우자 엔하이픈이 선명해졌다', '다시 움직이기 시작한 빅뱅의 시간'].forEach((t0) => {
+    const out = cb.wrapHeadline(t0, 860, m, 2, 2);
+    assert.strictEqual(out.length, 2, t0 + ' 가 두 줄이 아니다');
+    out.forEach((l) => assert.ok(m(l) <= 860, '한계폭을 넘었다: ' + l));
+  });
+});
+
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');
