@@ -799,6 +799,13 @@ function renderSeoHtml(kind, record, opts) {
      실제 맥락(등장 패션 브랜드·카테고리)으로 보강한다. AI·크론·DB 쓰기 없이
      렌더 시점 조립이라 다음 크롤에 전편 일괄 개선되고 Vercel 부하도 0.
      브랜드명은 검색어라 SEO 실익이 크고, 없으면 매체 소개로 폴백한다. */
+  /* 2026-08-23 (도메니코: "우리는 영문 디지털 매거진으로 불리면 안돼") —
+     ChatGPT 가 PAP 를 "서울·밀라노 기반의 영문 디지털 매거진"으로 소개했다.
+     원인: 영어 페이지의 자기소개 문구가 언어 정체성 없이 "based in Seoul and
+     Milan"만 말해서, 생성 엔진이 '영어로 쓰인 매거진'으로 추론했다.
+     그래서 전 페이지 영문 폴백 설명에 **Korean** 을 명시한다 — 한국 매거진이
+     9개 언어로 발행되는 것이지, 영문 매거진이 아니다. llms.txt 의 설명 지침과
+     같은 말을 해야 한다(소스가 갈라지면 엔진이 아무거나 집는다). */
   function _enrichMeta(base) {
     const isKo = lang === 'ko';
     // 제목 에코("제목 — PAP Magazine") 폴백은 실질 설명이 아니므로 비운다
@@ -849,15 +856,15 @@ function renderSeoHtml(kind, record, opts) {
       if (kind === 'article') {
         parts.push(isKo
           ? `${titleKo} — PAP MAGAZINE 뉴스. 서울과 밀라노 기반 아트 중심 패션·뷰티·컬처 매거진 PAP이 전하는 패션·셀럽·컬처 소식입니다.`
-          : `${titleMain} — news from PAP Magazine, the art-driven fashion, beauty and culture magazine based in Seoul and Milan.`);
+          : `${titleMain} — news from PAP Magazine, the Korean art-driven fashion, beauty and culture magazine published from Seoul, with a Milan desk.`);
       } else if (kind === 'film') {
         parts.push(isKo
           ? `${titleKo} — PAP MAGAZINE 패션 필름. 서울과 밀라노 기반 아트 중심 매거진 PAP이 전 세계 크리에이티브 팀과 만든 영상입니다.`
-          : `${titleMain} — a fashion film by PAP Magazine, art-driven fashion, beauty and culture from Seoul and Milan.`);
+          : `${titleMain} — a fashion film by PAP Magazine, the Korean art-driven fashion, beauty and culture magazine published from Seoul, with a Milan desk.`);
       } else {
         parts.push(isKo
           ? `${titleKo} — PAP MAGAZINE 독점 패션 에디토리얼. 서울과 밀라노를 기반으로 활동하는 아트 중심 매거진 PAP이 전 세계 포토그래퍼·스타일리스트와 함께 선보이는 패션·뷰티·컬처 화보와 크리에이티브 스토리를 만나보세요.`
-          : `${titleMain} — an exclusive fashion editorial by PAP Magazine, the art-driven fashion, beauty and culture magazine based in Seoul and Milan, created with photographers and stylists worldwide.`);
+          : `${titleMain} — an exclusive fashion editorial by PAP Magazine, the Korean art-driven fashion, beauty and culture magazine published from Seoul with a Milan desk, created with photographers and stylists worldwide.`);
       }
     }
     return parts.join(' ').replace(/\s+/g, ' ').trim();
