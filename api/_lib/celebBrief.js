@@ -60,6 +60,32 @@ function extractHandle(text) {
   return m ? m[1] : null;
 }
 
+/* 게시 명령 (2026-08-23).
+   도메니코: "게시 기능을 만들어줘." → 텔레그램에 "올려" 라고 치면 게시한다.
+
+   ⚠️ 절대 규칙("발행은 내가 직접")을 지키려면 **오해의 여지가 없어야** 한다.
+   그래서 아주 좁게 본다:
+     · 메시지에 인스타 링크가 있으면 명령이 아니다 (새 브리프 요청이다)
+     · 문장 전체가 명령어여야 한다. "올려도 될까?" 같은 문장은 명령이 아니다
+     · 부정형("올리지 마")은 걸러낸다
+   애매하면 명령이 아닌 쪽으로 판정한다 — 잘못 올리는 것이 안 올리는 것보다 훨씬 나쁘다. */
+const _PUBLISH_WORDS = [
+  '올려', '올려줘', '올려주세요', '올려라',
+  '게시', '게시해', '게시해줘', '게시하자',
+  '업로드', '업로드해', '업로드해줘',
+  'publish', 'post', 'go',
+];
+
+function parsePublishCommand(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return false;
+  if (_POST_RE.test(raw)) { _POST_RE.lastIndex = 0; return false; }   // 링크가 있으면 새 요청
+  _POST_RE.lastIndex = 0;
+  if (/(마|말|않|안 |아니|취소|하지)/.test(raw)) return false;          // 부정·취소
+  const norm = raw.toLowerCase().replace(/[\s.!~]+$/g, '').replace(/^[\s]+/, '');
+  return _PUBLISH_WORDS.includes(norm);
+}
+
 /* 텔레그램 update → 처리 대상 목록.
    반환: { chatId, messageId, text, links: [...], handle }  또는 null(무시할 업데이트) */
 function parseUpdate(update) {
@@ -76,6 +102,7 @@ function parseUpdate(update) {
     text,
     links,
     handle: extractHandle(text),
+    publishCommand: parsePublishCommand(text),
   };
 }
 
@@ -477,6 +504,7 @@ function splitCaptionForTelegram(caption) {
 
 module.exports = {
   htmlToPlain,
+  parsePublishCommand,
   halveBody,
   takeParagraphs,
   buildHashtagBlock,

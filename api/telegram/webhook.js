@@ -80,6 +80,16 @@ function _waitUntil() {
   }
 }
 
+/* 링크를 보낸 그 채팅으로 답한다. 실패해도 수신 자체를 막지 않는다. */
+async function say(chatId, text) {
+  try {
+    const { sendTextToChatSafe } = require('../_lib/telegram');
+    await sendTextToChatSafe(chatId, text);
+  } catch (e) {
+    console.warn('[tg-webhook] 회신 실패:', (e && e.message) || e);
+  }
+}
+
 async function wakeProcessor() {
   const secret = String(process.env.CRON_SECRET || '').trim();
   if (!secret) { console.warn('[tg-webhook] CRON_SECRET 미설정 — 즉시 깨우기 생략'); return false; }
@@ -134,6 +144,37 @@ module.exports = async function handler(req, res) {
     return OK(res, { ok: true, skipped: 'chat_not_allowed' });
   }
 
+  /* ── 게시 명령 ("올려") ──────────────────────────────────────
+     도메니코가 브리프를 보고 판단해서 내리는 명령이다. 여기서는 **표시만** 하고
+     실제 게시는 크론이 한다 — 게시는 컨테이너 생성 + 릴스 인코딩 폴링까지
+     길게는 3분이 걸려서 webhook 안에서 하면 텔레그램이 재전송한다.
+     대상은 이 채팅의 **가장 최근에 완성된 브리프 하나**뿐이다. */
+  if (parsed.publishCommand) {
+    const { data: latest, error: findErr } = await supabaseAdmin
+      .from('celeb_brief_queue')
+      .select('id, batch_key, result, status')
+      .eq('chat_id', parsed.chatId).eq('status', 'done')
+      .order('processed_at', { ascending: false }).limit(1);
+    const row = latest && latest[0];
+    if (findErr || !row) {
+      await say(parsed.chatId, findErr
+        ? ('브리프 조회 실패: ' + String(findErr.message).slice(0, 150))
+        : '올릴 브리프가 없습니다. 먼저 인스타 링크를 보내주세요.');
+      return OK(res, { ok: true, skipped: 'no_brief_to_publish' });
+    }
+    const { error: markErr } = await supabaseAdmin.from('celeb_brief_queue')
+      .update({ status: 'publish_queued' })
+      .eq('id', row.id).eq('status', 'done');
+    if (markErr) {
+      await say(parsed.chatId, '게시 접수 실패: ' + String(markErr.message).slice(0, 150));
+      return OK(res, { ok: true, skipped: 'publish_mark_failed' });
+    }
+    const title = (row.result && (row.result.title || row.result.title_en)) || '';
+    await say(parsed.chatId, '게시 접수: ' + (title || '(제목 없음)') + '\n올리는 중입니다…');
+    await wakeProcessor();
+    return OK(res, { ok: true, publish_queued: row.id });
+  }
+
   if (!parsed.links.length) {
     return OK(res, { ok: true, skipped: 'no_instagram_link' });
   }
@@ -141,15 +182,8 @@ module.exports = async function handler(req, res) {
   // 계정 핸들 확보. URL 에 없으면 메시지의 @핸들, 그것도 없으면 되묻는다.
   const missing = parsed.links.filter((l) => !l.username && !parsed.handle);
   if (missing.length) {
-    try {
-      const { sendTextToTelegramPersonalSafe, sendTextToTelegramSafe } = require('../_lib/telegram');
-      const msg = '계정 핸들을 같이 보내주세요. 예) @blackpinkofficial ' + parsed.links[0].permalink
-        + '\n(인스타 링크만으로는 어느 계정 게시물인지 알 수 없습니다.)';
-      const r = await sendTextToTelegramPersonalSafe(msg);
-      if (!r.ok) await sendTextToTelegramSafe(msg);
-    } catch (e) {
-      console.warn('[tg-webhook] 핸들 요청 회신 실패:', e && e.message);
-    }
+    await say(parsed.chatId, '계정 핸들을 같이 보내주세요. 예) @blackpinkofficial ' + parsed.links[0].permalink
+      + '\n(인스타 링크만으로는 어느 계정 게시물인지 알 수 없습니다.)');
     return OK(res, { ok: true, skipped: 'handle_required' });
   }
 

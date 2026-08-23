@@ -73,6 +73,112 @@ async function tell(text) {
   }
 }
 
+
+/* ── 게시 ──────────────────────────────────────────────────────
+ * 도메니코가 "올려" 라고 친 브리프 하나를 @pap_magazine 에 게시한다.
+ *
+ * 순서: 자리 찜(원자적) → 커버 재렌더 → Storage 업로드 → 컨테이너 → 게시
+ *       → 댓글(질문) → 대댓글(해시태그) → 링크 회신
+ *
+ * 실패는 전부 사람에게 알린다. 특히 **게시는 됐는데 댓글이 실패한 경우**를
+ * 성공으로 뭉뚱그리지 않는다 — 해시태그가 안 붙은 걸 모르면 그대로 방치된다.
+ */
+async function runPublish(row, res, dry) {
+  const igPublish = require('../_lib/igPublish');
+  const pub = (row.result && row.result.publish) || null;
+
+  const pubFail = async (msg) => {
+    await supabaseAdmin.from('celeb_brief_queue')
+      .update({ status: 'publish_failed', error: String(msg).slice(0, 400) }).eq('id', row.id);
+    await tell('인스타 게시 실패 — ' + msg);
+    return res.status(200).json({
+      ok: false, error: String(msg).slice(0, 300),
+      note: note(res, '게시 실패: ' + String(msg).slice(0, 150)),
+    });
+  };
+
+  if (!pub) return await pubFail('게시 재료가 없습니다. 브리프를 다시 만들어 주세요(이전 버전으로 만들어진 건일 수 있습니다).');
+  if (!igPublish.isConfigured()) return await pubFail('IG_USER_ID / IG_ACCESS_TOKEN 미설정');
+
+  // 자리를 원자적으로 찜한다 — 즉시 깨우기와 스케줄이 겹쳐도 두 번 올리지 않는다.
+  const { data: claimed, error: cErr } = await supabaseAdmin.from('celeb_brief_queue')
+    .update({ status: 'publishing' }).eq('id', row.id).eq('status', 'publish_queued').select('id');
+  if (cErr) {
+    note(res, '게시 클레임 실패: ' + String(cErr.message).slice(0, 150));
+    return res.status(500).json({ ok: false, error: 'publish claim failed' });
+  }
+  if (!claimed || !claimed.length) {
+    return res.status(200).json({ ok: true, note: note(res, '다른 실행이 이미 게시 중 — 건너뜀') });
+  }
+
+  try {
+    const { renderThumb } = require('../_lib/celebThumb');
+    const cover = await renderThumb(
+      await fetchBuffer(pub.coverUrl, 20000), pub.titleKo, pub.titleEn, { variant: pub.variant },
+    );
+    const base = 'celeb-publish/' + row.shortcode + '-' + row.id;
+    const coverUrl = await igPublish.uploadPublic(cover, base + '/cover.jpg', 'image/jpeg');
+
+    if (dry) {
+      await supabaseAdmin.from('celeb_brief_queue').update({ status: 'publish_queued' }).eq('id', row.id);
+      return res.status(200).json({
+        ok: true, dry: true, cover: coverUrl,
+        note: note(res, 'dry — 커버 업로드까지 확인 (게시 안 함)'),
+      });
+    }
+
+    let mediaId;
+    if (pub.variant === 'reels') {
+      const vid = (pub.items || []).find((i) => i.type === 'video');
+      if (!vid) return await pubFail('릴스인데 영상을 못 찾았습니다.');
+      const buf = await fetchBuffer(vid.url, 60000);
+      if (buf.length > VIDEO_MAX_BYTES) return await pubFail('영상이 너무 큽니다(' + Math.round(buf.length / 1048576) + 'MB).');
+      const videoUrl = await igPublish.uploadPublic(buf, base + '/clip.mp4', 'video/mp4');
+      mediaId = await igPublish.publishReel(videoUrl, pub.caption, coverUrl);
+    } else {
+      /* 캐러셀: 1번은 디자인 커버, 그다음 원본 사진.
+         첫 장이 사진이면 그 원본은 커버로 이미 쓴 것이라 다시 넣지 않는다. */
+      const items = pub.items || [];
+      const restPhotos = (items[0] && items[0].type === 'image' ? items.slice(1) : items)
+        .filter((i) => i.type === 'image');
+      const urls = [coverUrl];
+      for (let i = 0; i < restPhotos.length && urls.length < 10; i++) {
+        try {
+          const b = await fetchBuffer(restPhotos[i].url, 20000);
+          urls.push(await igPublish.uploadPublic(b, base + '/' + (i + 1) + '.jpg', 'image/jpeg'));
+        } catch (e) {
+          console.warn('[celeb-brief] 게시용 이미지 건너뜀:', (e && e.message) || e);
+        }
+      }
+      mediaId = await igPublish.publishPhotos(urls, pub.caption);
+    }
+
+    // ── 댓글 · 대댓글 ─────────────────────────────────────────
+    let commentWarn = '';
+    try {
+      const cid = await igPublish.addComment(mediaId, pub.comment);
+      if (cid && pub.reply) await igPublish.replyToComment(cid, pub.reply);
+      else if (!cid && pub.reply) commentWarn = ' ⚠️댓글이 없어 해시태그를 못 달았습니다';
+    } catch (e) {
+      commentWarn = ' ⚠️댓글/해시태그 실패: ' + String((e && e.message) || e).slice(0, 150);
+    }
+
+    const permalink = await igPublish.permalinkOf(mediaId);
+    await supabaseAdmin.from('celeb_brief_queue').update({
+      status: 'published', published_media_id: mediaId,
+      published_permalink: permalink || null, published_at: new Date().toISOString(), error: null,
+    }).eq('id', row.id);
+
+    await tell('인스타 게시 완료 — ' + (pub.titleKo || '') + (permalink ? ('\n' + permalink) : '') + commentWarn);
+    return res.status(200).json({
+      ok: true, media_id: mediaId, permalink,
+      note: note(res, '게시 완료(' + pub.variant + '): ' + String(pub.titleKo || '').slice(0, 60) + commentWarn),
+    });
+  } catch (e) {
+    return await pubFail(String((e && e.message) || e).slice(0, 300));
+  }
+}
+
 module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
@@ -96,6 +202,19 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     .update({ status: 'queued' })
     .eq('status', 'working')
     .lt('created_at', new Date(Date.now() - STALE_WORKING_MS).toISOString());
+
+  /* ── 0.5 게시 명령 처리 ────────────────────────────────────────
+     브리프 생성보다 **먼저** 본다. 사람이 기다리고 있는 작업이다.
+     이 분기는 도메니코가 "올려" 라고 쳐서 publish_queued 가 된 행에서만 돈다 —
+     코드가 스스로 이 상태로 넘기는 경로는 어디에도 없다(절대 규칙). */
+  const { data: pubRows, error: pubErr } = await supabaseAdmin.from('celeb_brief_queue')
+    .select('*').eq('status', 'publish_queued')
+    .order('created_at', { ascending: true }).limit(1);
+  if (pubErr) {
+    note(res, '게시 큐 조회 실패: ' + String(pubErr.message).slice(0, 150));
+    return res.status(500).json({ ok: false, error: 'publish queue query failed' });
+  }
+  if (pubRows && pubRows.length) return await runPublish(pubRows[0], res, dry);
 
   // ── 1. 가장 오래된 batch 하나 (한 회차 1건 — 텔레그램 도배 방지) ──
   const { data: queued, error: qErr } = await supabaseAdmin.from('celeb_brief_queue')
@@ -302,6 +421,16 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
         videos: media.filter((m) => m.kind === 'video').length,
         video_skipped_too_big: tooBig, missing_en: missingEn, video_sizes: videoSizes,
         has_comment: !!comments.comment,
+        /* 게시 명령("올려")이 오면 이 재료로 그대로 올린다.
+           이미지를 미리 Storage 에 올려두지 않는 이유: 올리지 않을 브리프까지
+           전부 저장하면 낭비다. 원본 URL 과 제목만 남기면 커버는 다시 렌더해도
+           **결정적으로 같은 그림**이 나온다(렌더러에 난수가 없다). */
+        publish: {
+          variant, coverUrl,
+          items: items.map((i) => ({ type: i.type, url: i.url })),
+          caption, comment: comments.comment, reply: comments.reply,
+          titleKo: gen.title_ko || gen.title || '', titleEn: gen.title_en || '',
+        },
       },
     }).in('id', ids);
 

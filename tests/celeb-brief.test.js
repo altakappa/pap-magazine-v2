@@ -304,7 +304,10 @@ t('조기 반환마다 cronNote 를 남긴다', () => {
 
 t('썸네일은 1장만 — 나머지는 원본 그대로', () => {
   assert.ok(/renderThumb\(cover,/.test(CRON_CODE), '커버에 디자인을 안 입힌다');
-  const renderCalls = (CRON_CODE.match(/renderThumb\(/g) || []).length;
+  /* 브리프 만드는 구간(withCronGuard 이후)에서만 센다. 게시 구간(runPublish)은
+     같은 커버를 다시 렌더하므로 파일 전체로 세면 2가 된다. */
+  const briefPart = CRON_CODE.split("withCronGuard('celeb-brief'")[1] || '';
+  const renderCalls = (briefPart.match(/renderThumb\(/g) || []).length;
   assert.strictEqual(renderCalls, 1, '도메니코 규칙: 썸네일만 디자인, 나머지는 아무 디자인도 안 입힌다');
   assert.ok(/const rest = items\[0\]\.type === 'image' \? items\.slice\(1\) : items;/.test(CRON_CODE),
     '나머지는 원본 그대로 이어붙여야 한다');
@@ -524,6 +527,73 @@ t('영상 해상도를 재서 기록한다 (크롭이 필요한지 숫자로 본
 
 t('해상도 읽기가 실패해도 브리프는 나간다', () => {
   assert.ok(/영상 해상도 읽기 실패/.test(CRON), '해상도 실패가 전체를 막으면 안 된다');
+});
+
+
+/* ⑫ 게시 (2026-08-23 도메니코: "게시 기능을 만들어줘") */
+const PUB = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/igPublish.js'), 'utf8');
+const PUB_CODE = PUB.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+t('게시 명령을 좁게 판정한다 (잘못 올리는 게 안 올리는 것보다 나쁘다)', () => {
+  for (const yes of ['올려', '올려줘', '게시해줘', '업로드', 'publish', 'GO', '올려.']) {
+    assert.strictEqual(cb.parsePublishCommand(yes), true, '명령인데 아니라고 함: ' + yes);
+  }
+  for (const no of ['올려도 될까?', '올리지 마', '제니 기사 좋다', '', '나중에 올려줄래',
+                    '올려 https://www.instagram.com/p/A/']) {
+    assert.strictEqual(cb.parsePublishCommand(no), false, '명령이 아닌데 명령이라 함: ' + no);
+  }
+});
+
+t('링크가 있으면 게시 명령이 아니다 (새 브리프 요청이다)', () => {
+  const p = cb.parseUpdate({ message: { message_id: 1, chat: { id: 7 },
+    text: '올려 @x https://www.instagram.com/p/AAA/' } });
+  assert.strictEqual(p.publishCommand, false);
+  assert.strictEqual(p.links.length, 1);
+});
+
+t('스스로 게시하는 경로가 없다 (절대 규칙)', () => {
+  /* publish_queued 로 넘기는 곳은 webhook 의 사람 명령 분기 하나뿐이어야 한다. */
+  const marks = (WEBHOOK_CODE.match(/'publish_queued'/g) || []).length;
+  assert.ok(marks >= 1, 'webhook 에 게시 접수가 없다');
+  assert.ok(/parsed\.publishCommand/.test(WEBHOOK_CODE), '사람 명령 없이 게시가 접수된다');
+  assert.ok(!/status: 'publish_queued'/.test(CRON_CODE.replace(/status: 'publish_queued' \}\)\.eq\('id', row\.id\)/g, '')),
+    '크론이 스스로 게시 대기로 넘기는 코드가 있다');
+  assert.ok(!/publishReel|publishPhotos/.test(CRON_CODE.split('async function runPublish')[0]),
+    '브리프 생성 경로에서 게시 API 를 부른다');
+});
+
+t('게시도 원자적으로 찜한다 (두 번 올리지 않는다)', () => {
+  assert.ok(/\.update\(\{ status: 'publishing' \}\)[\s\S]{0,120}\.eq\('status', 'publish_queued'\)[\s\S]{0,40}\.select\('id'\)/.test(CRON_CODE),
+    '게시 클레임이 원자적이지 않다 — 같은 브리프가 두 번 올라간다');
+  assert.ok(/다른 실행이 이미 게시 중/.test(CRON), '경합 시 조용히 빠지는 경로가 없다');
+});
+
+t('게시는 됐는데 댓글이 실패한 경우를 성공으로 뭉개지 않는다', () => {
+  assert.ok(/commentWarn/.test(CRON_CODE), '댓글 실패를 구분하지 않는다');
+  assert.ok(/댓글\/해시태그 실패/.test(CRON), '댓글 실패가 사람에게 안 알려진다');
+});
+
+t('릴스는 커버를 지정해 올린다', () => {
+  assert.ok(/cover_url/.test(PUB_CODE), '릴스 표지가 인스타 자동 프레임이 된다');
+  assert.ok(/media_type: 'REELS'/.test(PUB_CODE), '릴스 경로가 없다');
+  assert.ok(/publishReel\(videoUrl, pub\.caption, coverUrl\)/.test(CRON_CODE), '커버를 안 넘긴다');
+});
+
+t('컨테이너 준비를 기다리고, ERROR 는 즉시 포기한다', () => {
+  assert.ok(/status_code/.test(PUB_CODE), '컨테이너 상태를 안 본다');
+  assert.ok(/'ERROR' \|\| last === 'EXPIRED'/.test(PUB_CODE), 'ERROR 인데 계속 기다린다');
+  assert.ok(/컨테이너 준비 시간 초과/.test(PUB), '무한 대기 방지가 없다');
+});
+
+t('게시 라이브러리가 토큰을 오류 메시지에 싣지 않는다', () => {
+  assert.ok(/function graphError/.test(PUB_CODE), '오류 정리 함수가 없다');
+  const errFn = PUB_CODE.split('function graphError')[1].split('\n}')[0];
+  assert.ok(!/token/.test(errFn), '오류 메시지에 토큰이 들어간다');
+});
+
+t('무거운 의존은 지연 로드다', () => {
+  const top = PUB_CODE.split('\n').filter((l) => /^(const|let|var)\s.*require\(/.test(l));
+  assert.ok(!top.some((l) => /supabase/.test(l)), '최상단에서 supabase 를 로드한다 (CI 가 죽는다)');
 });
 
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');
