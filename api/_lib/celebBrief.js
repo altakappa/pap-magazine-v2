@@ -75,6 +75,10 @@ const _PUBLISH_WORDS = [
   '업로드', '업로드해', '업로드해줘',
   'publish', 'post', 'go',
 ];
+const _WEB_PUBLISH_WORDS = [
+  '웹만', '웹 올려', '웹올려', '웹에 올려', '웹에올려',
+  '웹게시', '웹 게시', '웹사이트 올려', '웹사이트에 올려', 'web',
+];
 
 function parsePublishCommand(text) {
   const raw = String(text || '').trim();
@@ -83,7 +87,18 @@ function parsePublishCommand(text) {
   _POST_RE.lastIndex = 0;
   if (/(마|말|않|안 |아니|취소|하지)/.test(raw)) return false;          // 부정·취소
   const norm = raw.toLowerCase().replace(/[\s.!~]+$/g, '').replace(/^[\s]+/, '');
-  return _PUBLISH_WORDS.includes(norm);
+  /* 2026-08-23 — 자동 감시로 브리프가 한꺼번에 여러 건 올 수 있게 되면서
+     "올려"만으로는 어떤 걸 올릴지 모호해졌다. "올려 12" / "올려 #12" 로
+     번호를 지정할 수 있다. 반환: false | { num: null|번호 } */
+  const m = /^(.+?)\s*#?(\d{1,8})$/.exec(norm);
+  const word = m ? m[1].trim() : norm;
+  const num = m ? parseInt(m[2], 10) : null;
+  if (_PUBLISH_WORDS.includes(word)) return { num, web: false };
+  /* "웹만"/"웹 올려" — 인스타 인사이트에 부담 없이 웹사이트에만 기사를 낸다
+     (도메니코 2026-08-23: "웹사이트는 인사이트 걱정 없이 방대하게 올려도 되거든").
+     AI 인용 경쟁의 병목이 웹 기사 물량이라 이 경로가 전략의 본체다. */
+  if (_WEB_PUBLISH_WORDS.includes(word)) return { num, web: true };
+  return false;
 }
 
 /* 텔레그램 update → 처리 대상 목록.

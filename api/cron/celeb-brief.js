@@ -36,6 +36,7 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const celebBrief = require('../_lib/celebBrief');
+const SITE = 'https://www.pap-magazine.com';
 const igDiscovery = require('../_lib/igDiscovery');
 const videoOverlay = require('../_lib/videoOverlay');   // ffmpeg 는 이 안에서 지연 로드
 
@@ -102,6 +103,103 @@ function publishHint(msg) {
     return '\n\n👉 영상 용량 문제입니다. 원본이 짧은 게시물로 다시 시도해주세요.';
   }
   return '';
+}
+
+/* ── 웹 전용 게시 ("웹만" — 2026-08-23) ─────────────────────────────
+   인스타에는 올리지 않고 웹사이트 기사만 낸다. sync-instagram 과 같은 재료
+   (buildArticleRow·archiveImagesToStorage)를 재사용한다 — 기사 모양이 두 벌로
+   갈라지지 않게. status='published' 는 도메니코의 "웹만" 명령이 곧 발행 판단이다. */
+async function runWebPublish(row, res, dry) {
+  const imp = require('../_lib/instagramImport');
+
+  const webFail = async (msg) => {
+    await supabaseAdmin.from('celeb_brief_queue')
+      .update({ status: 'web_publish_failed', error: String(msg).slice(0, 400) }).eq('id', row.id);
+    await tell('웹 게시 실패 — ' + msg);
+    return res.status(200).json({ ok: false, error: String(msg).slice(0, 300),
+      note: note(res, '웹 게시 실패: ' + String(msg).slice(0, 150)) });
+  };
+
+  // 자리 찜 (게시와 같은 원자적 클레임)
+  const { data: claimed } = await supabaseAdmin.from('celeb_brief_queue')
+    .update({ status: 'web_publishing' }).eq('id', row.id).eq('status', 'web_queued').select('id');
+  if (!claimed || !claimed.length) {
+    return res.status(200).json({ ok: true, note: note(res, '다른 실행이 이미 웹 게시 중 — 건너뜀') });
+  }
+
+  try {
+    // 이미 같은 소스로 기사가 있으면 링크만 알려준다 (중복 기사 방지)
+    const { data: ex } = await supabaseAdmin.from('articles')
+      .select('id, slug, custom_url').eq('source_instagram_post_id', row.shortcode).limit(1);
+    if (ex && ex.length) {
+      const url = SITE + '/article/' + (ex[0].slug || ex[0].custom_url || ex[0].id);
+      await supabaseAdmin.from('celeb_brief_queue')
+        .update({ status: 'web_published', error: null }).eq('id', row.id);
+      await tell('이미 웹에 있는 기사입니다 —\n' + url);
+      return res.status(200).json({ ok: true, existing: true, url,
+        note: note(res, '이미 웹에 있는 기사 — 링크만 회신') });
+    }
+
+    // 미디어는 CDN 만료 때문에 지금 다시 가져온다 (브리프 시점 URL 은 죽었을 수 있다)
+    const m = await igDiscovery.findPostByShortcode(row.username, row.shortcode, { maxCount: 25 });
+    if (!m) return await webFail('@' + row.username + ' 최근 게시물에서 ' + row.shortcode + ' 를 못 찾았습니다.');
+    const items = celebBrief.collectMediaItems(m);
+    const imageUrls = items.filter((i) => i.type === 'image').map((i) => i.url);
+    const videoUrls = items.filter((i) => i.type === 'video').map((i) => i.url);
+    if (!imageUrls.length && items.length) imageUrls.push(items[0].thumb || items[0].url);
+
+    // 본문: 브리프에서 검토된 것 우선, 없으면(구버전 브리프) 재생성
+    let gen = row.result && row.result.gen;
+    if (!gen || !gen.body_ko) {
+      gen = await imp.generateArticleFromPost({
+        id: row.shortcode,
+        caption: String(m.caption || ''),
+        mediaUrls: items.map((i) => i.thumb || i.url),
+        permalink: m.permalink || row.permalink,
+        timestamp: m.timestamp,
+        username: row.username,
+      });
+    }
+
+    const post = {
+      id: row.shortcode,
+      permalink: m.permalink || row.permalink,
+      timestamp: m.timestamp || (row.result && row.result.web && row.result.web.timestamp) || null,
+      mediaUrls: imageUrls,
+      videoUrls,
+      mediaType: items[0] && items[0].type === 'video' ? 'VIDEO' : 'IMAGE',
+      caption: String(m.caption || ''),
+    };
+
+    // IG CDN 은 수일 내 만료 — 영구본으로 복사 (sync-instagram 과 동일 경로)
+    const archivedUrls = await imp.archiveImagesToStorage(post, 10, 'celeb-web');
+    let archivedVideos = [];
+    if (videoUrls.length) {
+      try { archivedVideos = await imp.archiveVideosToStorage(post, 2, 'celeb-web'); }
+      catch (e) { console.warn('[celeb-web] 영상 보관 실패(기사에는 이미지로 진행):', (e && e.message) || e); }
+    }
+
+    const art = imp.buildArticleRow(post, gen, { status: 'published', archivedUrls, videoUrls: archivedVideos });
+    const { data: inserted, error: insErr } = await supabaseAdmin.from('articles')
+      .insert(art).select('id, slug, custom_url').single();
+    if (insErr) {
+      if (insErr.code === '23505') return await webFail('같은 기사가 방금 다른 실행에서 만들어졌습니다.');
+      throw insErr;
+    }
+
+    const url = SITE + '/article/' + (inserted.slug || inserted.custom_url || inserted.id);
+    await supabaseAdmin.from('celeb_brief_queue').update({
+      status: 'web_published', error: null,
+      result: Object.assign({}, row.result || {}, { webArticle: { id: inserted.id, url } }),
+    }).eq('id', row.id);
+
+    await tell('🌐 웹 게시 완료 — ' + (gen.title_ko || gen.title_en || '') + '\n' + url
+      + '\n(인스타에는 올라가지 않았습니다. 인스타도 올리려면 "올려 ' + row.id + '")');
+    return res.status(200).json({ ok: true, article_id: inserted.id, url,
+      note: note(res, '웹 게시 완료: ' + String(gen.title_ko || '').slice(0, 60)) });
+  } catch (e) {
+    return await webFail(String((e && e.message) || e).slice(0, 300));
+  }
 }
 
 async function runPublish(row, res, dry) {
@@ -242,6 +340,14 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     return res.status(500).json({ ok: false, error: 'publish queue query failed' });
   }
   if (pubRows && pubRows.length) return await runPublish(pubRows[0], res, dry);
+
+  /* ── 0.6 웹 전용 게시 ("웹만") ─────────────────────────────────
+     인스타 인사이트에 부담 없이 웹사이트에만 기사를 낸다(도메니코 2026-08-23).
+     이 상태도 도메니코의 명령("웹만")으로만 진입한다 — 발행 판단은 사람. */
+  const { data: webRows } = await supabaseAdmin.from('celeb_brief_queue')
+    .select('*').eq('status', 'web_queued')
+    .order('created_at', { ascending: true }).limit(1);
+  if (webRows && webRows.length) return await runWebPublish(webRows[0], res, dry);
 
   // ── 1. 가장 오래된 batch 하나 (한 회차 1건 — 텔레그램 도배 방지) ──
   const { data: queued, error: qErr } = await supabaseAdmin.from('celeb_brief_queue')
@@ -489,11 +595,23 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
         .join('\n');
       await tg.sendTextToChatSafe(rows[0].chat_id, preview);
     }
+    /* 브리프 번호 — 여러 건이 동시에 대기할 때 "올려 <번호>" 로 고르게 한다
+       (자동 감시 도입으로 동시 도착이 정상 상황이 됐다). */
+    await tg.sendTextToChatSafe(rows[0].chat_id,
+      '✅ 브리프 #' + rows[0].id + ' — 게시: "올려 ' + rows[0].id + '" (대기가 이것뿐이면 그냥 "올려")');
 
     await supabaseAdmin.from('celeb_brief_queue').update({
       status: 'done', processed_at: new Date().toISOString(), error: null,
       result: {
         slides: media.length, title: gen.title_ko, title_en: gen.title_en, variant,
+        /* "웹만" 게시가 브리프에서 검토한 본문을 그대로 쓰도록 전문을 보관.
+           재생성하면 도메니코가 본 것과 다른 글이 나간다. */
+        gen: {
+          title_ko: gen.title_ko, title_en: gen.title_en,
+          body_ko: gen.body_ko, body_en: gen.body_en,
+          category: gen.category, tags: gen.tags, slug: gen.slug, faq: gen.faq,
+        },
+        web: { permalink: head.permalink || rows[0].permalink, timestamp: head.timestamp || null },
         videos: media.filter((m) => m.kind === 'video').length,
         video_skipped_too_big: tooBig, missing_en: missingEn, video_sizes: videoSizes,
         has_comment: !!comments.comment,

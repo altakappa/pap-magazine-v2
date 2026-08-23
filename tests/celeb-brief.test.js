@@ -366,9 +366,20 @@ t('사진·영상을 한 묶음으로 보낸다', () => {
     '텔레그램 쪽에 영상 경로가 없다');
 });
 
-t('발행하지 않는다 — DB 기사 INSERT 도, 인스타 게시도 없다', () => {
-  assert.ok(!/from\('articles'\)[\s\S]{0,80}\.insert/.test(CRON_CODE), '기사를 DB 에 넣으면 안 된다 (발행 판단은 도메니코)');
-  assert.ok(!/media_publish/.test(CRON_CODE), '인스타 게시는 도메니코가 직접 한다');
+t('자동 발행이 없다 — 기사 INSERT 는 사람 명령 경로(runWebPublish)에만', () => {
+  /* 2026-08-23 정밀화: "웹만" 웹 게시가 생기면서 기사 INSERT 가 크론에 들어왔다.
+     단 그 경로는 status=web_queued 에서만 돌고, 그 상태는 웹훅이 도메니코의
+     "웹만" 명령을 받았을 때만 만든다 — 발행 판단은 여전히 사람이다.
+     지키는 것: 브리프 생성 경로(사람 명령 밖)에는 INSERT 가 없어야 한다. */
+  const webStart = CRON_CODE.indexOf('async function runWebPublish');
+  const webEnd = CRON_CODE.indexOf('async function runPublish');
+  assert.ok(webStart >= 0 && webEnd > webStart, 'runWebPublish 경계를 못 찾았다');
+  const outside = CRON_CODE.slice(0, webStart) + CRON_CODE.slice(webEnd);
+  assert.ok(!/from\('articles'\)[\s\S]{0,80}\.insert/.test(outside),
+    '사람 명령 밖에서 기사를 DB 에 넣는다 — 07-20 스팸의 재림');
+  assert.ok(!/media_publish/.test(CRON_CODE), '인스타 게시는 igPublish 경유(도메니코 "올려")만');
+  assert.ok(/eq\('status', 'web_queued'\)/.test(CRON_CODE),
+    'runWebPublish 진입이 web_queued 로 제한되지 않았다');
 });
 
 t('링크를 나눠 보내도 한 브리프로 합친다', () => {
@@ -553,12 +564,33 @@ const PUB_CODE = PUB.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '
 
 t('게시 명령을 좁게 판정한다 (잘못 올리는 게 안 올리는 것보다 나쁘다)', () => {
   for (const yes of ['올려', '올려줘', '게시해줘', '업로드', 'publish', 'GO', '올려.']) {
-    assert.strictEqual(cb.parsePublishCommand(yes), true, '명령인데 아니라고 함: ' + yes);
+    const r = cb.parsePublishCommand(yes);
+    assert.ok(r && r.num === null && r.web === false, '명령인데 아니라고 함: ' + yes);
   }
   for (const no of ['올려도 될까?', '올리지 마', '제니 기사 좋다', '', '나중에 올려줄래',
                     '올려 https://www.instagram.com/p/A/']) {
     assert.strictEqual(cb.parsePublishCommand(no), false, '명령이 아닌데 명령이라 함: ' + no);
   }
+});
+
+t('브리프 번호를 지정할 수 있다 — "올려 12" (동시 도착 모호성 해소)', () => {
+  /* 자동 감시(2026-08-23)로 브리프가 한꺼번에 여러 건 오는 게 정상이 됐다.
+     "올려"가 최신 것을 집으면 보고 있던 것과 다른 게 올라간다. */
+  assert.deepStrictEqual(cb.parsePublishCommand('올려 12'), { num: 12, web: false });
+  assert.deepStrictEqual(cb.parsePublishCommand('올려 #7'), { num: 7, web: false });
+  assert.deepStrictEqual(cb.parsePublishCommand('게시해줘 3'), { num: 3, web: false });
+  assert.strictEqual(cb.parsePublishCommand('12'), false, '숫자만으로는 명령이 아니다');
+  assert.strictEqual(cb.parsePublishCommand('올리지 마 12'), false);
+});
+
+t('웹훅이 여러 후보일 때 목록을 되물어본다 (임의로 고르지 않는다)', () => {
+  assert.ok(/ambiguous_publish/.test(WEBHOOK_CODE), '모호성 분기가 없다 — 최신 것을 집으면 사고다');
+  assert.ok(/limit\(5\)/.test(WEBHOOK_CODE), '후보를 여러 건 조회하지 않는다');
+  assert.ok(/eq\('id', wantNum\)/.test(WEBHOOK_CODE), '번호 지정 경로가 없다');
+});
+
+t('크론이 브리프 번호를 항상 알려준다 (번호를 모르면 지정을 못 한다)', () => {
+  assert.ok(/브리프 #' \+ rows\[0\]\.id/.test(CRON_CODE), '브리프 메시지에 번호가 없다');
 });
 
 t('링크가 있으면 게시 명령이 아니다 (새 브리프 요청이다)', () => {
@@ -818,14 +850,57 @@ t('기사 생성 프롬프트가 주체와 질문을 요구한다', () => {
 t('게시 실패한 건도 "올려" 로 다시 잡힌다', () => {
   /* 2026-08-23: 권한 부족으로 실패하자 그 행이 publish_failed 로 굳었고,
      토큰을 고쳐도 "올려" 가 그 건을 못 집었다 (엉뚱한 옛 브리프가 잡혔다). */
-  assert.ok(/\.in\('status', \['done', 'publish_failed'\]\)/.test(WEBHOOK_CODE),
+  /* 2026-08-23 후보 집합이 CAND 변수로 이동 (웹 게시 분기) — 정의를 검사한다 */
+  assert.ok(/\['done', 'publish_failed', 'web_published', 'web_publish_failed'\]/.test(WEBHOOK_CODE),
     '실패한 건을 재시도 대상에서 빠뜨렸다');
+  assert.ok(/\.in\('status', CAND\)/.test(WEBHOOK_CODE), '후보 집합을 조회에 안 쓴다');
 });
 
 t('게시 실패 메시지가 할 일을 알려준다', () => {
   assert.ok(/function publishHint/.test(CRON_CODE), 'publishHint 가 없다');
   assert.ok(/instagram_content_publish/.test(CRON_CODE), '권한 오류 안내가 없다');
   assert.ok(/publishHint\(msg\)/.test(CRON_CODE), '실패 알림에 안내를 안 붙였다');
+});
+
+/* ─── 웹 전용 게시 "웹만" (도메니코 2026-08-23: 인사이트 걱정 없이 웹에만) ─── */
+
+t('"웹만" 계열이 웹 게시 명령으로 파싱된다', () => {
+  assert.deepStrictEqual(cb.parsePublishCommand('웹만'), { num: null, web: true });
+  assert.deepStrictEqual(cb.parsePublishCommand('웹만 12'), { num: 12, web: true });
+  assert.deepStrictEqual(cb.parsePublishCommand('웹에 올려'), { num: null, web: true });
+  assert.deepStrictEqual(cb.parsePublishCommand('올려'), { num: null, web: false });
+  assert.strictEqual(cb.parsePublishCommand('웹 보여줘'), false);
+});
+
+t('웹훅이 웹 게시를 web_queued 로 넘긴다 (직접 발행하지 않는다)', () => {
+  assert.ok(/toWeb \? 'web_queued' : 'publish_queued'/.test(WEBHOOK_CODE), '웹 타깃 분기가 없다');
+  assert.ok(/web_publish_failed/.test(WEBHOOK_CODE), '웹 실패 건 재시도 경로가 없다');
+});
+
+t('웹 게시가 sync-instagram 과 같은 재료를 쓴다 (기사 모양 한 벌)', () => {
+  assert.ok(/runWebPublish/.test(CRON_CODE), '웹 게시 함수가 없다');
+  assert.ok(/buildArticleRow\(post, gen, \{ status: 'published'/.test(CRON_CODE),
+    'buildArticleRow 를 안 쓰면 기사 스키마가 갈라진다');
+  assert.ok(/archiveImagesToStorage\(post, 10, 'celeb-web'\)/.test(CRON_CODE),
+    'CDN 만료 대비 영구 보관이 없다');
+});
+
+t('웹 게시는 인스타 발행 코드를 부르지 않는다', () => {
+  const start = CRON_CODE.indexOf('async function runWebPublish');
+  const end = CRON_CODE.indexOf('async function runPublish');
+  assert.ok(start >= 0 && end > start, '함수 경계를 못 찾았다');
+  const body = CRON_CODE.slice(start, end);
+  assert.ok(!/igPublish|publishReel|publishPhotos|addComment/.test(body),
+    '웹 전용 경로에 인스타 발행이 섞였다');
+});
+
+t('브리프가 gen 전문을 보관한다 (웹 게시 때 검토본 그대로)', () => {
+  assert.ok(/gen: \{\s*title_ko: gen\.title_ko/.test(CRON_CODE),
+    'gen 미보관 — 웹 게시가 도메니코가 본 것과 다른 글을 만든다');
+});
+
+t('중복 웹 기사를 만들지 않는다 (source_instagram_post_id 선조회)', () => {
+  assert.ok(/eq\('source_instagram_post_id', row\.shortcode\)/.test(CRON_CODE));
 });
 
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');

@@ -161,32 +161,68 @@ module.exports = async function handler(req, res) {
      길게는 3분이 걸려서 webhook 안에서 하면 텔레그램이 재전송한다.
      대상은 이 채팅의 **가장 최근에 완성된 브리프 하나**뿐이다. */
   if (parsed.publishCommand) {
-    const { data: latest, error: findErr } = await supabaseAdmin
-      .from('celeb_brief_queue')
-      .select('id, batch_key, result, status')
-      /* publish_failed 도 대상에 넣는다 — 2026-08-23: 권한 부족으로 한 번 실패하자
-         그 행이 publish_failed 로 굳어, 토큰을 고쳐도 "올려" 가 그 건을 다시 못 집었다.
-         (대신 그 앞의 오래된 done 브리프가 잡혀서 엉뚱한 걸 올릴 뻔했다) */
-      .eq('chat_id', parsed.chatId).in('status', ['done', 'publish_failed'])
-      .order('processed_at', { ascending: false }).limit(1);
-    const row = latest && latest[0];
-    if (findErr || !row) {
-      await say(parsed.chatId, findErr
-        ? ('브리프 조회 실패: ' + String(findErr.message).slice(0, 150))
-        : '올릴 브리프가 없습니다. 먼저 인스타 링크를 보내주세요.');
-      return OK(res, { ok: true, skipped: 'no_brief_to_publish' });
+    /* 2026-08-23 — 자동 감시로 브리프가 동시에 여러 건 도착할 수 있다.
+       "올려"가 '가장 최근 것'을 집으면 도메니코가 보던 것과 다른 게 올라간다.
+       규칙: 번호 지정("올려 12")이 최우선 · 번호 없으면 후보가 정확히 1건일 때만
+       진행 · 여러 건이면 목록을 되물어본다. */
+    const wantNum = parsed.publishCommand.num;
+    const toWeb = !!parsed.publishCommand.web;
+    /* IG 게시는 웹에만 낸 것도 나중에 올릴 수 있다. 웹 게시는 이미 웹에 낸 것을
+       또 내지 않는다. 인스타에 이미 올라간 것(published)은 sync-instagram 이
+       웹 기사를 만들므로 웹 게시 대상이 아니다. */
+    const CAND = toWeb
+      ? ['done', 'publish_failed', 'web_publish_failed']
+      : ['done', 'publish_failed', 'web_published', 'web_publish_failed'];
+    let row = null;
+    if (wantNum != null) {
+      const { data, error: findErr } = await supabaseAdmin
+        .from('celeb_brief_queue')
+        .select('id, batch_key, result, status')
+        .eq('chat_id', parsed.chatId).eq('id', wantNum)
+        .in('status', CAND).limit(1);
+      row = data && data[0];
+      if (findErr || !row) {
+        await say(parsed.chatId, findErr
+          ? ('브리프 조회 실패: ' + String(findErr.message).slice(0, 150))
+          : ('#' + wantNum + ' 브리프를 찾을 수 없습니다. 이미 게시됐거나 번호가 다릅니다.'));
+        return OK(res, { ok: true, skipped: 'brief_not_found' });
+      }
+    } else {
+      const { data, error: findErr } = await supabaseAdmin
+        .from('celeb_brief_queue')
+        .select('id, batch_key, result, status, processed_at')
+        /* publish_failed 도 대상 — 실패한 건이 재시도로 다시 잡혀야 한다 */
+        .eq('chat_id', parsed.chatId).in('status', CAND)
+        .order('processed_at', { ascending: false }).limit(5);
+      const cands = data || [];
+      if (findErr || !cands.length) {
+        await say(parsed.chatId, findErr
+          ? ('브리프 조회 실패: ' + String(findErr.message).slice(0, 150))
+          : '올릴 브리프가 없습니다. 먼저 인스타 링크를 보내주세요.');
+        return OK(res, { ok: true, skipped: 'no_brief_to_publish' });
+      }
+      if (cands.length > 1) {
+        const list = cands.map((c) => '#' + c.id + ' — '
+          + ((c.result && (c.result.title || c.result.title_en)) || '(제목 없음)')
+          + (c.status === 'publish_failed' ? ' (이전 게시 실패)' : '')).join('\n');
+        await say(parsed.chatId, '대기 중인 브리프가 ' + cands.length + '건입니다. 번호로 지정해주세요:\n'
+          + list + '\n\n예) 올려 ' + cands[0].id);
+        return OK(res, { ok: true, skipped: 'ambiguous_publish', candidates: cands.length });
+      }
+      row = cands[0];
     }
     const { error: markErr } = await supabaseAdmin.from('celeb_brief_queue')
-      .update({ status: 'publish_queued', error: null })
-      .eq('id', row.id).in('status', ['done', 'publish_failed']);
+      .update({ status: toWeb ? 'web_queued' : 'publish_queued', error: null })
+      .eq('id', row.id).in('status', CAND);
     if (markErr) {
       await say(parsed.chatId, '게시 접수 실패: ' + String(markErr.message).slice(0, 150));
       return OK(res, { ok: true, skipped: 'publish_mark_failed' });
     }
     const title = (row.result && (row.result.title || row.result.title_en)) || '';
-    await say(parsed.chatId, '게시 접수: ' + (title || '(제목 없음)') + '\n올리는 중입니다…');
+    await say(parsed.chatId, (toWeb ? '웹 게시 접수: ' : '게시 접수: ') + (title || '(제목 없음)')
+      + (toWeb ? '\n웹사이트에만 올립니다 (인스타 게시 없음)…' : '\n올리는 중입니다…'));
     await wakeProcessor();
-    return OK(res, { ok: true, publish_queued: row.id });
+    return OK(res, { ok: true, [toWeb ? 'web_queued' : 'publish_queued']: row.id });
   }
 
   if (!parsed.links.length) {

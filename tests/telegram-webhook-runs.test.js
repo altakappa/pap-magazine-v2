@@ -94,6 +94,15 @@ if (!deps) {
     assert.ok(sent.some((s) => /올릴 브리프가 없습니다/.test(s.text)), '브리프가 없을 때 안내가 없다');
     n++; console.log('  ✓ 게시 명령이 예외 없이 처리된다');
 
+    res = await call(msg('올려 123'));
+    assert.strictEqual(res.statusCode, 200, '번호 지정 게시에서 예외: ' + JSON.stringify(res.body));
+    assert.ok(sent.some((s) => /#123 브리프를 찾을 수 없습니다/.test(s.text)), '없는 번호 안내가 없다');
+    n++; console.log('  ✓ 번호 지정 게시가 예외 없이 처리된다');
+
+    res = await call(msg('웹만'));
+    assert.strictEqual(res.statusCode, 200, '웹 게시 명령에서 예외: ' + JSON.stringify(res.body));
+    n++; console.log('  ✓ 웹 전용 게시 명령이 예외 없이 처리된다');
+
     res = await call(msg('안녕'), { 'x-telegram-bot-api-secret-token': 'wrong' });
     assert.strictEqual(res.statusCode, 401, '시크릿이 틀린데 통과했다');
     n++; console.log('  ✓ 시크릿이 틀리면 401');
