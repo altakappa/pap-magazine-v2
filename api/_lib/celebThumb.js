@@ -52,6 +52,52 @@ const SYMBOL_XY = [505, 1219];
 const MAX_LINES = 2;
 const MIN_LINES = 2;
 
+/* ── 인스타 피드 그리드 대응 (도메니코 2026-08-23) ────────────────────────
+   프로필/릴스 그리드는 커버를 **4:5** 로 자른다. 우리 릴스 커버는 9:16 이라
+   세로의 70% 만 남고 위아래가 날아간다. 실제로 지수 건에서 이마와 눈이 잘렸다.
+
+   ① PHOTO — 사진에서 얼굴 위쪽이 잘리지 않게 사진만 아래로 민다.
+      비운 윗부분은 사진 맨 윗줄을 늘려 메운다(배경이 대개 단색이라 티가 안 난다).
+      확대(zoom)로 맞추려면 이 사진 기준 2배가 필요해 클로즈업이 돼버린다 — 그래서 이동.
+   ② TEXT  — 카스쿨(몬스타엑스) 건과 나란히 놓고 보니 우리 글자가 위로 떠 보인다.
+      도메니코가 같은 PSD 로 직접 만든 그 건이 기준이다. 차이 실측 ≈ 41px(글자)
+      ~77px(심볼). 그 사이 값으로 잡는다.
+      **상한이 있다**: 심볼 bbox 하단이 1539 이고 4:5 안전구간 끝이 1635 이라
+      96px 을 넘겨 내리면 피드에서 심볼이 잘린다.                            */
+const FEED_SAFE_RATIO = 0.8;              // 인스타 그리드 4:5
+const TEXT_SHIFT = { feed: 0, reels: 60 };// feed(1080x1350)는 이미 4:5 라 안 잘린다
+const TEXT_SHIFT_MAX = 96;                // 심볼이 안전구간에 남는 한계
+const PHOTO_SHIFT_MAX = 420;              // 이보다 밀면 하단이 너무 잘린다
+const PHOTO_FACE_MARGIN = 40;             // 안전구간 위 경계에서 얼굴까지 최소 여유
+
+/* 피드에서 잘리지 않는 세로 구간 [top, bottom] */
+function safeBand(W, H) {
+  const h = Math.round(W / FEED_SAFE_RATIO);
+  const top = Math.round((H - h) / 2);
+  return [top, top + h];
+}
+
+/* focusTop(0~1, 얼굴 맨 위의 세로 위치)을 받아 사진을 몇 px 내릴지 계산한다.
+   값이 없으면(구버전 브리프·모델 실패) 0 — 예전과 똑같이 동작한다. */
+function photoShiftFor(W, H, focusTop) {
+  // Number(null) 과 Number('') 은 0 이다 — 그대로 두면 "값 없음"이 "맨 위에 얼굴"로
+  // 읽혀 사진이 상한까지 밀린다. 숫자만 받는다.
+  if (typeof focusTop !== 'number') return 0;
+  const f = focusTop;
+  if (!isFinite(f) || f < 0 || f > 1) return 0;
+  const [safeTop] = safeBand(W, H);
+  const d = Math.round(safeTop + PHOTO_FACE_MARGIN - f * H);
+  return Math.max(0, Math.min(PHOTO_SHIFT_MAX, d));
+}
+
+/* override 를 주면 그 값을 쓴다. PSD 대조 테스트는 0 을 넘겨
+   "템플릿 재현 정확도"와 "인스타 그리드 대응 오프셋"을 분리해서 잰다. */
+function textShiftFor(variant, override) {
+  const v = typeof override === 'number' ? override
+    : (TEXT_SHIFT[variant] != null ? TEXT_SHIFT[variant] : 0);
+  return Math.max(0, Math.min(TEXT_SHIFT_MAX, v));
+}
+
 const VARIANTS = {
   feed: {
     W: 1080, H: 1350,
@@ -135,18 +181,19 @@ function _layers(titleKo, titleEn, opts) {
   if (!koLines) throw new Error('국문 제목이 2줄을 넘습니다. 제목을 줄여주세요: ' + titleKo);
   if (!enLines) throw new Error('영문 제목이 2줄을 넘습니다. 제목을 줄여주세요: ' + titleEn);
 
+  const dy = textShiftFor((opts && opts.variant) || 'feed', opts && opts.textShift);
   const paths = [];
-  koLines.forEach((l, i) => paths.push(lineToPath(F.ko, l, KO_X, V.koBase + i * KO_LEAD, KO_PX, koTrackPx)));
-  enLines.forEach((l, i) => paths.push(lineToPath(F.en, l, EN_X, V.enBase + i * EN_LEAD, EN_PX, enTrackPx)));
+  koLines.forEach((l, i) => paths.push(lineToPath(F.ko, l, KO_X, V.koBase + dy + i * KO_LEAD, KO_PX, koTrackPx)));
+  enLines.forEach((l, i) => paths.push(lineToPath(F.en, l, EN_X, V.enBase + dy + i * EN_LEAD, EN_PX, enTrackPx)));
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + V.W + '" height="' + V.H + '">'
     + '<path fill="#ffffff" d="' + paths.join(' ') + '"/></svg>';
 
   return {
     V,
     composite: [
-      { input: path.join(ASSETS, V.shadow), left: V.shadowXY[0], top: V.shadowXY[1] },
+      { input: path.join(ASSETS, V.shadow), left: V.shadowXY[0], top: V.shadowXY[1] + dy },
       { input: Buffer.from(svg), left: 0, top: 0 },
-      { input: path.join(ASSETS, 'symbol70.png'), left: V.symbolXY[0], top: V.symbolXY[1] },
+      { input: path.join(ASSETS, 'symbol70.png'), left: V.symbolXY[0], top: V.symbolXY[1] + dy },
     ],
   };
 }
@@ -164,6 +211,19 @@ async function renderOverlay(titleKo, titleEn, opts) {
   }).composite(composite).png().toBuffer();
 }
 
+/* 사진을 dy 만큼 아래로 민다. 비는 윗부분은 사진 맨 윗줄을 늘려 메운다.
+   확대가 아니라 이동이라 화질과 구도가 그대로다. 배경이 단색인 화보에서
+   이음매가 사실상 안 보인다(지수 건에서 확인). */
+async function shiftPhotoDown(buf, W, H, dy) {
+  const sharp = require('sharp');
+  const strip = await sharp(buf).extract({ left: 0, top: 0, width: W, height: 2 })
+    .resize(W, dy, { fit: 'fill' }).toBuffer();
+  const moved = await sharp(buf).extract({ left: 0, top: 0, width: W, height: H - dy }).toBuffer();
+  return sharp({ create: { width: W, height: H, channels: 3, background: '#000' } })
+    .composite([{ input: strip, left: 0, top: 0 }, { input: moved, left: 0, top: dy }])
+    .jpeg({ quality: 95 }).toBuffer();
+}
+
 async function renderThumb(photoBuffer, titleKo, titleEn, opts) {
   const sharp = require('sharp');                                  // 지연 로드
   /* 조판은 _layers 한 곳에서만 만든다 — 여기서 다시 짜면 오버레이와 갈라진다.
@@ -171,12 +231,17 @@ async function renderThumb(photoBuffer, titleKo, titleEn, opts) {
   const { V, composite } = _layers(titleKo, titleEn, opts);
 
   // 1) 사진 — 가운데 크롭 풀블리드
-  const base = await sharp(photoBuffer, { failOn: 'none' })
+  let base = await sharp(photoBuffer, { failOn: 'none' })
     .rotate()
     .resize(V.W, V.H, { fit: 'cover', position: 'centre' })
     .toBuffer();
 
-  // 2) 그림자 → 3) 글자 → 4) 심볼 (전부 _layers 가 준 것)
+  /* 2) 피드 그리드(4:5)에서 얼굴이 잘리지 않게 사진만 아래로 민다.
+        opts.focusTop 이 없으면 0 이라 예전과 동일하게 동작한다. */
+  const shift = photoShiftFor(V.W, V.H, opts && opts.focusTop);
+  if (shift > 0) base = await shiftPhotoDown(base, V.W, V.H, shift);
+
+  // 3) 그림자 → 글자 → 심볼 (전부 _layers 가 준 것)
   return sharp(base).composite(composite).jpeg({ quality: 92 }).toBuffer();
 }
 
@@ -188,4 +253,6 @@ module.exports = {
   _fonts: fonts,
   W, H, KO_PX, KO_LEAD, KO_TRACK, EN_PX, EN_LEAD, EN_TRACK,
   KO_X, KO_BASE, EN_X, EN_BASE, SHADOW_XY, SYMBOL_XY, MAX_LINES, MIN_LINES,
+  FEED_SAFE_RATIO, TEXT_SHIFT, TEXT_SHIFT_MAX, PHOTO_SHIFT_MAX,
+  safeBand, photoShiftFor, textShiftFor, shiftPhotoDown,
 };

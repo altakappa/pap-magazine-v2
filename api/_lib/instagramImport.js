@@ -514,6 +514,12 @@ async function generateArticleFromPost(post, opts){
     /* 2026-08-23 — 첫 댓글은 우리가 직접 단다. 기사 마지막이 질문으로 끝나는 비율이
        실측 67% 뿐이라, 나머지 33% 는 댓글이 비고 그러면 대댓글 해시태그까지 통째로 못 달렸다.
        (브리프 9·10번이 실제로 그랬다) 그래서 질문을 따로 항상 받는다. */
+    /* 2026-08-23 — 인스타 프로필/릴스 그리드는 커버를 4:5 로 자른다.
+       9:16 커버는 위아래가 날아가고, 지수 건에서 실제로 이마와 눈이 잘렸다.
+       얼굴이 어디 있는지는 사진을 본 모델만 안다. 그래서 여기서 받는다. */
+    '  "cover_focus_top": 0.08,  // 첫 번째 이미지에서 **인물 얼굴의 맨 위**(헤어라인)가',
+    '    // 세로로 어디쯤인지. 0=이미지 맨 위, 1=맨 아래. 인물이 없으면 null.',
+    '    // 머리카락 끝이 아니라 이마가 시작되는 지점 기준.',
     '  "comment_question": "(독자에게 던지는 질문 한 문장. 반드시 ? 로 끝낼 것. 기사 내용에 붙어 있어야 한다. 20~40자)",',
     '  "slug": "english-url-friendly-slug-from-title",',
     '  "faq": [  // AEO: 독자가 검색엔진/AI에 실제로 물어볼 자연어 질문 3개 (한국어)',
@@ -628,6 +634,15 @@ async function generateArticleFromPost(post, opts){
           .slice(0, 4)
       : [],
     comment_question: String(parsed.comment_question || '').trim(),
+    // 커버에서 얼굴 맨 위의 세로 위치(0~1). 범위를 벗어나거나 없으면 null → 보정 안 함.
+    cover_focus_top: (function (v) {
+      // null·''·undefined 는 Number() 에서 0 이 된다 — "맨 위에 얼굴"로 오해되면
+      // 사진이 상한까지 밀린다. 숫자로 들어온 것만 받는다.
+      if (typeof v !== 'number' && typeof v !== 'string') return null;
+      if (v === '') return null;
+      const n = Number(v);
+      return isFinite(n) && n >= 0 && n <= 1 ? n : null;
+    })(parsed.cover_focus_top),
     slug:     String(parsed.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || null,
     // AEO FAQ (2026-07-16) — {q,a} 검증 후 최대 5개
     faq: Array.isArray(parsed.faq)

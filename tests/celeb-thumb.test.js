@@ -146,7 +146,12 @@ if (!deps) {
       if (!fs.existsSync(c.ref) || !fs.existsSync(c.photo)) {
         throw new Error('대조용 fixture 가 없다: ' + c.variant);
       }
-      const out = await thumb.renderThumb(fs.readFileSync(c.photo), KO, EN, { variant: c.variant });
+      /* textShift: 0 — PSD 합성본과 대조하는 자리다. 인스타 그리드용 오프셋
+         (TEXT_SHIFT)은 여기서 빼고 "템플릿을 정확히 재현하는가"만 잰다.
+         두 가지를 섞으면 오프셋을 조정할 때마다 이 테스트가 깨져서
+         진짜 조판 회귀를 못 잡는다. */
+      const out = await thumb.renderThumb(fs.readFileSync(c.photo), KO, EN,
+        { variant: c.variant, textShift: 0 });
       const a = await sharp(c.ref).removeAlpha().raw().toBuffer();
       const b = await sharp(out).raw().toBuffer();
       assert.strictEqual(a.length, b.length, c.variant + ' 캔버스 크기가 다르다');
@@ -177,6 +182,67 @@ t('renderThumb 이 조판을 다시 짜지 않는다 (_layers 한 벌)', () => {
   const body = src.split('async function renderThumb(')[1].split('module.exports')[0];
   assert.ok(/_layers\(titleKo, titleEn, opts\)/.test(body), 'renderThumb 이 _layers 를 안 쓴다');
   assert.ok(!/wrapHeadline\(/.test(body), 'renderThumb 안에 조판 코드가 복제돼 있다');
+});
+
+
+/* ─── 피드 4:5 크롭 대응 (도메니코 2026-08-23) ─────────────────────────── */
+
+t('피드 안전구간을 4:5 로 잡는다', () => {
+  const TH = require('../api/_lib/celebThumb');
+  assert.deepStrictEqual(TH.safeBand(1080, 1920), [285, 1635], '릴스 안전구간이 틀렸다');
+  assert.deepStrictEqual(TH.safeBand(1080, 1350), [0, 1350], 'feed 는 이미 4:5 라 통째로 안전해야 한다');
+});
+
+t('얼굴이 위에 있으면 사진을 그만큼 내린다', () => {
+  const TH = require('../api/_lib/celebThumb');
+  // 지수 건: 얼굴 맨 위가 이미지의 7.8% 지점 → 175px 내려야 안전구간에 들어온다
+  assert.strictEqual(TH.photoShiftFor(1080, 1920, 0.078), 175);
+  // feed 판형은 잘릴 게 없으니 건드리지 않는다
+  assert.strictEqual(TH.photoShiftFor(1080, 1350, 0.078), 0);
+});
+
+t('focusTop 이 없거나 이상하면 예전과 똑같이 동작한다', () => {
+  const TH = require('../api/_lib/celebThumb');
+  [undefined, null, '', -0.2, 1.4, NaN, 'abc'].forEach((v) => {
+    assert.strictEqual(TH.photoShiftFor(1080, 1920, v), 0, '값 ' + String(v) + ' 에서 사진이 움직였다');
+  });
+});
+
+t('얼굴이 이미 안전구간 안이면 건드리지 않는다', () => {
+  const TH = require('../api/_lib/celebThumb');
+  assert.strictEqual(TH.photoShiftFor(1080, 1920, 0.5), 0);
+});
+
+t('사진 이동이 상한 안에 있다 (하단이 통째로 날아가지 않게)', () => {
+  const TH = require('../api/_lib/celebThumb');
+  // 얼굴이 이미지 맨 위에 붙어 있는 최악의 경우가 325px — 하단 17% 를 버린다.
+  const worst = TH.photoShiftFor(1080, 1920, 0);
+  assert.strictEqual(worst, 325);
+  assert.ok(worst <= TH.PHOTO_SHIFT_MAX, '상한을 넘었다');
+  assert.ok(worst / 1920 < 0.2, '하단을 20% 넘게 버리고 있다');
+});
+
+t('글자 내림이 심볼을 안전구간 밖으로 밀지 않는다', () => {
+  const TH = require('../api/_lib/celebThumb');
+  /* 심볼 bbox 하단 1539, 안전구간 끝 1635 → 96px 이 한계.
+     이걸 넘기면 피드 그리드에서 PAP 심볼이 잘린다. */
+  const V = TH.VARIANTS.reels;
+  const symBottom = V.symbolXY[1] + 70 + TH.textShiftFor('reels');
+  assert.ok(symBottom <= TH.safeBand(V.W, V.H)[1],
+    '심볼이 피드에서 잘린다: ' + symBottom + ' > ' + TH.safeBand(V.W, V.H)[1]);
+  assert.ok(TH.TEXT_SHIFT_MAX <= 96, '상한이 느슨해졌다');
+});
+
+t('feed 판형은 글자를 내리지 않는다 (잘릴 게 없다)', () => {
+  const TH = require('../api/_lib/celebThumb');
+  assert.strictEqual(TH.textShiftFor('feed'), 0);
+});
+
+
+t('인스타 오프셋은 PSD 조판 위에 얹히는 별개 값이다', () => {
+  const TH = require('../api/_lib/celebThumb');
+  assert.strictEqual(TH.textShiftFor('reels', 0), 0, 'override 가 안 먹는다 — PSD 대조가 오염된다');
+  assert.strictEqual(TH.textShiftFor('reels'), TH.TEXT_SHIFT.reels);
 });
 
 console.log('\n셀럽 썸네일 렌더러: ' + n + '건 통과 (렌더 대조 제외)');

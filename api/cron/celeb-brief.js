@@ -135,7 +135,8 @@ async function runPublish(row, res, dry) {
   try {
     const { renderThumb } = require('../_lib/celebThumb');
     const cover = await renderThumb(
-      await fetchBuffer(pub.coverUrl, 20000), pub.titleKo, pub.titleEn, { variant: pub.variant },
+      await fetchBuffer(pub.coverUrl, 20000), pub.titleKo, pub.titleEn,
+      { variant: pub.variant, focusTop: pub.focusTop },
     );
     const base = 'celeb-publish/' + row.shortcode + '-' + row.id;
     const coverUrl = await igPublish.uploadPublic(cover, base + '/cover.jpg', 'image/jpeg');
@@ -373,7 +374,8 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     /* 판형은 게시물이 정한다 — 영상이면 릴스(9:16), 사진이면 피드(4:5).
        릴스를 4:5 로 뽑으면 인스타에 릴스로 올릴 때 위아래가 잘린다. */
     const variant = items[0].type === 'video' ? 'reels' : 'feed';
-    const coverDesigned = await renderThumb(cover, gen.title_ko || gen.title, gen.title_en || '', { variant });
+    const coverDesigned = await renderThumb(cover, gen.title_ko || gen.title, gen.title_en || '',
+      { variant, focusTop: gen.cover_focus_top });   // 피드 4:5 크롭에서 얼굴이 안 잘리게
     media.push({ kind: 'photo', buffer: coverDesigned });
 
     /* 영상 미리보기 커버로 쓸 축소본. 텔레그램 thumbnail 은 JPEG · 320px 이하
@@ -504,6 +506,7 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
           items: items.map((i) => ({ type: i.type, url: i.url })),
           caption, comment: comments.comment, reply: comments.reply,
           titleKo: gen.title_ko || gen.title || '', titleEn: gen.title_en || '',
+      focusTop: gen.cover_focus_top,       // 게시 때 커버를 다시 그리므로 같이 보관한다
         },
       },
     }).in('id', ids);

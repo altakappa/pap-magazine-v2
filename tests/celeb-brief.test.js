@@ -325,7 +325,9 @@ t('영상 게시물도 받는다 — 커버에만 디자인, 영상은 원본', 
 t('영상이면 릴스 판형(9:16), 사진이면 피드 판형(4:5)', () => {
   assert.ok(/const variant = items\[0\]\.type === 'video' \? 'reels' : 'feed';/.test(CRON_CODE),
     '릴스를 4:5 로 뽑으면 인스타 릴스 업로드 때 위아래가 잘린다');
-  assert.ok(/renderThumb\([\s\S]{0,120}\{ variant \}/.test(CRON_CODE), '판형이 렌더러에 안 전달된다');
+  assert.ok(/renderThumb\([\s\S]{0,160}\{ variant[,\s}]/.test(CRON_CODE), '판형이 렌더러에 안 전달된다');
+  assert.ok(/focusTop: gen\.cover_focus_top/.test(CRON_CODE),
+    '얼굴 위치를 안 넘기면 피드 4:5 크롭에서 얼굴이 잘린다');
 });
 
 t('영상이 첫 장이면 영상 본체도 함께 보낸다', () => {
