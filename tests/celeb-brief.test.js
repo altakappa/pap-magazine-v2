@@ -182,4 +182,62 @@ t('처리 실패도 200 으로 답한다 (텔레그램 무한 재전송 방지)'
   assert.ok(/큐 적재 실패[\s\S]{0,200}?OK\(res/.test(WEBHOOK), '큐 실패 시 200 이 아니면 텔레그램이 계속 재전송한다');
 });
 
+
+/* ⑦ 처리 크론 계약 */
+const CRON = fs.readFileSync(path.join(__dirname, '..', 'api/cron/celeb-brief.js'), 'utf8');
+const CRON_CODE = CRON.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const VERCEL = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8'));
+
+t('크론이 vercel.json 에 등재돼 있다', () => {
+  const c = (VERCEL.crons || []).find((x) => x.path === '/api/cron/celeb-brief');
+  assert.ok(c, '만들어놓고 안 돌면 없는 것과 같다');
+  assert.ok(/^\*\/\d+ /.test(c.schedule), '주기 형식이 이상하다: ' + c.schedule);
+});
+
+t('에셋이 함수 번들에 포함된다', () => {
+  const fn = (VERCEL.functions || {})['api/cron/celeb-brief.js'];
+  assert.ok(fn && fn.includeFiles && fn.includeFiles.includes('api/_assets/celeb'),
+    '폰트·심볼이 번들에 안 들어가면 Vercel 에서 렌더가 죽는다');
+});
+
+t('CRON_SECRET 또는 관리자만 실행할 수 있다', () => {
+  assert.ok(/CRON_SECRET/.test(CRON_CODE) && /requireAdmin/.test(CRON_CODE),
+    '/api/cron/* 은 공개 URL 이다');
+});
+
+t('조기 반환마다 cronNote 를 남긴다', () => {
+  assert.ok(/res\.locals = res\.locals \|\| \{\}/.test(CRON_CODE), 'res.locals 를 만들지 않으면 마지막 줄에서 넘어진다');
+  /* 줄 단위로 보면 여러 줄에 걸친 return 을 오탐한다. 반환문 **하나씩**
+     떼어내 그 안에 note(res,) 가 있는지 본다. */
+  const chunks = CRON_CODE.split('return res.status(200)').slice(1);
+  assert.ok(chunks.length >= 3, '200 반환 지점이 너무 적다 — 검사 의미 없음');
+  for (const c of chunks) {
+    const stmt = c.slice(0, c.indexOf(';') + 1 || 400);
+    assert.ok(/note\(res,/.test(stmt), 'cronNote 없는 조기 반환: ' + stmt.replace(/\s+/g, ' ').slice(0, 90));
+  }
+});
+
+t('썸네일은 1장만 — 나머지는 원본 그대로', () => {
+  assert.ok(/renderThumb\(first,/.test(CRON_CODE), '첫 장에 디자인을 안 입힌다');
+  const renderCalls = (CRON_CODE.match(/renderThumb\(/g) || []).length;
+  assert.strictEqual(renderCalls, 1, '도메니코 규칙: 썸네일만 디자인, 나머지는 아무 디자인도 안 입힌다');
+  assert.ok(/mediaUrls\.slice\(1\)/.test(CRON_CODE), '2장부터는 원본을 그대로 받아야 한다');
+});
+
+t('발행하지 않는다 — DB 기사 INSERT 도, 인스타 게시도 없다', () => {
+  assert.ok(!/from\('articles'\)[\s\S]{0,80}\.insert/.test(CRON_CODE), '기사를 DB 에 넣으면 안 된다 (발행 판단은 도메니코)');
+  assert.ok(!/media_publish/.test(CRON_CODE), '인스타 게시는 도메니코가 직접 한다');
+});
+
+t('링크를 나눠 보내도 한 브리프로 합친다', () => {
+  assert.ok(/BATCH_WINDOW_MS/.test(CRON_CODE), '메시지가 갈리면 기사도 갈린다');
+  assert.ok(/r\.chat_id === head0\.chat_id/.test(CRON_CODE), '같은 채팅 기준으로 묶어야 한다');
+});
+
+t('실패해도 사람에게 알린다 (무응답이 가장 나쁜 실패)', () => {
+  assert.ok(/셀럽 속보 브리프 실패/.test(CRON), '실패 알림 문구가 없다');
+  assert.ok(/status: 'queued', error:/.test(CRON_CODE), '실패 시 다시 큐로 돌려 재시도해야 한다');
+  assert.ok(/MAX_ATTEMPTS/.test(CRON_CODE), '무한 재시도 방지 장치가 없다');
+});
+
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');

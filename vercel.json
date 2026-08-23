@@ -206,6 +206,10 @@
     {
       "path": "/api/cron/submission-authorization-sweep",
       "schedule": "10 */4 * * *"
+    },
+    {
+      "path": "/api/cron/celeb-brief",
+      "schedule": "*/10 * * * *"
     }
   ],
   "rewrites": [
@@ -1494,6 +1498,11 @@
     "api/cron/ig-comment-scan.js": {
       "maxDuration": 300,
       "memory": 1024
+    },
+    "api/cron/celeb-brief.js": {
+      "maxDuration": 300,
+      "memory": 1024,
+      "includeFiles": "api/_assets/celeb/**"
     },
     "api/**/*.js": {
       "maxDuration": 120,

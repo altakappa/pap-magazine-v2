@@ -215,8 +215,70 @@ async function sendTextToTelegramPersonalSafe(text) {
   }
 }
 
+
+/* ── 임의 채팅으로 사진 여러 장 보내기 (2026-08-23, 셀럽 속보 브리프) ──
+   sendGroup 은 TELEGRAM_CHAT_ID 로 고정돼 있다. 브리프는 **링크를 보낸 채팅**
+   으로 돌려줘야 해서 chat 을 인자로 받는다.
+   텔레그램 미디어 그룹 상한은 10장 — 넘으면 나눠 보내고, 캡션은 첫 묶음에만 단다. */
+async function sendPhotosToTelegram(buffers, caption, chatId) {
+  const token = BOT_TOKEN();
+  const chat = String(chatId || CHAT_ID() || '');
+  if (!token || !chat) throw new Error('텔레그램 토큰/채팅 미설정');
+  const list = (buffers || []).filter(Boolean);
+  if (!list.length) throw new Error('보낼 이미지가 없습니다');
+
+  const groups = chunk(list, 10);
+  for (let gi = 0; gi < groups.length; gi++) {
+    const g = groups[gi];
+    const cap = gi === 0 ? caption : '';
+    const form = new FormData();
+    form.append('chat_id', chat);
+    if (g.length === 1) {
+      if (cap) form.append('caption', cap);
+      form.append('photo', new Blob([g[0]], { type: 'image/jpeg' }), 'photo.jpg');
+      const r = await fetch('https://api.telegram.org/bot' + token + '/sendPhoto', { method: 'POST', body: form });
+      const j = await r.json().catch(() => ({}));
+      if (!j || j.ok !== true) throw new Error('sendPhoto: ' + ((j && j.description) || ('HTTP ' + r.status)));
+      continue;
+    }
+    const media = g.map((buf, i) => {
+      const name = 'file' + i;
+      form.append(name, new Blob([buf], { type: 'image/jpeg' }), name + '.jpg');
+      const m = { type: 'photo', media: 'attach://' + name };
+      if (i === 0 && cap) m.caption = cap;
+      return m;
+    });
+    form.append('media', JSON.stringify(media));
+    const r = await fetch('https://api.telegram.org/bot' + token + '/sendMediaGroup', { method: 'POST', body: form });
+    const j = await r.json().catch(() => ({}));
+    if (!j || j.ok !== true) throw new Error('sendMediaGroup: ' + ((j && j.description) || ('HTTP ' + r.status)));
+  }
+  return { sent: list.length, groups: groups.length };
+}
+
+/* 임의 채팅으로 텍스트. 실패해도 호출부를 막지 않는다. */
+async function sendTextToChatSafe(chatId, text) {
+  try {
+    const chat = String(chatId || CHAT_ID() || '');
+    if (!BOT_TOKEN() || !chat || !text) return { ok: false, skipped: 'not_configured_or_empty' };
+    const r = await fetch('https://api.telegram.org/bot' + BOT_TOKEN() + '/sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chat, text: String(text).slice(0, 4000), disable_web_page_preview: true }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!j || j.ok !== true) throw new Error((j && j.description) || ('HTTP ' + r.status));
+    return { ok: true };
+  } catch (e) {
+    console.warn('[telegram] 채팅 전송 실패:', e && e.message);
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+}
+
 module.exports = {
   sendEditorialToTelegram,
+  sendPhotosToTelegram,
+  sendTextToChatSafe,
   sendEditorialToTelegramSafe,
   collectImageUrls,
   isConfigured,

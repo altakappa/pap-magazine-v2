@@ -131,29 +131,62 @@ function mergeMediaUrls(perPost, opts) {
 /* 썸네일에 얹을 제목 줄바꿈.
    (일반1) 썸네일 규격은 국문·영문 각각 **최대 2줄**이다(볼트 §4-7).
    measure(text) 는 픽셀 폭을 재는 함수 — 렌더러가 실제 폰트로 주입한다.
-   테스트에서는 글자수 기반 가짜 measure 를 넣는다.
-   2줄에 못 담으면 자르지 않고 null 을 반환한다 — 폰트를 줄이는 대신
-   제목을 줄이라는 뜻이고, 그 판단은 호출부(=사람에게 알림)가 한다. */
+
+   ── 어디서 끊나 (2026-08-23 실측으로 정한 순서) ──────────────
+   템플릿 원본은 "이번 주, / 파리에서 주목해야 할 것들" 로 **쉼표 뒤**에서 끊는다.
+   그냥 폭이 찰 때까지 채우면 "이번 주, 파리에서 주목해야 할 / 것들" 이 되고,
+   PSD 합성본과 비교했을 때 제목 띠의 평균오차가 21.6/255 까지 벌어졌다.
+   그래서 이 순서로 고른다.
+     ① 사람이 넣은 줄바꿈(\n)이 있으면 그대로 존중한다 — 사람이 이긴다
+     ② 쉼표(, ，·、) 뒤에서 끊어 2줄이 되면 그걸 쓴다 — 템플릿과 같은 방식
+     ③ 두 줄 폭이 가장 고르게 되는 지점 — 한쪽만 길면 디자인이 무너진다
+   어느 것도 2줄에 못 담으면 **자르지 않고 null** 을 준다. 폰트를 줄이는 대신
+   제목을 줄이라는 뜻이고, 그 판단은 사람이 한다. */
 function wrapHeadline(text, maxWidth, measure, maxLines) {
   const limit = maxLines || 2;
-  const words = String(text || '').trim().split(/\s+/).filter(Boolean);
-  if (!words.length) return [];
-  const lines = [];
-  let cur = '';
-  for (const w of words) {
-    const next = cur ? cur + ' ' + w : w;
-    if (measure(next) <= maxWidth || !cur) {
-      cur = next;
-    } else {
-      lines.push(cur);
-      cur = w;
-      if (lines.length >= limit) return null;
-    }
+  const raw = String(text || '').trim();
+  if (!raw) return [];
+
+  const fits = (lines) =>
+    lines.length > 0 && lines.length <= limit && lines.every((l) => l && measure(l) <= maxWidth);
+
+  // ① 사람이 넣은 줄바꿈
+  if (raw.includes('\n')) {
+    const manual = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+    return fits(manual) ? manual : null;
   }
-  lines.push(cur);
-  if (lines.length > limit) return null;
-  if (lines.some((l) => measure(l) > maxWidth)) return null;
-  return lines;
+
+  const words = raw.split(/\s+/).filter(Boolean);
+  if (words.length === 1) return measure(raw) <= maxWidth ? [raw] : null;
+  if (measure(raw) <= maxWidth) return [raw];
+  if (limit < 2) return null;
+
+  // 단어 경계 후보 전부를 2줄로 놓고 본다.
+  const cand = [];
+  for (let i = 1; i < words.length; i++) {
+    const a = words.slice(0, i).join(' ');
+    const b = words.slice(i).join(' ');
+    if (measure(a) <= maxWidth && measure(b) <= maxWidth) cand.push({ a, b, i });
+  }
+  if (!cand.length) return null;
+
+  const mostBalanced = (list) => {
+    let best = list[0];
+    let bestGap = Math.abs(measure(best.a) - measure(best.b));
+    for (const c of list.slice(1)) {
+      const gap = Math.abs(measure(c.a) - measure(c.b));
+      if (gap < bestGap) { best = c; bestGap = gap; }
+    }
+    return [best.a, best.b];
+  };
+
+  // ② 쉼표 뒤. 쉼표가 여럿이면 두 줄이 가장 고른 쪽을 고른다.
+  //    (실측: 영문 부제는 쉼표가 두 개인데 템플릿 원본이 뒤쪽 쉼표에서 끊었다)
+  const commas = cand.filter((c) => /[,，、]$/.test(c.a));
+  if (commas.length) return mostBalanced(commas);
+
+  // ③ 쉼표가 없으면 두 줄 폭 차이가 가장 작은 지점
+  return mostBalanced(cand);
 }
 
 /* 텔레그램으로 돌려줄 캡션.
