@@ -275,9 +275,60 @@ async function sendTextToChatSafe(chatId, text) {
   }
 }
 
+
+/* ── 사진·영상 섞어 보내기 (2026-08-23, 셀럽 속보 릴스 대응) ──
+   items: [{ kind:'photo'|'video', buffer }]
+   텔레그램 미디어 그룹은 사진과 영상을 **한 묶음에 섞을 수 있다**(10개까지).
+   캡션은 첫 묶음의 첫 항목에만 단다. */
+async function sendMediaToTelegram(items, caption, chatId) {
+  const token = BOT_TOKEN();
+  const chat = String(chatId || CHAT_ID() || '');
+  if (!token || !chat) throw new Error('텔레그램 토큰/채팅 미설정');
+  const list = (items || []).filter((x) => x && x.buffer && x.buffer.length);
+  if (!list.length) throw new Error('보낼 미디어가 없습니다');
+
+  const groups = chunk(list, 10);
+  for (let gi = 0; gi < groups.length; gi++) {
+    const g = groups[gi];
+    const cap = gi === 0 ? caption : '';
+    const form = new FormData();
+    form.append('chat_id', chat);
+
+    if (g.length === 1) {
+      const one = g[0];
+      const isVid = one.kind === 'video';
+      if (cap) form.append('caption', cap);
+      form.append(isVid ? 'video' : 'photo',
+        new Blob([one.buffer], { type: isVid ? 'video/mp4' : 'image/jpeg' }),
+        isVid ? 'clip.mp4' : 'photo.jpg');
+      const r = await fetch('https://api.telegram.org/bot' + token + (isVid ? '/sendVideo' : '/sendPhoto'),
+        { method: 'POST', body: form });
+      const j = await r.json().catch(() => ({}));
+      if (!j || j.ok !== true) throw new Error((isVid ? 'sendVideo: ' : 'sendPhoto: ') + ((j && j.description) || ('HTTP ' + r.status)));
+      continue;
+    }
+
+    const media = g.map((it, i) => {
+      const isVid = it.kind === 'video';
+      const name = 'file' + i;
+      form.append(name, new Blob([it.buffer], { type: isVid ? 'video/mp4' : 'image/jpeg' }),
+        name + (isVid ? '.mp4' : '.jpg'));
+      const m = { type: isVid ? 'video' : 'photo', media: 'attach://' + name };
+      if (i === 0 && cap) m.caption = cap;
+      return m;
+    });
+    form.append('media', JSON.stringify(media));
+    const r = await fetch('https://api.telegram.org/bot' + token + '/sendMediaGroup', { method: 'POST', body: form });
+    const j = await r.json().catch(() => ({}));
+    if (!j || j.ok !== true) throw new Error('sendMediaGroup: ' + ((j && j.description) || ('HTTP ' + r.status)));
+  }
+  return { sent: list.length, groups: groups.length };
+}
+
 module.exports = {
   sendEditorialToTelegram,
   sendPhotosToTelegram,
+  sendMediaToTelegram,
   sendTextToChatSafe,
   sendEditorialToTelegramSafe,
   collectImageUrls,

@@ -218,10 +218,56 @@ t('조기 반환마다 cronNote 를 남긴다', () => {
 });
 
 t('썸네일은 1장만 — 나머지는 원본 그대로', () => {
-  assert.ok(/renderThumb\(first,/.test(CRON_CODE), '첫 장에 디자인을 안 입힌다');
+  assert.ok(/renderThumb\(cover,/.test(CRON_CODE), '커버에 디자인을 안 입힌다');
   const renderCalls = (CRON_CODE.match(/renderThumb\(/g) || []).length;
   assert.strictEqual(renderCalls, 1, '도메니코 규칙: 썸네일만 디자인, 나머지는 아무 디자인도 안 입힌다');
-  assert.ok(/mediaUrls\.slice\(1\)/.test(CRON_CODE), '2장부터는 원본을 그대로 받아야 한다');
+  assert.ok(/const rest = items\[0\]\.type === 'image' \? items\.slice\(1\) : items;/.test(CRON_CODE),
+    '나머지는 원본 그대로 이어붙여야 한다');
+});
+
+/* ⑨ 영상 (2026-08-23 도메니코: "영상은 불가능해?") */
+t('영상 게시물도 받는다 — 커버에만 디자인, 영상은 원본', () => {
+  const items = cb.collectMediaItems({
+    media_type: 'VIDEO', media_url: 'https://cdn/v.mp4', thumbnail_url: 'https://cdn/t.jpg',
+  });
+  assert.deepStrictEqual(items, [{ type: 'video', url: 'https://cdn/v.mp4', thumb: 'https://cdn/t.jpg' }]);
+  assert.strictEqual(cb.pickCoverUrl(items), 'https://cdn/t.jpg', '커버는 영상의 프레임을 쓴다');
+});
+
+t('영상이 첫 장이면 영상 본체도 함께 보낸다', () => {
+  assert.ok(/items\[0\]\.type === 'image' \? items\.slice\(1\) : items/.test(CRON_CODE),
+    '영상일 때 items 를 통째로 넘기지 않으면 영상이 빠진다 (커버 프레임만 가는 사고)');
+});
+
+t('캐러셀에서 사진·영상 순서가 유지된다', () => {
+  const items = cb.collectMediaItems({
+    media_type: 'CAROUSEL_ALBUM',
+    children: { data: [
+      { media_type: 'IMAGE', media_url: 'https://cdn/1.jpg' },
+      { media_type: 'VIDEO', media_url: 'https://cdn/2.mp4', thumbnail_url: 'https://cdn/2t.jpg' },
+      { media_type: 'IMAGE', media_url: 'https://cdn/3.jpg' },
+    ] },
+  });
+  assert.deepStrictEqual(items.map((i) => i.type), ['image', 'video', 'image']);
+  assert.strictEqual(cb.pickCoverUrl(items), 'https://cdn/1.jpg', '커버는 첫 장이다');
+});
+
+t('커버로 쓸 게 하나도 없으면 사람에게 알린다', () => {
+  const items = cb.collectMediaItems({ media_type: 'VIDEO', media_url: 'https://cdn/v.mp4' });  // thumb 없음
+  assert.strictEqual(cb.pickCoverUrl(items), null);
+  assert.ok(/쓸 수 있는 사진·영상을 못 찾았습니다/.test(CRON), '실패 안내가 없다');
+});
+
+t('큰 영상을 조용히 빼지 않는다', () => {
+  assert.ok(/VIDEO_MAX_BYTES/.test(CRON_CODE), '텔레그램 50MB 상한 방어가 없다');
+  assert.ok(/영상 ' \+ tooBig \+ '건은 뺐습니다/.test(CRON), '뺀 사실을 캡션에 적어야 한다');
+});
+
+t('사진·영상을 한 묶음으로 보낸다', () => {
+  assert.ok(/sendMediaToTelegram\(media,/.test(CRON_CODE), '사진 전용 전송을 쓰면 영상이 사진으로 나간다');
+  const TG = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/telegram.js'), 'utf8');
+  assert.ok(/sendVideo/.test(TG) && /type: isVid \? 'video' : 'photo'/.test(TG),
+    '텔레그램 쪽에 영상 경로가 없다');
 });
 
 t('발행하지 않는다 — DB 기사 INSERT 도, 인스타 게시도 없다', () => {

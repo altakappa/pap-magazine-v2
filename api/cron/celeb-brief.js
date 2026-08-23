@@ -12,6 +12,8 @@
  * ── 도메니코 규칙 두 개를 코드로 못박는다 ────────────────────
  *   "썸네일은 디자인으로 구성, 나머지는 아무 디자인도 입히지 않은 이미지"
  *      → 1장만 renderThumb, 2장부터는 원본 바이트 그대로 보낸다.
+ *      영상은 **영상 그대로** 보낸다. 디자인은 커버 프레임(thumbnail_url)에만 얹는다
+ *      (2026-08-23 도메니코 "영상은 불가능해?" — 첫 실전이 릴스였다).
  *   "비슷한 링크를 몇 개 보낼 수도 있어. 그럼 그 이미지들로 나열하면 돼"
  *      → 같은 batch_key 를 한 브리프로 묶어 보낸 순서대로 이어붙인다.
  *
@@ -41,6 +43,9 @@ const BATCH_WINDOW_MS = Number(process.env.CELEB_BRIEF_WINDOW_MS || 5 * 60 * 100
 const BATCH_WAIT_MS = Number(process.env.CELEB_BRIEF_WAIT_MS || 45000);  // 마지막 링크를 기다리는 여유
 const STALE_WORKING_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 3;
+/* 텔레그램 봇 업로드 상한은 50MB. 여유를 두고 자른다.
+   넘는 영상은 **조용히 빼지 않고** 캡션 끝에 몇 건을 뺐는지 적는다. */
+const VIDEO_MAX_BYTES = Number(process.env.CELEB_BRIEF_VIDEO_MAX || 45 * 1024 * 1024);
 
 /** 조기 반환마다 cron_runs 에 메모를 남긴다 — 없으면 '무음 실패' 가 된다. */
 function note(res, msg) {
@@ -161,12 +166,14 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
       posts.push(m);
     }
 
-    const perPost = posts.map((m) => celebBrief.collectMediaUrls(m));
-    const mediaUrls = celebBrief.mergeMediaUrls(perPost);
-    if (!mediaUrls.length) {
-      return await fail('이 게시물엔 사진이 없습니다 — 영상(릴스) 전용 게시물입니다.'
-        + ' 사진이 들어 있는 게시물 링크로 다시 보내주세요.');
+    const perPost = posts.map((m) => celebBrief.collectMediaItems(m));
+    const items = celebBrief.mergeMediaItems(perPost);
+    const coverUrl = celebBrief.pickCoverUrl(items);
+    if (!items.length || !coverUrl) {
+      return await fail('이 게시물에서 쓸 수 있는 사진·영상을 못 찾았습니다.'
+        + ' (비공개이거나 미디어가 없는 게시물일 수 있습니다.)');
     }
+    const mediaUrls = items.map((i) => i.thumb || i.url);   // 기사 생성용 비전 입력
 
     // ── 3. 기사 생성 (PAP 말투는 papVoice 가 담당) ────────────
     const { generateArticleFromPost } = require('../_lib/instagramImport');
@@ -188,15 +195,26 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
       permalink: head.permalink || rows[0].permalink,
     });
 
-    // ── 4. 이미지 준비 — 1장만 디자인, 나머지는 원본 그대로 ──
-    const buffers = [];
-    const first = await fetchBuffer(mediaUrls[0]);
+    // ── 4. 미디어 준비 — 커버 1장만 디자인, 나머지는 원본 그대로 ──
+    const media = [];
+    const cover = await fetchBuffer(coverUrl, 20000);
     const { renderThumb } = require('../_lib/celebThumb');
-    buffers.push(await renderThumb(first, gen.title_ko || gen.title, gen.title_en || ''));
-    for (const u of mediaUrls.slice(1)) {
-      try { buffers.push(await fetchBuffer(u)); }
-      catch (e) { console.warn('[celeb-brief] 이미지 건너뜀:', (e && e.message) || e); }
+    media.push({ kind: 'photo', buffer: await renderThumb(cover, gen.title_ko || gen.title, gen.title_en || '') });
+
+    /* 첫 슬라이드가 사진이면 그 원본은 커버로 이미 쓴 셈이라 다시 넣지 않는다.
+       영상이면 커버는 프레임일 뿐이므로 **영상 본체를 이어서 넣는다.** */
+    const rest = items[0].type === 'image' ? items.slice(1) : items;
+    let tooBig = 0;
+    for (const it of rest) {
+      try {
+        const buf = await fetchBuffer(it.url, it.type === 'video' ? 60000 : 20000);
+        if (it.type === 'video' && buf.length > VIDEO_MAX_BYTES) { tooBig++; continue; }
+        media.push({ kind: it.type === 'video' ? 'video' : 'photo', buffer: buf });
+      } catch (e) {
+        console.warn('[celeb-brief] 미디어 건너뜀:', (e && e.message) || e);
+      }
     }
+    const buffers = media;   // 아래 dry 응답 호환
 
     if (dry) {
       await supabaseAdmin.from('celeb_brief_queue').update({ status: 'queued' }).in('id', ids);
@@ -209,8 +227,9 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     // ── 5. 텔레그램 회신 ──────────────────────────────────────
     const tg = require('../_lib/telegram');
     if (!tg.isConfigured()) return await fail('TELEGRAM_BOT_TOKEN/CHAT_ID 미설정');
-    const split = celebBrief.splitCaptionForTelegram(caption);
-    await tg.sendPhotosToTelegram(buffers, split.caption, rows[0].chat_id);
+    const capWithNote = caption + (tooBig ? ('\n\n※ 용량이 커서 영상 ' + tooBig + '건은 뺐습니다(45MB 초과).') : '');
+    const split = celebBrief.splitCaptionForTelegram(capWithNote);
+    await tg.sendMediaToTelegram(media, split.caption, rows[0].chat_id);
     if (split.overflow) await tg.sendTextToChatSafe(rows[0].chat_id, split.overflow);
 
     await supabaseAdmin.from('celeb_brief_queue').update({

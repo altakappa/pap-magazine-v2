@@ -79,40 +79,74 @@ function parseUpdate(update) {
   };
 }
 
-/* business_discovery 응답의 media 한 건 → 이미지 URL 목록.
-   · 캐러셀이면 children 을 순서대로 편다
-   · 동영상(VIDEO)은 썸네일이 아니라 **건너뛴다** — 도메니코가 원한 건 이미지 나열이고,
-     동영상 썸네일을 이미지인 척 섞으면 화질이 다른 컷이 끼어든다
-   · 인스타 캐러셀 상한 10장 */
+/* business_discovery 응답의 media 한 건 → 슬라이드 목록.
+   반환: [{ type:'image'|'video', url, thumb }]
+     · image → url 이 사진
+     · video → url 이 mp4, thumb 이 커버 프레임(디자인을 얹을 대상)
+
+   ── 영상을 왜 넣게 됐나 (2026-08-23) ────────────────────────
+   처음엔 영상을 통째로 뺐다. "이미지로 나열" 지시를 좁게 읽었고,
+   영상 썸네일을 사진인 척 섞으면 화질이 다른 컷이 낀다고 봤다.
+   그런데 첫 실전 테스트(@jennierubyjane)가 릴스였고 그대로 실패했다.
+   도메니코: "영상은 불가능해?" — 셀럽 속보는 릴스가 절반이다.
+   그래서 영상은 **영상 그대로** 보내고, 디자인은 커버 프레임에만 얹는다.
+   도메니코 규칙("썸네일은 디자인, 나머지는 원본")은 그대로 지켜진다. */
 const MAX_SLIDES = 10;
 
-function collectMediaUrls(media, opts) {
+function collectMediaItems(media, opts) {
   const max = (opts && opts.max) || MAX_SLIDES;
   const out = [];
   const seen = new Set();
-  const push = (u) => {
-    if (!u || typeof u !== 'string') return;
-    if (!/^https?:\/\//i.test(u)) return;
-    if (seen.has(u)) return;
-    seen.add(u);
-    if (out.length < max) out.push(u);
+  const push = (m) => {
+    if (!m) return;
+    const type = String(m.media_type || '').toUpperCase() === 'VIDEO' ? 'video' : 'image';
+    const url = m.media_url;
+    if (!url || typeof url !== 'string' || !/^https?:\/\//i.test(url)) return;
+    if (seen.has(url)) return;
+    seen.add(url);
+    const thumb = (typeof m.thumbnail_url === 'string' && /^https?:\/\//i.test(m.thumbnail_url))
+      ? m.thumbnail_url : null;
+    if (out.length < max) out.push({ type, url, thumb: type === 'video' ? thumb : url });
   };
   const kids = media && media.children && Array.isArray(media.children.data)
     ? media.children.data : null;
-  if (kids && kids.length) {
-    for (const k of kids) {
-      if (String(k.media_type || '').toUpperCase() === 'VIDEO') continue;
-      push(k.media_url);
+  if (kids && kids.length) kids.forEach(push);
+  else push(media);
+  return out;
+}
+
+/* 링크 여러 개 → 슬라이드 한 줄로 나열.
+   도메니코: "비슷한 링크를 몇 개 보낼 수도 있어. 그럼 그 이미지들로 나열하면 돼."
+   입력 순서 = 보낸 순서. 인스타 캐러셀 상한 10장에서 자른다. */
+function mergeMediaItems(perPost, opts) {
+  const max = (opts && opts.max) || MAX_SLIDES;
+  const out = [];
+  const seen = new Set();
+  for (const items of perPost || []) {
+    for (const it of items || []) {
+      if (!it || seen.has(it.url)) continue;
+      seen.add(it.url);
+      out.push(it);
+      if (out.length >= max) return out;
     }
-  } else if (String(media && media.media_type || '').toUpperCase() !== 'VIDEO') {
-    push(media && media.media_url);
   }
   return out;
 }
 
-/* 링크 여러 개 → 이미지 한 줄로 나열.
-   도메니코: "비슷한 링크를 몇 개 보낼 수도 있어. 그럼 그 이미지들로 나열하면 돼."
-   입력 순서 = 보낸 순서. 앞 게시물 이미지가 먼저 온다. 총 10장에서 자른다. */
+/* 디자인을 얹을 커버 이미지 URL.
+   첫 슬라이드가 영상이면 커버 프레임(thumb)을 쓴다. 그것도 없으면
+   뒤쪽 슬라이드에서 사진을 찾는다. 하나도 없으면 null (호출부가 사람에게 알린다). */
+function pickCoverUrl(items) {
+  for (const it of items || []) {
+    if (it && it.thumb) return it.thumb;
+  }
+  return null;
+}
+
+/* 사진 URL 만 (기존 호출부 호환 · 테스트용) */
+function collectMediaUrls(media, opts) {
+  return collectMediaItems(media, opts).filter((i) => i.type === 'image').map((i) => i.url);
+}
 function mergeMediaUrls(perPost, opts) {
   const max = (opts && opts.max) || MAX_SLIDES;
   const out = [];
@@ -218,6 +252,9 @@ function splitCaptionForTelegram(caption) {
 }
 
 module.exports = {
+  collectMediaItems,
+  mergeMediaItems,
+  pickCoverUrl,
   extractPostLinks,
   extractHandle,
   parseUpdate,
