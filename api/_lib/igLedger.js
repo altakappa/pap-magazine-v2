@@ -161,7 +161,27 @@ async function buildIgLedger(days) {
   for (const m of metrics || []) {
     if (m && m.post_id && !latest.has(m.post_id)) latest.set(m.post_id, m);
   }
-  return computeLedger(dailyFollowers, [...latest.values()]);
+  const ledger = computeLedger(dailyFollowers, [...latest.values()]);
+
+  /* ── 이탈 병합 (2026-08-22) — ig_follower_flux 가 있으면 gains·이탈을 붙인다.
+     표가 없거나(마이그레이션 134 전) 비어 있으면 조용히 그대로 — 장부 본체는
+     flux 에 인질 잡히지 않는다. 이탈 = gains − net, 도출은 igFlux 한 곳에서. */
+  try {
+    const { data: fluxRows } = await supabaseAdmin
+      .from('ig_follower_flux').select('day, gains')
+      .gte('day', new Date(Date.now() - (n + 1) * 86400000).toISOString().slice(0, 10))
+      .order('day', { ascending: true }).limit(120);
+    if (fluxRows && fluxRows.length) {
+      const { computeUnfollows } = require('./igFlux');
+      ledger.days = computeUnfollows(fluxRows, ledger.days);
+      const known = ledger.days.filter((d) => typeof d.unfollows === 'number');
+      ledger.summary.unfollowDays = known.length;
+      ledger.summary.totalUnfollows = known.reduce((x, d) => x + d.unfollows, 0);
+      ledger.summary.totalGains = known.reduce((x, d) => x + (d.gains || 0), 0);
+    }
+  } catch (e) { console.warn('[igLedger] flux 병합 실패(비치명):', e && e.message); }
+
+  return ledger;
 }
 
 /** 마크다운 렌더 — 주간 브리핑에 붙는다. 최근 7일 행 + 기간 요약. */
@@ -172,14 +192,27 @@ function renderIgLedgerMd(ledger) {
   const L = [];
   L.push('## IG 일별 장부 — 팔로워 증가의 출처');
   L.push('');
-  L.push('| 날짜(KST) | 증가 | 게시물귀속 | 잔차 | 캐러셀 | 릴스 | 이미지 |');
-  L.push('|---|---|---|---|---|---|---|');
-  for (const r of last7) {
-    L.push(`| ${r.day} | ${r.delta} | ${r.attributed} | ${r.residual} | ${r.carousels} | ${r.videos} | ${r.images} |`);
+  const hasFlux = last7.some((r) => typeof r.unfollows === 'number');
+  if (hasFlux) {
+    L.push('| 날짜(KST) | 신규 | 이탈 | 순증 | 게시물귀속 | 잔차 | 캐러셀 | 릴스 |');
+    L.push('|---|---|---|---|---|---|---|---|');
+    for (const r of last7) {
+      L.push(`| ${r.day} | ${r.gains == null ? '—' : r.gains} | ${r.unfollows == null ? '—' : r.unfollows} | ${r.delta} | ${r.attributed} | ${r.residual} | ${r.carousels} | ${r.videos} |`);
+    }
+  } else {
+    L.push('| 날짜(KST) | 증가 | 게시물귀속 | 잔차 | 캐러셀 | 릴스 | 이미지 |');
+    L.push('|---|---|---|---|---|---|---|');
+    for (const r of last7) {
+      L.push(`| ${r.day} | ${r.delta} | ${r.attributed} | ${r.residual} | ${r.carousels} | ${r.videos} | ${r.images} |`);
+    }
   }
   L.push('');
   L.push(`${s.days}일 합계: 증가 **${s.totalDelta}** · 게시물 귀속 ${s.totalAttributed}`
     + ` (${s.explainedPct == null ? '—' : s.explainedPct + '%'}) · 잔차 **${s.totalResidual}**`);
+  if (typeof s.totalUnfollows === 'number') {
+    L.push(`이탈(${s.unfollowDays}일 측정): 신규 ${s.totalGains} − 이탈 **${s.totalUnfollows}** = 순증`
+      + ` · 하루 평균 이탈 ${s.unfollowDays ? Math.round(s.totalUnfollows / s.unfollowDays) : '—'}`);
+  }
   const f = s.followsByFormat || {};
   L.push(`형식별 귀속 팔로우: 캐러셀 ${f.carousels || 0}`
     + (f.perCarousel != null ? ` (편당 ${f.perCarousel})` : '')

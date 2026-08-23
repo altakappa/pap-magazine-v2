@@ -23,6 +23,11 @@
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { captureSnapshot, buildReport } = require('../_lib/igSnapshot');
+// 2026-08-22 — 이탈 계측 (도메니코: "이탈자가 매일 100-200명").
+// follower_count(gains)를 하루 1회 받아 두면 이탈 = gains − net 으로 도출된다.
+const { captureFlux, fluxCapturedToday, computeUnfollows, isSpike } = require('../_lib/igFlux');
+const { buildIgLedger } = require('../_lib/igLedger');
+const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
 
 module.exports = withCronGuard('ig-snapshot', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
@@ -44,5 +49,50 @@ module.exports = withCronGuard('ig-snapshot', async function handler(req, res) {
 
   const limit = Math.max(1, Math.min(50, parseInt((req.query && req.query.limit) || '', 10) || 25));
   const result = await captureSnapshot({ limit });
-  return res.status(200).json({ ok: true, ...result });
+
+  /* ── 이탈 계측 (2026-08-22) — 하루 1회, 실패해도 스냅샷 본체를 막지 않는다 ──
+     API 는 최근 30일 시계열을 한 번에 주므로 하루 1콜이면 백필까지 된다.
+     시간당 크론이지만 fluxCapturedToday 가드로 첫 성공 후에는 건너뛴다. */
+  let flux = null;
+  try {
+    if (!(await fluxCapturedToday())) {
+      flux = await captureFlux();
+      console.log('[ig-snapshot] flux:', JSON.stringify(flux));
+
+      /* 이탈 급증 경보 — gains 저장 직후 하루 1회만 검사한다.
+         '어제' 이탈이 과거 28일 분포의 P50+2×IQR 를 넘으면 텔레그램.
+         알림에는 직전 24시간에 올린 게시물 형식 요약을 싣는다 — 코드가
+         원인을 못 짚으므로(게시물별 언팔 지표 없음) 재료만 나란히 놓는다. */
+      if (flux && flux.status === 'ok') {
+        try {
+          const ledger = await buildIgLedger(30);
+          const withFlux = computeUnfollows(
+            (await require('../_lib/supabase').supabaseAdmin
+              .from('ig_follower_flux').select('day, gains')
+              .order('day', { ascending: true }).limit(60)).data || [],
+            ledger.days);
+          const known = withFlux.filter((d) => typeof d.unfollows === 'number');
+          const yesterday = known[known.length - 1];
+          const verdict = yesterday
+            ? isSpike(known.slice(0, -1).map((d) => d.unfollows), yesterday.unfollows, 2)
+            : null;
+          if (verdict && verdict.spike) {
+            await sendTextToTelegramPersonalSafe([
+              '📉 IG 이탈 급증 — ' + yesterday.day,
+              '이탈 ' + yesterday.unfollows + '명 (평소 P50 ' + verdict.p50 + ' · 임계 ' + verdict.threshold + ')',
+              '그날 게시: 캐러셀 ' + yesterday.carousels + ' · 릴스 ' + yesterday.videos + ' · 이미지 ' + yesterday.images,
+              '순증 ' + yesterday.delta + ' · 신규 ' + yesterday.gains,
+              '누가·어떤 게시물 때문인지는 API 가 안 준다 — 그날 올린 것을 직접 봐줘.',
+            ].join('\n'));
+          }
+        } catch (e) {
+          console.warn('[ig-snapshot] 이탈 경보 실패(비치명):', e && e.message);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[ig-snapshot] flux 실패(비치명):', e && e.message);
+  }
+
+  return res.status(200).json({ ok: true, ...result, flux: flux && flux.status });
 });
