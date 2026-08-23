@@ -19,6 +19,9 @@ const path = require('path');
 const cb = require('../api/_lib/celebBrief');
 const WEBHOOK = fs.readFileSync(path.join(__dirname, '..', 'api/telegram/webhook.js'), 'utf8');
 const WEBHOOK_CODE = WEBHOOK.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const CRON = fs.readFileSync(path.join(__dirname, '..', 'api/cron/celeb-brief.js'), 'utf8');
+const CRON_CODE = CRON.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const VERCEL = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8'));
 
 let n = 0;
 function t(name, fn) { fn(); n++; console.log('  ✓ ' + name); }
@@ -127,16 +130,51 @@ t('한 단어가 폭을 넘겨도 null 이다', () => {
 });
 
 /* 캡션 */
-t('캡션은 제목·본문·태그·출처 순서로 만든다', () => {
+t('캡션이 PAP 인스타 실제 형식이다', () => {
+  /* 실측 근거: articles.instagram_caption · 2026-07 이후 393건
+       2번째 줄 @멘션 96% · 크레딧 이모지 98% · FOR MORE 69% · URL 0% · 해시태그 2% */
   const c = cb.buildBriefCaption({
-    title: '제목', body: '본문', tags: ['제니', '#블랙핑크'],
-    sourceHandle: '@jennierubyjane', permalink: 'https://www.instagram.com/p/A1/',
+    hook: '28일 제니 신곡 발표 예정',
+    bodyKo: '국문 본문.', bodyEn: 'English body.',
+    mentions: ['jennierubyjane', 'oddatelier'], creditKind: 'photo',
   });
-  const parts = c.split('\n\n');
-  assert.strictEqual(parts[0], '제목');
-  assert.strictEqual(parts[1], '본문');
-  assert.strictEqual(parts[2], '#제니 #블랙핑크', '태그에 # 를 중복으로 붙이면 안 된다');
-  assert.ok(parts[3].includes('출처 @jennierubyjane'));
+  const L = c.split('\n');
+  assert.strictEqual(L[0], '28일 제니 신곡 발표 예정', '첫 줄은 후킹 한 줄');
+  assert.strictEqual(L[1], '@jennierubyjane @oddatelier', '둘째 줄은 계정 멘션');
+  assert.ok(c.includes('\n\nFOR MORE ARTICLES | @pap_magazine\n\n'), '고정 문구 위치가 다르다');
+  assert.ok(c.indexOf('국문 본문.') < c.indexOf(cb.FOR_MORE), '국문이 고정 문구 앞이다');
+  assert.ok(c.indexOf('English body.') > c.indexOf(cb.FOR_MORE), '영문이 고정 문구 뒤다');
+  assert.ok(c.trimEnd().endsWith('📸 @jennierubyjane @oddatelier'), '크레딧이 맨 끝이 아니다');
+});
+
+t('영상이면 크레딧 이모지가 🎥 다', () => {
+  const c = cb.buildBriefCaption({ hook: 'h', bodyKo: 'k', mentions: ['x'], creditKind: 'video' });
+  assert.ok(c.includes('🎥 @x') && !c.includes('📸'), '영상 크레딧이 사진 이모지로 나간다');
+});
+
+t('URL 과 해시태그를 넣지 않는다 (실측 0% / 2%)', () => {
+  const c = cb.buildBriefCaption({
+    hook: 'h', bodyKo: 'k', bodyEn: 'e', mentions: ['x'], creditKind: 'photo',
+  });
+  assert.ok(!/https?:\/\//.test(c), '인스타 캡션의 링크는 클릭되지 않는다 — 실제 캡션엔 0건이다');
+  assert.ok(!/#[A-Za-z가-힣]/.test(c), '해시태그를 나열하지 않는다');
+});
+
+t('협찬이면 첫 줄 끝에 #제작지원 을 붙인다', () => {
+  const c = cb.buildBriefCaption({ hook: '한남에서 만난 산산기어', bodyKo: 'k', mentions: ['x'], sponsored: true });
+  assert.strictEqual(c.split('\n')[0], '한남에서 만난 산산기어 #제작지원');
+});
+
+t('게시물 캡션에서 @핸들을 뽑는다', () => {
+  const m = cb.extractMentions('협업 @oddatelier 과 @Jennierubyjane, 그리고 @oddatelier 재등장 @a', 5);
+  assert.deepStrictEqual(m, ['oddatelier', 'jennierubyjane'], '중복·1글자 핸들이 걸러져야 한다');
+});
+
+t('크론이 소스 계정을 멘션 맨 앞에 둔다', () => {
+  assert.ok(/const mentions = \[rows\[0\]\.username\]/.test(CRON_CODE), '소스 계정이 빠지면 크레딧이 틀린다');
+  assert.ok(/creditKind: items\[0\]\.type === 'video' \? 'video' : 'photo'/.test(CRON_CODE),
+    '영상인데 📸 로 나가면 크레딧이 거짓이 된다');
+  assert.ok(/bodyEn: gen\.body_en/.test(CRON_CODE), '영문 본문이 빠지면 국문만 나간다');
 });
 
 t('캡션에 HTML 이 남지 않는다 (인스타에 그대로 붙여넣는 글이다)', () => {
@@ -197,9 +235,6 @@ t('처리 실패도 200 으로 답한다 (텔레그램 무한 재전송 방지)'
 
 
 /* ⑦ 처리 크론 계약 */
-const CRON = fs.readFileSync(path.join(__dirname, '..', 'api/cron/celeb-brief.js'), 'utf8');
-const CRON_CODE = CRON.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const VERCEL = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8'));
 
 t('크론이 vercel.json 에 등재돼 있다', () => {
   const c = (VERCEL.crons || []).find((x) => x.path === '/api/cron/celeb-brief');

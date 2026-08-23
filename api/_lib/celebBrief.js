@@ -244,23 +244,77 @@ function htmlToPlain(html) {
     .trim();
 }
 
-/* 텔레그램으로 돌려줄 캡션.
-   인스타에 그대로 붙여넣을 수 있는 형태여야 한다 — 그래서 안내 문구는 맨 아래로,
-   기사 본문이 맨 위로 온다. 텔레그램 캡션 상한 1024자를 넘기면 본문을 자르지 않고
-   별도 텍스트 메시지로 보낸다(호출부 판단). */
+/* 게시물 캡션에서 @핸들을 뽑는다 (멘션 줄 만들기용). */
+function extractMentions(text, limit) {
+  const out = [];
+  const seen = new Set();
+  const re = /@([A-Za-z0-9._]{2,30})/g;
+  let m;
+  while ((m = re.exec(String(text || ''))) !== null) {
+    const h = m[1].replace(/[._]+$/, '').toLowerCase();
+    if (h.length < 2 || seen.has(h)) continue;
+    seen.add(h);
+    out.push(h);
+    if (out.length >= (limit || 5)) break;
+  }
+  return out;
+}
+
+/* PAP 인스타그램 캡션 — 실제 발행본 형식 그대로.
+ *
+ * ── 실측 (2026-08-23, articles.instagram_caption · 2026-07 이후 393건) ──
+ *   2번째 줄이 @계정 멘션          377/393 = 96%
+ *   크레딧 이모지 📸 / 🎥           385/393 = 98%
+ *   FOR MORE ARTICLES | @pap_magazine  272/393 = 69%
+ *   URL 포함                        0/393 = 0%
+ *   해시태그                        9/393 = 2% (대부분 #제작지원 표시용)
+ *   평균 길이                       1,082자 · 첫 줄 19~23자
+ *
+ * 구조:
+ *   [후킹 한 줄]                 ← 기사 제목이 아니라 더 짧고 구어체 (19~23자)
+ *   @계정 @계정
+ *   (빈 줄)
+ *   국문 본문
+ *   (빈 줄)
+ *   FOR MORE ARTICLES | @pap_magazine
+ *   (빈 줄)
+ *   영문 본문
+ *   (빈 줄)
+ *   📸 @계정   (영상이면 🎥)
+ *
+ * ⚠️ 처음에 내가 임의로 만든 형식(해시태그 나열 + '출처 @x · URL')은
+ *    실제와 전혀 달랐다. 해시태그는 2%, URL 은 0건이다.
+ *    인스타 캡션에 링크를 넣어도 클릭되지 않으니 애초에 안 쓴다.
+ */
+const FOR_MORE = 'FOR MORE ARTICLES | @pap_magazine';
+
 function buildBriefCaption(brief) {
   const b = brief || {};
+  const hook = htmlToPlain(b.hook || b.title);
+  const ko = htmlToPlain(b.bodyKo || b.body);
+  const en = htmlToPlain(b.bodyEn);
+  const mentions = (Array.isArray(b.mentions) ? b.mentions : [])
+    .map((h) => String(h || '').replace(/^@/, '').toLowerCase())
+    .filter(Boolean);
+  const uniq = [];
+  const seen = new Set();
+  for (const h of mentions) { if (!seen.has(h)) { seen.add(h); uniq.push(h); } }
+
+  const lines = [];
+  if (hook) lines.push(hook + (b.sponsored ? ' #제작지원' : ''));
+  if (uniq.length) lines.push(uniq.map((h) => '@' + h).join(' '));
+
   const parts = [];
-  const title = htmlToPlain(b.title);
-  const body = htmlToPlain(b.body);
-  if (title) parts.push(title);
-  if (body) parts.push(body);
-  const tags = Array.isArray(b.tags) ? b.tags.filter(Boolean) : [];
-  if (tags.length) parts.push(tags.map((t) => (String(t).startsWith('#') ? t : '#' + t)).join(' '));
-  const src = [];
-  if (b.sourceHandle) src.push('출처 @' + String(b.sourceHandle).replace(/^@/, ''));
-  if (b.permalink) src.push(b.permalink);
-  if (src.length) parts.push(src.join(' · '));
+  if (lines.length) parts.push(lines.join('\n'));
+  if (ko) parts.push(ko);
+  parts.push(FOR_MORE);
+  if (en) parts.push(en);
+
+  const credit = uniq.length
+    ? (b.creditKind === 'video' ? '🎥 ' : '📸 ') + uniq.map((h) => '@' + h).join(' ')
+    : '';
+  if (credit) parts.push(credit);
+
   return parts.join('\n\n');
 }
 
@@ -276,6 +330,8 @@ function splitCaptionForTelegram(caption) {
 
 module.exports = {
   htmlToPlain,
+  extractMentions,
+  FOR_MORE,
   collectMediaItems,
   mergeMediaItems,
   pickCoverUrl,

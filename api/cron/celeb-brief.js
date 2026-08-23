@@ -187,12 +187,16 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
       username: rows[0].username,
     });
 
+    /* 멘션 줄: 소스 계정을 맨 앞에, 그다음 원 게시물 캡션에 찍힌 @핸들.
+       실측 96% 가 2번째 줄에 멘션을 단다(브랜드·작업자 태그). */
+    const mentions = [rows[0].username]
+      .concat(celebBrief.extractMentions(posts.map((p) => p.caption || '').join(' '), 4));
     const caption = celebBrief.buildBriefCaption({
-      title: gen.title_ko || gen.title,
-      body: gen.body_ko,
-      tags: gen.tags,
-      sourceHandle: rows[0].username,
-      permalink: head.permalink || rows[0].permalink,
+      hook: gen.title_ko || gen.title,          // 프롬프트가 '후킹 한 줄 10~26자'로 만든다
+      bodyKo: gen.body_ko,
+      bodyEn: gen.body_en,
+      mentions,
+      creditKind: items[0].type === 'video' ? 'video' : 'photo',
     });
 
     // ── 4. 미디어 준비 — 커버 1장만 디자인, 나머지는 원본 그대로 ──
