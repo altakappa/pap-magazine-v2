@@ -122,4 +122,52 @@ function muteMp4(input) {
   };
 }
 
-module.exports = { muteMp4, readBox, listBoxes, findChild };
+
+/* ── 영상 해상도 읽기 (2026-08-23) ───────────────────────────────
+ * 도메니코가 릴스 크롭(9:16)을 요청했다. 그런데 크롭은 재인코딩이고
+ * Vercel 에는 ffmpeg 가 없다(이 파일 머리말 참조).
+ * 그래서 **크롭이 정말 필요한지부터** 잰다 — 릴스 원본이 이미 9:16 이면
+ * 할 일이 없다. 판단을 코드가 아니라 숫자로 하기 위한 함수다.
+ *
+ * tkhd 의 width/height 는 16.16 고정소수점 '표시 크기' 다(픽셀 크기가 아니라
+ * 화면에 그려질 크기라, 세로 영상의 회전까지 반영돼 있다 — 우리가 알고 싶은
+ * 비율에는 이쪽이 맞다). 비디오 trak 을 찾아 그 값을 읽는다.
+ * 못 읽으면 null — 호출부는 '모른다' 로 다루고 진행한다.
+ */
+function mp4Dimensions(buf) {
+  try {
+    const top = listBoxes(buf, 0, buf.length);
+    if (!top) return null;
+    const moov = top.find((b) => b.type === 'moov');
+    if (!moov) return null;
+    const inMoov = listBoxes(buf, moov.payload, moov.end);
+    if (!inMoov) return null;
+    for (const trak of inMoov.filter((b) => b.type === 'trak')) {
+      const inTrak = listBoxes(buf, trak.payload, trak.end);
+      if (!inTrak) continue;
+      const mdia = inTrak.find((b) => b.type === 'mdia');
+      const hdlr = mdia && findChild(buf, mdia, 'hdlr');
+      // hdlr: version/flags(4) + pre_defined(4) + handler_type(4)
+      if (!hdlr || hdlr.end - hdlr.payload < 12) continue;
+      if (buf.toString('latin1', hdlr.payload + 8, hdlr.payload + 12) !== 'vide') continue;
+      const tkhd = inTrak.find((b) => b.type === 'tkhd');
+      if (!tkhd) continue;
+      const version = buf[tkhd.payload];
+      // v0: ...(4) creation(4) modification(4) trackID(4) reserved(4) duration(4)
+      // v1: ...(4) creation(8) modification(8) trackID(4) reserved(4) duration(8)
+      const off = tkhd.payload + (version === 1 ? 4 + 8 + 8 + 4 + 4 + 8 : 4 + 4 + 4 + 4 + 4 + 4);
+      // reserved(8) layer(2) altGroup(2) volume(2) reserved(2) matrix(36) width(4) height(4)
+      const wOff = off + 8 + 2 + 2 + 2 + 2 + 36;
+      if (wOff + 8 > tkhd.end) continue;
+      const w = buf.readUInt32BE(wOff) / 65536;
+      const h = buf.readUInt32BE(wOff + 4) / 65536;
+      if (!(w > 0 && h > 0)) continue;
+      return { width: Math.round(w), height: Math.round(h), ratio: +(w / h).toFixed(4) };
+    }
+    return null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+module.exports = { muteMp4, mp4Dimensions, readBox, listBoxes, findChild };

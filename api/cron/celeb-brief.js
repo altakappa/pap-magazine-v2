@@ -243,10 +243,23 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
        영상이면 커버는 프레임일 뿐이므로 **영상 본체를 이어서 넣는다.** */
     const rest = items[0].type === 'image' ? items.slice(1) : items;
     let tooBig = 0;
+    const videoSizes = [];      // 크롭이 정말 필요한지 숫자로 보기 위해 기록한다
     for (const it of rest) {
       try {
         const buf = await fetchBuffer(it.url, it.type === 'video' ? 60000 : 20000);
         if (it.type === 'video' && buf.length > VIDEO_MAX_BYTES) { tooBig++; continue; }
+        if (it.type === 'video') {
+          /* 도메니코가 9:16 크롭을 요청했는데 크롭은 재인코딩이고 Vercel 에는
+             ffmpeg 가 없다(_lib/mp4Mute.js 머리말). 그래서 **원본이 이미 9:16 인지**
+             부터 잰다 — 그렇다면 할 일이 없다. 순수 JS 로 tkhd 만 읽는다. */
+          try {
+            const { mp4Dimensions } = require('../_lib/mp4Mute');
+            const dim = mp4Dimensions(buf);
+            if (dim) videoSizes.push(dim);
+          } catch (e) {
+            console.warn('[celeb-brief] 영상 해상도 읽기 실패:', (e && e.message) || e);
+          }
+        }
         media.push(it.type === 'video'
           ? { kind: 'video', buffer: buf, thumb: videoThumb }
           : { kind: 'photo', buffer: buf });
@@ -254,6 +267,12 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
         console.warn('[celeb-brief] 미디어 건너뜀:', (e && e.message) || e);
       }
     }
+    /* 9:16 = 0.5625. 오차 2% 밖이면 세로 판형이 아니라는 뜻이다. */
+    const offRatio = videoSizes.filter((d) => Math.abs(d.ratio - 0.5625) > 0.0113);
+    const sizeNote = videoSizes.length
+      ? (' · 영상 ' + videoSizes.map((d) => d.width + 'x' + d.height).join(', ')
+         + (offRatio.length ? ' ⚠️9:16 아님' : ' (9:16)'))
+      : '';
     const buffers = media;   // 아래 dry 응답 호환
 
     if (dry) {
@@ -281,7 +300,7 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
       result: {
         slides: media.length, title: gen.title_ko, title_en: gen.title_en, variant,
         videos: media.filter((m) => m.kind === 'video').length,
-        video_skipped_too_big: tooBig, missing_en: missingEn,
+        video_skipped_too_big: tooBig, missing_en: missingEn, video_sizes: videoSizes,
         has_comment: !!comments.comment,
       },
     }).in('id', ids);
@@ -292,7 +311,7 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
         + (missingEn ? ' ⚠️영문 누락' : '')
         + (comments.comment ? '' : ' ⚠️댓글 질문 없음')
         + (tooBig ? (' ⚠️영상 ' + tooBig + '건 용량초과 제외') : '')
-        + ': ' + String(gen.title_ko || '').slice(0, 60) + ' (' + media.length + '장)'),
+        + ': ' + String(gen.title_ko || '').slice(0, 60) + ' (' + media.length + '장)' + sizeNote),
     });
   } catch (e) {
     return await fail(String((e && e.message) || e).slice(0, 300));

@@ -512,4 +512,18 @@ t('커버 축소가 실패해도 브리프는 나간다', () => {
   assert.ok(/영상 커버 축소 실패\(커버 없이 진행\)/.test(CRON), '커버 실패가 전체를 막으면 안 된다');
 });
 
+
+t('영상 해상도를 재서 기록한다 (크롭이 필요한지 숫자로 본다)', () => {
+  assert.ok(/mp4Dimensions/.test(CRON_CODE), '영상 해상도를 안 잰다');
+  assert.ok(/video_sizes: videoSizes/.test(CRON_CODE), '기록에 남지 않으면 나중에 확인할 수 없다');
+  assert.ok(/0\.5625/.test(CRON_CODE), '9:16 기준값이 없다');
+  assert.ok(/9:16 아님/.test(CRON), '9:16 이 아닐 때 알리지 않는다');
+  const MUTE = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/mp4Mute.js'), 'utf8');
+  assert.ok(/function mp4Dimensions/.test(MUTE) && /mp4Dimensions,/.test(MUTE), 'mp4Dimensions 가 없거나 export 안 됐다');
+});
+
+t('해상도 읽기가 실패해도 브리프는 나간다', () => {
+  assert.ok(/영상 해상도 읽기 실패/.test(CRON), '해상도 실패가 전체를 막으면 안 된다');
+});
+
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');
