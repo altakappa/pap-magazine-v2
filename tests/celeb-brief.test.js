@@ -139,6 +139,19 @@ t('캡션은 제목·본문·태그·출처 순서로 만든다', () => {
   assert.ok(parts[3].includes('출처 @jennierubyjane'));
 });
 
+t('캡션에 HTML 이 남지 않는다 (인스타에 그대로 붙여넣는 글이다)', () => {
+  const c = cb.buildBriefCaption({
+    title: '제목',
+    body: '첫 단락 <b>강조</b>.<br><br>둘째 단락 &#39;따옴표&#39; &amp; 앰퍼샌드.<br><br>셋째 단락.',
+    tags: ['제니'], sourceHandle: 'x', permalink: 'https://i/p/A/',
+  });
+  assert.ok(!/<[a-z/]/i.test(c), 'HTML 태그가 남았다: ' + c);
+  assert.ok(!/&(amp|lt|gt|quot|#0?39|nbsp);/i.test(c), 'HTML 엔티티가 남았다: ' + c);
+  assert.ok(c.includes("'따옴표'") && c.includes('& 앰퍼샌드'), '엔티티가 원래 글자로 안 돌아왔다');
+  assert.ok(c.includes('첫 단락 강조.\n\n둘째 단락'), '<br><br> 가 빈 줄 하나로 안 바뀌었다');
+  assert.ok(!/\n{3,}/.test(c), '빈 줄이 세 줄 이상 연속된다');
+});
+
 t('텔레그램 캡션 상한을 넘으면 자르지 않고 따로 보낸다', () => {
   const long = '제목\n\n' + 'ㄱ'.repeat(2000);
   const r = cb.splitCaptionForTelegram(long);

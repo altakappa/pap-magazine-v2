@@ -223,6 +223,27 @@ function wrapHeadline(text, maxWidth, measure, maxLines) {
   return mostBalanced(cand);
 }
 
+/* 기사 본문(HTML) → 인스타에 그대로 붙여넣을 수 있는 평문.
+
+   왜 필요한가 (2026-08-23): body_ko 는 **웹사이트용 포맷**이다 —
+   단락을 <br><br> 로 나누고 <b>·<i> 같은 인라인 태그를 쓴다
+   (instagramImport 프롬프트가 그렇게 지시한다). 그대로 캡션에 넣으면
+   도메니코 화면에 <br><br> 가 글자로 보이고, 인스타에 복사해 붙일 수 없다.
+   캡션은 "받아서 바로 붙여넣는 것" 이 목적이므로 평문으로 바꾼다. */
+function htmlToPlain(html) {
+  return String(html || '')
+    .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+    .replace(/<\s*\/\s*(p|div|li)\s*>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"').replace(/&#0?39;|&apos;/gi, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')      // 단락 사이는 빈 줄 하나까지만
+    .trim();
+}
+
 /* 텔레그램으로 돌려줄 캡션.
    인스타에 그대로 붙여넣을 수 있는 형태여야 한다 — 그래서 안내 문구는 맨 아래로,
    기사 본문이 맨 위로 온다. 텔레그램 캡션 상한 1024자를 넘기면 본문을 자르지 않고
@@ -230,8 +251,10 @@ function wrapHeadline(text, maxWidth, measure, maxLines) {
 function buildBriefCaption(brief) {
   const b = brief || {};
   const parts = [];
-  if (b.title) parts.push(String(b.title).trim());
-  if (b.body) parts.push(String(b.body).trim());
+  const title = htmlToPlain(b.title);
+  const body = htmlToPlain(b.body);
+  if (title) parts.push(title);
+  if (body) parts.push(body);
   const tags = Array.isArray(b.tags) ? b.tags.filter(Boolean) : [];
   if (tags.length) parts.push(tags.map((t) => (String(t).startsWith('#') ? t : '#' + t)).join(' '));
   const src = [];
@@ -252,6 +275,7 @@ function splitCaptionForTelegram(caption) {
 }
 
 module.exports = {
+  htmlToPlain,
   collectMediaItems,
   mergeMediaItems,
   pickCoverUrl,
