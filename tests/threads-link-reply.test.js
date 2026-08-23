@@ -76,7 +76,12 @@ console.log('\n[3] 링크 답글 배선');
     /postMedia\(media, bodyText\)/.test(ap) && /postText\(bodyText\)/.test(ap));
   t('본문에 text(링크 포함)를 다시 쓰지 않는다',
     !/postText\(text\)/.test(ap) && !/postMedia\(media, text\)/.test(ap));
-  t('링크는 답글로 붙인다', /postText\(gen\.url, undefined, \{ replyToId: threadId \}\)/.test(ap));
+  /* 2026-08-22 — 답글이 '링크 하나'에서 'IG 우선 링크 블록'으로 바뀌었다
+     (도메니코: 모든 파이프라인 IG 우선). 검사할 사실은 "링크를 답글로 붙이는가"
+     지 답글 인자가 정확히 gen.url 이냐가 아니다. */
+  t('링크는 답글로 붙인다', /postText\([\s\S]{0,80}?\{ replyToId: threadId \}\)/.test(ap));
+  t('그 답글이 IG 우선 블록이다 (IG 먼저, 웹 다음)',
+    /igFirstLinkBlock\(art, 'threads', gen\.url\)/.test(ap));
   t('본글이 성공했을 때만 답글을 단다',
     /if \(status === 'published' && threadId && gen\.body && gen\.url\)/.test(ap));
   t('답글 실패가 본글을 실패로 만들지 않는다 (status 재할당 없음)',
@@ -118,8 +123,9 @@ console.log('\n[5] KST 하루 경계');
 console.log('\n[6] 성장 헌법 3조 — 링크는 여전히 계측된다');
 {
   t('utm_source=threads 가 살아 있다', /searchParams\.set\('utm_source', 'threads'\)/.test(ap));
-  t('답글로 나가는 것도 utm 붙은 링크다 (gen.url = linkWithUtm)',
-    /generateThreadsText\(art, linkWithUtm\)/.test(ap) && /postText\(gen\.url,/.test(ap));
+  t('답글로 나가는 웹 링크도 utm 이 붙어 있다 (gen.url = linkWithUtm)',
+    /generateThreadsText\(art, linkWithUtm\)/.test(ap)
+    && /igFirstLinkBlock\(art, 'threads', gen\.url\)/.test(ap));
 }
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);

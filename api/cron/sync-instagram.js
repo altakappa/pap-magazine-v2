@@ -333,13 +333,18 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                 const hasMedia = xMedia.mediaIds.length > 0;
                 const tw = hasMedia
                   ? await postTweet(gen.body, { mediaIds: xMedia.mediaIds })
-                  : await postTweet(gen.bodyWithLink || (gen.body + '\n\n' + gen.url));
+                  : await postTweet(gen.bodyWithLink || (gen.body + '\n\n' + gen.url));  // 미디어 없는 경로는 280자 제약이 빡빡해 링크 한 줄 유지 (IG 우선은 답글 경로에서)
                 let mark = hasMedia ? '' : '(미디어없음→링크본문)';
                 /* 링크 답글 — 미디어 본글이 성공했을 때만. 실패해도 본글은
                    유지하되 반드시 표시한다 (링크가 안 붙으면 웹 유입이 0 —
                    threadsAutopost 의 링크 답글 원칙과 동일). */
                 if (hasMedia && tw.ok && gen.url) {
-                  const rep = await postTweet(gen.url, { replyToId: tw.id });
+                  /* 2026-08-22 (도메니코: "모든 파이프라인을 IG 우선으로") —
+                     답글에 IG 를 먼저, 웹을 다음에. 게시 횟수가 그대로라
+                     X 과금($0.20/답글)도 그대로다. 웹 링크는 남긴다 —
+                     웹은 2순위 도달점이고 유료 사다리가 거기 있다. */
+                  const { igFirstLinkBlock } = require('../_lib/igFirstLink');
+                  const rep = await postTweet(igFirstLinkBlock(post || {}, 'x', gen.url), { replyToId: tw.id });
                   if (!rep.ok) {
                     mark += '(링크답글실패:' + (rep.status || '') + ')';
                     console.error('[sync-ig] X 링크 답글 실패:', rep.status || '', rep.detail || rep.skipped || '');

@@ -50,7 +50,14 @@ const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', '
      기존 진입점은 전부 페이지 맨 아래다. 위로 올리면 어떻게 되는지 모르니
      라벨을 따로 둬서 **아래(ssr_article·article·editorial)와 직접 비교**한다.
      이게 없으면 위아래가 한 통에 섞여 판정 자체가 불가능하다. */
-  'ssr_top', 'spa_top']);
+  'ssr_top', 'spa_top',
+  /* 2026-08-22 — 발신 채널이 IG 로 보낸 클릭 (api/_lib/igFirstLink.js).
+     실측: 외부→웹 유입 30일 1,367 중 threads 560 · x 214 = 57%.
+     그런데 성장 가이드라인은 이 둘을 "IG 로 보내는 파이프"로 정의한다.
+     이제 같은 채널의 두 방향을 나란히 볼 수 있다 —
+       threads → 웹  social_inclicks(utm_source=threads)
+       threads → IG  ig_outclicks_human(src=threads) */
+  'threads', 'x']);
 const IG_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 
 /* 경로형 단축 링크 /ig/:src (2026-07-30 신설).

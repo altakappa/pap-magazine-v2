@@ -321,7 +321,13 @@ async function postArticleToThreads(art) {
   let linkReplyId = null;
   if (status === 'published' && threadId && gen.body && gen.url) {
     try {
-      linkReplyId = await postText(gen.url, undefined, { replyToId: threadId });
+      /* 2026-08-22 (도메니코: "모든 파이프라인을 IG 우선으로") —
+         답글에 IG 를 먼저, 웹을 다음에. 게시 횟수는 그대로라 비용도 그대로다.
+         웹을 끊지 않는 이유: 웹은 2순위 도달점이고 유료 사다리가 거기 있다.
+         성장 가이드라인 8항(두 도달점은 서로의 파이프)도 한쪽 제거를 금한다.
+         '우선시'는 '독점'이 아니다. */
+      const { igFirstLinkBlock } = require('./igFirstLink');
+      linkReplyId = await postText(igFirstLinkBlock(art, 'threads', gen.url), undefined, { replyToId: threadId });
     } catch (e) {
       const why = String((e && e.message) || e).slice(0, 200);
       console.error('[threadsAutopost] 링크 답글 실패:', why);
