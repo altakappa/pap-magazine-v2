@@ -152,7 +152,7 @@ t('영상이면 크레딧 이모지가 🎥 다', () => {
   assert.ok(c.includes('🎥 @x') && !c.includes('📸'), '영상 크레딧이 사진 이모지로 나간다');
 });
 
-t('URL 과 해시태그를 넣지 않는다 (실측 0% / 2%)', () => {
+t('URL 을 넣지 않고, 태그를 기계적으로 나열하지 않는다 (실측 URL 0%)', () => {
   const c = cb.buildBriefCaption({
     hook: 'h', bodyKo: 'k', bodyEn: 'e', mentions: ['x'], creditKind: 'photo',
   });
@@ -160,9 +160,27 @@ t('URL 과 해시태그를 넣지 않는다 (실측 0% / 2%)', () => {
   assert.ok(!/#[A-Za-z가-힣]/.test(c), '해시태그를 나열하지 않는다');
 });
 
-t('협찬이면 첫 줄 끝에 #제작지원 을 붙인다', () => {
-  const c = cb.buildBriefCaption({ hook: '한남에서 만난 산산기어', bodyKo: 'k', mentions: ['x'], sponsored: true });
-  assert.strictEqual(c.split('\n')[0], '한남에서 만난 산산기어 #제작지원');
+t('광고·협찬 표기를 우리가 붙이지 않는다', () => {
+  /* 도메니코 2026-08-23: "협찬은 너에게 맡기지 않아." */
+  const c = cb.buildBriefCaption({ hook: '한남에서 만난 산산기어', bodyKo: 'k', bodyEn: 'e', mentions: ['x'], sponsored: true });
+  assert.strictEqual(c.split('\n')[0], '한남에서 만난 산산기어', 'sponsored 를 줘도 표기를 붙이면 안 된다');
+  assert.ok(!/#제작지원|#광고/.test(c));
+  const SRC = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/celebBrief.js'), 'utf8');
+  const code = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!/제작지원|#광고/.test(code), '협찬 표기 로직이 코드에 남아 있다');
+});
+
+t('후킹 안의 해시태그는 그대로 살린다 (셀럽기사 실측 형식)', () => {
+  /* '무대 위의 #태용 은 언제나 강하다' — 캡션 끝 나열이 아니라 문장 안에 녹인다 */
+  const c = cb.buildBriefCaption({ hook: '무대 위의 #태용 은 언제나 강하다', bodyKo: 'k', bodyEn: 'e', mentions: ['x'] });
+  assert.strictEqual(c.split('\n')[0], '무대 위의 #태용 은 언제나 강하다');
+});
+
+t('영문이 비면 크론이 사람에게 알린다 (실측 100% 병기)', () => {
+  assert.ok(/missingEn/.test(CRON_CODE), '영문 누락을 감지하지 않는다');
+  assert.ok(/영문 누락/.test(CRON), '영문이 빠져도 아무도 모른다');
+  assert.ok(!/if \(missingEn\)[\s\S]{0,80}return await fail/.test(CRON_CODE),
+    '영문이 없다고 브리프를 막으면 안 된다 — 국문이라도 있는 게 낫다');
 });
 
 t('게시물 캡션에서 @핸들을 뽑는다', () => {

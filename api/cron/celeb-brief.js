@@ -191,6 +191,10 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
        실측 96% 가 2번째 줄에 멘션을 단다(브랜드·작업자 태그). */
     const mentions = [rows[0].username]
       .concat(celebBrief.extractMentions(posts.map((p) => p.caption || '').join(' '), 4));
+    /* 영문은 실측 92/92 = 100% 다. 비어 있으면 캡션이 반쪽이 되므로
+       조용히 넘기지 않고 사람에게 알린다(브리프 자체는 계속 보낸다 —
+       국문이라도 있는 게 아무것도 없는 것보다 낫다). */
+    const missingEn = !String(gen.body_en || '').trim();
     const caption = celebBrief.buildBriefCaption({
       hook: gen.title_ko || gen.title,          // 프롬프트가 '후킹 한 줄 10~26자'로 만든다
       bodyKo: gen.body_ko,
@@ -244,12 +248,19 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
 
     await supabaseAdmin.from('celeb_brief_queue').update({
       status: 'done', processed_at: new Date().toISOString(), error: null,
-      result: { slides: buffers.length, title: gen.title_ko, title_en: gen.title_en },
+      result: {
+        slides: media.length, title: gen.title_ko, title_en: gen.title_en, variant,
+        videos: media.filter((m) => m.kind === 'video').length,
+        video_skipped_too_big: tooBig, missing_en: missingEn,
+      },
     }).in('id', ids);
 
     return res.status(200).json({
-      ok: true, slides: buffers.length, title: gen.title_ko,
-      note: note(res, '브리프 1건 전송: ' + String(gen.title_ko || '').slice(0, 60) + ' (' + buffers.length + '장)'),
+      ok: true, slides: media.length, title: gen.title_ko, variant,
+      note: note(res, '브리프 1건 전송(' + variant + ')'
+        + (missingEn ? ' ⚠️영문 누락' : '')
+        + (tooBig ? (' ⚠️영상 ' + tooBig + '건 용량초과 제외') : '')
+        + ': ' + String(gen.title_ko || '').slice(0, 60) + ' (' + media.length + '장)'),
     });
   } catch (e) {
     return await fail(String((e && e.message) || e).slice(0, 300));

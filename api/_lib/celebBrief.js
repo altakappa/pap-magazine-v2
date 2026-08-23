@@ -262,13 +262,25 @@ function extractMentions(text, limit) {
 
 /* PAP 인스타그램 캡션 — 실제 발행본 형식 그대로.
  *
- * ── 실측 (2026-08-23, articles.instagram_caption · 2026-07 이후 393건) ──
- *   2번째 줄이 @계정 멘션          377/393 = 96%
- *   크레딧 이모지 📸 / 🎥           385/393 = 98%
- *   FOR MORE ARTICLES | @pap_magazine  272/393 = 69%
- *   URL 포함                        0/393 = 0%
- *   해시태그                        9/393 = 2% (대부분 #제작지원 표시용)
- *   평균 길이                       1,082자 · 첫 줄 19~23자
+ * ── 실측 (2026-08-23) ──────────────────────────────────────
+ * 도메니코: 셀럽기사에서 참고해라 / 항상 영문도 있다.
+ * 그래서 News 카테고리만 다시 쟀다 (2026-06 이후 92건).
+ *   영문 병기                        92/92 = 100%   ← 예외 없다
+ *   2번째 줄이 @계정 멘션             91/92 =  99%
+ *   크레딧 이모지                     89/92 =  97%  (사진 45 · 영상 44, 거의 반반)
+ *   FOR MORE ARTICLES | @pap_magazine   52/92 =  57%
+ *   URL 포함                          0/92 =   0%
+ *   평균 958자 · 첫 줄 21자
+ *
+ * ⚠️ 해시태그는 캡션 끝에 나열하지 않는다. 후킹 문장 안에 녹인다:
+ *      '#랄프로렌 과 #김우빈 오늘도 완벽하십니다'
+ *      '무대 위의 #태용 은 언제나 강하다'
+ *    조사 앞을 띄우는 것도 규칙이다(#태용 은 / #써네이 의) — 안 띄우면
+ *    해시태그가 조사까지 먹는다. 이건 후킹을 쓰는 쪽(기사 생성)의 몫이고,
+ *    이 함수는 태그를 기계적으로 붙이지 않는다.
+ *
+ * ⚠️ 광고·협찬 표기(#광고 · #제작지원)는 다루지 않는다.
+ *    도메니코 2026-08-23: 협찬은 너에게 맡기지 않는다.
  *
  * 구조:
  *   [후킹 한 줄]                 ← 기사 제목이 아니라 더 짧고 구어체 (19~23자)
@@ -292,7 +304,7 @@ function buildBriefCaption(brief) {
   const b = brief || {};
   const hook = htmlToPlain(b.hook || b.title);
   const ko = htmlToPlain(b.bodyKo || b.body);
-  const en = htmlToPlain(b.bodyEn);
+  const en = htmlToPlain(b.bodyEn);   // 실측 100% — 비면 호출부가 사람에게 알린다
   const mentions = (Array.isArray(b.mentions) ? b.mentions : [])
     .map((h) => String(h || '').replace(/^@/, '').toLowerCase())
     .filter(Boolean);
@@ -301,7 +313,7 @@ function buildBriefCaption(brief) {
   for (const h of mentions) { if (!seen.has(h)) { seen.add(h); uniq.push(h); } }
 
   const lines = [];
-  if (hook) lines.push(hook + (b.sponsored ? ' #제작지원' : ''));
+  if (hook) lines.push(hook);
   if (uniq.length) lines.push(uniq.map((h) => '@' + h).join(' '));
 
   const parts = [];
