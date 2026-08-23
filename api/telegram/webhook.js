@@ -51,34 +51,64 @@ const OK = (res, body) => res.status(200).json(body || { ok: true });
 
 const TRIGGER_URL = () => (process.env.CELEB_BRIEF_TRIGGER_URL
   || 'https://www.pap-magazine.com/api/cron/celeb-brief') + '?now=1';
-const WAKE_TIMEOUT_MS = Number(process.env.CELEB_BRIEF_WAKE_TIMEOUT_MS || 2500);
+/* 폴백 경로에서만 쓰는 상한. 크론 콜드스타트(sharp·supabase 로드)가 넘어가지
+   않을 만큼은 줘야 한다 — 2.5초로 뒀다가 실패했다. 아래 사고 기록 참조. */
+const WAKE_TIMEOUT_MS = Number(process.env.CELEB_BRIEF_WAKE_TIMEOUT_MS || 9000);
 
-/* 처리 크론을 깨운다. 요청이 나가기만 하면 그 함수는 자기 수명(300초) 동안
-   독립적으로 돈다 — 그래서 응답을 끝까지 기다리지 않는다. 타임아웃으로 끊는 건
-   실패가 아니라 **정상 경로**다. 깨우기가 아예 실패해도 조용히 넘어간다
-   (10분 주기 스케줄이 안전망). */
-async function wakeProcessor() {
-  const secret = String(process.env.CRON_SECRET || '').trim();
-  if (!secret) { console.warn('[tg-webhook] CRON_SECRET 미설정 — 즉시 깨우기 생략'); return false; }
+/* 처리 크론을 깨운다.
+ *
+ * ── 2026-08-23 사고: 2.5초 타임아웃으로 끊었더니 아예 안 깨어났다 ──
+ * 처음엔 "요청만 나가면 크론은 독립적으로 돈다" 고 보고 2.5초 뒤 abort 했다.
+ * 실측 결과 15:31:48 에 링크가 들어왔는데 크론 런타임 로그에 **호출 흔적이
+ * 아예 없었다**(10분 스케줄 호출만 있었다). 크론 함수는 sharp·supabase 를
+ * 불러오느라 콜드스타트가 2.5초를 넘는다. 그 전에 끊으면 함수가 시작도 못 한다.
+ * abort 는 '이미 출발한 요청을 놓아주는 것' 이 아니라 '요청을 취소하는 것' 이다.
+ *
+ * ── 지금 방식 ──
+ * ① waitUntil 이 있으면(@vercel/functions): 200 을 즉시 돌려주고, 깨우기 요청은
+ *    **끊지 않고** 백그라운드에서 끝까지 보낸다. 이게 정석이다.
+ * ② 없으면 폴백: 9초 상한으로 기다린다. 콜드스타트를 넘길 만큼은 되고,
+ *    텔레그램 재전송 한계(~60초)에는 한참 못 미친다.
+ * 어느 쪽이든 실패하면 10분 스케줄이 안전망으로 남는다.
+ */
+function _waitUntil() {
   try {
-    await fetch(TRIGGER_URL(), {
-      method: 'GET',
-      headers: { Authorization: 'Bearer ' + secret },
-      signal: AbortSignal.timeout(WAKE_TIMEOUT_MS),
-    });
-    return true;
-  } catch (e) {
-    const name = e && e.name;
-    if (name === 'TimeoutError' || name === 'AbortError') return true;   // 이미 출발했다
-    console.warn('[tg-webhook] 즉시 깨우기 실패(스케줄이 받아줌):', (e && e.message) || e);
-    return false;
+    const fns = require('@vercel/functions');          // 지연 로드 (없어도 동작해야 한다)
+    return typeof fns.waitUntil === 'function' ? fns.waitUntil : null;
+  } catch (_e) {
+    return null;
   }
 }
 
-function allowedChats() {
-  return [process.env.TELEGRAM_PERSONAL_CHAT_ID, process.env.TELEGRAM_CHAT_ID]
-    .map((v) => String(v || '').trim())
-    .filter(Boolean);
+async function wakeProcessor() {
+  const secret = String(process.env.CRON_SECRET || '').trim();
+  if (!secret) { console.warn('[tg-webhook] CRON_SECRET 미설정 — 즉시 깨우기 생략'); return false; }
+  const call = (signal) => fetch(TRIGGER_URL(), {
+    method: 'GET',
+    headers: { Authorization: 'Bearer ' + secret },
+    signal,
+  });
+
+  const waitUntil = _waitUntil();
+  if (waitUntil) {
+    waitUntil(call(undefined).catch((e) => {
+      console.warn('[tg-webhook] 깨우기 실패(스케줄이 받아줌):', (e && e.message) || e);
+    }));
+    return true;
+  }
+
+  try {
+    await call(AbortSignal.timeout(WAKE_TIMEOUT_MS));
+    return true;
+  } catch (e) {
+    const name = e && e.name;
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      console.warn('[tg-webhook] 깨우기 응답 대기 초과 — 크론이 이미 돌고 있을 수 있다');
+      return true;
+    }
+    console.warn('[tg-webhook] 깨우기 실패(스케줄이 받아줌):', (e && e.message) || e);
+    return false;
+  }
 }
 
 module.exports = async function handler(req, res) {

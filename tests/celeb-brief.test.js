@@ -385,9 +385,21 @@ t('webhook 이 큐에 넣은 직후 처리 크론을 깨운다', () => {
   assert.ok(/Bearer ' \+ secret/.test(WEBHOOK_CODE), 'CRON_SECRET 없이는 크론이 관리자 인증을 요구한다');
 });
 
-t('깨우기는 응답을 끝까지 기다리지 않는다 (재전송 방지)', () => {
-  assert.ok(/AbortSignal\.timeout\(WAKE_TIMEOUT_MS\)/.test(WEBHOOK_CODE), '타임아웃이 없으면 텔레그램이 재전송한다');
-  assert.ok(/TimeoutError' \|\| name === 'AbortError'/.test(WEBHOOK_CODE), '타임아웃을 실패로 보면 안 된다 — 요청은 이미 나갔다');
+t('깨우기를 콜드스타트 전에 끊지 않는다 (2026-08-23 사고)', () => {
+  /* 2.5초로 끊었더니 크론 런타임 로그에 호출 흔적이 아예 없었다.
+     abort 는 요청을 놓아주는 게 아니라 취소하는 것이다. */
+  assert.ok(/waitUntil/.test(WEBHOOK_CODE), 'waitUntil 경로가 없다 — 정석은 끊지 않고 백그라운드로 보내는 것');
+  assert.ok(/require\('@vercel\/functions'\)/.test(WEBHOOK_CODE), 'waitUntil 을 어디서도 가져오지 않는다');
+  const m = WEBHOOK_CODE.match(/CELEB_BRIEF_WAKE_TIMEOUT_MS \|\| (\d+)/);
+  assert.ok(m, '폴백 상한이 없다');
+  assert.ok(Number(m[1]) >= 8000, '폴백 상한이 콜드스타트보다 짧다 (' + m[1] + 'ms) — 또 안 깨어난다');
+});
+
+t('waitUntil 패키지가 없어도 동작한다 (지연 로드 + 폴백)', () => {
+  const top = WEBHOOK_CODE.split('\n').filter((l) => /^(const|let|var)\s.*require\(/.test(l));
+  assert.ok(!top.some((l) => /@vercel\/functions/.test(l)),
+    '최상단에서 로드하면 패키지가 없을 때 webhook 전체가 죽는다');
+  assert.ok(/catch \(_e\) \{[\s\S]{0,40}return null;/.test(WEBHOOK_CODE), '없을 때 폴백이 없다');
 });
 
 t('깨우기가 실패해도 스케줄 안전망이 남아 있다', () => {
