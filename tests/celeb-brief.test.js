@@ -382,9 +382,15 @@ t('자동 발행이 없다 — 기사 INSERT 는 사람 명령 경로(runWebPubl
     'runWebPublish 진입이 web_queued 로 제한되지 않았다');
 });
 
-t('링크를 나눠 보내도 한 브리프로 합친다', () => {
-  assert.ok(/BATCH_WINDOW_MS/.test(CRON_CODE), '메시지가 갈리면 기사도 갈린다');
-  assert.ok(/r\.chat_id === head0\.chat_id/.test(CRON_CODE), '같은 채팅 기준으로 묶어야 한다');
+t('한 메시지의 링크는 합치되, 서로 다른 게시물은 섞지 않는다 (batch_key 묶음)', () => {
+  /* 2026-08-24 수정: 예전엔 "같은 채팅 + 5분 창" 으로 묶어서, 자동감시로 서로 다른
+     게시물이 동시에 들어오면 한 덩어리로 뭉쳐 영상·기사가 섞였다(디올 기사에 아이스파
+     영상이 붙은 사고). 이제 batch_key 로만 묶는다 — 한 메시지의 링크(수동)·한 게시물
+     (자동감시)이 각각 하나의 batch_key 이므로, 합칠 건 합치고 섞을 건 섞지 않는다. */
+  assert.ok(/r\.batch_key === head0\.batch_key/.test(CRON_CODE),
+    'batch_key 로 묶지 않으면 동시에 온 다른 게시물이 한 브리프로 섞인다');
+  assert.ok(!/r\.chat_id === head0\.chat_id && new Date\(r\.created_at\)/.test(CRON_CODE),
+    '옛 "같은 채팅 + 시간창" 묶기가 남아 있으면 자동감시 동시 도착이 다시 뭉친다');
 });
 
 t('실패해도 사람에게 알린다 (무응답이 가장 나쁜 실패)', () => {

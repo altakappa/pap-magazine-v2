@@ -362,9 +362,12 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
   }
 
   const head0 = queued[0];
-  const windowEnd = new Date(head0.created_at).getTime() + BATCH_WINDOW_MS;
+  /* 한 브리프 = 하나의 batch_key. 자동감시는 게시물마다, 수동 붙여넣기는 한 메시지마다
+     batch_key 가 하나다. 예전엔 "같은 방 + 5분 창" 으로 묶었는데(BATCH_WINDOW_MS), 자동감시로
+     서로 다른 게시물이 동시에 들어오면 한 덩어리로 뭉쳐 영상·기사가 섞였다(2026-08-24 수정).
+     이제 batch_key 로만 묶는다 — 정확히 한 게시물(또는 한 메시지)이 한 브리프다. */
   const rows = queued
-    .filter((r) => r.chat_id === head0.chat_id && new Date(r.created_at).getTime() <= windowEnd)
+    .filter((r) => (head0.batch_key ? r.batch_key === head0.batch_key : r.id === head0.id))
     .sort((a, b) => (new Date(a.created_at) - new Date(b.created_at)) || (a.seq - b.seq));
 
   /* 링크를 두세 번에 나눠 보내는 경우가 있다. 방금 들어온 batch 는 조금 기다렸다
