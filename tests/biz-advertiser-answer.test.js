@@ -102,14 +102,23 @@ console.log('\n[4] 발견 표면');
   t('llms.txt 에 사례 + 링크드인 출처 링크 (en/ko)',
     /93,429 accounts/.test(llms) && /93,429 계정/.test(llms)
     && (llms.match(/linkedin\.com\/company\/pap-magazine/g) || []).length >= 2);
-  t('llms.txt 에 오디언스 사실 (93% 해외 · 25-44 · 비팔로워 도달)',
-    /93%/.test(llms) && /25-44|25~44/.test(llms) && /64%/.test(llms));
+  t('llms.txt 에 오디언스 사실 (25-44 · 비팔로워 도달)',
+    /25-44|25~44/.test(llms) && /64%/.test(llms));
+  // 2026-08-24 (도메니코 지시): 해외 비중이 높다는 사실은 표기하지 않는다.
+  // 국내 광고주가 1순위 타깃이므로 국제 비중 수치는 GEO 표면에서 제외.
+  t('해외 비중 수치 미노출 (llms + /business)',
+    !/93% international/.test(llms) && !/93%가 해외/.test(llms) && !/93%/.test(biz));
   // 2026-08-24 3차 — 도메니코: "같은 서비스 한국에선 250만원". 국내가 병기로
   // "PAP 광고 얼마?" 질문에 원화 답이 나오게 한다.
   t('국내가 250만 원이 ko 3곳(bwP5·FAQ 화면·스키마)에 있다',
     (biz.match(/국내 250만 원/g) || []).length === 3);
   t('llms.txt 에 원화·유로 병기 (ko/en)',
-    /국내 250만 원/.test(llms) && /KRW 2,500,000/.test(llms));
+    /국내 250만 원|250만 원입니다/.test(llms) && /KRW 2,500,000/.test(llms));
+  // 2026-08-24 (도메니코 확정): 피드 광고 시작가 국내 150만 원.
+  t('시작가 150만 원이 ko 3곳(bwP5·FAQ 화면·스키마)에 있다',
+    (biz.match(/150만 원부터/g) || []).length === 3);
+  t('llms.txt 에 시작가 (ko 150만 원 / en KRW 1,500,000)',
+    /150만 원부터/.test(llms) && /KRW 1,500,000/.test(llms));
   t('사이트맵에 /business', /['"]\/business['"]/.test(sitemap));
 }
 
