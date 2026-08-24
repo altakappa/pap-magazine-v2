@@ -93,6 +93,17 @@ console.log('\n[4] 발견 표면');
   t('llms.txt 에 ko 브랜딩vs성과 Q&A', /브랜드 이미지용인가요, 광고 성과도 나오나요/.test(llms));
   t('llms.txt 성과 답변에 실측 수치와 집계 방식', /6\.86M reach/.test(llms) && /audience overlap included/.test(llms)
     && /도달 686만/.test(llms) && /계정 중복/.test(llms));
+  // 2026-08-24 2차 — 실집행 사례 (도메니코 지시: 링크드인 공개 광고 성과 게시물 인용).
+  // 수치 출처: PAP 링크드인 공개 케이스 스터디 (€2,500 스탠다드 피드 패키지).
+  t('실집행 사례 수치가 /business 에 있다 (93,429 / 169K / 59.5%)',
+    /93,429/.test(biz) && /59\.5%/.test(biz) && /2,500/.test(biz));
+  t('사례가 8개 언어 p5 와 FAQ 에 모두 있다 (언어당 2회 이상)',
+    (biz.match(/93[.,\s]429/g) || []).length >= 17);
+  t('llms.txt 에 사례 + 링크드인 출처 링크 (en/ko)',
+    /93,429 accounts/.test(llms) && /93,429 계정/.test(llms)
+    && (llms.match(/linkedin\.com\/company\/pap-magazine/g) || []).length >= 2);
+  t('llms.txt 에 오디언스 사실 (93% 해외 · 25-44 · 비팔로워 도달)',
+    /93%/.test(llms) && /25-44|25~44/.test(llms) && /64%/.test(llms));
   t('사이트맵에 /business', /['"]\/business['"]/.test(sitemap));
 }
 
