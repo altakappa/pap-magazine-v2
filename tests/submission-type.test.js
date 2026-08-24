@@ -52,8 +52,10 @@ ok('4 looks, 4 distinct brands → free',
    typeOf(looksFor([['A'], ['B'], ['C'], ['D']]), mapFor([1, 1, 1, 1])) === 'free');
 ok('5 looks, no shared brand → free',
    typeOf(looksFor([['A'], ['B'], ['C'], ['D'], ['E']]), mapFor([2, 1, 1, 1, 3])) === 'free');
-ok('4 looks, ≥2 distinct brands, one look with NO brand → free (union>1, no full intersection)',
-   typeOf(looksFor([['A'], ['B'], ['C'], []]), mapFor([1, 1, 1, 1])) === 'free');
+// 2026-08-23 판정 변경: 의상 브랜드 3종(A/B/C)뿐이라 free 에서 paid_few_looks 로.
+// (약관 ① "minimum of 4 different clothing brands" 를 free 자격으로 집행)
+ok('4 looks, 의상 브랜드 3종, one look with NO brand → paid_few_looks (2026-08-23 규칙)',
+   typeOf(looksFor([['A'], ['B'], ['C'], []]), mapFor([1, 1, 1, 1])) === 'paid_few_looks');
 
 console.log('\n=== paid_few_looks (€380) ===');
 ok('3 looks, distinct brands → paid_few_looks',
@@ -119,7 +121,11 @@ ok('lookImageMap entries with null/missing lookN are ignored',
     {n:3,items:[{type:'Top',brand:'Prada',instagram:''}]},
     {n:4,items:[{type:'Other',brand:'',instagram:'third_h'}]},
   ], map4);
-  ok('브랜드·핸들 혼합 상이 4룩 → free', mixed.submissionType==='free');
+  // 2026-08-23 판정 변경: 의상 슬롯은 Gucci(Dress)·Prada(Top) 2종뿐(Shoes/Other 는
+  // 액세서리) → few-clothing-brands 규칙으로 paid_few_looks. 오탐(branded) 아님은 유지.
+  ok('브랜드·핸들 혼합 상이 4룩 → branded 아님 + 의상 2종이라 paid_few_looks (2026-08-23)',
+     mixed.submissionType==='paid_few_looks' && mixed.branded===false
+     && mixed.paidReason==='few_clothing_brands');
   const two = classifySubmissionType(mk(['same_h','same_h']), [1,2].map(n=>({lookN:n,imgIdxInLook:0})));
   ok('핸들-온리 공유 2룩 → branded (교집합 트리거)', two.submissionType==='branded');
 })();
@@ -249,9 +255,12 @@ console.log('\n=== ACCESSORY-ONLY 예외 (2026-08-10) ===');
     L(3, [{ type: 'Dress', brand: 'MOIRAI store' }, { type: 'Belt', brand: 'Sezane' }, { type: 'Gloves', brand: 'Furla' }, { type: 'Other', brand: 'Falke' }, { type: 'Shoes', brand: 'Somechic Studio' }, { type: 'Hat', brand: 'Massimo Dutti' }]),
     L(4, [{ type: 'Top', brand: 'MOIRAI store' }, { type: 'Dress', brand: 'MOIRAI store' }, { type: 'Jacket', brand: 'MOIRAI store' }, { type: 'Other', brand: 'Falke' }, { type: 'Shoes', brand: 'Somechic Studio' }, { type: 'Hat', brand: 'Massimo Dutti' }]),
   ], mapFor([5, 4, 5, 5]));
-  ok('실사례 REVERIE → free (공통 브랜드가 신발 슬롯에만 등장)',
-     reverie.submissionType === 'free' && reverie.accessoryOnlyExempt === true
-     && reverie.clothingBrandCount === 2,
+  // 2026-08-23 판정 변경: accessoryOnlyExempt 로 branded(€790)는 해제되지만,
+  // 의상 브랜드가 MOIRAI/Roberto Cavalli 2종뿐이라 free 자격(4종)은 안 된다
+  // → paid_few_looks(€380). 예외는 "€790 취소"지 "무조건 무료"가 아니다.
+  ok('실사례 REVERIE → branded 해제 + 의상 2종이라 paid_few_looks (2026-08-23)',
+     reverie.submissionType === 'paid_few_looks' && reverie.accessoryOnlyExempt === true
+     && reverie.clothingBrandCount === 2 && reverie.paidReason === 'few_clothing_brands',
      JSON.stringify(reverie));
   ok('해제돼도 sharedBrands 는 남는다 (관리자가 겹침 사실을 볼 수 있게)',
      reverie.sharedBrands.length === 1 && reverie.sharedBrands[0] === 'somechic studio',
@@ -398,6 +407,74 @@ console.log('\n=== SINGLE-CLOTHING-BRAND (2026-08-11) ===');
      few.submissionType === 'branded', JSON.stringify(few));
 })();
 
+/* ── 2026-08-23 (도메니코 지시) — FEW-CLOTHING-BRANDS ───────────────────────
+ * "의상을 위한 브랜드가 4개 미만이면 유료서브미션이잖아."
+ * 약관 ①(minimum of 4 different clothing brands)은 무료 게재의 자격 조건인데,
+ * 분류기는 MIN_CLOTHING_BRANDS=4 를 branded 해제(다중 브랜드 예외)에만 쓰고
+ * free 자격으로는 안 쓰고 있었다. 이제 의상 브랜드 2~3종이면 룩 수와 무관하게
+ * paid_few_looks(€380). 1종은 기존 SINGLE-CLOTHING-BRAND 가 branded(€790),
+ * 0종은 needsCreditReview(태깅 미비 — 헤어·뷰티 화보)로 관리자 판단. */
+console.log('\n=== FEW-CLOTHING-BRANDS (2026-08-23) ===');
+(function () {
+  const L = (n, items) => ({ n, items });
+
+  // 실사례 회귀: BioGenesis Human to Creature (1250b66a-4240-4078-9e30-8e8a74161c94)
+  // 실제 룩 6개(룩 수 통과), 의상 브랜드는 cosic fashion·paridia 2종뿐인데
+  // free 로 저장됐었다. 룩8의 paridia 가 교집합을 비워 branded 도 아니었다.
+  const bio = classifySubmissionType([
+    L(1, [{ type: 'Dress', brand: 'cosic fashion' }]),
+    L(2, [{ type: 'Dress', brand: 'cosic fashion' }]),
+    L(3, [{ type: 'Dress', brand: 'cosic fashion' }]),
+    L(6, [{ type: 'Dress', brand: 'cosic fashion' }, { type: 'Hat', brand: 'cosic fashion' }]),
+    L(7, [{ type: 'Dress', brand: 'cosic fashion' }, { type: 'Other', brand: 'cosic fashion' }]),
+    L(8, [{ type: 'Dress', brand: 'paridia' }]),
+  ], [1, 2, 3, 6, 7, 8].map((n) => ({ lookN: n, imgIdxInLook: 0 })));
+  ok('실사례 BioGenesis → paid_few_looks (룩 6개지만 의상 브랜드 2종)',
+     bio.submissionType === 'paid_few_looks' && bio.realLookCount === 6
+     && bio.clothingBrandCount === 2 && bio.fewClothingBrands === true,
+     JSON.stringify(bio));
+  ok('BioGenesis 의 유료 사유는 few_clothing_brands (안내 문구 분기용)',
+     bio.paidReason === 'few_clothing_brands', JSON.stringify(bio.paidReason));
+  ok('BioGenesis 는 branded 아님 (교집합 비어 있음 — 옛 트리거로 못 잡는 케이스 고정)',
+     bio.branded === false && bio.sharedBrands.length === 0, JSON.stringify(bio));
+
+  // 경계: 의상 4종 → free, 사유 없음
+  const four = classifySubmissionType([
+    L(1, [{ type: 'Top', brand: 'A' }]), L(2, [{ type: 'Dress', brand: 'B' }]),
+    L(3, [{ type: 'Pants', brand: 'C' }]), L(4, [{ type: 'Coat', brand: 'D' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('의상 정확히 4종 → free, paidReason null (경계값)',
+     four.submissionType === 'free' && four.fewClothingBrands === false
+     && four.paidReason === null, JSON.stringify(four));
+
+  // 경계: 의상 1종은 이 규칙이 아니라 branded(€790)가 잡는다 — 우선순위 고정
+  const one = classifySubmissionType([
+    L(1, [{ type: 'Dress', brand: 'Solo' }]), L(2, [{ type: 'Top', brand: 'Solo' }]),
+    L(3, [{ type: 'Coat', brand: 'Solo' }]), L(4, [{ type: 'Pants', brand: 'Solo' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('의상 1종 → branded 가 이긴다 (few-brands 로 €380 이 되지 않는다)',
+     one.submissionType === 'branded' && one.fewClothingBrands === false,
+     JSON.stringify(one));
+
+  // 경계: 의상 0종은 유료로 밀지 않는다 — needsCreditReview 로 관리자 판단
+  const zero = classifySubmissionType([
+    L(1, [{ type: 'Hat', brand: 'A' }]), L(2, [{ type: 'Shoes', brand: 'B' }]),
+    L(3, [{ type: 'Bag', brand: 'C' }]), L(4, [{ type: 'Other', brand: 'D' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('의상 0종 + 룩 4개 → free 유지 + needsCreditReview (태깅 미비를 €380 으로 안 바꾼다)',
+     zero.submissionType === 'free' && zero.fewClothingBrands === false
+     && zero.needsCreditReview === true, JSON.stringify(zero));
+
+  // 룩 수 부족이 먼저다: 룩 3개 + 의상 2종 → paidReason 은 few_looks
+  const both = classifySubmissionType([
+    L(1, [{ type: 'Top', brand: 'A' }]), L(2, [{ type: 'Dress', brand: 'B' }]),
+    L(3, [{ type: 'Pants', brand: 'A' }]),
+  ], mapFor([1, 1, 1]));
+  ok('룩 3개 + 의상 2종 → paid_few_looks, 사유는 few_looks (룩 수가 먼저)',
+     both.submissionType === 'paid_few_looks' && both.paidReason === 'few_looks',
+     JSON.stringify(both));
+})();
+
 console.log('\n=== 클라이언트 미러 동기화 ===');
 (function () {
   const fs = require('fs');
@@ -414,6 +491,21 @@ console.log('\n=== 클라이언트 미러 동기화 ===');
   ok('미러의 singleClothingBrand 는 정확히 1종만 본다 (0종 제외)',
      /singleClothingBrand\s*=\s*clothingCount\s*===\s*1/.test(html));
   ok('미러에 needsCreditReview 가 있다', html.includes('needsCreditReview'));
+  // 2026-08-23 FEW-CLOTHING-BRANDS — 미러·안내 문구 동기화
+  ok('미러에 fewClothingBrands 규칙(2종 이상 4종 미만)이 있다',
+     /fewClothingBrands\s*=\s*clothingCount\s*>=\s*2\s*&&\s*clothingCount\s*<\s*_PAP_MIN_CLOTHING_BRANDS/.test(html));
+  ok('미러가 paidReason 을 돌려준다', html.includes("paidReason='few_clothing_brands'"));
+  ok('안내 렌더러가 few_clothing_brands 사유로 문구를 분기한다',
+     /paidReason==='few_clothing_brands'\s*\?\s*'submissionTypeFewBrands'/.test(html));
+  ok('submissionTypeFewBrands 문구가 9개 언어에 있다',
+     (html.match(/submissionTypeFewBrands:/g) || []).length === 9);
+  // 게재료 동의 모달도 사유별 문구를 갖는다 (why/fix 각 9개 언어)
+  const consent = fs.readFileSync(
+    path.resolve(__dirname, '..', 'frontend', 'pap-submission-fee-consent.js'), 'utf8');
+  ok('동의 모달에 whyFewBrands 9개 언어', (consent.match(/whyFewBrands:/g) || []).length === 9);
+  ok('동의 모달에 fixFewBrands 9개 언어', (consent.match(/fixFewBrands:/g) || []).length === 9);
+  ok('동의 모달이 few_clothing_brands 사유로 분기한다',
+     consent.includes("paidReason === 'few_clothing_brands'"));
 })();
 
 console.log('\n=== SUMMARY ===');

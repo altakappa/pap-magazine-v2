@@ -33,6 +33,15 @@ const PLAN_PRICE = {
 };
 const PLAN_PRICE_CURRENCY = 'EUR';
 
+// 2026-08-24 (도메니코 지적) — 유료 유형(branded 등)인데 결제 승인을 안 마친
+// 서브미션("Red spot without shadow", awaiting_authorization)이 홈 대시보드
+// '최근 서브미션' 위젯에 '대기 중'으로 떴다. 8/17 결제 필터는 목록 엔드포인트
+// (api/submissions/index.js)에만 붙었고, 이 위젯은 여기(stats)의 별도 쿼리를
+// 쓰기 때문이다. 같은 필터를 최근 5건과 pending 카운트 배지에 동일 적용한다.
+// NULL(결제 컬럼 도입 전 과거 행)은 살린다 — index.js 와 문자열까지 동일할 것.
+const PAYMENT_VISIBLE_OR =
+  'payment_status.is.null,payment_status.not.in.(awaiting_authorization,awaiting_payment)';
+
 // Annualized → monthly conversion for MRR
 function planToMonthly(plan) {
   const price = PLAN_PRICE[plan] || 0;
@@ -91,7 +100,7 @@ module.exports = async function handler(req, res) {
     ] = await Promise.all([
       supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('editorials').select('*', { count: 'exact', head: true }).eq('status', 'published'),
-      supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending').or(PAYMENT_VISIBLE_OR),
       supabaseAdmin.from('pullletters').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabaseAdmin.from('community_posts').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('subscriptions').select('plan, current_period_start, current_period_end').eq('status', 'active'),
@@ -101,7 +110,7 @@ module.exports = async function handler(req, res) {
       supabaseAdmin.from('pullletters').select('*', { count: 'exact', head: true }).gte('subscribed_at', monthStart),
       supabaseAdmin.from('profiles').select('id, display_name, email, avatar_url, role, created_at').order('created_at', { ascending: false }).limit(5),
       supabaseAdmin.from('editorials').select('id, title, slug, thumbnail, cover_image, published_date, status').eq('status', 'published').order('published_date', { ascending: false }).limit(5),
-      supabaseAdmin.from('submissions').select('*').order('created_at', { ascending: false }).limit(5),
+      supabaseAdmin.from('submissions').select('*').or(PAYMENT_VISIBLE_OR).order('created_at', { ascending: false }).limit(5),
       supabaseAdmin.from('pullletters').select('subscribed_at').gte('subscribed_at', trendStart),
       // 게시된 필름/기사 (에디토리얼 카드와 동일 규칙: status='published').
       supabaseAdmin.from('films').select('*', { count: 'exact', head: true }).eq('status', 'published'),

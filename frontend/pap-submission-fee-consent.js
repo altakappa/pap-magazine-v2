@@ -59,8 +59,10 @@
       ifNot: '심사가 시작되지 않습니다. 비용은 발생하지 않으며, <b>MY SUBMISSIONS</b> 에서 언제든 이어서 승인하실 수 있습니다.',
       fixLabel: '무료로 제출하려면',
       fixFewLooks: '룩을 4개 이상으로 늘려 주세요.',
+      fixFewBrands: '서로 다른 의상 브랜드를 4종 이상으로 구성해 주세요.',
       fixBranded: '여러 브랜드의 의상을 섞어 구성해 주세요. 한 브랜드 옷으로만 이루어진 화보는 브랜디드 콘텐츠로 봅니다.',
       whyFewLooks: '지금 룩이 {n}개입니다. 무료 게재는 룩 4개 이상부터입니다.',
+      whyFewBrands: '지금 서로 다른 의상 브랜드가 {n}종입니다: <b>{brands}</b>. 무료 게재는 의상 브랜드 4종 이상부터입니다.',
       whyBrandOne: '모든 룩의 의상 크레딧이 <b>{brand}</b> 한 브랜드입니다.',
       whyBrandShared: '모든 룩에 같은 브랜드가 공통으로 들어가 있습니다: <b>{brands}</b>',
       whyBrandGeneric: '특정 브랜드 중심으로 구성된 화보입니다.',
@@ -80,8 +82,10 @@
       ifNot: 'Review does not begin. You are charged nothing, and you can finish the authorization any time from <b>MY SUBMISSIONS</b>.',
       fixLabel: 'To submit for free',
       fixFewLooks: 'Add looks so that you have 4 or more.',
+      fixFewBrands: 'Credit garments from 4 or more different clothing brands.',
       fixBranded: 'Mix garments from several brands. A set built entirely from one label is treated as branded content.',
       whyFewLooks: 'You currently have {n} look(s). Free publication starts at 4 looks.',
+      whyFewBrands: 'Your looks credit {n} different clothing brand(s): <b>{brands}</b>. Free publication requires at least 4 different clothing brands.',
       whyBrandOne: 'Every garment credit across your looks is one brand: <b>{brand}</b>.',
       whyBrandShared: 'The same brand appears in every look: <b>{brands}</b>',
       whyBrandGeneric: 'This set is built around a single brand.',
@@ -101,8 +105,10 @@
       ifNot: "La revisione non inizia. Non ti viene addebitato nulla e puoi completare l'autorizzazione quando vuoi da <b>MY SUBMISSIONS</b>.",
       fixLabel: 'Per inviare gratuitamente',
       fixFewLooks: 'Aggiungi look fino ad averne almeno 4.',
+      fixFewBrands: 'Includi capi di almeno 4 marchi diversi.',
       fixBranded: 'Mescola capi di più marchi. Un servizio costruito interamente su un solo marchio è considerato branded content.',
       whyFewLooks: 'Al momento hai {n} look. La pubblicazione gratuita parte da 4 look.',
+      whyFewBrands: 'I tuoi look accreditano {n} marchi d\'abbigliamento diversi: <b>{brands}</b>. La pubblicazione gratuita richiede almeno 4 marchi diversi.',
       whyBrandOne: "Tutti i credits d'abbigliamento dei tuoi look sono di un solo marchio: <b>{brand}</b>.",
       whyBrandShared: 'Lo stesso marchio compare in ogni look: <b>{brands}</b>',
       whyBrandGeneric: 'Questo servizio è costruito attorno a un solo marchio.',
@@ -122,8 +128,10 @@
       ifNot: "L'examen ne commence pas. Rien ne vous est facturé et vous pouvez terminer l'autorisation à tout moment depuis <b>MY SUBMISSIONS</b>.",
       fixLabel: 'Pour envoyer gratuitement',
       fixFewLooks: "Ajoutez des looks pour en avoir au moins 4.",
+      fixFewBrands: 'Créditez des vêtements d\'au moins 4 marques différentes.',
       fixBranded: "Mélangez des vêtements de plusieurs marques. Une série entièrement construite autour d'une seule marque est considérée comme du contenu de marque.",
       whyFewLooks: 'Vous avez actuellement {n} look(s). La publication gratuite commence à 4 looks.',
+      whyFewBrands: 'Vos looks créditent {n} marque(s) de vêtements différente(s) : <b>{brands}</b>. La publication gratuite exige au moins 4 marques différentes.',
       whyBrandOne: 'Tous les crédits vêtements de vos looks portent une seule marque : <b>{brand}</b>.',
       whyBrandShared: 'La même marque apparaît dans chaque look : <b>{brands}</b>',
       whyBrandGeneric: "Cette série est construite autour d'une seule marque.",
@@ -143,8 +151,10 @@
       ifNot: 'La revisión no comienza. No se te cobra nada y puedes completar la autorización cuando quieras desde <b>MY SUBMISSIONS</b>.',
       fixLabel: 'Para enviar gratis',
       fixFewLooks: 'Añade looks hasta tener 4 o más.',
+      fixFewBrands: 'Incluya prendas de al menos 4 marcas diferentes.',
       fixBranded: 'Combina prendas de varias marcas. Un editorial construido solo con una marca se considera contenido de marca.',
       whyFewLooks: 'Ahora tienes {n} look(s). La publicación gratuita empieza en 4 looks.',
+      whyFewBrands: 'Tus looks acreditan {n} marca(s) de ropa diferente(s): <b>{brands}</b>. La publicación gratuita requiere al menos 4 marcas diferentes.',
       whyBrandOne: 'Todos los créditos de ropa de tus looks son de una sola marca: <b>{brand}</b>.',
       whyBrandShared: 'La misma marca aparece en todos los looks: <b>{brands}</b>',
       whyBrandGeneric: 'Este editorial está construido en torno a una sola marca.',
@@ -164,8 +174,10 @@
       ifNot: 'Die Prüfung beginnt nicht. Es entstehen keine Kosten, und Sie können die Autorisierung jederzeit unter <b>MY SUBMISSIONS</b> abschließen.',
       fixLabel: 'Kostenlos einreichen',
       fixFewLooks: 'Ergänzen Sie Looks auf mindestens 4.',
+      fixFewBrands: 'Verwenden Sie Kleidung von mindestens 4 verschiedenen Marken.',
       fixBranded: 'Mischen Sie Kleidung mehrerer Marken. Eine Strecke ausschließlich mit einem Label gilt als Branded Content.',
       whyFewLooks: 'Sie haben derzeit {n} Look(s). Kostenlose Veröffentlichung beginnt ab 4 Looks.',
+      whyFewBrands: 'Ihre Looks nennen {n} verschiedene Kleidungsmarke(n): <b>{brands}</b>. Kostenlose Veröffentlichung erfordert mindestens 4 verschiedene Marken.',
       whyBrandOne: 'Alle Kleidungs-Credits Ihrer Looks stammen von einer Marke: <b>{brand}</b>.',
       whyBrandShared: 'Dieselbe Marke erscheint in jedem Look: <b>{brands}</b>',
       whyBrandGeneric: 'Diese Strecke ist um eine einzelne Marke herum aufgebaut.',
@@ -185,8 +197,10 @@
       ifNot: '審査が始まりません。費用は発生せず、<b>MY SUBMISSIONS</b> からいつでも承認を続けられます。',
       fixLabel: '無料で提出するには',
       fixFewLooks: 'ルックを4つ以上にしてください。',
+      fixFewBrands: '4つ以上の異なる衣装ブランドを組み合わせてください。',
       fixBranded: '複数ブランドの衣装を組み合わせてください。1ブランドのみで構成された作品はブランデッドコンテンツとみなします。',
       whyFewLooks: '現在ルックが{n}件です。無料掲載はルック4件以上からです。',
+      whyFewBrands: '現在、衣装ブランドは{n}種です: <b>{brands}</b>。無料掲載には4種以上の異なる衣装ブランドが必要です。',
       whyBrandOne: 'すべてのルックの衣装クレジットが<b>{brand}</b>の1ブランドです。',
       whyBrandShared: 'すべてのルックに同じブランドが含まれています：<b>{brands}</b>',
       whyBrandGeneric: '特定のブランドを中心に構成された作品です。',
@@ -206,8 +220,10 @@
       ifNot: '审核不会开始。不会产生任何费用，您可以随时在 <b>MY SUBMISSIONS</b> 中继续完成授权。',
       fixLabel: '免费投稿的方法',
       fixFewLooks: '请将造型增加到 4 组以上。',
+      fixFewBrands: '请使用至少 4 个不同的服装品牌。',
       fixBranded: '请混合多个品牌的服装。整组仅使用单一品牌的作品视为品牌内容。',
       whyFewLooks: '当前为 {n} 组造型。免费刊登需 4 组以上。',
+      whyFewBrands: '当前服装品牌共 {n} 个: <b>{brands}</b>。免费刊登需要 4 个以上不同的服装品牌。',
       whyBrandOne: '所有造型的服装署名均为同一品牌：<b>{brand}</b>。',
       whyBrandShared: '每组造型中都出现同一品牌：<b>{brands}</b>',
       whyBrandGeneric: '本组作品围绕单一品牌构成。',
@@ -227,8 +243,10 @@
       ifNot: 'Рассмотрение не начнётся. Плата не взимается, и вы можете завершить авторизацию в любой момент в разделе <b>MY SUBMISSIONS</b>.',
       fixLabel: 'Чтобы подать бесплатно',
       fixFewLooks: 'Добавьте образы, чтобы их было не менее 4.',
+      fixFewBrands: 'Укажите одежду минимум 4 разных брендов.',
       fixBranded: 'Смешайте одежду нескольких брендов. Съёмка целиком из одного бренда считается брендированным контентом.',
       whyFewLooks: 'Сейчас у вас {n} образ(ов). Бесплатная публикация начинается с 4 образов.',
+      whyFewBrands: 'Сейчас в ваших образах {n} бренд(а/ов) одежды: <b>{brands}</b>. Для бесплатной публикации нужно не менее 4 разных брендов.',
       whyBrandOne: 'Все кредиты одежды во всех образах — один бренд: <b>{brand}</b>.',
       whyBrandShared: 'Один и тот же бренд есть в каждом образе: <b>{brands}</b>',
       whyBrandGeneric: 'Съёмка построена вокруг одного бренда.',
@@ -252,6 +270,14 @@
   // 왜 유료인지를 "이 제출본의 사실"로 설명한다. 일반론은 안 읽힌다.
   function whyText(r) {
     if (r.submissionType === 'paid_few_looks') {
+      // 유료 사유가 둘이다: few_looks(룩 수 부족) | few_clothing_brands(의상 브랜드 수
+      // 부족, 약관 ① — 2026-08-23). 사유에 맞는 사실을 말해야 처방도 맞는다.
+      if (r.paidReason === 'few_clothing_brands') {
+        var cb = Array.isArray(r.clothingBrands) ? r.clothingBrands : [];
+        return t('whyFewBrands')
+          .replace('{n}', String(r.clothingBrandCount == null ? cb.length : r.clothingBrandCount))
+          .replace('{brands}', esc(cb.join(', ')));
+      }
       return t('whyFewLooks').replace('{n}', String(r.realLookCount == null ? 0 : r.realLookCount));
     }
     var brands = Array.isArray(r.clothingBrands) ? r.clothingBrands : [];
@@ -302,7 +328,9 @@
         + row(t('whenLabel'), t('when'))
         + row(t('howLabel'), t('how'))
         + row(t('ifNotLabel'), t('ifNot'))
-        + row(t('fixLabel'), esc(r.submissionType === 'paid_few_looks' ? t('fixFewLooks') : t('fixBranded')))
+        + row(t('fixLabel'), esc(r.submissionType === 'paid_few_looks'
+            ? (r.paidReason === 'few_clothing_brands' ? t('fixFewBrands') : t('fixFewLooks'))
+            : t('fixBranded')))
         + '<label style="display:flex;gap:10px;align-items:flex-start;margin:20px 0 18px;cursor:pointer">'
         + '<input type="checkbox" id="_papFeeAgree" style="margin-top:3px;width:16px;height:16px;flex:none;cursor:pointer">'
         + '<span style="font-size:13px;line-height:1.6;color:#fff">'

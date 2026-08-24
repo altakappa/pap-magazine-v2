@@ -312,9 +312,29 @@ function classifySubmissionType(looks, lookImageMap) {
   // 의상 크레딧이 아예 없어 자동 판정이 불가능한 제출 — 관리자 확인 대상 표시.
   const needsCreditReview = clothingBrandCount === 0 && realLookCount > 0;
 
+  // FEW-CLOTHING-BRANDS (도메니코 지시 2026-08-23) ────────────────────────
+  // "의상을 위한 브랜드가 4개 미만이면 유료서브미션이잖아."
+  // 약관 ①("minimum of 4 different clothing brands")은 처음부터 무료 게재의
+  // 자격 조건인데, 분류기는 그 숫자(MIN_CLOTHING_BRANDS=4)를 branded 를
+  // **풀어줄 때만** 쓰고 free 자격으로는 안 쓰고 있었다 — 들어올 땐 안 세고
+  // 나갈 때만 세는 비대칭.
+  //
+  // 실사례 "BioGenesis Human to Creature"(1250b66a, 2026-08-21): 실제 룩 6개라
+  // 룩 수 규칙 통과, 의상 브랜드는 cosic fashion·paridia 2종뿐인데 free 판정.
+  // 약관대로면 무료 자격이 없다. 이제 의상 브랜드 2~3종은 paid_few_looks
+  // 버킷(€380)으로 떨어진다.
+  //
+  // 경계 유지(기존 판례 그대로):
+  //   · 1종  → 위 SINGLE-CLOTHING-BRAND 가 이미 branded(€790)로 확정
+  //   · 0종  → 유료로 밀지 않는다. "옷이 적다"가 아니라 "의상 태깅을 안 했다"
+  //            (헤어·뷰티 화보 실측 8/116건) — needsCreditReview 로 관리자 판단.
+  const fewClothingBrands = clothingBrandCount >= 2 && clothingBrandCount < MIN_CLOTHING_BRANDS;
+
   let submissionType = 'free';
+  let paidReason = null;
   if (branded) submissionType = 'branded';
-  else if (realLookCount < MIN_LOOKS) submissionType = 'paid_few_looks';
+  else if (realLookCount < MIN_LOOKS) { submissionType = 'paid_few_looks'; paidReason = 'few_looks'; }
+  else if (fewClothingBrands) { submissionType = 'paid_few_looks'; paidReason = 'few_clothing_brands'; }
 
   return {
     submissionType,
@@ -327,6 +347,8 @@ function classifySubmissionType(looks, lookImageMap) {
     accessoryOnlyExempt,
     singleClothingBrand,
     needsCreditReview,
+    fewClothingBrands,
+    paidReason,   // 'few_looks' | 'few_clothing_brands' | null — 안내 문구가 진짜 이유를 말하게
   };
 }
 
