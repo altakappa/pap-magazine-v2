@@ -2131,6 +2131,15 @@ function _onTeamLinkTypeChange(sel){
 var _PAP_CLOTHING_TYPES={jacket:1,top:1,shirt:1,sweater:1,dress:1,pants:1,skirt:1,bodysuit:1,costume:1,coat:1};
 var _PAP_MIN_CLOTHING_BRANDS=4;
 function _papNormBrand(s){ return String(s==null?'':s).trim().replace(/\s+/g,' ').toLowerCase(); }
+// GENERIC-CREDIT 필터 (도메니코 2026-08-24) — "Stylist"/"Own Design"/"Stylist's
+// Own" 같은 관용 표기는 브랜드가 아니다(스타일리스트 소장·본인 제작). 어떤
+// 카운트에도 넣지 않는다. 서버 api/_lib/submissionType.js 의
+// GENERIC_CREDIT_TERMS 와 목록이 같아야 한다 — 테스트가 일치를 고정한다.
+var _PAP_GENERIC_CREDITS=['stylist','stylists','stylistsown','stylistown','ownstylist','own','owndesign','owndesigns','ownbrand','self','selfmade','designersown','designerown','modelsown','modelown','talentsown','artistsown','vintage','archive','custom','custommade','handmade','diy','secondhand','thrift','thrifted','thriftstore','borrowed','rental','rented','nobrand','brandless','none','na','unknown','tbd','tba'];
+function _papIsGenericCredit(s){
+  var key=String(s==null?'':s).toLowerCase().replace(/[^a-z0-9]+/g,'');
+  return key==='' || _PAP_GENERIC_CREDITS.indexOf(key)>=0;
+}
 function _papClassifySubmission(){
   var imgCountByLook={}, brandSetByLook={}, clothing={};
   var keys={};
@@ -2147,10 +2156,13 @@ function _papClassifySubmission(){
         var sel=row.querySelector('.look-select');
         var itype=_papNormBrand(sel?sel.value:'');
         var brand=_papNormBrand(inputs[0]?inputs[0].value:'');
+        // 2026-08-24 — 관용 표기(Stylist's Own 등)는 브랜드 없음으로 취급하고
+        // 핸들로 폴백한다. 핸들도 관용 표기면 버린다. 서버와 동일 규칙.
+        if(brand && _papIsGenericCredit(brand)) brand='';
         var ident=brand;
         if(!ident){
           var h0=(inputs[1]?inputs[1].value:'').trim().replace(/^@+/,'').replace(/\s+/g,'').toLowerCase();
-          if(h0) ident='@'+h0;
+          if(h0 && !_papIsGenericCredit(h0)) ident='@'+h0;
         }
         // 의상 슬롯만 모아 다중 브랜드 예외 판정에 쓴다(액세서리 제외).
         if(ident && _PAP_CLOTHING_TYPES[itype] && cnt>0) clothing[ident]=true;
@@ -2161,7 +2173,7 @@ function _papClassifySubmission(){
           // api/_lib/submissionType.js 의 normHandle 폴백과 동일 규칙 —
           // 사전 안내(€790 브랜디드)가 서버 판정과 어긋나지 않게 한다.
           var h=(inputs[1]?inputs[1].value:'').trim().replace(/^@+/,'').replace(/\s+/g,'').toLowerCase();
-          if(h) set['@'+h]=true;
+          if(h && !_papIsGenericCredit(h)) set['@'+h]=true;
         }
       });
     }

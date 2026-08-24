@@ -132,6 +132,37 @@ function normHandle(s) {
   return String(s == null ? '' : s).trim().replace(/^@+/, '').replace(/\s+/g, '').toLowerCase();
 }
 
+// GENERIC-CREDIT 필터 (도메니코 지시 2026-08-24) ─────────────────────────────
+// "Stylist" / "Own Design" / "Stylist's Own" 같은 관용 표기는 브랜드가 아니라
+// "스타일리스트 소장품·본인 제작"이라는 뜻이다. 실사례 "BURNOUT IS A BADGE OF
+// HONOR"(93ed4a18): 룩 크레딧이 Ginza Kanematsu(Shoes) + Stylist(Jacket) +
+// Own Design(Shirt) + Stylist's Own(Top) — 뒤 3개가 브랜드로 세어져 union 4종,
+// 교집합 없음 → free 로 저장됐다. 검증 불가한 관용 표기는 어떤 카운트에도
+// (branded 트리거·의상 브랜드 수·free 자격) 넣지 않는다.
+//
+// 비교 키: 소문자 + 영숫자 외 전부 제거 — "Stylist's Own"/"stylists own"/
+// "@stylistsown" 이 전부 'stylistsown' 하나로 접힌다. 실제 브랜드명과의
+// 부분 일치는 안 한다("Owndesign Studio" 는 'owndesignstudio' → 통과).
+// ⚠ frontend/submission.html 미러의 _PAP_GENERIC_CREDITS 와 목록이 같아야
+// 한다 — tests/submission-type.test.js 가 두 목록의 일치를 고정한다.
+const GENERIC_CREDIT_TERMS = new Set([
+  // 스타일리스트 소장/본인 제작 계열
+  'stylist', 'stylists', 'stylistsown', 'stylistown', 'ownstylist',
+  'own', 'owndesign', 'owndesigns', 'ownbrand', 'self', 'selfmade',
+  'designersown', 'designerown', 'modelsown', 'modelown', 'talentsown', 'artistsown',
+  // 출처 불명/일반명사 계열
+  'vintage', 'archive', 'custom', 'custommade', 'handmade', 'diy',
+  'secondhand', 'thrift', 'thrifted', 'thriftstore', 'borrowed', 'rental', 'rented',
+  // 무기재 계열
+  'nobrand', 'brandless', 'none', 'na', 'unknown', 'tbd', 'tba',
+]);
+
+/** 브랜드/핸들 문자열이 "브랜드가 아닌 관용 표기"인지. 빈 값도 true. */
+function isGenericCredit(s) {
+  const key = String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '');
+  return key === '' || GENERIC_CREDIT_TERMS.has(key);
+}
+
 /**
  * Count images per look number from lookImageMap. Falls back to counting
  * looks[].items when lookImageMap is absent/empty is NOT done here — image
@@ -163,7 +194,9 @@ function brandSetsFromLooks(looks) {
       if (Array.isArray(lk.items)) {
         for (const it of lk.items) {
           const b = normBrand(it && it.brand);
-          if (b) {
+          // 2026-08-24 — 관용 표기(Stylist's Own 등)는 브랜드가 아니므로 집합에
+          // 넣지 않는다. 브랜드칸이 관용 표기면 없는 것으로 보고 핸들로 넘어간다.
+          if (b && !isGenericCredit(b)) {
             set.add(b);
           } else {
             // 2026-07-22 (도메니코 QA) — 브랜드명을 비우고 @핸들만 입력하면
@@ -174,7 +207,7 @@ function brandSetsFromLooks(looks) {
             // '@' 접두로 네임스페이스를 분리해 브랜드명 문자열과의 우연한
             // 충돌은 피한다(보수적 — 확실한 동일성만 잡는다).
             const h = normHandle(it && it.instagram);
-            if (h) set.add('@' + h);
+            if (h && !isGenericCredit(h)) set.add('@' + h);
           }
         }
       }
@@ -204,10 +237,12 @@ function clothingBrandUnion(looks, realLookKeys) {
     for (const it of lk.items) {
       if (!it) continue;
       if (!CLOTHING_TYPES.has(normItemType(it.type))) continue;
+      // 2026-08-24 — 관용 표기(Stylist's Own 등)는 의상 브랜드 수에도 넣지 않는다.
+      // 안 그러면 "Stylist's Own ×4" 로 무료 자격(4종)을 채우는 우회로가 생긴다.
       const b = normBrand(it.brand);
-      if (b) { out.add(b); continue; }
+      if (b && !isGenericCredit(b)) { out.add(b); continue; }
       const h = normHandle(it.instagram);
-      if (h) out.add('@' + h);
+      if (h && !isGenericCredit(h)) out.add('@' + h);
     }
   }
   return out;
@@ -377,6 +412,8 @@ module.exports = {
   normBrand,
   normHandle,
   normItemType,
+  GENERIC_CREDIT_TERMS,
+  isGenericCredit,
   clothingBrandUnion,
   classifySubmissionType,
   looksMissingCredit,

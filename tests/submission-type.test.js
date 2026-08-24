@@ -475,6 +475,93 @@ console.log('\n=== FEW-CLOTHING-BRANDS (2026-08-23) ===');
      JSON.stringify(both));
 })();
 
+/* ── 2026-08-24 (도메니코 지시) — GENERIC-CREDIT 필터 ────────────────────────
+ * "@stylist @owndesign @stylistsown … 이렇게 세개는 브랜드가 아니라 스타일리스트,
+ * 본인디자인, 스타일리스트 물건 이런식으로 쓴거라 앞으로 이런식으로 검증되지
+ * 않은건 브랜드로 카운트하지 말아줘."
+ * 관용 표기(Stylist's Own / Own Design / Vintage …)는 branded 트리거·의상 브랜드
+ * 수·free 자격 어디에도 세지 않는다. 비교 키는 소문자+영숫자만 남긴 형태. */
+console.log('\n=== GENERIC-CREDIT 필터 (2026-08-24) ===');
+(function () {
+  const { isGenericCredit, GENERIC_CREDIT_TERMS } =
+    require(path.resolve(__dirname, '..', 'api', '_lib', 'submissionType'));
+  const L = (n, items) => ({ n, items });
+
+  ok('isGenericCredit: 표기 변형이 전부 걸린다',
+     ["Stylist", "Stylist's Own", 'stylists own', 'Own Design', '@stylistsown',
+      'VINTAGE', "Model's Own", 'N/A'].every(isGenericCredit));
+  ok('isGenericCredit: 실제 브랜드는 안 걸린다 (부분 일치 안 함)',
+     ['Ginza Kanematsu', 'Owndesign Studio', 'Vintage Supply Co', 'NAMILIA']
+       .every((s) => !isGenericCredit(s)));
+
+  // 실사례 회귀: BURNOUT IS A BADGE OF HONOR (93ed4a18-e268-4e0c-9d21-2f4b7543e255)
+  // 룩 크레딧: Shoes Ginza Kanematsu · Jacket "Stylist" · Shirt "Own Design" ·
+  // Top "Stylist's Own" — 관용 표기 3개가 브랜드로 세어져 union 4종·교집합 없음
+  // → free 저장. 필터 후에는 검증 가능한 브랜드가 Ginza Kanematsu(신발) 하나뿐:
+  // union==1 → branded(€790, 2026-07-19 단일 브랜드 트리거). 의상 0종이라
+  // 액세서리-온리 예외는 못 탄다(2026-08-10 가드) + needsCreditReview 로 관리자 표시.
+  const burnout = classifySubmissionType([
+    L(1, [{ type: 'Shoes', brand: 'Ginza Kanematsu', instagram: '' }]),
+    L(2, [{ type: 'Jacket', brand: 'Stylist', instagram: '' }]),
+    L(3, [{ type: 'Shirt', brand: 'Own Design', instagram: '' }]),
+    L(4, [{ type: 'Top', brand: "Stylist's Own", instagram: '' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('실사례 BURNOUT → branded (관용 표기 걷어내면 실브랜드가 Ginza Kanematsu 1개)',
+     burnout.submissionType === 'branded'
+     && burnout.sharedBrands.length === 1 && burnout.sharedBrands[0] === 'ginza kanematsu',
+     JSON.stringify(burnout));
+  ok('BURNOUT: 의상 브랜드 0종 + needsCreditReview (관용 표기는 의상 수에도 안 셈)',
+     burnout.clothingBrandCount === 0 && burnout.needsCreditReview === true,
+     JSON.stringify(burnout));
+
+  // 관용 표기만 있고 실브랜드가 아예 없으면 → branded 로 만들지 않는다 (union 0)
+  const allGeneric = classifySubmissionType([
+    L(1, [{ type: 'Top', brand: "Stylist's Own" }]), L(2, [{ type: 'Dress', brand: 'Own Design' }]),
+    L(3, [{ type: 'Pants', brand: 'Vintage' }]), L(4, [{ type: 'Coat', brand: 'Stylist' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('전부 관용 표기 → free + needsCreditReview (branded 오탐 없음)',
+     allGeneric.submissionType === 'free' && allGeneric.branded === false
+     && allGeneric.needsCreditReview === true, JSON.stringify(allGeneric));
+
+  // 우회로 차단: 실의상 3종 + "Stylist's Own" 으로 4종을 못 채운다
+  const pad = classifySubmissionType([
+    L(1, [{ type: 'Top', brand: 'A' }]), L(2, [{ type: 'Dress', brand: 'B' }]),
+    L(3, [{ type: 'Pants', brand: 'C' }]), L(4, [{ type: 'Coat', brand: "Stylist's Own" }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('실의상 3종 + 관용 표기 1개 → 4종 안 됨 → paid_few_looks',
+     pad.submissionType === 'paid_few_looks' && pad.clothingBrandCount === 3
+     && pad.paidReason === 'few_clothing_brands', JSON.stringify(pad));
+
+  // 핸들 폴백에도 적용: @stylistsown 은 버리고, 관용 브랜드명 뒤의 실핸들은 살린다
+  const handles = classifySubmissionType([
+    L(1, [{ type: 'Top', brand: '', instagram: '@stylistsown' }, { type: 'Dress', brand: 'X' }]),
+    L(2, [{ type: 'Pants', brand: "Stylist's Own", instagram: '@realbrand' }, { type: 'Coat', brand: 'Y' }]),
+    L(3, [{ type: 'Top', brand: 'Z' }]),
+    L(4, [{ type: 'Dress', brand: 'W' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('관용 핸들은 버리고(@stylistsown), 관용 브랜드명 뒤 실핸들(@realbrand)은 폴백으로 산다',
+     handles.clothingBrands.indexOf('@realbrand') >= 0
+     && handles.clothingBrands.indexOf('@stylistsown') === -1
+     && handles.clothingBrandCount === 5 && handles.submissionType === 'free',
+     JSON.stringify(handles.clothingBrands));
+
+  // 서버 ↔ 클라이언트 미러 목록 일치 (한쪽만 고치면 사전 안내가 어긋난다)
+  const fs = require('fs');
+  const html = fs.readFileSync(path.resolve(__dirname, '..', 'frontend', 'submission.html'), 'utf8');
+  const m = html.match(/_PAP_GENERIC_CREDITS\s*=\s*\[([^\]]*)\]/);
+  const clientList = m ? m[1].split(',').map((s) => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean) : [];
+  const serverList = Array.from(GENERIC_CREDIT_TERMS);
+  ok('미러 _PAP_GENERIC_CREDITS 가 존재한다', clientList.length > 0);
+  ok('서버·미러 관용 표기 목록이 완전히 같다',
+     clientList.length === serverList.length
+     && serverList.every((t) => clientList.indexOf(t) >= 0),
+     JSON.stringify({ serverOnly: serverList.filter((t) => clientList.indexOf(t) < 0),
+                      clientOnly: clientList.filter((t) => serverList.indexOf(t) < 0) }));
+  ok('미러가 _papIsGenericCredit 로 브랜드·핸들 양쪽을 거른다',
+     html.includes('_papIsGenericCredit(brand)') && html.includes('!_papIsGenericCredit(h0)')
+     && html.includes('!_papIsGenericCredit(h)'));
+})();
+
 console.log('\n=== 클라이언트 미러 동기화 ===');
 (function () {
   const fs = require('fs');
