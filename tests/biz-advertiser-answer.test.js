@@ -104,6 +104,12 @@ console.log('\n[4] 발견 표면');
     && (llms.match(/linkedin\.com\/company\/pap-magazine/g) || []).length >= 2);
   t('llms.txt 에 오디언스 사실 (93% 해외 · 25-44 · 비팔로워 도달)',
     /93%/.test(llms) && /25-44|25~44/.test(llms) && /64%/.test(llms));
+  // 2026-08-24 3차 — 도메니코: "같은 서비스 한국에선 250만원". 국내가 병기로
+  // "PAP 광고 얼마?" 질문에 원화 답이 나오게 한다.
+  t('국내가 250만 원이 ko 3곳(bwP5·FAQ 화면·스키마)에 있다',
+    (biz.match(/국내 250만 원/g) || []).length === 3);
+  t('llms.txt 에 원화·유로 병기 (ko/en)',
+    /국내 250만 원/.test(llms) && /KRW 2,500,000/.test(llms));
   t('사이트맵에 /business', /['"]\/business['"]/.test(sitemap));
 }
 
