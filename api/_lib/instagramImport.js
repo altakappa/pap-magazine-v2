@@ -521,6 +521,12 @@ async function generateArticleFromPost(post, opts){
     '    // 세로로 어디쯤인지. 0=이미지 맨 위, 1=맨 아래. 인물이 없으면 null.',
     '    // 머리카락 끝이 아니라 이마가 시작되는 지점 기준.',
     '  "comment_question": "(독자에게 던지는 질문 한 문장. 반드시 ? 로 끝낼 것. 기사 내용에 붙어 있어야 한다. 20~40자)",',
+    /* 2026-08-24 — CTR 회수. 실측: 8월 노출 51.6만인데 CTR 2.1%. 원인 중 하나가
+       검색 결과의 제목·설명이었다 — seo 칼럼이 없어 설명줄이 제목 반복으로 나갔다.
+       title_ko 는 '후킹 한 줄'(브랜드 톤)이고, seo_title 은 '검색 결과에서 이기는
+       줄'이라 목적이 다르다. 둘을 섞으면 둘 다 죽는다. */
+    '  "seo_title": "(구글 검색 결과용 제목. 사람들이 실제로 검색할 단어(인물·브랜드·행사명)를 문장 맨 앞에. 25~45자, 낚시 금지, 본문에 없는 약속 금지. 예: 워터밤 서울 2026 최종 라인업, 날짜별 출연진 총정리)",',
+    '  "seo_description": "(구글 검색 결과 설명줄. 본문의 구체 사실(누가·무엇·언제·어디서)로 클릭할 이유를 준다. 80~150자, 평서체 ~다, 제목 반복 금지, 본문에 없는 사실 금지.)",',
     '  "slug": "english-url-friendly-slug-from-title",',
     '  "faq": [  // AEO: 독자가 검색엔진/AI에 실제로 물어볼 자연어 질문 3개 (한국어)',
     '    {"q": "자연어 질문 (예: 발렌시아가 2026 쿠튀르 쇼는 어디서 열렸나요?)",',
@@ -634,6 +640,10 @@ async function generateArticleFromPost(post, opts){
           .slice(0, 4)
       : [],
     comment_question: String(parsed.comment_question || '').trim(),
+    /* 검색 결과 전용 제목·설명 (2026-08-24 CTR 회수). 비면 null — seoRenderer 가
+       기존 폴백(제목+브랜드, 본문 파생 설명)으로 처리하므로 없어도 안전하다. */
+    seo_title: String(parsed.seo_title || '').trim().slice(0, 70) || null,
+    seo_description: String(parsed.seo_description || '').trim().slice(0, 160) || null,
     // 커버에서 얼굴 맨 위의 세로 위치(0~1). 범위를 벗어나거나 없으면 null → 보정 안 함.
     cover_focus_top: (function (v) {
       // null·''·undefined 는 Number() 에서 0 이 된다 — "맨 위에 얼굴"로 오해되면
@@ -749,6 +759,10 @@ function buildArticleRow(post, generated, opts){
     category: generated.category || 'News',
     tags: generated.tags || [],
     slug: generated.slug || null,
+    /* 검색 결과 전용 제목·설명 (135 마이그레이션, 2026-08-24 CTR 회수).
+       seoRenderer 가 record.seo_title/seo_description 을 최우선으로 존중한다. */
+    seo_title: generated.seo_title || null,
+    seo_description: generated.seo_description || null,
     // AEO FAQ (083) — 빈 배열이면 null (스키마 미노출)
     faq: (Array.isArray(generated.faq) && generated.faq.length) ? generated.faq : null,
     thumbnail_url: imgs[0] || null,
