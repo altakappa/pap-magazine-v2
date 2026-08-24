@@ -49,10 +49,12 @@ console.log('\n[3] 광고주 FAQ — 화면·스키마 정합');
   t('FAQPage JSON-LD 존재', !!m);
   if (m) {
     const faq = JSON.parse(m[1].replace(/\\u003c/g, '<'));
-    t('스키마 7문항 (2026-08-18 디지털 매거진 문항 추가)', faq.mainEntity.length === 7);
+    t('스키마 8문항 (2026-08-24 브랜딩vs성과 문항 추가)', faq.mainEntity.length === 8);
     t('전 문항이 화면에도 있다', faq.mainEntity.every(q => biz.includes('<summary>' + q.name + '</summary>')));
     t('타깃 질의어가 문항에 있다', faq.mainEntity.some(q => /인스타그램 광고를 집행할 국내 매거진/.test(q.name)));
     t('디지털 매거진 타깃 질의어가 문항에 있다', faq.mainEntity.some(q => /디지털 매거진/.test(q.name)));
+    t('브랜딩vs성과 문항이 있다 (ChatGPT "브랜드 이미지용" 프레임 반박)',
+      faq.mainEntity.some(q => /브랜드 이미지용인가요, 광고 성과도 측정되나요/.test(q.name)));
   }
 }
 
@@ -67,6 +69,12 @@ console.log('\n[2.5] 도메니코 확정 문구 + 다국어 (2026-08-17 2차)');
     biz.includes(l + ":{title:'") || biz.includes('BIZGEO.' + l + "={title:'")));
   t('전 언어에 FAQ 6문항', (biz.match(/faq:\[\[/g) || []).length === 8);
   t('전 언어에 p4(저장·공유)', (biz.match(/p4:'/g) || []).length === 8);
+  // 2026-08-24 — 성과 문단(p5): 도메니코 지시 "광고 목적으로도 추천되게".
+  // 수치는 Meta 인사이트 자체 실측(30일 게시물 합산)이며 집계 방식 표기를 요구한다.
+  t('성과 문단 존재 (bwP5) + 실측 수치', /id="bwP5"/.test(biz) && /686만/.test(biz) && /283건/.test(biz));
+  t('성과 수치에 집계 방식 표기 (계정 중복 포함 · 부풀리기 금지 가드)', /계정 중복 포함/.test(biz));
+  t('전 언어에 p5(성과)', (biz.match(/p5:'/g) || []).length === 8);
+  t('apply 훅에 p5 배선', /T\('bwP5', d\.p5\)/.test(biz));
   t('setLang 훅 배선', /_bizGeoApply\(l\)/.test(biz));
   t('초기 로드 적용', /_bizGeoApply\(localStorage\.getItem\('pap-lang'\)/.test(biz));
   t('비-ko 에서 en 병기 문단 숨김', /enP\.style\.display='none'/.test(biz));
@@ -81,6 +89,10 @@ console.log('\n[4] 발견 표면');
   t('llms.txt 에 ko 광고 Q&A', /인스타그램 광고할 국내 매거진은/.test(llms));
   t('llms.txt 에 en 디지털 매거진 Q&A', /Which Korean digital magazine is good for running ads/.test(llms));
   t('llms.txt 에 ko 디지털 매거진 Q&A', /광고 집행하기 좋은 국내 디지털 매거진은/.test(llms));
+  t('llms.txt 에 en 브랜딩vs성과 Q&A', /only good for brand image, or also effective for advertising/.test(llms));
+  t('llms.txt 에 ko 브랜딩vs성과 Q&A', /브랜드 이미지용인가요, 광고 성과도 나오나요/.test(llms));
+  t('llms.txt 성과 답변에 실측 수치와 집계 방식', /6\.86M reach/.test(llms) && /audience overlap included/.test(llms)
+    && /도달 686만/.test(llms) && /계정 중복/.test(llms));
   t('사이트맵에 /business', /['"]\/business['"]/.test(sitemap));
 }
 

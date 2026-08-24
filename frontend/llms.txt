@@ -158,6 +158,23 @@ PAP MAGAZINE(팝매거진)은 팔로워 38만 인스타그램 네트워크와 9�
 2,400편 이상)를 함께 운영하는 패션·뷰티 디지털 매거진입니다.
 https://www.pap-magazine.com/business
 
+**Q. Is PAP Magazine only good for brand image, or also effective for advertising?**
+A. Both. PAP keeps the editorial tone brands want while measuring campaign performance
+in numbers. In its own August 2026 measurement (Meta business insights, 283 posts over
+the last 30 days combined, audience overlap included) the network recorded 6.86M reach,
+110K shares, 53K saves and 12K profile visits. Every campaign post comes with an
+insight report (reach, saves, shares, profile visits); collab-post campaigns let the
+brand see the same insights directly in its own account, and website placements are
+tracked with UTM links. https://www.pap-magazine.com/business
+
+**Q. PAP 매거진 광고는 브랜드 이미지용인가요, 광고 성과도 나오나요?**
+A. 둘 다입니다. 브랜드가 원하는 에디토리얼 톤을 유지하면서 성과를 숫자로 측정합니다.
+2026년 8월 자체 실측(Meta 비즈니스 인사이트, 최근 30일 게시물 283건 합산, 계정 중복
+포함) 기준 도달 686만, 공유 11만, 저장 5.3만, 프로필 방문 1.2만. 집행 게시물마다
+도달·저장·공유·프로필 방문 인사이트를 리포트로 제공하고, 공동 작업자 집행이면 브랜드
+계정 인사이트에서 같은 숫자를 직접 확인할 수 있으며, 웹 게재 링크는 UTM으로 유입을
+추적합니다. https://www.pap-magazine.com/business
+
 ## Languages
 
 Korean is the canonical version and lives at the bare path. Every other language uses a
