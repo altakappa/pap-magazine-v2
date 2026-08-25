@@ -2565,6 +2565,7 @@ async function loadPullLetters(statusFilter){
         approved: { cls:'b-approved', label:'승인' },
         issued:   { cls:'b-approved', label:'발급 완료' },
         rejected: { cls:'b-declined', label:'거절' },
+        revision: { cls:'b-onhold',   label:'수정 요청 중' },
       };
       var s = statusMap[pl.status] || statusMap.pending;
       // Title: moodboard title (community flow) or first line of request_text (legacy)
@@ -2738,6 +2739,7 @@ function _createPullLetterReviewModal(){
     + '<div class="plr-body"></div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'approved\',null)">Approve</button>'
+      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'revision\',null)">무드보드 수정 요청</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'issued\',null)">Mark Issued (uploads PDF)</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'on_hold\',null)">보류(결제 확인 전)</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'pending\',null)">보류 해제 → 대기 중</button>'
@@ -2769,17 +2771,25 @@ async function doPullLetterReview(status){
   var bg = document.getElementById('plReviewBg');
   var id = bg ? bg.dataset.id : null;
   if(!id) return;
-  var labels = { approved:'승인', accepted:'승인', issued:'발급 완료', rejected:'거절', on_hold:'보류(결제 확인 전)', pending:'보류 해제 → 대기 중' };
+  var labels = { approved:'승인', accepted:'승인', issued:'발급 완료', rejected:'거절', on_hold:'보류(결제 확인 전)', pending:'보류 해제 → 대기 중', revision:'무드보드 수정 요청' };
   if(status && !confirm('이 Pull-Letter를 '+(labels[status]||status)+' 처리하시겠습니까?')) return;
   try{
     var pdfPath = null;
-    // 'issued' requires a PDF (or one already uploaded). For other statuses upload is optional.
     var pl = _allPullLetters.find(function(x){ return x.id === id; });
+    if(status === 'revision'){
+      /* 피드백 없는 수정 요청은 서버도 400 으로 거절한다 — 먼저 안내 */
+      var _n = document.getElementById('plrNotes');
+      if(!_n || !_n.value.trim()){
+        alert('수정 요청에는 Admin notes 에 피드백을 적어야 합니다. 신청자가 그 내용을 보고 무드보드를 고칩니다.');
+        return;
+      }
+    }
     if(status === 'issued'){
+      /* 2026-08-25 — PDF 미첨부 발급은 서버가 공문을 자동 생성한다(미리보기
+         그대로). 예전의 '파일 먼저 첨부' 선차단은 자동 발급을 막고 있었다. */
       pdfPath = await _uploadPullLetterPdfIfPresent(id);
       if(!pdfPath && !(pl && pl.pull_letter_url)){
-        alert('"Mark Issued"는 PDF가 필요합니다. 먼저 파일을 첨부해주세요.');
-        return;
+        if(!confirm('첨부 파일이 없어 위 미리보기 그대로 공문이 자동 생성·발급됩니다. 진행할까요?')) return;
       }
     } else {
       pdfPath = await _uploadPullLetterPdfIfPresent(id);

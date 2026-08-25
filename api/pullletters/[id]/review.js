@@ -29,8 +29,15 @@ module.exports = async function handler(req, res) {
     // 2026-08-03 — 'on_hold'(무료체험 중 접수 보류)와 'pending'(보류 해제 후
     // 정상 검토 대기)을 추가. 서버가 자동으로 넣은 보류를 첫 결제 확인 뒤
     // 관리자가 되돌릴 수 있어야 한다.
-    if (!status || !['pending', 'on_hold', 'accepted', 'approved', 'rejected', 'issued'].includes(status)) {
-      return res.status(400).json({ message: 'Status must be one of: pending, on_hold, accepted, approved, rejected, issued' });
+    /* 'revision' (2026-08-25 도메니코) — 무드보드 수정 요청. 피드백과 함께
+       회원에게 돌아가고, 회원이 수정본을 재제출하면 다시 pending 이 된다.
+       적합해질 때까지 왕복하다 최종 발급하는 흐름의 축. */
+    if (!status || !['pending', 'on_hold', 'accepted', 'approved', 'rejected', 'issued', 'revision'].includes(status)) {
+      return res.status(400).json({ message: 'Status must be one of: pending, on_hold, accepted, approved, rejected, issued, revision' });
+    }
+    if (status === 'revision' && !String(reviewNote || '').trim()) {
+      /* 피드백 없는 수정 요청은 회원이 뭘 고쳐야 하는지 모른다 — 막는다. */
+      return res.status(400).json({ message: '수정 요청에는 피드백(Admin notes)이 필요합니다.', code: 'revision_needs_note' });
     }
 
     const update = {
@@ -107,6 +114,15 @@ module.exports = async function handler(req, res) {
       update.pull_letter_url = _plPath;
     }
 
+    if (status === 'revision') {
+      /* 왕복 이력 — 몇 번째 피드백인지가 남아야 대화가 된다. */
+      const { data: cur } = await supabaseAdmin
+        .from('pullletters').select('revision_history').eq('id', id).single();
+      const hist = Array.isArray(cur && cur.revision_history) ? cur.revision_history : [];
+      hist.push({ at: new Date().toISOString(), by: 'pap', note: String(reviewNote || '').trim() });
+      update.revision_history = hist;
+    }
+
     const { data: pullLetter, error } = await supabaseAdmin
       .from('pullletters')
       .update(update)
@@ -128,9 +144,11 @@ module.exports = async function handler(req, res) {
       const isPositive = status === 'accepted' || status === 'approved' || status === 'issued';
       const tpl = status === 'issued'
         ? templates.pullletterIssued({ name: profile.name }, reviewNote, _lang)
-        : isPositive
-          ? templates.pullletterAccepted({ name: profile.name }, reviewNote, _lang)
-          : templates.pullletterRejected({ name: profile.name }, reviewNote, _lang);
+        : status === 'revision'
+          ? templates.pullletterRevision({ name: profile.name }, reviewNote, _lang)
+          : isPositive
+            ? templates.pullletterAccepted({ name: profile.name }, reviewNote, _lang)
+            : templates.pullletterRejected({ name: profile.name }, reviewNote, _lang);
       sendEmail(profile.email, tpl).catch(() => {});
     }
 

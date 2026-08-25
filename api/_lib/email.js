@@ -876,6 +876,30 @@ const templates = {
     return { subject: L.subject, html: wrapHtml(html, lang) };
   },
 
+  // 7c. Pull-letter revision requested (2026-08-25 도메니코 — 무드보드 피드백 왕복)
+  pullletterRevision(user, note, lang) {
+    var isKo = lang === 'ko';
+    var greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
+    var subject = isKo ? '[PAP Magazine] 풀레터 무드보드 수정 요청' : '[PAP Magazine] Pull-Letter: revision requested';
+    var heading = isKo ? '무드보드 수정 요청' : 'Revision requested';
+    var body1 = isKo
+      ? '보내주신 풀레터 신청을 검토했습니다. 발급 전에 무드보드에 아래 수정이 필요합니다.'
+      : 'We have reviewed your Pull-Letter request. Before we can issue the letter, the mood board needs the following revisions.';
+    var noteLabel = isKo ? '에디터 피드백' : 'Editor feedback';
+    var body2 = isKo
+      ? '마이페이지에서 수정한 무드보드를 다시 올려주시면 재검토 후 발급해 드립니다.'
+      : 'Please upload your revised mood board from My Page — we will review it again and issue the letter once it is ready.';
+    var cta = isKo ? '수정본 올리기' : 'Upload revision';
+    var noteHtml = note ? ('<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #E6B800;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">' + noteLabel + '</span><br><span style="color:#ccc;font-size:14px;white-space:pre-line;">' + note + '</span></div>') : '';
+    var html = '<h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">' + heading + '</h2>'
+      + '<p>' + greet + '</p>'
+      + '<p>' + body1 + '</p>'
+      + noteHtml
+      + '<p>' + body2 + '</p>'
+      + '<a href="' + FRONTEND_URL + '/mypage#mp-pullletters" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">' + cta + '</a>';
+    return { subject: subject, html: wrapHtml(html, lang) };
+  },
+
   // 8. Subscription confirmation
   subscriptionConfirmed(user, plan, lang) {
     const planLabels = {

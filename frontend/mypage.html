@@ -946,6 +946,7 @@ function _plBadge(status){
     approved:{ ko:'승인',   en:'Approved', cls:'approved' },
     issued:  { ko:'발급 완료', en:'Issued', cls:'approved' },
     rejected:{ ko:'거절',   en:'Rejected', cls:'rejected' },
+    revision:{ ko:'수정 요청', en:'Revision requested', cls:'pending' },
   };
   var b = labels[status] || labels.pending;
   return '<span class="mp-badge ' + b.cls + '">' + _papUIL(b.ko,b.en) + '</span>';
@@ -994,6 +995,24 @@ function loadPullletterRequests(){
         if(r.admin_notes){
           html += '<div style="margin-top:8px;padding:8px 10px;background:rgba(255,255,255,.03);border-left:2px solid rgba(255,255,255,.15);font-size:11px;color:rgba(255,255,255,.65)"><strong style="font-weight:700;letter-spacing:.05em">PAP:</strong> ' + esc(r.admin_notes) + '</div>';
         }
+        // ── 수정 요청 왕복 (2026-08-25) — 피드백 이력 + 수정본 재제출 ──
+        if(r.status === 'revision'){
+          var hist = Array.isArray(r.revision_history) ? r.revision_history : [];
+          if(hist.length){
+            html += '<div style="margin-top:8px;font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.08em">' + (_papUIL('피드백 이력','FEEDBACK HISTORY')) + '</div>';
+            hist.forEach(function(h){
+              var who = h.by === 'pap' ? 'PAP' : (_papUIL('나','Me'));
+              var when = h.at ? String(h.at).slice(0,10) : '';
+              html += '<div style="margin-top:4px;padding:7px 10px;background:rgba(255,255,255,.03);border-left:2px solid ' + (h.by==='pap' ? 'rgba(230,184,0,.5)' : 'rgba(255,255,255,.2)') + ';font-size:11px;color:rgba(255,255,255,.6)"><strong>' + who + '</strong> <span style="opacity:.5">' + when + '</span>' + (h.note ? ('<br>' + esc(h.note)) : '') + (h.files && h.files.length ? ('<br><span style="opacity:.5">' + h.files.length + ' file(s)</span>') : '') + '</div>';
+            });
+          }
+          html += '<div style="margin-top:10px;padding:12px;border:1px dashed rgba(230,184,0,.35)" onclick="event.stopPropagation()">'
+            + '<div style="font-size:11px;color:rgba(255,210,80,.9);margin-bottom:8px">' + (_papUIL('수정한 무드보드를 올리고 재제출하면 다시 검토합니다.','Upload your revised mood board and resubmit for another review.')) + '</div>'
+            + '<input type="file" id="_mpPlRev_' + rid + '" multiple accept="image/jpeg,image/png,application/pdf" style="font-size:11px;color:rgba(255,255,255,.6)">'
+            + '<button type="button" class="mp-sub-cta" style="margin-top:8px;display:inline-block;padding:8px 14px;font-size:10px;background:#E6B800;color:#000;font-weight:700;cursor:pointer;border:none" onclick="mpResubmitPullletter(\'' + rid + '\')">' + (_papUIL('수정본 재제출','Resubmit revision')) + '</button>'
+            + '<span id="_mpPlRevMsg_' + rid + '" style="margin-left:10px;font-size:10px;color:rgba(255,255,255,.5)"></span>'
+            + '</div>';
+        }
         if(r.pullLetterSignedUrl){
           html += '<a class="mp-sub-cta" style="margin-top:10px;display:inline-block;padding:8px 14px;font-size:10px;background:#c9a86a;color:#000;font-weight:700" href="' + safeUrl(r.pullLetterSignedUrl) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">' + (_papUIL('풀레터 PDF 다운로드','Download Pull-Letter PDF')) + '</a>';
         }
@@ -1009,6 +1028,52 @@ function loadPullletterRequests(){
     }).catch(function(){
       box.innerHTML = '<div class="mp-empty">Failed to load</div>';
     });
+}
+
+// ── 수정본 재제출 (2026-08-25 도메니코 — 피드백 왕복) ─────────────────
+// upload-url 서명 업로드(신청 때와 같은 경로)로 파일을 올린 뒤 resubmit API 호출.
+async function mpResubmitPullletter(rid){
+  var r = (window._mpPlReqs || {})[rid];
+  var input = document.getElementById('_mpPlRev_' + rid);
+  var msg = document.getElementById('_mpPlRevMsg_' + rid);
+  var say = function(t){ if(msg) msg.textContent = t; };
+  if(!r || !r.id || !input) return;
+  if(!input.files || !input.files.length){ say(_papUIL('파일을 먼저 선택해 주세요.','Choose files first.')); return; }
+  var token = localStorage.getItem('pap-token') || '';
+  try {
+    say(_papUIL('업로드 중…','Uploading…'));
+    var files = Array.prototype.slice.call(input.files).map(function(f){
+      return { name: f.name, type: f.type, size: f.size, category: 'moodboard' };
+    });
+    var ur = await fetch('/api/pullletters/upload-url', {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json', 'X-Requested-With':'XMLHttpRequest' },
+      body: JSON.stringify({ files: files }),
+    });
+    var uj = await ur.json();
+    if(!ur.ok || !uj.uploads || uj.uploads.length !== input.files.length){
+      say((uj && uj.message) || _papUIL('업로드 URL 발급 실패','Failed to get upload URLs')); return;
+    }
+    var urls = [];
+    for(var i=0;i<uj.uploads.length;i++){
+      var u = uj.uploads[i];
+      var put = await fetch(u.signedUrl, { method:'PUT', headers:{ 'Content-Type': input.files[i].type || 'application/octet-stream' }, body: input.files[i] });
+      if(!put.ok){ say(_papUIL('파일 업로드 실패 ('+(i+1)+'번째)','Upload failed (file '+(i+1)+')')); return; }
+      urls.push(u.publicUrl);
+    }
+    say(_papUIL('재제출 중…','Resubmitting…'));
+    var rr = await fetch('/api/pullletters/' + encodeURIComponent(r.id) + '/resubmit', {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer '+token, 'Content-Type':'application/json', 'X-Requested-With':'XMLHttpRequest' },
+      body: JSON.stringify({ fileUrls: urls }),
+    });
+    var rj = await rr.json();
+    if(!rr.ok){ say((rj && rj.message) || _papUIL('재제출 실패','Resubmit failed')); return; }
+    say(_papUIL('재제출 완료. 재검토 후 알려드릴게요.','Resubmitted. We will review it again.'));
+    setTimeout(loadPullletterRequests, 1200);
+  } catch(e){
+    say(_papUIL('네트워크 오류','Network error'));
+  }
 }
 
 // B-2 (2026-07-26 감사) — 풀레터 신청 철회. 지금까지 회원에게 취소 수단이

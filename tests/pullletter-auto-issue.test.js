@@ -95,7 +95,46 @@ t('어드민 모달이 미리보기를 자동으로 싣는다', () => {
   assert.ok(/plrPreviewBox/.test(ADMIN), '미리보기 자리가 없다');
 });
 
-console.log('\n[5] 어드민 안내');
+console.log('\n[5] 피드백 왕복 (2026-08-25 — 수정 요청 ↔ 재제출)');
+{
+  const RESUB = R('api/pullletters/[id]/resubmit.js');
+  const MYPAGE = R('frontend/mypage.html');
+  const EMAIL = R('api/_lib/email.js');
+  t('review 가 revision 상태를 받고, 피드백 없인 거절한다', () => {
+    assert.ok(/'revision'/.test(REV), 'revision 상태가 없다');
+    assert.ok(/revision_needs_note/.test(REV), '피드백 없는 수정 요청을 막지 않는다');
+  });
+  t('왕복 이력이 쌓인다 (pap 피드백 + member 재제출)', () => {
+    assert.ok(/revision_history/.test(REV) && /by: 'pap'/.test(REV), '피드백 이력이 없다');
+    assert.ok(/revision_history/.test(RESUB) && /by: 'member'/.test(RESUB), '재제출 이력이 없다');
+  });
+  t('재제출은 본인 + revision 상태에만, 파일 URL 은 자기 폴더만', () => {
+    assert.ok(/row\.user_id !== user\.id/.test(RESUB), '남의 신청에 재제출 가능');
+    assert.ok(/not_in_revision/.test(RESUB), '아무 상태에나 재제출 가능');
+    assert.ok(/okPrefix/.test(RESUB), '외부/남의 파일 URL 검증이 없다');
+  });
+  t('재제출하면 pending 으로 돌아가고 운영자 알림이 간다', () => {
+    assert.ok(/status: 'pending'/.test(RESUB), '재검토 대기로 안 돌아간다');
+    assert.ok(/sendTextToTelegramSafe/.test(RESUB), '알림 없으면 또 24일 방치된다');
+  });
+  t('기존 파일을 지우지 않고 추가한다 (이전 버전과 비교 검토)', () => {
+    assert.ok(/\.concat\(fileUrls\)/.test(RESUB), '재제출이 기존 파일을 덮어쓴다');
+  });
+  t('회원에게 revision 메일 템플릿이 간다', () => {
+    assert.ok(/pullletterRevision/.test(EMAIL), '템플릿이 없다');
+    assert.ok(/pullletterRevision/.test(REV), 'review 가 템플릿을 안 쓴다');
+  });
+  t('마이페이지에 재제출 UI 가 있다', () => {
+    assert.ok(/mpResubmitPullletter/.test(MYPAGE), '재제출 함수가 없다');
+    assert.ok(/revision.*수정 요청|수정 요청.*revision/s.test(MYPAGE), 'revision 배지가 없다');
+  });
+  t('어드민의 옛 발급 선차단이 제거됐다 (자동 발급이 실제로 돌게)', () => {
+    assert.ok(!/Mark Issued"는 PDF가 필요합니다/.test(ADMIN), '선차단이 남아 있으면 자동 발급 경로에 도달 불가');
+    assert.ok(/자동 생성·발급됩니다/.test(ADMIN), '자동 생성 확인 안내가 없다');
+  });
+}
+
+console.log('\n[6] 어드민 안내');
 t('미첨부 발급이 자동 생성임을 화면이 말해준다', () => {
   assert.ok(/자동 생성/.test(ADMIN), '안내가 없으면 관리자는 파일을 매번 만들어야 하는 줄 안다');
 });
