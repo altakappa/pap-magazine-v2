@@ -891,8 +891,12 @@ console.log('\n[19] 카테고리 페이지(/digital-magazine)가 고아가 아�
     /'팝매거진', '팹매거진'/.test(R('api/_lib/seoRenderer.js')));
   /* 2026-08-17 도메니코 — 구글 '팝매거진' 대응은 보이는 텍스트로. 그리고
      pop 매거진과의 비교 문구는 쓰지 않는다 (도메니코 지시). */
-  t('SSR 전 페이지에 저작권 줄(팝매거진)이 있다',
-    /© PAP MAGAZINE 팝매거진/.test(R('api/_lib/seoRenderer.js')));
+  /* 2026-08-25 — 저작권 줄의 '팝매거진'은 ko 전용으로 좁혔다. GSC 표준 태그
+     충돌 1,655건 진단: 언어판(/it 등)에 한국어 가시 텍스트가 나가면 ko 정본의
+     사본처럼 보여 구글이 self-canonical 을 무시한다. ko SERP 대응 목적은
+     ko 페이지에서 그대로 유지된다. */
+  t('SSR 저작권 줄 — ko 에서만 팝매거진 병기, 언어판은 제외',
+    /© PAP MAGAZINE\$\{lang === 'ko' \? ' 팝매거진' : ''\}/.test(R('api/_lib/seoRenderer.js')));
   t("FAQ 에 '팝매거진은 무엇인가요' 문답이 화면·스키마 양쪽에 있다",
     /팝매거진은 무엇인가요/.test(R('frontend/pap-faq-i18n.js'))
     && /팝매거진은 무엇인가요/.test(ab));

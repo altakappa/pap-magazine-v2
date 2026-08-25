@@ -1201,6 +1201,24 @@ function renderSeoHtml(kind, record, opts) {
   })();
   const ssrTitleForDl = String((record && record.title) || 'editorial')
     .replace(/[^a-zA-Z0-9가-힯 ]/g, '').replace(/\s+/g, '-').toLowerCase() || 'editorial';
+  /* 2026-08-25 (GSC 표준 태그 충돌 1,655건 진단) — 이 블록이 전 언어에 한국어로
+     나가고 있었다. /it 화보 실측: 이탈리아어는 제목·설명 2~3문장뿐인데 다운로드
+     안내·버튼이 전부 한국어 → 언어판이 ko 정본의 사본처럼 보여 구글이
+     self-canonical 을 무시하고 ko 로 접는다(사용자 선언 /it vs Google 선택 /
+     — sacre-chaos URL 검사 실측). 언어판의 한국어 UI 를 현지화해 중복 신호를
+     줄인다. ko 는 종전 문구 그대로다. */
+  const DL_T = {
+    ko: { note: '커버 및 로고 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.<br>참여 크리에이터는 본인 작품을 무료로 다운로드할 수 있어요.', sub: '멤버십 구독하기 →', login: '로그인', use: '개인 사용 및 비상업적 용도에 한해 사용 가능' },
+    en: { note: 'Cover and logo image downloads are for <strong style="color:#fff">Standard members</strong>.<br>Contributing creators can download their own work for free.', sub: 'Subscribe →', login: 'Log in', use: 'Personal, non-commercial use only' },
+    it: { note: 'Il download di cover e immagini con logo è riservato ai <strong style="color:#fff">membri Standard</strong>.<br>I creativi che hanno partecipato possono scaricare gratuitamente il proprio lavoro.', sub: 'Abbonati →', login: 'Accedi', use: 'Solo per uso personale e non commerciale' },
+    fr: { note: 'Le téléchargement des couvertures et images avec logo est réservé aux <strong style="color:#fff">membres Standard</strong>.<br>Les créatifs ayant participé peuvent télécharger gratuitement leur propre travail.', sub: "S'abonner →", login: 'Se connecter', use: 'Usage personnel et non commercial uniquement' },
+    es: { note: 'La descarga de portadas e imágenes con logo es exclusiva para <strong style="color:#fff">miembros Standard</strong>.<br>Los creativos participantes pueden descargar su propio trabajo gratis.', sub: 'Suscribirse →', login: 'Iniciar sesión', use: 'Solo uso personal y no comercial' },
+    ja: { note: 'カバーおよびロゴ入り画像のダウンロードは<strong style="color:#fff">スタンダード会員</strong>限定です。<br>参加クリエイターはご自身の作品を無料でダウンロードできます。', sub: '会員登録 →', login: 'ログイン', use: '個人・非商用利用に限ります' },
+    de: { note: 'Der Download von Covern und Logo-Bildern ist <strong style="color:#fff">Standard-Mitgliedern</strong> vorbehalten.<br>Beteiligte Kreative können ihre eigene Arbeit kostenlos herunterladen.', sub: 'Abonnieren →', login: 'Anmelden', use: 'Nur für private, nicht-kommerzielle Nutzung' },
+    zh: { note: '封面及带 Logo 图片下载仅限<strong style="color:#fff">标准会员</strong>。<br>参与创作者可免费下载自己的作品。', sub: '订阅会员 →', login: '登录', use: '仅限个人及非商业用途' },
+    ru: { note: 'Скачивание обложек и изображений с логотипом доступно только <strong style="color:#fff">участникам Standard</strong>.<br>Участвовавшие авторы могут бесплатно скачать свои работы.', sub: 'Подписаться →', login: 'Войти', use: 'Только для личного некоммерческого использования' },
+  };
+  const DL = DL_T[lang] || DL_T.en;
   const downloadsHtml =
     '<section class="seo-downloads" id="edDetailDownloads" ' +
       'data-cover-url="' + ssrCoverUrlForDl + '" ' +
@@ -1209,12 +1227,12 @@ function renderSeoHtml(kind, record, opts) {
       'style="margin-top:24px;padding:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px">' +
       '<div style="display:flex;flex-direction:column;gap:10px">' +
         '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-        '<div style="font-size:13px;color:#ccc">커버 및 로고 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.<br>참여 크리에이터는 본인 작품을 무료로 다운로드할 수 있어요.</div>' +
+        '<div style="font-size:13px;color:#ccc">' + DL.note + '</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
-          '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">멤버십 구독하기 →</a>' +
-          '<a href="/auth.html" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">로그인</a>' +
+          '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">' + DL.sub + '</a>' +
+          '<a href="/auth.html" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">' + DL.login + '</a>' +
         '</div>' +
-        '<div style="font-size:11px;color:#666;margin-top:4px">개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
+        '<div style="font-size:11px;color:#666;margin-top:4px">' + DL.use + '</div>' +
       '</div>' +
     '</section>';
 
@@ -2057,7 +2075,7 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
 <!-- 2026-08-17 도메니코 지시 — '팝매거진' 구글 검색 대응. 메타가 아니라 **보이는
      본문 텍스트**로 브랜드 한글 표기를 전 SSR 페이지에 싣는다. 저작권 줄은
      어느 매체나 있는 자연스러운 자리다 (제목 반복 = 스팸, 이건 아님). -->
-<p class="seo-copyright" style="text-align:center;font-size:11px;color:#888;margin:28px 0 20px">© PAP MAGAZINE 팝매거진 · <a href="${SITE}" style="color:#888">pap-magazine.com</a></p>
+<p class="seo-copyright" style="text-align:center;font-size:11px;color:#888;margin:28px 0 20px">© PAP MAGAZINE${lang === 'ko' ? ' 팝매거진' : ''} · <a href="${SITE}" style="color:#888">pap-magazine.com</a></p>
 
 <script>
   window._papServerRendered = true;
