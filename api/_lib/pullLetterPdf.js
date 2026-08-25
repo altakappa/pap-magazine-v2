@@ -79,11 +79,11 @@ function letterSvg(data) {
     add(linePath(f, 'PAP MAGAZINE', W - MARGIN - wmW, 262, wmSize, wmTrack));
   }
   let y = 560;
-  center('OFFICIAL PULL LETTER', 72, 26, y, BRAND);
-  y += 90;
-  const ruleY = y;                       // 줄은 제목 아래
-  y += 120;
+  center('PULL LETTER', 72, 26, y, BRAND);
+  y += 96;
   center('Document No. ' + esc(data.docNo) + '   ·   Date of issue: ' + esc(data.issueDateText), 40, 2, y, GRAY);
+  y += 84;
+  const ruleY = y;                       // 줄은 문서번호·날짜 아래 (2026-08-25 도메니코)
 
   // ── 본문 ──
   y += 220;
