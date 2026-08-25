@@ -2697,7 +2697,7 @@ function openPullLetterReview(id){
     + filesHtml
     + miscHtml
     + '<div class="plr-row"><label>Admin notes (회원에게 표시됨)</label><textarea id="plrNotes" rows="3" style="width:100%;padding:8px 10px;border:1px solid var(--border);font-family:inherit;font-size:12px">'+esc(pl.admin_notes||'')+'</textarea></div>'
-    + '<div class="plr-row"><label>발급 풀레터 PDF (admin upload)</label><div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+pdfStatusHtml+'</div><input type="file" id="plrPdf" accept="application/pdf"></div>';
+    + '<div class="plr-row"><label>발급 풀레터 PDF</label><div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+pdfStatusHtml+'</div><div style="font-size:11px;color:var(--text3);margin-bottom:6px">파일을 첨부하지 않고 \'발급\'하면 신청서의 포토그래퍼·스타일리스트 이름과 발급일이 들어간 공문이 <b>자동 생성</b>됩니다. 특수한 공문이 필요할 때만 직접 첨부하세요.</div><input type="file" id="plrPdf" accept="application/pdf"></div>';
   bg.style.display = 'flex';
 }
 function closePullLetterReview(){

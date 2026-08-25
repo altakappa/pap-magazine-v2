@@ -52,6 +52,56 @@ module.exports = async function handler(req, res) {
     if (status === 'issued') {
       update.issued_at = new Date().toISOString();
       if (_plPath) update.pull_letter_url = _plPath;
+      else {
+        /* ── 자동 발급 (2026-08-24 도메니코 지시) ─────────────────────────
+           "승인하면 포토그래퍼·스타일리스트 이름과 발급일이 자동으로 들어간
+            풀레터가 만들어져야 한다."
+           PDF 를 첨부하지 않고 발급을 누르면 서버가 공문을 직접 만든다.
+           발행 판단은 여전히 사람이다 — 이 코드는 관리자의 '발급' 클릭
+           이후에만 돈다(자동 발행 금지 원칙과 충돌하지 않는다).
+           수동 업로드(_plPath)는 그대로 살아 있다 — 특수한 공문이 필요하면
+           예전처럼 파일을 첨부하면 이 블록은 돌지 않는다. */
+        const { data: row, error: rowErr } = await supabaseAdmin
+          .from('pullletters').select('id, user_id, title, team_info').eq('id', id).single();
+        if (rowErr || !row) {
+          return res.status(404).json({ message: 'Pull letter not found', code: 'not_found' });
+        }
+        const team = row.team_info || {};
+        const phName = team.photographer && team.photographer.name;
+        const stName = team.stylist && team.stylist.name;
+        if (!phName || !stName) {
+          /* 이름이 없으면 만들 수 없다 — 조용히 빈 공문을 내보내는 게 최악이다. */
+          return res.status(400).json({
+            message: '자동 발급 불가: 신청서에 포토그래퍼/스타일리스트 이름이 없습니다. PDF 를 직접 첨부해 발급하세요.',
+            code: 'auto_issue_missing_names',
+          });
+        }
+        try {
+          const { generatePullLetterPdf, docNoFor, issueDateTextFor } = require('../../_lib/pullLetterPdf');
+          const now = new Date();
+          const pdf = await generatePullLetterPdf({
+            photographer: phName,
+            stylist: stName,
+            project: row.title || '',
+            docNo: docNoFor(row.id, now),
+            issueDateText: issueDateTextFor(now),
+          });
+          const autoPath = row.user_id + '/' + row.id + '-auto-' + Date.now() + '.pdf';
+          const { error: upErr } = await supabaseAdmin.storage
+            .from('pull-letters')
+            .upload(autoPath, pdf, { contentType: 'application/pdf', upsert: false });
+          if (upErr) throw new Error('storage upload failed: ' + upErr.message);
+          update.pull_letter_url = autoPath;
+        } catch (e) {
+          /* 실패를 issued 로 덮지 않는다 — 발급 없이 발급 완료가 되면
+             회원은 빈 다운로드를 본다. 에러를 그대로 관리자에게 돌려준다. */
+          console.error('[pullletter] 자동 발급 실패:', (e && e.message) || e);
+          return res.status(500).json({
+            message: '풀레터 자동 생성 실패: ' + String((e && e.message) || e).slice(0, 200),
+            code: 'auto_issue_failed',
+          });
+        }
+      }
     } else if (_plPath) {
       // Allow attaching the PDF on approval too (pre-issue), optional.
       update.pull_letter_url = _plPath;
