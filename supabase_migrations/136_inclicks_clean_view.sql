@@ -53,7 +53,16 @@ SELECT
     WHEN referrer_host LIKE '%kakao%' THEN 'kakao'
     ELSE 'other'
   END AS referrer_group,
-  (referrer_host IN ('www.pap-magazine.com','pap-magazine.com','www.papkorea.com','papkorea.com')
-   OR referrer_host ~ '(^|\.)pap-magazine[a-z0-9-]*\.vercel\.app$') AS is_internal,
+  -- COALESCE 가 필요하다 (2026-08-25 적용 중 발견) — 리퍼러 없음(null)이면
+  -- 비교식이 NULL 을 뱉어 `where not is_internal` 이 그 행들을 조용히 버린다.
+  -- 이 표의 절반(803/1592)이 리퍼러 없음이다. 리퍼러 없음 = 내부 아님(false).
+  COALESCE(
+    referrer_host IN ('www.pap-magazine.com','pap-magazine.com','www.papkorea.com','papkorea.com')
+    OR referrer_host ~ '(^|\.)pap-magazine[a-z0-9-]*\.vercel\.app$',
+    false) AS is_internal,
   (campaign IS NOT NULL) AS is_tagged_link
 FROM public.social_inclicks;
+
+-- 적용 완료 2026-08-25 (Supabase igcazquhkwxtqsaqpznx)
+-- 검증: 원본 1592 = 뷰 1592 · internal 63 + not_internal 1529 = 1592 · is_internal NULL 0건
+--       배포(07:34 UTC) 이후 internal 0건

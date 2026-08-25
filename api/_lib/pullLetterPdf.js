@@ -118,6 +118,20 @@ function letterSvg(data) {
     y += 56;
   }
 
+  // ── 좌상단 로고 (2026-08-25 도메니코 지시) ──
+  let logoTag = '';
+  try {
+    const fsMod = require('fs');
+    const pathMod = require('path');
+    const logoPath = pathMod.join(__dirname, '..', '_assets', 'pullletter', 'pap-logo-black.png' /* 원본 pap-logo.png 는 흰색(다크용)이라 흰 공문에서 안 보인다 — 잉크만 검정으로 반전한 사본 */);
+    if (fsMod.existsSync(logoPath)) {
+      const b64 = fsMod.readFileSync(logoPath).toString('base64');
+      const LOGO_W = 300, LOGO_H = 186;      // 원본 715x443 비율
+      logoTag = '<image x="' + MARGIN + '" y="150" width="' + LOGO_W + '" height="' + LOGO_H
+        + '" preserveAspectRatio="xMinYMin meet" href="data:image/png;base64,' + b64 + '"/>';
+    }
+  } catch (_e) { /* 로고 없이 계속 */ }
+
   // ── 발행인 + 서명 (우측 하단, 2026-08-25 도메니코 지시) ──
   // 서명 PNG 는 api/_assets/pullletter/signature-domenico.png (투명 배경).
   // 없으면 텍스트만 남긴다 — 서명 파일 하나 없다고 발급이 죽으면 안 된다.
@@ -148,18 +162,21 @@ function letterSvg(data) {
   // ── 푸터 ──
   const fy = H - 470;
   center('PAP MAGAZINE', 52, 16, fy);
-  center('ALTAKAPPA Co., Ltd. · 1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea', 32, 1, fy + 76, GRAY);
-  center('Milan Desk · Via San Vincenzo 18B, 20123 Milano, Italy', 32, 1, fy + 130, GRAY);
-  center('www.pap-magazine.com · contact@pap-magazine.com', 32, 1, fy + 184, GRAY);
+  /* 도메니코 2026-08-25: 두 거점을 같은 형식으로 나란히 — Milan 위, Seoul 아래.
+     법인명은 주소 라벨과 층위가 달라 마지막 줄(웹·메일 옆)로 옮겼다. */
+  center('Milan Desk · Via San Vincenzo 18B, 20123 Milano, Italy', 32, 1, fy + 76, GRAY);
+  center('Seoul Desk · 1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea', 32, 1, fy + 130, GRAY);
+  center('ALTAKAPPA Co., Ltd. · www.pap-magazine.com · contact@pap-magazine.com', 32, 1, fy + 184, GRAY);
 
   const paths = P.map(([d, c]) => '<path d="' + d + '" fill="' + c + '"/>').join('\n');
   return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">'
     + '<rect width="' + W + '" height="' + H + '" fill="#ffffff"/>'
     + '<rect x="' + MARGIN + '" y="' + ruleY + '" width="' + BODY_W + '" height="6" fill="' + BRAND + '"/>'
     + '<rect x="' + (MARGIN + 20) + '" y="' + teamTop + '" width="' + (BODY_W - 40) + '" height="' + (teamBottom - teamTop) + '" fill="none" stroke="#d9d9d9" stroke-width="3"/>'
-    + '<rect x="' + MARGIN + '" y="' + (H - 500) + '" width="' + BODY_W + '" height="4" fill="#e5e5e5"/>'
+    + '<rect x="' + MARGIN + '" y="' + (H - 580) + '" width="' + BODY_W + '" height="4" fill="#e5e5e5"/>'
     + paths
     + signatureTag
+    + logoTag
     + '</svg>';
 }
 
