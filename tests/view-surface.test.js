@@ -97,8 +97,12 @@ console.log('\n=== 4. 마이그레이션 전에도 조회를 잃지 않는다 ==
 {
   for (const f of ['api/articles/[id]/view.js', 'api/editorials/[id]/view.js']) {
     const src = read(f);
-    t(`${f}: 42703(컬럼 없음)이면 surface 빼고 재시도`,
-      /error\.code === '42703' && surface/.test(src));
+    /* 2026-08-25 실측 회귀: PostgREST 는 없는 컬럼에 SQL 42703 이 아니라 스키마
+       캐시 오류 PGRST204 를 돌려준다("Could not find the 'surface' column").
+       42703 만 잡던 첫 구현이 이를 놓쳐 8/23~24 view 비콘이 하루 1,278건 500 —
+       두 코드를 모두 잡아야 마이그레이션 133 실행 전에도 조회가 산다. */
+    t(`${f}: 42703 과 PGRST204 둘 다 잡고 surface 빼고 재시도`,
+      /\(error\.code === '42703' \|\| error\.code === 'PGRST204'\) && surface/.test(src));
     /* 재시도 블록만 잘라서 본다 — 정규식으로 멀리 훑으면 엉뚱한 곳을 집는다
        (오늘 이 실수를 네 번 했다). 블록 안에 surface 가 있으면 재시도 의미가 없다. */
     const i = src.indexOf("error.code === '42703'");

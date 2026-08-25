@@ -75,7 +75,8 @@ t('차단해도 리다이렉트는 정상 (방문자 경험 보존)',
 
 console.log('=== 봇·레이트리밋 (ig-out 과 동일 방침) ===');
 t('레이트리밋 적용', /rateLimitStrict\(req, res, \{ limit: 60/.test(src));
-t('두 판별기 OR 로 봇 차단', /isLikelyBot\(ua\) \|\| isBot\(ua\)/.test(src));
+t('두 판별기 OR 로 봇 차단 (변수명 무관 — 2026-08-25 봇 판별을 리미터 앞으로 옮기며 uaEarly 로 개명)',
+  /isLikelyBot\((\w+)\) \|\| isBot\(\1\)/.test(src));
 t('로그 실패는 삼킨다 (리다이렉트는 항상 완료)', /catch \(e\) \{[\s\S]{0,120}console\.warn\('\[mediakit\] insert threw/.test(src));
 
 console.log('=== 호출부가 계측을 경유 ===');

@@ -84,9 +84,11 @@ module.exports = async function handler(req, res) {
         .insert({ editorial_id: id, user_id: null, surface }));
     }
 
-    /* 마이그레이션 133 미실행 — surface 컬럼이 아직 없다(42703).
-       계측 하나 때문에 조회 기록 전체를 잃지 않는다. surface 를 빼고 한 번 더. */
-    if (error && error.code === '42703' && surface) {
+    /* 마이그레이션 133 미실행 — surface 컬럼이 아직 없다.
+       계측 하나 때문에 조회 기록 전체를 잃지 않는다. surface 를 빼고 한 번 더.
+       ⚠ 2026-08-25 실측: PostgREST 는 없는 컬럼에 SQL 42703 이 아니라 스키마
+       캐시 오류 PGRST204 를 돌려준다 — article-view 와 동일 수정. */
+    if (error && (error.code === '42703' || error.code === 'PGRST204') && surface) {
       ({ error } = await supabaseAdmin
         .from('editorial_views')
         .insert({ editorial_id: id, user_id: viewerId }));

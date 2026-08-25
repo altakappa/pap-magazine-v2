@@ -98,8 +98,16 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).send('Method not allowed');
   res.setHeader('Cache-Control', 'no-store, max-age=0');
 
-  // 봇/스크립트의 로그 오염 방지 (ig-out 과 동일 한도)
-  if (await rateLimitStrict(req, res, { limit: 60, windowMs: 60000 }, 'mediakit')) return;
+  /* 2026-08-25 (GSC 5xx 162건 실측) — 봇 판별을 레이트리미터보다 먼저 한다.
+     구글봇이 /mediakit/ko/brand_* 를 한꺼번에 크롤하면 60/분 한도에 걸려 429 를
+     받는데, GSC 는 429 를 "서버 오류(5xx)"로 분류한다. 크롤 예산도 같이 깎인다.
+     봇은 어차피 로그를 안 남기므로 리미터를 태울 이유가 없다 — 즉시 302.
+     사람 트래픽의 한도·기록 로직은 그대로다. */
+  const uaEarly = req.headers['user-agent'];
+  const uaIsBot = isLikelyBot(uaEarly) || isBot(uaEarly);
+
+  // 봇/스크립트의 로그 오염 방지 (ig-out 과 동일 한도) — 사람만 태운다
+  if (!uaIsBot && await rateLimitStrict(req, res, { limit: 60, windowMs: 60000 }, 'mediakit')) return;
 
   const { lang, src } = readParams(req);
 
@@ -121,8 +129,8 @@ module.exports = async function handler(req, res) {
   }
 
   // 크롤러는 리다이렉트만 — 사람 지표만 남긴다 (ig-out 2026-07-20/29 교훈)
-  const ua = req.headers['user-agent'];
-  if (isLikelyBot(ua) || isBot(ua)) return res.redirect(302, dest);
+  if (uaIsBot) return res.redirect(302, dest);
+  const ua = uaEarly;
 
   /* 리퍼러 없는 요청은 기록하지 않는다 (2026-07-30 오염 실측 후 추가).
    *
