@@ -134,7 +134,26 @@ console.log('\n[5] 피드백 왕복 (2026-08-25 — 수정 요청 ↔ 재제출)
   });
 }
 
-console.log('\n[6] 어드민 안내');
+console.log('\n[6] 유효기간 (2026-08-25 — 발급일 기준 2개월)');
+{
+  const GENSRC = R('api/_lib/pullLetterPdf.js');
+  const PREV2 = R('api/pullletters/[id]/preview.js');
+  t('공문에 2개월 유효 문구 + 만료일이 박힌다', () => {
+    assert.ok(/valid for two months from the date of issue/.test(GENSRC), '유효 문구가 없다');
+    assert.ok(/validUntilText/.test(GENSRC), '만료일 삽입이 없다');
+  });
+  t('만료일 계산이 맞다 (월말 롤오버는 말일로)', () => {
+    const { validUntilTextFor } = require(path.join(ROOT, 'api/_lib/pullLetterPdf'));
+    assert.strictEqual(validUntilTextFor(new Date('2026-08-25T00:00:00Z')), '25 Oct 2026');
+    assert.strictEqual(validUntilTextFor(new Date('2026-12-31T00:00:00Z')), '28 Feb 2027');
+  });
+  t('발급·미리보기 두 경로 모두 만료일을 전달한다 (한쪽만 있으면 미리보기가 거짓말)', () => {
+    assert.ok(/validUntilTextFor\(now\)/.test(REV), '발급 경로에 없다');
+    assert.ok(/validUntilTextFor\(now\)/.test(PREV2), '미리보기 경로에 없다');
+  });
+}
+
+console.log('\n[7] 어드민 안내');
 t('미첨부 발급이 자동 생성임을 화면이 말해준다', () => {
   assert.ok(/자동 생성/.test(ADMIN), '안내가 없으면 관리자는 파일을 매번 만들어야 하는 줄 안다');
 });

@@ -35,7 +35,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const { letterSvg, docNoFor, issueDateTextFor } = require('../../_lib/pullLetterPdf');
+    const { letterSvg, docNoFor, issueDateTextFor, validUntilTextFor } = require('../../_lib/pullLetterPdf');
     const now = new Date();
     const svg = letterSvg({
       photographer: phName,
@@ -43,6 +43,7 @@ module.exports = async function handler(req, res) {
       project: row.title || '',
       docNo: docNoFor(row.id, now),
       issueDateText: issueDateTextFor(now),
+      validUntilText: validUntilTextFor(now),
     });
     const sharp = require('sharp');   // 지연 로드
     const png = await sharp(Buffer.from(svg)).resize({ width: 900 }).png().toBuffer();

@@ -84,7 +84,7 @@ module.exports = async function handler(req, res) {
           });
         }
         try {
-          const { generatePullLetterPdf, docNoFor, issueDateTextFor } = require('../../_lib/pullLetterPdf');
+          const { generatePullLetterPdf, docNoFor, issueDateTextFor, validUntilTextFor } = require('../../_lib/pullLetterPdf');
           const now = new Date();
           const pdf = await generatePullLetterPdf({
             photographer: phName,
@@ -92,6 +92,7 @@ module.exports = async function handler(req, res) {
             project: row.title || '',
             docNo: docNoFor(row.id, now),
             issueDateText: issueDateTextFor(now),
+            validUntilText: validUntilTextFor(now),
           });
           const autoPath = row.user_id + '/' + row.id + '-auto-' + Date.now() + '.pdf';
           const { error: upErr } = await supabaseAdmin.storage

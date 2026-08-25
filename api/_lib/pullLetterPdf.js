@@ -114,7 +114,15 @@ function letterSvg(data) {
   if (data.project) row('PROJECT', data.project);
   const teamBottom = y - 40;
 
+  /* 유효기간 (2026-08-25 도메니코: "발급일 기준 두 달간만 유효하다는 내용 명시").
+     '두 달'만 쓰면 받는 쪽이 계산해야 한다 — 만료 날짜까지 박는다. */
   y += 90;
+  for (const line of wrap(f, 40, 1,
+    'This letter is valid for two months from the date of issue' + (data.validUntilText ? ' (until ' + esc(data.validUntilText) + ')' : '') + '.', BODY_W)) {
+    add(linePath(f, line, MARGIN, y, 40, 1));
+    y += 64;
+  }
+  y += 40;
   for (const line of wrap(f, 34, 1,
     'To verify this letter, please contact contact@pap-magazine.com quoting the document number above.', BODY_W)) {
     add(linePath(f, line, MARGIN, y, 34, 1), GRAY);
@@ -240,10 +248,18 @@ function docNoFor(id, when) {
   return 'PL-' + ymd + '-' + String(id || '').replace(/-/g, '').slice(0, 8).toUpperCase();
 }
 
+/* 발급일 + 2개월. 월말 롤오버는 전월 말일로 클램프 (12/31 + 2개월 → 2/28). */
+function validUntilTextFor(when) {
+  const d = when || new Date();
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 2, d.getUTCDate()));
+  if (t.getUTCDate() !== d.getUTCDate()) t.setUTCDate(0);   // 롤오버 → 말일
+  return issueDateTextFor(t);
+}
+
 function issueDateTextFor(when) {
   const d = when || new Date();
   const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return String(d.getUTCDate()).padStart(2, '0') + ' ' + M[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
 }
 
-module.exports = { generatePullLetterPdf, docNoFor, issueDateTextFor, letterSvg, jpegToPdf };
+module.exports = { generatePullLetterPdf, docNoFor, issueDateTextFor, validUntilTextFor, letterSvg, jpegToPdf };
