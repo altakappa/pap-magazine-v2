@@ -71,15 +71,18 @@ function letterSvg(data) {
     add(linePath(f, text, (W - w) / 2, baseline, size, track), color);
   };
 
-  let y = 420;
-  // ── 마스트헤드 ──
-  center('PAP MAGAZINE', 120, 34, y);
-  y += 70;
-  // 브랜드 룰
-  const ruleY = y;
-  y += 210;
+  /* ── 마스트헤드 (2026-08-25 도메니코 지시로 재배치) ──
+     좌상단 로고 · 우상단 작은 워드마크 · 중앙 제목 · 제목 **아래** 브랜드 룰. */
+  {
+    const wmSize = 40, wmTrack = 12;
+    const wmW = measureWith(f, wmSize, wmTrack)('PAP MAGAZINE');
+    add(linePath(f, 'PAP MAGAZINE', W - MARGIN - wmW, 262, wmSize, wmTrack));
+  }
+  let y = 560;
   center('OFFICIAL PULL LETTER', 72, 26, y, BRAND);
-  y += 96;
+  y += 90;
+  const ruleY = y;                       // 줄은 제목 아래
+  y += 120;
   center('Document No. ' + esc(data.docNo) + '   ·   Date of issue: ' + esc(data.issueDateText), 40, 2, y, GRAY);
 
   // ── 본문 ──
