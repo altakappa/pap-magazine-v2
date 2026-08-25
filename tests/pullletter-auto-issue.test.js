@@ -83,7 +83,19 @@ t('문서번호는 재현 가능하다 (발급일+id)', () => {
   assert.strictEqual(docNoFor('9ff69ad7-15e3-46c6', d), 'PL-20260824-9FF69AD7');
 });
 
-console.log('\n[4] 어드민 안내');
+console.log('\n[4] 발급 전 미리보기 (2026-08-25)');
+t('미리보기 API 가 존재하고 관리자 전용이다', () => {
+  const PREV = R('api/pullletters/[id]/preview.js');
+  assert.ok(/requireAdmin/.test(PREV), '누구나 남의 신청 미리보기를 보면 안 된다');
+  assert.ok(/letterSvg/.test(PREV), '발급과 같은 렌더러를 써야 미리보기가 거짓말하지 않는다');
+  assert.ok(/no-store/.test(PREV), '이름·날짜가 실시간이라 캐시하면 옛 그림을 보여준다');
+});
+t('어드민 모달이 미리보기를 자동으로 싣는다', () => {
+  assert.ok(/_loadPullLetterPreview/.test(ADMIN), '미리보기 로드가 없다');
+  assert.ok(/plrPreviewBox/.test(ADMIN), '미리보기 자리가 없다');
+});
+
+console.log('\n[5] 어드민 안내');
 t('미첨부 발급이 자동 생성임을 화면이 말해준다', () => {
   assert.ok(/자동 생성/.test(ADMIN), '안내가 없으면 관리자는 파일을 매번 만들어야 하는 줄 안다');
 });

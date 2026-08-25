@@ -2697,8 +2697,32 @@ function openPullLetterReview(id){
     + filesHtml
     + miscHtml
     + '<div class="plr-row"><label>Admin notes (회원에게 표시됨)</label><textarea id="plrNotes" rows="3" style="width:100%;padding:8px 10px;border:1px solid var(--border);font-family:inherit;font-size:12px">'+esc(pl.admin_notes||'')+'</textarea></div>'
-    + '<div class="plr-row"><label>발급 풀레터 PDF</label><div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+pdfStatusHtml+'</div><div style="font-size:11px;color:var(--text3);margin-bottom:6px">파일을 첨부하지 않고 \'발급\'하면 신청서의 포토그래퍼·스타일리스트 이름과 발급일이 들어간 공문이 <b>자동 생성</b>됩니다. 특수한 공문이 필요할 때만 직접 첨부하세요.</div><input type="file" id="plrPdf" accept="application/pdf"></div>';
+    + '<div class="plr-row"><label>발급될 풀레터 미리보기</label><div style="font-size:11px;color:var(--text3);margin-bottom:6px">지금 \'발급\'을 누르면 아래 공문이 그대로 PDF 로 만들어져 신청자에게 전달됩니다.</div><div id="plrPreviewBox" style="border:1px solid var(--border);min-height:120px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px">미리보기 불러오는 중…</div></div>'
+    + '<div class="plr-row"><label>발급 풀레터 PDF</label><div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+pdfStatusHtml+'</div><div style="font-size:11px;color:var(--text3);margin-bottom:6px">파일을 첨부하지 않고 \'발급\'하면 위 미리보기 그대로 <b>자동 생성</b>됩니다. 특수한 공문이 필요할 때만 직접 첨부하세요.</div><input type="file" id="plrPdf" accept="application/pdf"></div>';
   bg.style.display = 'flex';
+  _loadPullLetterPreview(pl.id);
+}
+
+/* 발급 전 미리보기 (2026-08-25 도메니코: "승인 전에 제대로 나온 건지 확인").
+   <img src> 로는 Authorization 헤더를 못 실으므로 fetch→blob→objectURL. */
+async function _loadPullLetterPreview(id){
+  var box = document.getElementById('plrPreviewBox');
+  if(!box) return;
+  try {
+    var r = await fetch((_apiBase||'/api')+'/pullletters/'+encodeURIComponent(id)+'/preview', {
+      headers:{ 'Authorization':'Bearer '+localStorage.getItem('pap-token'), 'X-Requested-With':'XMLHttpRequest' },
+    });
+    if(!r.ok){
+      var j = null; try { j = await r.json(); } catch(_e){}
+      box.textContent = (j && j.message) || ('미리보기 실패 (HTTP '+r.status+')');
+      return;
+    }
+    var blob = await r.blob();
+    var url = URL.createObjectURL(blob);
+    box.innerHTML = '<img src="'+url+'" alt="풀레터 미리보기" style="width:100%;display:block">';
+  } catch(e){
+    box.textContent = '미리보기 실패: 네트워크 오류';
+  }
 }
 function closePullLetterReview(){
   var bg = document.getElementById('plReviewBg');
