@@ -29,6 +29,7 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
+const { generateAsciiSlug, ensureUniqueSlug } = require('../_lib/slug');
 
 const API = 'https://www.googleapis.com/youtube/v3';
 
@@ -112,8 +113,20 @@ module.exports = withCronGuard('youtube-sync', async function handler(req, res) 
   const imported = [];
   const failed = [];
   for (const v of fresh) {
+    /* 2026-08-25 (GSC 색인 적체 진단 후속) — slug 없이 insert 하면 프론트의
+       slug||id 폴백이 /film/<uuid> 링크를 뿌리고, 그 UUID URL 이 구글의
+       "리디렉션 포함" 버킷을 다시 채운다. 실측: 발행 필름 217개 중 68개가
+       slug 공백(전부 이 크론 유입분) → 8/25 일괄 백필. 여기가 재발 지점이라
+       생성 시점에 기사와 같은 규칙(제목 로마자 음역 + 유일화)으로 붙인다.
+       실패해도 insert 는 진행 — slug 는 나중에 백필 가능하지만 영상 유실은 못 되돌린다. */
+    let filmSlug = null;
+    try {
+      const base = generateAsciiSlug(v.title).replace(/-?pap-magazine$/, '').replace(/-$/, '') || 'film';
+      filmSlug = await ensureUniqueSlug(supabaseAdmin, 'films', base);
+    } catch (_) { /* slug 생성 실패는 치명 아님 */ }
     const row = {
       title: v.title.slice(0, 200),
+      slug: filmSlug,
       youtube_id: v.videoId,
       thumbnail_url: v.thumb || null,
       published_date: v.publishedAt ? v.publishedAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
