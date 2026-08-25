@@ -75,6 +75,69 @@ function tryRepairedParse(chunk, deep) {
 }
 
 /**
+ * 균형 잡힌 덩어리를 전부 찾는다 — 문자열 안의 괄호는 세지 않는다. (2026-08-25)
+ *
+ * 왜 필요한가 — indexOf('[') ~ lastIndexOf(']') 로 한 덩어리를 자르는 방식은
+ * 모델이 **답을 하나만** 낸다고 전제한다. 실제로는 자주 이렇게 낸다:
+ *
+ *   ```json [ …진짜 답… ] ```  그 뒤에 **분석 결과: 해당 없음** … (산문에 ] 가 섞임)
+ *   ```json [ …초안… ] ```  **재검토 후 최종 답변:**  ```json [ …진짜 답… ] ```
+ *
+ * 두 경우 다 첫 여는 괄호부터 마지막 닫는 괄호까지 통째로 자르면
+ * "Unexpected non-whitespace character after JSON at position N" 이 난다.
+ * 복구 계단 세 칸은 **문법 흠**을 고치는 장치라 이 모양을 못 산다 —
+ * 여기서 필요한 건 수리가 아니라 **덩어리 고르기**다.
+ *
+ * 실측: competitor-watch 2026-08-19(2회)·08-20(1회) 실패가 전부 이 모양이었다.
+ */
+function findBalancedChunks(s, open, close) {
+  const out = [];
+  let depth = 0, start = -1, inStr = false, esc = false;
+  for (let k = 0; k < s.length; k++) {
+    const c = s[k];
+    if (inStr) {
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === open) { if (depth === 0) start = k; depth++; continue; }
+    if (c === close && depth > 0) {
+      depth--;
+      if (depth === 0 && start >= 0) { out.push(s.slice(start, k + 1)); start = -1; }
+    }
+  }
+  return out;
+}
+
+/* 덩어리 하나를 계단 세 칸으로 시도한다. 못 살리면 null — 삼키지 않는다. */
+function ladderParse(chunk, wantArray) {
+  const good = (v) => wantArray ? Array.isArray(v) : !!v && typeof v === 'object' && !Array.isArray(v);
+  try { const v = JSON.parse(chunk); if (good(v)) return { value: v, repaired: 'none' }; } catch (e) { /* 다음 칸 */ }
+  const ctrl = tryRepairedParse(chunk, false);
+  if (good(ctrl)) return { value: ctrl, repaired: 'controls' };
+  const deep = tryRepairedParse(chunk, true);
+  if (good(deep)) return { value: deep, repaired: 'quotes' };
+  return null;
+}
+
+/* 마지막 칸 — 덩어리를 다시 골라 본다.
+   뒤에서부터 본다: 모델이 두 번 답하면 **나중 것이 최종 답변**이다
+   ("재검토 후 최종 답변:" — 2026-08-19 실측). 이미 실패한 덩어리는 건너뛴다. */
+function pickBalancedChunk(s, tried, wantArray) {
+  const open = wantArray ? '[' : '{';
+  const close = wantArray ? ']' : '}';
+  const cands = findBalancedChunks(s, open, close);
+  for (let i = cands.length - 1; i >= 0; i--) {
+    if (cands[i] === tried) continue;
+    const r = ladderParse(cands[i], wantArray);
+    if (r) return { value: r.value, repaired: 'block' + (r.repaired === 'none' ? '' : '-' + r.repaired) };
+  }
+  return null;
+}
+
+/**
  * 객체 하나를 뽑는다 — 계단식. (2026-08-18 신설, weekly-news 용)
  *
  * seoTranslateBackfill 의 parseJsonArray 는 **배열** 전용이다. 뉴스레터는
@@ -84,7 +147,7 @@ function tryRepairedParse(chunk, deep) {
  *   2) 제어문자만 고쳐서            생 개행 때문이면 여기서 산다
  *   3) 따옴표까지 고쳐서 (deep)     최후의 수단
  *
- * @returns {{value:object, repaired:('none'|'controls'|'quotes')}}
+ * @returns {{value:object, repaired:('none'|'controls'|'quotes'|'block'|'block-controls'|'block-quotes')}}
  * @throws  세 칸 모두 실패하면 던진다. 삼키지 않는다.
  */
 function parseJsonObject(text, label) {
@@ -104,6 +167,11 @@ function parseJsonObject(text, label) {
 
   const deep = tryRepairedParse(chunk, true);
   if (deep && typeof deep === 'object') return { value: deep, repaired: 'quotes' };
+
+  /* 계단 넷째 칸 (2026-08-25): 응답에 객체가 여러 개거나 뒤에 산문이 붙은 모양.
+     문법 수리로는 못 산다 — 균형 잡힌 덩어리를 다시 골라 본다. */
+  const picked = pickBalancedChunk(s, chunk, false);
+  if (picked) return picked;
 
   /* 여기까지 오면 진짜 못 고친다. 무엇이 문제였는지를 오류에 싣는다 —
      2026-08-08 에 같은 자리에서 앞머리 50자만 잘라 남겨 87% 의 실패를 보고도
@@ -126,7 +194,7 @@ function parseJsonObject(text, label) {
  * 배열 하나를 계단식으로 파싱한다" 만 한다. competitor-watch 처럼 배열을
  * 받는 크론이 각자 JSON.parse 를 한 번씩 쓰던 것을 이걸로 모은다.
  *
- * @returns {{value:Array, repaired:('none'|'controls'|'quotes')}}
+ * @returns {{value:Array, repaired:('none'|'controls'|'quotes'|'block'|'block-controls'|'block-quotes')}}
  * @throws  세 칸 모두 실패하면 던진다. 삼키지 않는다.
  */
 function parseJsonArray(text, label) {
@@ -150,6 +218,11 @@ function parseJsonArray(text, label) {
   const deep = tryRepairedParse(chunk, true);
   if (Array.isArray(deep)) return { value: deep, repaired: 'quotes' };
 
+  /* 계단 넷째 칸 (2026-08-25): 배열이 두 개거나 뒤에 산문이 붙은 모양.
+     competitor-watch 가 08-19·08-20 에 이걸로 3번 죽었다. */
+  const picked = pickBalancedChunk(s, chunk, true);
+  if (picked) return picked;
+
   let detail = '';
   try { JSON.parse(chunk); } catch (e) {
     const m = /position (\d+)/.exec(String(e && e.message));
@@ -160,4 +233,4 @@ function parseJsonArray(text, label) {
   throw new Error(what + ' 배열 파싱 실패 (제어문자·따옴표 복구도 실패): ' + detail);
 }
 
-module.exports = { escapeRawControls, escapeInnerQuotes, tryRepairedParse, parseJsonObject, parseJsonArray };
+module.exports = { escapeRawControls, escapeInnerQuotes, tryRepairedParse, findBalancedChunks, pickBalancedChunk, parseJsonObject, parseJsonArray };

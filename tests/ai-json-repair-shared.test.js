@@ -109,6 +109,71 @@ console.log('\n=== 5. 감시 사각지대 — competitor-watch 가 note 를 남�
   ok(/실패: ' \+ String/.test(cw), '실패 경로에도 사유를 남긴다');
 }
 
+console.log('\n=== 6. 덩어리 고르기 — 답이 여러 개거나 뒤에 산문이 붙을 때 (2026-08-25) ===');
+/* 왜 추가했나 — 08-18 에 계단을 공용화하고도 competitor-watch 가 08-19(2회)·
+   08-20(1회) 또 죽었다. 남은 사유는 전부 같은 문장이었다:
+   'Unexpected non-whitespace character after JSON at position N'.
+   계단 세 칸은 **문법 흠**을 고치는 장치인데, 이건 문법이 아니라
+   **자르는 범위**가 틀린 것이다 (indexOf('[') ~ lastIndexOf(']')).
+   교훈 4번: 규칙을 만들면 그 규칙의 가장자리를 테스트하라. */
+{
+  // 실측 모양 ① — 배열 뒤에 산문이 오고, 그 산문에 ] 가 섞여 있다
+  const real = [
+    '```json',
+    '[',
+    '  {"title":"공유 브라운 NEVO","score":1.4,"reason":"PAP이 이미 다룬 건과 유사"}',
+    ']',
+    '```',
+    '',
+    '**분석 결과: 해당 없음 (빈 배열 권장)**',
+    '경쟁사 게시물 대부분이 [브라운 네보 x 공유] 캠페인이다.',
+  ].join('\n');
+  const r = parseJsonArray(real, 'competitor-watch');
+  ok(/^block/.test(r.repaired), '뒤에 산문이 붙어도 배열을 건진다 (repaired=' + r.repaired + ')');
+  eq(r.value.length, 1, '진짜 답 한 건을 읽는다');
+  eq(r.value[0].title, '공유 브라운 NEVO', '내용이 온전하다');
+}
+{
+  // 실측 모양 ② — 모델이 두 번 답한다. 뒤엣것이 최종 답변이다
+  const two = '[{"title":"초안"}]\n\n**재검토 후 최종 답변:**\n```json\n[{"title":"구교환 부활남"}]\n```';
+  const r = parseJsonArray(two, 'competitor-watch');
+  eq(r.value.length, 1, '두 블록 중 하나만 고른다');
+  eq(r.value[0].title, '구교환 부활남', "뒤엣것을 고른다 — '재검토 후 최종 답변' 이 진짜다");
+}
+{
+  // 객체판도 같은 구멍이 있었다 (weekly-news)
+  const r = parseJsonObject('{"subject":"초안"}\n최종: {"subject":"이번 주 PAP","body":"끝"}', 'weekly-news');
+  eq(r.value.subject, '이번 주 PAP', '객체도 뒤엣것을 고른다');
+}
+{
+  // 문자열 **안의** 괄호는 세지 않는다 — 세면 덩어리가 엉뚱하게 잘린다
+  const r = parseJsonArray('[{"t":"제목 [단독] 이야기","u":"a]b"}] 그리고 산문 ]', 'x');
+  eq(r.value[0].t, '제목 [단독] 이야기', '따옴표 안의 괄호는 무시한다');
+}
+{
+  // 못 살리면 여전히 던진다 — 덩어리 고르기가 '창작' 으로 번지면 안 된다
+  let threw = false;
+  try { parseJsonArray('[{"a":1},{"b":]\n그리고 산문', 'cw'); } catch (e) { threw = true; }
+  ok(threw, '고를 덩어리가 없으면 그대로 던진다 (빈 배열로 삼키지 않는다)');
+}
+{
+  // 종전 성공 경로가 그대로여야 한다 — 넷째 칸은 **덧붙이기**지 교체가 아니다
+  eq(parseJsonArray('여기: [{"t":"x"}] 끝', 'x').repaired, 'none', '멀쩡한 응답은 첫 칸 그대로');
+  eq(parseJsonArray('[{"t":"첫\n둘"}]', 'x').repaired, 'controls', '생 개행은 둘째 칸 그대로');
+}
+{
+  const { findBalancedChunks } = require('../api/_lib/jsonRepair');
+  eq(findBalancedChunks('[1] 산문 [2]', '[', ']').length, 2, '덩어리를 전부 센다');
+  eq(findBalancedChunks('[[1],[2]]', '[', ']').length, 1, '중첩은 바깥 하나로 센다');
+  eq(findBalancedChunks('닫는 괄호만 ] 있다', '[', ']').length, 0, '짝 없는 괄호는 세지 않는다');
+}
+
+console.log('\n=== 7. 넷째 칸도 조용히 복구하지 않는다 ===');
+{
+  const r = parseJsonArray('[{"t":"a"}]\n최종: [{"t":"b"}]', 'x');
+  ok(r.repaired !== 'none', "덩어리를 골랐으면 repaired 가 'none' 이 아니다 — 호출부가 로그를 남길 수 있다");
+}
+
 console.log(`\npassed: ${pass} failed: ${fail}`);
 if (fail) process.exit(1);
 console.log('✅ ai-json-repair-shared tests passed');
