@@ -2619,10 +2619,10 @@ function openPullLetterReview(id){
     return '<div class="plr-row"><label>'+esc(label)+'</label><div>'+parts.join(' · ')+'</div></div>';
   }
   var teamHtml = ''
-    + _teamRow('Photographer (필수)',   team.photographer)
-    + _teamRow('Stylist (필수)',         team.stylist)
+    + _teamRow('포토그래퍼 (필수)',   team.photographer)
+    + _teamRow('스타일리스트 (필수)',         team.stylist)
     + _teamRow('Videographer (선택)',    team.videographer)
-    + (team.contact ? '<div class="plr-row"><label>Contact</label><div>'+esc(team.contact.name||'—')+' · '+esc(team.contact.email||'')+'</div></div>' : '');
+    + (team.contact ? '<div class="plr-row"><label>연락처</label><div>'+esc(team.contact.name||'—')+' · '+esc(team.contact.email||'')+'</div></div>' : '');
   if(Array.isArray(team.extras) && team.extras.length){
     teamHtml += team.extras.map(function(x){
       return '<div class="plr-row"><label>'+esc(x.role||'Other')+'</label><div>'+esc(x.name||'')+(x.instagram?(' · '+esc(x.instagram)):'')+'</div></div>';
@@ -2632,12 +2632,12 @@ function openPullLetterReview(id){
   // ── Files block — proposal PDF (signed) + moodboard thumbnail grid ──
   var filesHtml = '';
   if(pl.proposalPdfSignedUrl){
-    filesHtml += '<div class="plr-row"><label>📄 촬영시안 PDF</label><div><a href="'+escAttr(pl.proposalPdfSignedUrl)+'" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">Download proposal ↗</a></div></div>';
+    filesHtml += '<div class="plr-row"><label>📄 촬영시안 PDF</label><div><a href="'+escAttr(pl.proposalPdfSignedUrl)+'" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">촬영시안 다운로드 ↗</a></div></div>';
   } else if(pl.proposal_pdf_url){
     filesHtml += '<div class="plr-row"><label>촬영시안 PDF</label><div style="color:var(--text3)">Path: '+esc(pl.proposal_pdf_url)+' (signing failed)</div></div>';
   }
   if(pl.file_urls && pl.file_urls.length){
-    filesHtml += '<div class="plr-row"><label>Mood board ('+pl.file_urls.length+')</label><div>'
+    filesHtml += '<div class="plr-row"><label>무드보드 ('+pl.file_urls.length+')</label><div>'
       + pl.file_urls.slice(0,8).map(function(u){
           // 2026-07-22 — 무드보드가 이미지 외(PDF·PPT)도 허용되면서, 비이미지 URL 을
           // <img> 로 그리면 깨진 썸네일이 뜬다. 확장자를 보고 비이미지는 라벨 타일로.
@@ -2661,17 +2661,17 @@ function openPullLetterReview(id){
 
   // ── Misc/legacy block ──
   var miscHtml = ''
-    + (pl.request_text ? '<div class="plr-row"><label>Additional message</label><div style="white-space:pre-wrap">'+esc(pl.request_text)+'</div></div>' : '')
+    + (pl.request_text ? '<div class="plr-row"><label>추가 메시지</label><div style="white-space:pre-wrap">'+esc(pl.request_text)+'</div></div>' : '')
     + (pl.shoot_purpose && pl.shoot_purpose !== pl.request_text ? '<div class="plr-row"><label>Legacy purpose</label><div style="white-space:pre-wrap">'+esc(pl.shoot_purpose)+'</div></div>' : '');
 
   // ── Admin actions block (issued PDF status) ──
   var pdfStatusHtml = '';
   if(pl.pullLetterSignedUrl){
-    pdfStatusHtml = '✅ Already issued — <a href="'+escAttr(pl.pullLetterSignedUrl)+'" target="_blank" rel="noopener noreferrer">Download issued letter ↗</a>';
+    pdfStatusHtml = '✅ 발급 완료 — <a href="'+escAttr(pl.pullLetterSignedUrl)+'" target="_blank" rel="noopener noreferrer">발급된 풀레터 다운로드 ↗</a>';
   } else if(pl.pull_letter_url){
     pdfStatusHtml = 'Uploaded but signing failed: '+esc(pl.pull_letter_url);
   } else {
-    pdfStatusHtml = 'Not yet issued';
+    pdfStatusHtml = '아직 발급 전';
   }
 
   // ── 무료체험 경고 배너 (2026-08-03) ────────────────────────────
@@ -2693,7 +2693,7 @@ function openPullLetterReview(id){
   var body = bg.querySelector('.plr-body');
   body.innerHTML = ''
     + trialWarnHtml
-    + '<div class="plr-row"><label>Requester</label><div>'+esc(pl.requesterName||'—')+' · '+esc(pl.requesterEmail||'')+(function(g){g=String(g||'').toLowerCase();if(!g)return '';var c=g.indexOf('premium')>-1?'b-premium':g.indexOf('standard')>-1?'b-standard':'b-free';var l=g.indexOf('premium')>-1?'프리미엄':g.indexOf('standard')>-1?'스탠다드':'무료';return ' <span class="badge '+c+'" style="margin-left:8px">'+l+'</span>';})(pl.requesterPlan)+_trialBadge(pl.requesterTrial)+'</div></div>'
+    + '<div class="plr-row"><label>신청자</label><div>'+esc(pl.requesterName||'—')+' · '+esc(pl.requesterEmail||'')+(function(g){g=String(g||'').toLowerCase();if(!g)return '';var c=g.indexOf('premium')>-1?'b-premium':g.indexOf('standard')>-1?'b-standard':'b-free';var l=g.indexOf('premium')>-1?'프리미엄':g.indexOf('standard')>-1?'스탠다드':'무료';return ' <span class="badge '+c+'" style="margin-left:8px">'+l+'</span>';})(pl.requesterPlan)+_trialBadge(pl.requesterTrial)+'</div></div>'
     + teamHtml
     + filesHtml
     + miscHtml
@@ -2735,16 +2735,16 @@ function _createPullLetterReviewModal(){
   bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:200;font-family:Montserrat,sans-serif';
   bg.innerHTML = '<div style="background:#fff;width:560px;max-width:96vw;max-height:90vh;overflow-y:auto;border:1px solid var(--border);padding:28px;position:relative">'
     + '<button onclick="closePullLetterReview()" style="position:absolute;top:14px;right:18px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3)">×</button>'
-    + '<h3 style="font-size:14px;font-weight:700;letter-spacing:.05em;margin-bottom:18px">PULL-LETTER REVIEW</h3>'
+    + '<h3 style="font-size:14px;font-weight:700;letter-spacing:.05em;margin-bottom:18px">풀레터 검토</h3>'
     + '<div class="plr-body"></div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">'
-      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'approved\',null)">Approve</button>'
+      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'approved\',null)">승인</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'revision\',null)">무드보드 수정 요청</button>'
-      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'issued\',null)">Mark Issued (uploads PDF)</button>'
+      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'issued\',null)">발급 (미첨부 시 자동 생성)</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'on_hold\',null)">보류(결제 확인 전)</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'pending\',null)">보류 해제 → 대기 중</button>'
-      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'rejected\',null)">Reject</button>'
-      + '<button class="btn btn-sm" onclick="doPullLetterReview(null,null)">Save notes only</button>'
+      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'rejected\',null)">거절</button>'
+      + '<button class="btn btn-sm" onclick="doPullLetterReview(null,null)">메모만 저장</button>'
     + '</div>';
   // Inline style for plr rows
   var style = document.createElement('style');
