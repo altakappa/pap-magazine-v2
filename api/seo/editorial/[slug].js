@@ -17,6 +17,7 @@ const { logSocialInclick } = require('../../_lib/socialInclick');
 // 2026-08-19 — AI 크롤러가 어떤 글을 읽어 갔는지 기록. 사람 유입(위)과 다른 신호다.
 const { logAiCrawl } = require('../../_lib/aiCrawlLog');
 const { parseBrandCredits } = require('../../_lib/fashionCredits');
+const { overlayRelatedTitles } = require('../../_lib/relatedI18n');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -254,7 +255,7 @@ module.exports = async function handler(req, res) {
     try {
       const pd = data.published_date || '1970-01-01';
       const ca = data.created_at || '1970-01-01T00:00:00Z';
-      const sel = 'title, slug, id, published_date, thumbnail, cover_image, og_image';
+      const sel = 'title, title_en, slug, id, published_date, thumbnail, cover_image, og_image';
       const [prevR, nextR, relR] = await Promise.all([
         supabaseAdmin.from('editorials').select(sel).eq('status','published')
           .or(`published_date.lt.${pd},and(published_date.eq.${pd},created_at.lt.${ca})`)
@@ -287,13 +288,21 @@ module.exports = async function handler(req, res) {
         const _items = [_mo.prev, _mo.next, ...(_mo.related || [])].filter(Boolean);
         if (lang === 'en') {
           _items.forEach(e => { e._lang = 'en'; });
+          /* 2026-08-25 — 카드 제목도 영어로. 언어판에 남는 한국어 제목은
+             ko 정본과의 중복 신호(GSC 표준 태그 충돌 1,655건 진단). */
+          overlayRelatedTitles(_items, 'en', null);
         } else if (_items.length) {
           const { data: _trRows } = await supabaseAdmin
-            .from('seo_translations').select('content_id')
+            .from('seo_translations').select('content_id, title')
             .eq('kind', 'editorial').eq('lang', lang)
             .in('content_id', _items.map(e => e.id).filter(Boolean));
           const _have = new Set((_trRows || []).map(r => r.content_id));
           _items.forEach(e => { if (_have.has(e.id)) e._lang = lang; });
+          /* 2026-08-25 — 같은 조회로 받아온 번역 제목을 카드에 입힌다.
+             번역이 없으면 ko 원제 유지 (빈 제목 금지). */
+          const _titleById = {};
+          (_trRows || []).forEach(r => { if (r && r.title) _titleById[r.content_id] = r.title; });
+          overlayRelatedTitles(_items, lang, _titleById);
         }
       }
     } catch (_) { /* 내부링크 블록은 best-effort */ }

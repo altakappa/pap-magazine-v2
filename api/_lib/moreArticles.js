@@ -142,7 +142,7 @@ async function _entityCluster(data) {
 async function buildMoreArticles(data) {
   const pd = data.published_date || '1970-01-01';
   const ca = data.created_at || '1970-01-01T00:00:00Z';
-  const sel = 'title, slug, id, published_date, thumbnail_url, hero_image_url, category';
+  const sel = 'title, title_en, slug, id, published_date, thumbnail_url, hero_image_url, category';
   const catFilter = (q) => data.category ? q.eq('category', data.category) : q;
   const [prevR, nextR, relPrevR, relNextR] = await Promise.all([
     supabaseAdmin.from('articles').select(sel).eq('status', 'published')
@@ -160,7 +160,7 @@ async function buildMoreArticles(data) {
       .neq('id', data.id).gt('published_date', pd))
       .order('published_date', { ascending: true }).limit(2),
   ]);
-  const _norm = a => a && ({ title: a.title, slug: a.slug, id: a.id,
+  const _norm = a => a && ({ title: a.title, title_en: a.title_en || '', slug: a.slug, id: a.id,
     thumbnail: a.thumbnail_url || a.hero_image_url || '' });
   // 인접(앞2+뒤2)을 합쳐 4건. 카테고리가 희소해 4건 미만이면 있는 만큼
   // (prev/next 체인이 최소 연결을 보장하므로 고아는 발생하지 않는다).
@@ -180,7 +180,7 @@ async function buildMoreArticles(data) {
     if (!simErr && Array.isArray(sim) && sim.length) {
       related = sim
         .filter(r => r && r.id && r.id !== data.id)
-        .map(r => ({ title: r.title, slug: r.slug, id: r.id, thumbnail: r.thumbnail || '' }));
+        .map(r => ({ title: r.title, title_en: r.title_en || '', slug: r.slug, id: r.id, thumbnail: r.thumbnail || '' }));
     }
   } catch (_e) { /* 폴백으로 내려간다 */ }
   if (!related || !related.length) {

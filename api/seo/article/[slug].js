@@ -17,6 +17,7 @@ const { logAiCrawl } = require('../../_lib/aiCrawlLog');
 // 2026-08-08 — MORE ARTICLES 빌더를 공용 lib 로 추출. SPA 상세 API
 // (api/articles/[id].js)와 같은 규칙을 쓴다 — 규칙이 두 벌이면 한쪽만 고쳐진다.
 const { buildMoreArticles } = require('../../_lib/moreArticles');
+const { overlayRelatedTitles } = require('../../_lib/relatedI18n');
 // 2026-08-16 — 정규-슬러그 301 의 목적지 생성. 순수 함수라 테스트가 동작을
 // 직접 검증한다 (이 파일 자체는 supabase 때문에 env 없이 load 되지 않는다).
 const { REDIRECT_LANGS, buildCanonicalRedirect } = require('../../_lib/articleRedirect');
@@ -242,13 +243,21 @@ module.exports = async function handler(req, res) {
         const _items = [_mo.prev, _mo.next, ...(_mo.related || [])].filter(Boolean);
         if (lang === 'en') {
           _items.forEach(e => { e._lang = 'en'; });
+          /* 2026-08-25 — 카드 제목도 영어로. 언어판에 남는 한국어 제목은
+             ko 정본과의 중복 신호(GSC 표준 태그 충돌 1,655건 진단). */
+          overlayRelatedTitles(_items, 'en', null);
         } else if (_items.length) {
           const { data: _trRows } = await supabaseAdmin
-            .from('seo_translations').select('content_id')
+            .from('seo_translations').select('content_id, title')
             .eq('kind', 'article').eq('lang', lang)
             .in('content_id', _items.map(e => e.id).filter(Boolean));
           const _have = new Set((_trRows || []).map(r => r.content_id));
           _items.forEach(e => { if (_have.has(e.id)) e._lang = lang; });
+          /* 2026-08-25 — 같은 조회로 받아온 번역 제목을 카드에 입힌다.
+             번역이 없으면 ko 원제 유지 (빈 제목 금지). */
+          const _titleById = {};
+          (_trRows || []).forEach(r => { if (r && r.title) _titleById[r.content_id] = r.title; });
+          overlayRelatedTitles(_items, lang, _titleById);
         }
       }
     } catch (_) { /* 내부링크 블록은 best-effort */ }
