@@ -118,11 +118,39 @@ function letterSvg(data) {
     y += 56;
   }
 
+  // ── 발행인 + 서명 (우측 하단, 2026-08-25 도메니코 지시) ──
+  // 서명 PNG 는 api/_assets/pullletter/signature-domenico.png (투명 배경).
+  // 없으면 텍스트만 남긴다 — 서명 파일 하나 없다고 발급이 죽으면 안 된다.
+  let signatureTag = '';
+  try {
+    const fsMod = require('fs');
+    const pathMod = require('path');
+    const sigPath = pathMod.join(__dirname, '..', '_assets', 'pullletter', 'signature-domenico.png');
+    if (fsMod.existsSync(sigPath)) {
+      const b64 = fsMod.readFileSync(sigPath).toString('base64');
+      /* 서명 박스: 우측 하단, 폭 520px 안에 맞춘다 (비율 유지) */
+      const SIG_W = 520, SIG_H = 240;
+      const sx = W - MARGIN - SIG_W, sy = H - 990;
+      signatureTag = '<image x="' + sx + '" y="' + sy + '" width="' + SIG_W + '" height="' + SIG_H
+        + '" preserveAspectRatio="xMidYMax meet" href="data:image/png;base64,' + b64 + '"/>';
+    }
+  } catch (_e) { /* 서명 없이 계속 */ }
+  {
+    const label = 'PUBLISHER';
+    const name = 'Domenico Kang';
+    const nameW = measureWith(f, 44, 2)('' + name);
+    const labelW = measureWith(f, 30, 8)(label);
+    const px = W - MARGIN - nameW;
+    add(linePath(f, name, px, H - 700, 44, 2));
+    add(linePath(f, label, W - MARGIN - labelW, H - 760, 30, 8), GRAY);
+  }
+
   // ── 푸터 ──
-  const fy = H - 420;
+  const fy = H - 470;
   center('PAP MAGAZINE', 52, 16, fy);
   center('ALTAKAPPA Co., Ltd. · 1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea', 32, 1, fy + 76, GRAY);
-  center('www.pap-magazine.com · contact@pap-magazine.com', 32, 1, fy + 130, GRAY);
+  center('Milan Desk · Via San Vincenzo 18B, 20123 Milano, Italy', 32, 1, fy + 130, GRAY);
+  center('www.pap-magazine.com · contact@pap-magazine.com', 32, 1, fy + 184, GRAY);
 
   const paths = P.map(([d, c]) => '<path d="' + d + '" fill="' + c + '"/>').join('\n');
   return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">'
@@ -131,6 +159,7 @@ function letterSvg(data) {
     + '<rect x="' + (MARGIN + 20) + '" y="' + teamTop + '" width="' + (BODY_W - 40) + '" height="' + (teamBottom - teamTop) + '" fill="none" stroke="#d9d9d9" stroke-width="3"/>'
     + '<rect x="' + MARGIN + '" y="' + (H - 500) + '" width="' + BODY_W + '" height="4" fill="#e5e5e5"/>'
     + paths
+    + signatureTag
     + '</svg>';
 }
 
