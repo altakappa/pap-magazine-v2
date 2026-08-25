@@ -38,6 +38,19 @@
     var campaign = params.get('utm_campaign');
     if (campaign) qs += '&utm_campaign=' + encodeURIComponent(campaign);
 
+    /* 바깥 리퍼러를 직접 실어 보낸다 (2026-08-25) ────────────────────
+       이 fetch 는 우리 페이지에서 나가므로 서버가 보는 Referer 헤더는
+       **항상 www.pap-magazine.com**, 즉 우리 자신이다. 그 값으로는
+       "인스타에서 왔나 뉴스레터에서 왔나"를 영영 알 수 없고, 서버의
+       자기 리퍼러 차단(socialInclick.js SELF_HOSTS)에 이 유입이 통째로
+       걸린다. 브라우저가 아는 진짜 바깥 주소는 document.referrer 다.
+       비어 있으면(앱 내부 브라우저 등) 안 붙인다 — 서버는 리퍼러 없음을
+       정상 유입으로 센다. */
+    var outer = '';
+    try { outer = String(document.referrer || ''); } catch (e) { outer = ''; }
+    if (outer) qs += '&ref=' + encodeURIComponent(outer.slice(0, 500));
+    
+
     var url = '/api/inclick?' + qs;
 
     if (window.fetch) {

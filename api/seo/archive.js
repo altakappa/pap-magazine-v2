@@ -144,7 +144,7 @@ ${JSON.stringify({
 </div>
 <!-- 인바운드 계측 (2026-08-12). 이 페이지는 30분 edge 캐시라 서버에서 세면
      캐시 히트가 전부 누락된다 — 브라우저에서 재는 비콘이 맞다. -->
-<script src="/pap-inclick.js?v=3" defer></script>
+<script src="/pap-inclick.js?v=4" defer></script>
 </body>
 </html>`;
 

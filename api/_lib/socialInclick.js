@@ -31,6 +31,47 @@ const { aiReferralPlatform, refererHost, aiCrawlerInfo } = require('./aiTraffic'
 
    ALIASES 는 같은 출처가 두 이름으로 갈리는 것만 합친다(instagram=ig).
    이건 '모르는 값을 버리는' 것과 다르다 — 아는 값을 하나로 모으는 것이다. */
+/* 자기 리퍼러 배제 (2026-08-25) ─────────────────────────────────────
+   증상: referrer_host 컬럼(132 마이그레이션)을 만들자 우리 자신이 리퍼러
+   6위(63건)로 나타났다. 늘어나는 중이었다 — 8/19 3건 → 8/25 12건.
+
+   원인은 두 개였고 **성격이 정반대**라 한 규칙으로 자르면 안 된다.
+     ⓐ 진짜 오염 5건 — utm 이 붙은 URL 로 들어온 사람이 사이트 안에서
+        기사로 넘어갔는데 utm 이 주소에 따라붙어 SSR 이 새 유입으로 셌다.
+        path ≠ referrer_path, page='article'.
+     ⓑ 오염이 아닌 58건 — 랜딩 비콘(/api/inclick)이 자기 페이지에서
+        fetch 하므로 Referer 헤더가 **항상 우리 자신**이다. 인스타 바이오
+        링크·뉴스레터 헤더·네이버 프로필 유입이 전부 여기 들어 있다.
+
+   실측(8/19~8/25): page='home' 50건 중 self 47 · external 0.
+   즉 "자기 리퍼러면 버린다"만 넣었으면 랜딩 계측 58/61(95%)이 조용히
+   사라진다. 2026-08-12 에 이 비콘을 만든 이유(30일에 ig 4건)가 그대로
+   되돌아온다. 성공 판정(is_internal=0)까지 통과하면서 말이다.
+
+   그래서 비콘 쪽은 **바깥 리퍼러를 따로 실어 보내도록** 고치고(pap-inclick.js
+   ref 파라미터 → api/inclick.js 가 헤더를 바꿔치기), 여기서는 하나의 규칙만
+   남긴다: 유효 리퍼러 호스트가 우리 자신이면 기록하지 않는다.
+
+   경계값 — 리퍼러가 **없는** 유입은 반드시 살린다. 8/19~8/25 기준 287건이
+   리퍼러 null 이다(앱 내부 브라우저). 여기서 null 을 self 취급하면 그
+   287건이 통째로 날아간다. 아래 테스트 2건이 이 경계를 지킨다. */
+const SELF_HOSTS = new Set([
+  'www.pap-magazine.com', 'pap-magazine.com',
+  'www.papkorea.com', 'papkorea.com',
+]);
+
+/**
+ * 이 호스트가 우리 자신인가. null(리퍼러 없음)은 **자신이 아니다** — 기록한다.
+ * @param {string|null} host refererHost() 결과
+ * @returns {boolean}
+ */
+function isSelfHost(host) {
+  if (!host) return false;                       // 리퍼러 없음 = 바깥 유입 후보
+  const h = String(host).toLowerCase();
+  if (SELF_HOSTS.has(h)) return true;
+  return /(^|\.)pap-magazine[a-z0-9-]*\.vercel\.app$/.test(h);  // 프리뷰 배포
+}
+
 const ALIASES = new Map([
   ['instagram', 'ig'], ['insta', 'ig'], ['ig_story', 'ig'], ['igstory', 'ig'],
   ['twitter', 'x'], ['t_co', 'x'],
@@ -99,6 +140,12 @@ async function logSocialInclick(req, page) {
        목록으로 한 번 더 거른다. 이 봇들은 ai_crawl_daily 쪽에 따로 적힌다. */
     if (isLikelyBot(headers['user-agent'])) return;
     if (aiCrawlerInfo(headers['user-agent'])) return;
+
+    /* 자기 리퍼러면 기록하지 않는다 — 위 SELF_HOSTS 주석 참고.
+       리퍼러가 없으면(null) 통과시킨다. 그게 이 표의 다수다. */
+    const refHost = refererHost(refRaw);
+    if (isSelfHost(refHost)) return;
+
     const src = srcRaw ? normalizeSrc(srcRaw) : aiPlatform;
     const path = String(req.url || '').split('?')[0].slice(0, 300);
     const { error } = await supabaseAdmin.from('social_inclicks').insert({
@@ -109,7 +156,7 @@ async function logSocialInclick(req, page) {
       referrer_path: sanitizeReferrer(refRaw),
       // 호스트를 따로 남긴다 — sanitizeReferrer 는 경로만 남기고 호스트를 버려서
       // "어느 AI 에서 왔나" 를 저장된 데이터로 되짚을 수 없었다 (132 마이그레이션).
-      referrer_host: refererHost(refRaw),
+      referrer_host: refHost,
       device_type: detectDeviceType(headers['user-agent']),
       ip_hash: hashIp(extractClientIp(req)),
     });
@@ -119,4 +166,4 @@ async function logSocialInclick(req, page) {
   }
 }
 
-module.exports = { logSocialInclick, normalizeSrc };
+module.exports = { logSocialInclick, normalizeSrc, isSelfHost, SELF_HOSTS };
