@@ -37,7 +37,15 @@ const LLMS = R('frontend/llms.txt');
 const FORM = R('frontend/submission.html');
 
 t('색인 경로 4종 연결 — rewrite·sitemap·SSR nav·llms.txt', () => {
-  assert.ok(/"source": "\/submissions",\s*\n\s*"destination": "\/submissions\.html"/.test(VERCEL), 'vercel rewrite 없음');
+  /* 2026-08-26 — 포맷 의존 정규식이 배포 5건을 연속으로 죽였다. 로컬 파일은
+     source 줄 뒤에 개행이 있어 통과했지만, Vercel 빌드 환경의 vercel.json 은
+     재직렬화돼 개행이 달라 같은 커밋이 실패했다(dpl_BvhW·dpl_2Svc 실측 —
+     캐시 무시 재배포도 동일 실패, 다른 파일 검사 4종은 전부 통과).
+     내용이 아니라 포맷을 검사한 게 잘못이다. JSON 으로 파싱해 사실을 검사한다. */
+  const _cfg = JSON.parse(VERCEL);
+  const _rw = (_cfg.rewrites || []).some((r) => r && r.source === '/submissions' && r.destination === '/submissions.html');
+  assert.ok(_rw, 'vercel rewrite 없음 — rewrites 내 /submissions 항목: '
+    + JSON.stringify((_cfg.rewrites || []).filter((r) => r && String(r.source).indexOf('submissions') !== -1)));
   assert.ok(/path: '\/submissions'/.test(SITEMAP), 'sitemap 엔트리 없음');
   assert.ok(/\/submissions">Submissions<\/a>/.test(SEO), 'SSR nav 링크 없음');
   assert.ok(/pap-magazine\.com\/submissions\)/.test(LLMS), 'llms.txt 엔트리 없음');
