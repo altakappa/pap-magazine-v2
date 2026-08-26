@@ -582,6 +582,11 @@ function isArtArticle(title, caption) {
   const hay = (String(title || '') + ' ' + String(caption || '')).toLowerCase();
   return ART_TERMS.some((t) => hay.includes(t.toLowerCase()));
 }
+/* 아트 전용 모드 스위치 — 선정(generateNext)과 크론 기본값(naver-draft-sweep)이
+ * 같은 판단을 공유해야 해서 함수로 뺐다. NAVER_DRAFT_ART_ONLY=false 로 끈다. */
+function artOnlyEnabled() {
+  return String(process.env.NAVER_DRAFT_ART_ONLY || 'true').toLowerCase() !== 'false';
+}
 
 function skipCategories() {
   const raw = process.env.NAVER_DRAFT_SKIP_CATEGORIES;
@@ -605,7 +610,11 @@ function skipCategories() {
  * 트레이드오프다(신선도 우선). 전부 챙겨야 하면 창을 늘리거나 oldest 로 둘 것.
  */
 async function generateNext(brand, kind) {
-  const lookbackDays = Math.max(1, parseInt(process.env.NAVER_DRAFT_LOOKBACK_DAYS || '3', 10) || 3);
+  /* 2026-08-26 (도메니코 지시 2차): "모든 아트 기사"가 초안을 받아야 한다.
+   * 아트 모드 기본 룩백을 3일 → 14일로 넓혀 백로그까지 흡수한다.
+   * (아트 기사 실측 하루 ~3.4건 vs 생성 능력 6건/일 — 수렴한다) */
+  const _artDefaultLookback = artOnlyEnabled() && kind === 'article' ? 14 : 3;
+  const lookbackDays = Math.max(1, parseInt(process.env.NAVER_DRAFT_LOOKBACK_DAYS || String(_artDefaultLookback), 10) || _artDefaultLookback);
   const oldestFirst = String(process.env.NAVER_DRAFT_ORDER || 'newest').toLowerCase() === 'oldest';
   const recent = await _recentPublished(brand, kind, { lookbackDays, limit: 120 });
   const { data: done } = await supabaseAdmin.from('naver_blog_drafts')
@@ -630,8 +639,7 @@ async function generateNext(brand, kind) {
    * 61건 — 양이 아니라 결이 문제다. 예술가·전시·작업 세계 기사만 초안화한다.
    * 아트 기사가 없으면 그 회차는 건너뛴다 — 큐를 비아트로 채우지 않는 것이
    * 목적이므로 의도된 동작이다. NAVER_DRAFT_ART_ONLY=false 로 종전 동작 복귀. */
-  const artOnly = kind === 'article'
-    && String(process.env.NAVER_DRAFT_ART_ONLY || 'true').toLowerCase() !== 'false';
+  const artOnly = kind === 'article' && artOnlyEnabled();
   const base = artOnly ? pending.filter((r) => r.art) : pending;
   if (!base.length) return { done: true, remaining: 0, draft: null, slug: null };
   const own = base.filter((r) => r.own);
@@ -796,4 +804,5 @@ module.exports._draftExtras = draftExtras;
 module.exports._skipCategories = skipCategories;
 module.exports._isOwnCoverage = isOwnCoverage;
 module.exports._isArtArticle = isArtArticle;
+module.exports.artOnlyEnabled = artOnlyEnabled;
 module.exports._FRAMEWORK_BLOCK = FRAMEWORK_BLOCK;

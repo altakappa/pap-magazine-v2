@@ -131,8 +131,17 @@ module.exports = withCronGuard('naver-draft-sweep', async function handler(req, 
   }
 
   const dailyMax = Math.max(1, Math.min(4, parseInt(process.env.NAVER_DRAFT_DAILY_MAX || '1', 10) || 1));
-  const ttlDays = Math.max(0, parseInt(process.env.NAVER_DRAFT_TTL_DAYS || String(defaultTtlDays()), 10) || 0);
-  const queueMax = Math.max(0, parseInt(process.env.NAVER_DRAFT_QUEUE_MAX || '5', 10) || 0);
+  /* 2026-08-26 (도메니코 지시): 아트 전용 모드에선 "모든 아트 기사"가 초안을 받는다.
+   * 08-14의 상한·만료는 '하루 10건 유입 중 1~2건만 올린다'는 전제의 비용 방어였는데,
+   * 아트 필터가 유입 자체를 하루 ~3건대로 줄였으므로 전제가 바뀌었다:
+   *   · 만료(TTL) 기본 0 = 끔 — 초안을 버리지 않는다 (61건 만료 폐기의 재발 방지)
+   *   · 큐 상한 기본 0 = 무제한 — 상한이 아트 초안 생성을 멈추지 않게
+   * 환경변수(NAVER_DRAFT_TTL_DAYS·NAVER_DRAFT_QUEUE_MAX)는 여전히 우선한다. */
+  /* env 이름이 계약이다 — 판단식은 naver-blog-draft.js artOnlyEnabled 와 동일하게 유지.
+   * (테스트가 admin 모듈을 generateNext 만 있는 목으로 갈아끼우므로 import 하지 않는다) */
+  const _artMode = String(process.env.NAVER_DRAFT_ART_ONLY || 'true').toLowerCase() !== 'false';
+  const ttlDays = Math.max(0, parseInt(process.env.NAVER_DRAFT_TTL_DAYS || (_artMode ? '0' : String(defaultTtlDays())), 10) || 0);
+  const queueMax = Math.max(0, parseInt(process.env.NAVER_DRAFT_QUEUE_MAX || (_artMode ? '0' : '5'), 10) || 0);
 
   // 1) 만료 먼저 — 자리를 비운 뒤에 상한을 재야 그 자리를 이 회차가 쓴다
   const expired = await expireStale(ttlDays);

@@ -171,7 +171,8 @@ console.log('\n=== ⑦ max_tokens 가 본문 목표를 감당한다 ===');
 console.log('\n=== ⑧ 크론 — 1회 1건 / 큐 5건 / 시간 예산 ===');
 {
   t('DAILY_MAX 기본값 1', /NAVER_DRAFT_DAILY_MAX \|\| '1'/.test(sweepSrc));
-  t('QUEUE_MAX 기본값 5', /NAVER_DRAFT_QUEUE_MAX \|\| '5'/.test(sweepSrc));
+  t('QUEUE_MAX 기본값 — 아트 모드 무제한(0), 비아트 5 (2026-08-26)',
+    /NAVER_DRAFT_QUEUE_MAX \|\| \(_artMode \? '0' : '5'\)/.test(sweepSrc));
   t('시간 예산 상수가 있다', /SWEEP_BUDGET_MS/.test(sweepSrc));
   t('다음 한 건의 최악을 예약해 둔다 (sync-instagram 교훈)',
     /SWEEP_BUDGET_MS - PER_DRAFT_RESERVE_MS/.test(sweepSrc));

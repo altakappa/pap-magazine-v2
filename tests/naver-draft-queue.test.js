@@ -163,8 +163,12 @@ function runHandler(handler, env) {
     const m = src.match(/const oldestFirst = ([^;]+);[\s\S]*?const artOnly = ([^;]+);\s*const base = ([^;]+);\s*if \(!base\.length\) return [^;]+;\s*const own = ([^;]+);\s*const pool = ([^;]+);\s*const next = ([^;]+);/);
     t('선정 식을 찾았다', !!m, m && m[6]);
     if (m) {
+      // artOnlyEnabled 도 소스에서 꺼낸다 — 손으로 베끼면 소스와 갈라진다
+      const fnm = src.match(/function artOnlyEnabled\(\) \{([\s\S]*?)\n\}/);
+      t('artOnlyEnabled 를 소스에서 찾았다', !!fnm);
       const pick = new Function('process', 'pending', 'kind',
-        'kind = kind || \'article\'; const oldestFirst = ' + m[1] + '; const artOnly = ' + m[2]
+        'function artOnlyEnabled() {' + fnm[1] + '}\n'
+        + 'kind = kind || \'article\'; const oldestFirst = ' + m[1] + '; const artOnly = ' + m[2]
         + '; const base = ' + m[3] + '; if (!base.length) return null; const own = ' + m[4]
         + '; const pool = ' + m[5] + '; const next = ' + m[6] + '; return next;');
       // 아트 필터가 기본값이므로 기존 순서 검증 픽스처에는 art:true 를 준다
@@ -239,6 +243,29 @@ function runHandler(handler, env) {
     const up = state.calls.find((c) => c.op === 'update');
     const days = up ? Math.round((Date.now() - Date.parse(up.lt.v)) / 86400000) : null;
     t('cutoff 가 3일 전 근처', days === 3, days);
+  }
+
+  console.log('[10] 아트 모드 크론 기본값 (2026-08-26) — 만료 0 · 상한 무제한');
+  {
+    /* 도메니코 지시: "모든 아트 기사"가 초안을 받는다. 아트 모드(기본)에선
+       큐 상한이 생성을 멈추지 않고, 만료가 초안을 버리지 않는다. */
+    const state = { queue: 12, expirable: 3 };
+    let made = 0;
+    const cron = loadCron(state, async () => { made++; return { done: true }; });
+    const r = await runHandler(cron, {});
+    t('큐 12건이어도 생성이 돈다 (상한 무제한)', made === 1, made);
+    t('만료를 걸지 않는다 (ttlDays 0)', r.body.ttlDays === 0, r.body.ttlDays);
+    t('만료 UPDATE 가 없다', !state.calls.some((c) => c.op === 'update'));
+
+    made = 0;
+    const state2 = { queue: 12, expirable: 3 };
+    const cron2 = loadCron(state2, async () => { made++; return { done: true }; });
+    const r2 = await runHandler(cron2, { NAVER_DRAFT_ART_ONLY: 'false' });
+    t('아트 모드를 끄면 종전 기본(상한 5)으로 생성 건너뜀',
+      made === 0 && r2.body.skipped === 'queue_full', r2.body.skipped);
+    // queue_full 응답에는 ttlDays 가 안 실린다 — 만료가 실제로 도는지로 확인
+    t('아트 모드를 끄면 만료도 종전대로 돈다 (만료 UPDATE 발생)',
+      state2.calls.some((c) => c.op === 'update'));
   }
 
   console.log('\n' + (fail ? '✗' : '✓') + ' naver-draft-queue: ' + pass + ' passed / ' + fail + ' failed');
