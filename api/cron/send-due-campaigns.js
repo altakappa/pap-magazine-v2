@@ -20,6 +20,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { sendEmail, templates } = require('../_lib/email');
 const { resolveEmailLang } = require('../_lib/emailLocale');
+const { hasActivePlan } = require('../_lib/subscriptionAccess');
 
 const BATCH_SIZE = 50;          // recipients per fan-out wave
 const MAX_CAMPAIGNS_PER_RUN = 5; // process at most N due campaigns per cron tick
@@ -90,12 +91,38 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
       // > language (site UI) > country-derived guess > 'en'.
       const { data: recipients, error: recErr } = await supabaseAdmin
         .from('profiles')
-        .select('id, email, display_name, language, email_language, country')
+        .select('id, email, display_name, language, email_language, country, subscription_plan, subscription_status')
         .eq('email_consent', true)
         .not('email', 'is', null);
       if (recErr) throw recErr;
 
-      const recipientList = (recipients || []).filter(r => r.email);
+      let recipientList = (recipients || []).filter(r => r.email);
+
+      /* 3-b) 대상 세그먼트 (2026-08-26 — 유료 구독자 늘리기 1탄-②).
+       *
+       * payload.audience === 'submitters_free' 인 캠페인은 전체 수신동의
+       * 회원이 아니라 「서브미션을 낸 적이 있는 무료 회원」에게만 나간다.
+       *   - 제출자 판정: submissions.user_id (distinct)
+       *   - 무료 판정: hasActivePlan(profile,'standard') === false
+       *     (subscriptionAccess.js 의 단일 진실원천 — plan 과 status 를
+       *      함께 본다. 이미 유료인 사람에게 구독 권유를 보내면 안 된다.)
+       * audience 값이 없으면 기존과 동일하게 전체 발송 — 주간 뉴스레터
+       * 캠페인들의 동작은 바뀌지 않는다. */
+      const audience = campaign.payload && campaign.payload.audience;
+      if (audience === 'submitters_free') {
+        const { data: subRows, error: subErr } = await supabaseAdmin
+          .from('submissions')
+          .select('user_id');
+        if (subErr) throw subErr;
+        const submitterIds = new Set((subRows || []).map(r => r.user_id).filter(Boolean));
+        recipientList = recipientList.filter(r =>
+          submitterIds.has(r.id) && !hasActivePlan(r, 'standard'));
+      } else if (audience) {
+        // 모르는 audience 값은 조용히 전체 발송하지 말고 실패시킨다 —
+        // 「누구에게 갔는지 모르는 발송」이 최악이다.
+        throw new Error(`Unknown campaign audience "${audience}"`);
+      }
+
       let sent = 0, failed = 0;
 
       // Pick the template module-side from the campaign type.
@@ -103,7 +130,9 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
         ? templates.weeklyEditorial
         : campaign.type === 'news-weekly'
           ? templates.weeklyNews
-          : null;
+          : campaign.type === 'creator-pullletter'
+            ? templates.creatorPullletter
+            : null;
       if (!templateFn) {
         throw new Error(`No template for campaign type "${campaign.type}"`);
       }
