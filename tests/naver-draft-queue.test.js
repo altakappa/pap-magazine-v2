@@ -158,23 +158,28 @@ function runHandler(handler, env) {
        이 테스트의 방식(소스에서 식을 꺼내 실제로 평가)은 그대로 두되,
        꺼내는 범위를 네 줄로 넓힌다. 식을 손으로 베껴 적으면 소스와 갈라져
        테스트가 거짓말을 하게 되므로, 계속 소스에서 꺼내는 게 핵심이다. */
-    const m = src.match(/const oldestFirst = ([^;]+);[\s\S]*?const own = ([^;]+);\s*const pool = ([^;]+);\s*const next = ([^;]+);/);
-    t('선정 식을 찾았다', !!m, m && m[4]);
+    /* 2026-08-26 — 선정에 '아트 기사만'(artOnly/base)이 추가됐다 (도메니코 지시).
+       추출 범위를 그만큼 넓힌다. 계속 소스에서 꺼내는 게 핵심이다. */
+    const m = src.match(/const oldestFirst = ([^;]+);[\s\S]*?const artOnly = ([^;]+);\s*const base = ([^;]+);\s*if \(!base\.length\) return [^;]+;\s*const own = ([^;]+);\s*const pool = ([^;]+);\s*const next = ([^;]+);/);
+    t('선정 식을 찾았다', !!m, m && m[6]);
     if (m) {
-      const pick = new Function('process', 'pending',
-        'const oldestFirst = ' + m[1] + '; const own = ' + m[2] + '; const pool = ' + m[3]
-        + '; const next = ' + m[4] + '; return next;');
-      const pending = [{ slug: 'oldest' }, { slug: 'mid' }, { slug: 'newest' }]; // 발행 오름차순
+      const pick = new Function('process', 'pending', 'kind',
+        'kind = kind || \'article\'; const oldestFirst = ' + m[1] + '; const artOnly = ' + m[2]
+        + '; const base = ' + m[3] + '; if (!base.length) return null; const own = ' + m[4]
+        + '; const pool = ' + m[5] + '; const next = ' + m[6] + '; return next;');
+      // 아트 필터가 기본값이므로 기존 순서 검증 픽스처에는 art:true 를 준다
+      const A = (o) => Object.assign({ art: true }, o);
+      const pending = [A({ slug: 'oldest' }), A({ slug: 'mid' }), A({ slug: 'newest' })]; // 발행 오름차순
       t('기본값은 최신부터', pick({ env: {} }, pending).slug === 'newest', pick({ env: {} }, pending));
       t('ORDER=oldest 면 옛 동작', pick({ env: { NAVER_DRAFT_ORDER: 'oldest' } }, pending).slug === 'oldest');
       t('대문자도 먹는다', pick({ env: { NAVER_DRAFT_ORDER: 'OLDEST' } }, pending).slug === 'oldest');
-      t('1건뿐이면 그걸 고른다', pick({ env: {} }, [{ slug: 'only' }]).slug === 'only');
+      t('1건뿐이면 그걸 고른다', pick({ env: {} }, [A({ slug: 'only' })]).slug === 'only');
 
       // 자체 취재(🎥 PAP)가 있으면 더 최신이어도 그쪽을 먼저 고른다
-      const mixed = [{ slug: 'own-old', own: true }, { slug: 'plain-mid' }, { slug: 'plain-new' }];
+      const mixed = [A({ slug: 'own-old', own: true }), A({ slug: 'plain-mid' }), A({ slug: 'plain-new' })];
       t('자체 취재를 최신보다 먼저 고른다',
         pick({ env: {} }, mixed).slug === 'own-old', pick({ env: {} }, mixed));
-      const twoOwn = [{ slug: 'own-old', own: true }, { slug: 'plain' }, { slug: 'own-new', own: true }];
+      const twoOwn = [A({ slug: 'own-old', own: true }), A({ slug: 'plain' }), A({ slug: 'own-new', own: true })];
       t('자체 취재가 여럿이면 그 안에서 최신',
         pick({ env: {} }, twoOwn).slug === 'own-new', pick({ env: {} }, twoOwn));
       t('자체 취재 안에서도 ORDER=oldest 가 먹는다',
@@ -182,6 +187,33 @@ function runHandler(handler, env) {
       // 폴백이 없으면 캡션이 채워지는 3일 동안 생성이 통째로 멎는다
       t('자체 취재가 없으면 전체에서 고른다',
         pick({ env: {} }, pending).slug === 'newest');
+
+      // 아트 필터 (2026-08-26): 아트 기사만 초안화, 비아트는 최신이어도 건너뜀
+      const artMix = [A({ slug: 'art-old' }), { slug: 'celeb-mid' }, { slug: 'celeb-new' }];
+      t('아트 기사가 비아트 최신보다 먼저다',
+        pick({ env: {} }, artMix).slug === 'art-old', pick({ env: {} }, artMix));
+      t('아트 기사가 없으면 만들지 않는다 (null)',
+        pick({ env: {} }, [{ slug: 'celeb-1' }, { slug: 'celeb-2' }]) === null);
+      t('ART_ONLY=false 면 전체에서 고른다',
+        pick({ env: { NAVER_DRAFT_ART_ONLY: 'false' } }, artMix).slug === 'celeb-new');
+      t('에디토리얼 kind 는 아트 필터를 안 탄다',
+        pick({ env: {} }, [{ slug: 'ed-1' }], 'editorial').slug === 'ed-1');
+    }
+  }
+
+  console.log('[9] 아트 판별 — 소스에서 함수를 꺼내 실행한다 (2026-08-26)');
+  {
+    const src = fs.readFileSync(ADMIN, 'utf8');
+    const fm = src.match(/const ART_TERMS = \[([\s\S]*?)\];\s*function isArtArticle\(title, caption\) \{([\s\S]*?)\n\}/);
+    t('isArtArticle 을 찾았다', !!fm);
+    if (fm) {
+      const isArt = new Function('title', 'caption', 'const ART_TERMS = [' + fm[1] + '];' + fm[2]);
+      t('조각 작가 기사 = 아트', isArt('매트 존슨, 폐컨테이너로 명상하는 조각을 만들다', '') === true);
+      t('전시 기사 = 아트', isArt('서울 아트위크, 페어 밖 아홉 개의 전시', '') === true);
+      t('영문 exhibition 도 아트', isArt('', 'A new exhibition opens in Seoul') === true);
+      t('셀럽 컴백 기사 = 비아트', isArt('넥스지 컴백, SAUCIN 활동 중 N잡러 변신 영상 화제', '') === false);
+      t('뮤비 티저 기사 = 비아트', isArt('제니 신곡 뮤비 티저, 청량 로맨틱 스타일링이 이미 화제', '') === false);
+      t('빈 입력에 안 터진다', isArt(null, undefined) === false);
     }
   }
 

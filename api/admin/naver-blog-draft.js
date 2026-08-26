@@ -505,7 +505,7 @@ async function _recentPublished(brand, kind, opt) {
     return (data || []).map((r) => ({ slug: r.slug, id: r.id, published_date: r.published_date, created_at: r.created_at })).filter((r) => r.slug);
   }
   let qy = supabaseAdmin.from(b.table)
-    .select('id, slug, category, instagram_caption, published_date, created_at' + (brand === 'pap' ? ', custom_url' : ''))
+    .select('id, slug, title, category, instagram_caption, published_date, created_at' + (brand === 'pap' ? ', custom_url' : ''))
     .eq('status', 'published');
   if (since) qy = qy.gte('published_date', since);
   const { data } = await qy.order('published_date', { ascending: true }).order('created_at', { ascending: true }).limit(limit);
@@ -516,6 +516,7 @@ async function _recentPublished(brand, kind, opt) {
       slug: brand === 'pap' ? (r.custom_url || r.slug) : r.slug,
       id: r.id, category: r.category,
       own: isOwnCoverage(r.instagram_caption),
+      art: isArtArticle(r.title, r.instagram_caption),
       published_date: r.published_date, created_at: r.created_at,
     }))
     .filter((r) => r.slug);
@@ -568,6 +569,20 @@ function isOwnCoverage(caption) {
  *
  * NAVER_DRAFT_SKIP_CATEGORIES 로 바꿀 수 있다. 빈 문자열이면 전부 올린다.
  */
+/* 아트 기사인가 — 제목·캡션의 어휘로 판별한다 (2026-08-26, 도메니코 지시:
+ * "네이버 초안은 아트 기사 위주로만"). 카테고리만으로는 못 가른다 — 아트는
+ * Culture 안에 셀럽·음악과 섞여 있다. 휴리스틱이므로 경계 사례(네일아트 등)는
+ * 일부 섞일 수 있고, 그건 관리자가 게시 단계에서 거른다. */
+const ART_TERMS = [
+  '전시', '개인전', '갤러리', '작가', '아티스트', '조각', '회화', '일러스트',
+  '미술', '아트', '사진집', '포토그래퍼', '설치미술', '비엔날레', '공예', '도예',
+  'artist', 'exhibition', 'gallery', 'sculpture', 'photobook', 'installation',
+];
+function isArtArticle(title, caption) {
+  const hay = (String(title || '') + ' ' + String(caption || '')).toLowerCase();
+  return ART_TERMS.some((t) => hay.includes(t.toLowerCase()));
+}
+
 function skipCategories() {
   const raw = process.env.NAVER_DRAFT_SKIP_CATEGORIES;
   const src = raw === undefined ? 'News' : raw;
@@ -610,8 +625,17 @@ async function generateNext(brand, kind) {
    * 캡션은 2026-08-14부터 저장되므로 그 전 기사는 전부 own=false 다.
    * 폴백이 없으면 룩백 창(3일)이 채워질 때까지 초안 생성이 멈춘다.
    */
-  const own = pending.filter((r) => r.own);
-  const pool = own.length ? own : pending;
+  /* 2026-08-26 (도메니코 지시): 네이버 초안은 아트 기사 위주로만 만든다.
+   * 근거: 08-14 실측에서 발행량↔조회수 무상관이 확인됐고, 8/26 기준 만료 폐기가
+   * 61건 — 양이 아니라 결이 문제다. 예술가·전시·작업 세계 기사만 초안화한다.
+   * 아트 기사가 없으면 그 회차는 건너뛴다 — 큐를 비아트로 채우지 않는 것이
+   * 목적이므로 의도된 동작이다. NAVER_DRAFT_ART_ONLY=false 로 종전 동작 복귀. */
+  const artOnly = kind === 'article'
+    && String(process.env.NAVER_DRAFT_ART_ONLY || 'true').toLowerCase() !== 'false';
+  const base = artOnly ? pending.filter((r) => r.art) : pending;
+  if (!base.length) return { done: true, remaining: 0, draft: null, slug: null };
+  const own = base.filter((r) => r.own);
+  const pool = own.length ? own : base;
   const next = oldestFirst ? pool[0] : pool[pool.length - 1];
   const { draft, sourceId } = await generateBySlug(brand, kind, next.slug);
   const { data: saved, error: sErr } = await supabaseAdmin.from('naver_blog_drafts')
@@ -771,4 +795,5 @@ module.exports._NAVER_TOPICS = NAVER_TOPICS;
 module.exports._draftExtras = draftExtras;
 module.exports._skipCategories = skipCategories;
 module.exports._isOwnCoverage = isOwnCoverage;
+module.exports._isArtArticle = isArtArticle;
 module.exports._FRAMEWORK_BLOCK = FRAMEWORK_BLOCK;

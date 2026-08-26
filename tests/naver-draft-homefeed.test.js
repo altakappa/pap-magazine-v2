@@ -266,14 +266,14 @@ console.log('\n=== ⑩ 자체 취재 판별 (🎥 PAP) ===');
   }
 
   t('조회가 instagram_caption 을 읽어온다',
-    /\.select\('id, slug, category, instagram_caption, published_date/.test(draftSrc));
+    /\.select\('id, slug[^']*instagram_caption[^']*published_date/.test(draftSrc));
   t('단건 조회도 instagram_caption 을 읽어온다',
     /source_instagram_url, instagram_caption'/.test(draftSrc));
   t('선정이 자체 취재를 먼저 고른다',
-    /const own = pending\.filter\(\(r\) => r\.own\)/.test(draftSrc));
+    /const own = \w+\.filter\(\(r\) => r\.own\)/.test(draftSrc));
   // 폴백이 없으면 캡션이 없는 3일 동안 초안 생성이 통째로 멈춘다
   t('자체 취재가 없으면 전체에서 고른다 (폴백)',
-    /const pool = own\.length \? own : pending/.test(draftSrc));
+    /const pool = own\.length \? own : \w+/.test(draftSrc));
   t('프롬프트가 자체 취재 여부를 알려준다',
     /PAP가 현장에서 직접 촬영한 자체 취재다/.test(draftSrc));
   t('자체 취재가 아니면 현장에 있었던 척 금지',
