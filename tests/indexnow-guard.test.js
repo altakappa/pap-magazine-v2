@@ -66,6 +66,46 @@ ok(L('https://api.indexnow.org/indexnow') === 'indexnow.org', 'indexnow.org 라�
 ok(m.ENDPOINTS.every((e) => L(e).length <= 24), '모든 엔드포인트 라벨이 24자 이하 (note 500자 상한 보호)');
 ok(m.ENDPOINTS.length >= 3, `제출 엔드포인트 ${m.ENDPOINTS.length}곳`);
 
-console.log(`\npassed: ${pass} failed: ${fail}`);
-if (fail) process.exit(1);
-console.log('✅ indexnow-guard tests passed');
+console.log('\n=== 5. 언어판 URL 제출 (2026-08-26) ===');
+/* [왜] Bing 웹마스터 "Important URLs missing" 이 전부 언어판(/en /ja /zh …)
+   기사였다 — IndexNow 가 ko URL 만 제출하고 있었기 때문. en 은 항상,
+   나머지는 seo_translations 에 번역이 실재하는 언어만 제출한다. */
+ok(/langVariantUrls/.test(src) && /withLangs/.test(src), '언어판 확장 경로가 존재한다');
+ok(/const h = f\.slug \|\| f\.id/.test(src),
+   '필름 URL 이 title 폴백이 아니라 slug||id 다 (존재하지 않는 /film/<제목> 제출 방지)');
+ok(!/f\.title \|\| f\.id/.test(src), '옛 title 폴백이 남아있지 않다');
+
+/* 실행 검증 — 번역 실재 언어만 + en 항상 + ko 접두 금지 */
+Module._load = function (req) {
+  if (/_lib\/supabase$/.test(req)) return { supabaseAdmin: {
+    from: () => ({ select: () => ({ eq: () => ({ in: async () => ({ data: [
+      { content_id: 'id1', lang: 'it' },
+      { content_id: 'id1', lang: 'ja' },
+      { content_id: 'id2', lang: 'ko' },
+    ] }) }) }) }),
+  } };
+  if (/_lib\/cronGuard$/.test(req)) return { withCronGuard: (name, h) => h };
+  return _origLoad.apply(this, arguments);
+};
+delete require.cache[require.resolve(SRC)];
+const m2 = require(SRC);
+Module._load = _origLoad;
+
+(async () => {
+  const urls = await m2.langVariantUrls('editorial', [
+    { id: 'id1', slug: 'sacre-chaos' },
+    { id: 'id2', slug: 'no-tr' },
+    { id: 'id3' }, // slug 없음 → id 폴백
+  ]);
+  const S = 'https://www.pap-magazine.com';
+  ok(urls.includes(S + '/en/editorial/sacre-chaos'), 'en 은 항상 제출 (title_en SSR 상존)');
+  ok(urls.includes(S + '/it/editorial/sacre-chaos'), '번역 실재 언어(it) 제출');
+  ok(urls.includes(S + '/ja/editorial/sacre-chaos'), '번역 실재 언어(ja) 제출');
+  ok(!urls.some(u => u.indexOf('/ko/') !== -1), 'ko 접두 URL 은 만들지 않는다 (정본은 무접두)');
+  ok(!urls.some(u => u.indexOf('/it/editorial/no-tr') !== -1), '번역 없는 콘텐츠에 언어판을 지어내지 않는다');
+  ok(urls.includes(S + '/en/editorial/id3'), 'slug 없으면 id 폴백');
+
+  console.log(`\npassed: ${pass} failed: ${fail}`);
+  if (fail) process.exit(1);
+  console.log('✅ indexnow-guard tests passed');
+})();

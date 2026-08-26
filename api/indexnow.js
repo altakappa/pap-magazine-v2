@@ -73,7 +73,33 @@ const STATIC_URLS = [
  * 콘텐츠 URL 수집.
  * @param {string|null} sinceIso — 지정 시 그 시각 이후 발행/갱신된 것만 (recent 모드)
  */
-async function recentContentUrls(sinceIso, limits) {
+/* 2026-08-26 — 언어판 제출 추가. Bing 웹마스터 "Important URLs missing" 이
+   전부 /en /ja /zh /es /it /de 기사였다: IndexNow 가 ko URL 만 제출하고
+   언어판은 검색엔진이 알아서 발견하길 기다리는 구조였기 때문. en 은 SSR 이
+   항상 존재(title_en 기반)하니 무조건, 나머지 언어는 seo_translations 에
+   번역이 실재하는 것만 제출한다 — 없는 페이지를 밀어넣지 않기 위해. */
+async function langVariantUrls(kind, rows) {
+  const out = [];
+  const byId = new Map();
+  (rows || []).forEach(r => { const h = r.slug || r.custom_url || r.id; if (h) byId.set(r.id, h); });
+  if (!byId.size) return out;
+  for (const h of byId.values()) out.push(SITE + '/en/' + kind + '/' + encodeURIComponent(h));
+  try {
+    const { data: trs } = await supabaseAdmin
+      .from('seo_translations').select('content_id, lang')
+      .eq('kind', kind)
+      .in('content_id', [...byId.keys()]);
+    (trs || []).forEach(t => {
+      const h = byId.get(t.content_id);
+      if (h && t.lang && t.lang !== 'ko' && t.lang !== 'en') {
+        out.push(SITE + '/' + t.lang + '/' + kind + '/' + encodeURIComponent(h));
+      }
+    });
+  } catch (_) {}
+  return out;
+}
+
+async function recentContentUrls(sinceIso, limits, withLangs) {
   const urls = [];
   const L = limits || {};
   try {
@@ -87,6 +113,7 @@ async function recentContentUrls(sinceIso, limits) {
     (eds || []).forEach(e => {
       const h = e.slug || e.id; if (h) urls.push(SITE + '/editorial/' + encodeURIComponent(h));
     });
+    if (withLangs) urls.push(...await langVariantUrls('editorial', eds));
   } catch (_) {}
   try {
     let q = supabaseAdmin
@@ -99,17 +126,20 @@ async function recentContentUrls(sinceIso, limits) {
     (arts || []).forEach(a => {
       const h = a.slug || a.custom_url || a.id; if (h) urls.push(SITE + '/article/' + encodeURIComponent(h));
     });
+    if (withLangs) urls.push(...await langVariantUrls('article', arts));
   } catch (_) {}
   try {
     let q = supabaseAdmin
-      .from('films').select('title, id')
+      .from('films').select('slug, title, id')
       .eq('status', 'published')
       .order('published_date', { ascending: false })
       .limit(L.film || 20);
     if (sinceIso) q = q.gte('published_date', sinceIso);
     const { data: films } = await q;
     (films || []).forEach(f => {
-      const h = f.title || f.id; if (h) urls.push(SITE + '/film/' + encodeURIComponent(h));
+      /* 2026-08-26 — 종전엔 title 로 URL 을 만들었다. 프론트 링크는 slug||id 라
+         /film/<제목> 제출은 존재하지 않는 URL 을 밀어넣는 낭비였다. */
+      const h = f.slug || f.id; if (h) urls.push(SITE + '/film/' + encodeURIComponent(h));
     });
   } catch (_) {}
   return urls;
@@ -170,7 +200,9 @@ module.exports = withCronGuard('indexnow', async function handler(req, res) {
     if (!urlList.length && mode === 'backfill') {
       const days = Math.min(parseInt((req.query && req.query.days) || '30', 10) || 30, 90);
       const since = new Date(Date.now() - days * 86400000).toISOString();
-      urlList = await recentContentUrls(since, { editorial: 500, article: 2000, film: 200 });
+      /* 언어판은 ko 만으로도 1만 상한에 닿는 대량 모드라 기본 제외 — ?langs=1 로만 */
+      const withLangs = String((req.query && req.query.langs) || '') === '1';
+      urlList = await recentContentUrls(since, { editorial: 500, article: 2000, film: 200 }, withLangs);
       if (!urlList.length) {
         note(res, 'backfill: 해당 기간 발행물 없음 — 제출 생략');
         return res.status(200).json({ submitted: 0, mode, message: '해당 기간 발행물 없음.' });
@@ -179,7 +211,7 @@ module.exports = withCronGuard('indexnow', async function handler(req, res) {
 
     if (!urlList.length && mode === 'recent') {
       const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-      const recent = await recentContentUrls(since, { article: 200 });
+      const recent = await recentContentUrls(since, { article: 200 }, true);
       if (!recent.length) {
         note(res, '최근 48시간 변경 콘텐츠 없음 — 제출 생략 (정상)');
         return res.status(200).json({ submitted: 0, mode, message: '최근 48시간 변경 콘텐츠 없음 — 제출 생략.' });
@@ -189,7 +221,7 @@ module.exports = withCronGuard('indexnow', async function handler(req, res) {
 
     // 기본 세트 (파라미터 없을 때): 정적 주요 페이지 + 최신 콘텐츠
     if (!urlList.length) {
-      urlList = STATIC_URLS.concat(await recentContentUrls(null));
+      urlList = STATIC_URLS.concat(await recentContentUrls(null, null, true));
     }
 
     // 중복 제거 + IndexNow 상한(1만) 보호
@@ -226,3 +258,4 @@ module.exports = withCronGuard('indexnow', async function handler(req, res) {
 module.exports.epLabel = epLabel;
 module.exports.epAccepted = epAccepted;
 module.exports.ENDPOINTS = ENDPOINTS;
+module.exports.langVariantUrls = langVariantUrls;
