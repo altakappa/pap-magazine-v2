@@ -598,6 +598,10 @@
       "destination": "/mypage.html"
     },
     {
+      "source": "/submissions",
+      "destination": "/submissions.html"
+    },
+    {
       "source": "/submission",
       "destination": "/submission.html"
     },

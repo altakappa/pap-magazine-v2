@@ -46,6 +46,9 @@ const STATIC_PAGES = [
   // 2026-08-23: /instagram-magazine — "인스타그램 매거진"(월 200, 이 카테고리 최대 검색어)
   // 전용 페이지. SERP 1페이지가 정의·리스트형 글로 채워져 있어 그 형태로 만들었다.
   { path: '/instagram-magazine', priority: '0.7', changefreq: 'monthly' },
+  // 2026-08-26: /submissions — 공개 서브미션 랜딩 (SERP 실측: 'fashion magazine
+  // submissions' 상위 10 중 6개가 매거진 자체 /submissions 페이지, KD 0)
+  { path: '/submissions', priority: '0.7', changefreq: 'monthly' },
   // 2026-08-20: 영문판 분리. 영어권 'korean fashion magazines' SERP 는
   // 잡지 쇼핑몰·이베이·아마존이 채우고 있고 DR11 블로그가 7위다. 문서가 없는 자리다.
   { path: '/korean-digital-magazines', priority: '0.7', changefreq: 'monthly' },
