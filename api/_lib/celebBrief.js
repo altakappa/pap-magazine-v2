@@ -133,7 +133,13 @@ function parseUpdate(update) {
    도메니코: "영상은 불가능해?" — 셀럽 속보는 릴스가 절반이다.
    그래서 영상은 **영상 그대로** 보내고, 디자인은 커버 프레임에만 얹는다.
    도메니코 규칙("썸네일은 디자인, 나머지는 원본")은 그대로 지켜진다. */
-const MAX_SLIDES = 10;
+/* 인스타그램 캐러셀 상한이 20장이다. 10 으로 잘라 두면 원본 장수가 그보다
+   많은 게시물에서 뒤 슬라이드가 통째로 버려진다 — 실측(브리프 36번)에서
+   10장으로 잘린 사례가 확인됐다. 커버가 1장을 먹으므로 실제 원본은 19장까지.
+   텔레그램은 한 묶음에 10장까지라 telegram.sendMediaToTelegram 이 알아서
+   두 번에 나눠 보낸다(chunk(list, 10)) — 여기서 신경 쓸 게 없다.
+   도메니코 2026-08-26: "이미지를 최대한으로 뽑아줘". */
+const MAX_SLIDES = 20;
 
 function collectMediaItems(media, opts) {
   const max = (opts && opts.max) || MAX_SLIDES;
@@ -579,7 +585,78 @@ function splitCaptionForTelegram(caption) {
   return { caption: firstLine, overflow: s };
 }
 
+/* 커버 판형 (2026-08-26) ────────────────────────────────────────────────
+   종전 규칙: `items[0].type === 'video' ? 'reels' : 'feed'`.
+   **영상이면 무조건 9:16 이라고 찍었다.** 그런데 영상 크기를 읽는 코드
+   (mp4Mute.mp4Dimensions)는 이 판단보다 뒤에서 돌고 있었다. 잴 수 있는데
+   안 재고 찍은 것이다.
+
+   실측(celeb_brief_queue.result.video_sizes):
+     브리프 41·40·34·32·28 (라이즈·에스파)  720x1280 = 0.5625 (9:16)  판정 맞음
+     브리프 25 (프라다)                      720x900  = 0.8    (4:5)   **판정 틀림**
+
+   4:5 영상 게시물에 9:16 커버를 씌우면 인스타 캐러셀이 첫 장 기준으로 비율을
+   맞추면서 뒤 영상이 눌리거나 잘린다. 도메니코 2026-08-26: "위아래 납짝해지지
+   않게 … 지금은 너무 비율이 엉망이야."
+
+   경계값 0.62 는 9:16(0.5625)과 4:5(0.8) 사이다. 세로 영상이 조금 어긋나도
+   (0.56~0.62) 릴스로 보내고, 4:5 계열(0.75~0.8)은 피드로 보낸다.
+   **못 쟀으면 종전 동작(reels)을 유지한다** — 새 규칙이 못 재는 경우까지
+   바꿔 버리면 고장 범위가 넓어진다. */
+const REELS_MAX_RATIO = 0.62;
+
+/**
+ * 커버 판형을 정한다.
+ * @param {{type:string}[]} items      슬라이드 목록 (0번이 커버 대상)
+ * @param {{width:number,height:number,ratio:number}|null} firstDim
+ *        items[0] 이 영상일 때 **실측한** 크기. 못 쟀으면 null.
+ * @returns {'feed'|'reels'}
+ */
+function pickVariant(items, firstDim) {
+  const first = (items || [])[0];
+  if (!first || first.type !== 'video') return 'feed';
+  const ratio = firstDim && Number(firstDim.ratio);
+  if (!ratio || !isFinite(ratio) || ratio <= 0) return 'reels';   // 못 쟀으면 종전대로
+  return ratio <= REELS_MAX_RATIO ? 'reels' : 'feed';
+}
+
+/* 셀럽 게이트 (2026-08-26) ──────────────────────────────────────────────
+   도메니코: "모두 셀럽이 포함된 기사여야만해. 그냥 디올 기사같은건 필요없어."
+
+   실측(브리프 42건): 디올 단독 9건. 4시간 안에 같은 테일러링 캠페인으로
+   3건이 나갔다 — "디올이 말하는 테일러링의 정밀함" / "디올 테일러링 스터디" /
+   "디올 테일러링의 여유로운 럭셔리". 전부 인물이 없다.
+
+   **계정을 지우지 않는다.** 같은 프라다 계정에서 "해리 스타일스, 멕시코시티
+   무대에서 입은 프라다"(브리프 42)가 나왔다. 거르는 기준은 계정이 아니라
+   기사에 사람이 있느냐다.
+
+   fail-open 이 핵심이다. 모델이 kind 를 안 주거나 파싱이 깨졌을 때
+   "person 이 없다"로 읽으면 **브리프가 전부 사라진다.** 오늘 아침 자기
+   리퍼러 건에서 겪은 것과 같은 모양의 사고다. 그래서 판단할 근거 자체가
+   없으면 통과시키고 이유를 적는다. */
+
+/**
+ * 이 기사에 사람(인물·그룹)이 등장하는가.
+ * @param {{ko?:string,en?:string,kind?:string}[]} entities
+ * @returns {{pass:boolean, reason:string|null}} reason 은 통과/차단 사유 메모
+ */
+function celebGate(entities) {
+  const list = Array.isArray(entities) ? entities.filter(Boolean) : [];
+  if (!list.length) return { pass: true, reason: 'entities 없음 — 판단 불가라 통과' };
+  const withKind = list.filter((e) => typeof e.kind === 'string' && e.kind);
+  if (!withKind.length) return { pass: true, reason: 'kind 표기 없음 — 판단 불가라 통과' };
+  if (withKind.some((e) => e.kind === 'person' || e.kind === 'group')) {
+    return { pass: true, reason: null };
+  }
+  const names = list.map((e) => e.ko || e.en).filter(Boolean).slice(0, 3).join('·');
+  return { pass: false, reason: '인물 없음 — 브랜드만 등장' + (names ? ' (' + names + ')' : '') };
+}
+
 module.exports = {
+  pickVariant,
+  celebGate,
+  REELS_MAX_RATIO,
   htmlToPlain,
   toPolite,
   normalizeTag,

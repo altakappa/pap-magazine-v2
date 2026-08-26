@@ -267,7 +267,8 @@ async function runPublish(row, res, dry) {
       const restPhotos = (items[0] && items[0].type === 'image' ? items.slice(1) : items)
         .filter((i) => i.type === 'image');
       const urls = [coverUrl];
-      for (let i = 0; i < restPhotos.length && urls.length < 10; i++) {
+      /* 인스타 캐러셀 상한 20장 (2026-08-26, celebBrief.MAX_SLIDES 와 같이 올린다). */
+      for (let i = 0; i < restPhotos.length && urls.length < celebBrief.MAX_SLIDES; i++) {
         try {
           const b = await fetchBuffer(restPhotos[i].url, 20000);
           urls.push(await igPublish.uploadPublic(b, base + '/' + (i + 1) + '.jpg', 'image/jpeg'));
@@ -445,6 +446,27 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
       username: rows[0].username,
     });
 
+    /* 셀럽 게이트 (2026-08-26) ────────────────────────────────────────
+       도메니코: "모두 셀럽이 포함된 기사여야만해. 그냥 디올 기사같은건 필요없어."
+       실측(브리프 42건): 디올 단독 9건, 4시간 안에 같은 테일러링 캠페인 3건.
+       계정을 지우지 않는 이유는 celebBrief.celebGate 머리말에 적었다.
+
+       버리지 않고 상태로 남긴다 — 게이트가 과하게 잡는지 나중에 셀 수 있어야
+       한다. 텔레그램에는 아무것도 보내지 않는다(조용해지는 게 목적이다). */
+    const gate = celebBrief.celebGate(gen.entities);
+    if (!gate.pass) {
+      await supabaseAdmin.from('celeb_brief_queue').update({
+        status: 'skipped_no_celeb', processed_at: new Date().toISOString(),
+        error: gate.reason,
+        result: { title: gen.title_ko || gen.title, entities: gen.entities, skipped: gate.reason },
+      }).in('id', ids);
+      return res.status(200).json({
+        ok: true, skipped: 'no_celeb', title: gen.title_ko,
+        note: note(res, '셀럽 없음으로 건너뜀: ' + String(gen.title_ko || '').slice(0, 50)
+          + ' — ' + gate.reason),
+      });
+    }
+
     /* 멘션 줄: 소스 계정을 맨 앞에, 그다음 원 게시물 캡션에 찍힌 @핸들.
        실측 96% 가 2번째 줄에 멘션을 단다(브랜드·작업자 태그). */
     const mentions = [rows[0].username]
@@ -476,15 +498,55 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
       tags: gen.tags,                           // 주체를 하나도 못 뽑았을 때만 쓰인다
     });
 
-    // ── 4. 미디어 준비 — 커버 1장만 디자인, 나머지는 원본 그대로 ──
+    /* ── 4. 미디어 준비 — 판형은 **실측 뒤에** 정한다 (2026-08-26) ────────
+       종전 순서: 커버를 먼저 그리고(영상이면 무조건 9:16) 영상을 나중에 쟀다.
+       그래서 4:5 영상 게시물에 9:16 커버가 붙었다 — 브리프 25(프라다) 720x900.
+       인스타 캐러셀은 첫 장이 비율을 정하므로 뒤 영상이 눌리거나 잘린다.
+       도메니코 2026-08-26: "위아래 납짝해지지 않게 … 비율이 엉망이야."
+
+       순서를 뒤집는다: ① 원본을 받아 재고 → ② 실측으로 판형을 정하고 → ③ 커버.
+       내려받기는 한 번뿐이다 — 재려고 두 번 받으면 시간·비용이 두 배가 된다. */
+
+    /* 첫 슬라이드가 사진이면 그 원본은 커버로 이미 쓴 셈이라 다시 넣지 않는다.
+       영상이면 커버는 프레임일 뿐이므로 **영상 본체를 이어서 넣는다.** */
+    const rest = items[0].type === 'image' ? items.slice(1) : items;
+    let tooBig = 0;
+    const videoSizes = [];      // 크롭이 정말 필요한지 숫자로 보기 위해 기록한다
+    let firstDim = null;        // items[0] 이 영상일 때의 실측값 — 판형의 유일한 근거
+    const fetched = [];         // { type, buffer } — 받아만 두고 조립은 판형 확정 뒤에
+    for (let ri = 0; ri < rest.length; ri++) {
+      const it = rest[ri];
+      try {
+        const buf = await fetchBuffer(it.url, it.type === 'video' ? 60000 : 20000);
+        if (it.type === 'video' && buf.length > VIDEO_MAX_BYTES) { tooBig++; continue; }
+        if (it.type === 'video') {
+          /* 크롭은 재인코딩이고 Vercel 에는 ffmpeg 가 없다(_lib/mp4Mute.js 머리말).
+             그래서 **원본이 어떤 비율인지**를 잰다. 순수 JS 로 tkhd 만 읽는다. */
+          try {
+            const { mp4Dimensions } = require('../_lib/mp4Mute');
+            const dim = mp4Dimensions(buf);
+            if (dim) {
+              videoSizes.push(dim);
+              if (ri === 0 && items[0].type === 'video') firstDim = dim;
+            }
+          } catch (e) {
+            console.warn('[celeb-brief] 영상 해상도 읽기 실패:', (e && e.message) || e);
+          }
+        }
+        fetched.push({ type: it.type, buffer: buf });
+      } catch (e) {
+        console.warn('[celeb-brief] 미디어 건너뜀:', (e && e.message) || e);
+      }
+    }
+
+    /* 판형 확정. 못 쟀으면 종전 동작(영상=reels)을 그대로 유지한다. */
+    const variant = celebBrief.pickVariant(items, firstDim);
+
     const media = [];
     const cover = await fetchBuffer(coverUrl, 20000);
     const { renderThumb } = require('../_lib/celebThumb');
-    /* 판형은 게시물이 정한다 — 영상이면 릴스(9:16), 사진이면 피드(4:5).
-       릴스를 4:5 로 뽑으면 인스타에 릴스로 올릴 때 위아래가 잘린다. */
-    const variant = items[0].type === 'video' ? 'reels' : 'feed';
     const coverDesigned = await renderThumb(cover, gen.title_ko || gen.title, gen.title_en || '',
-      { variant, focusTop: gen.cover_focus_top });   // 피드 4:5 크롭에서 얼굴이 안 잘리게
+      { variant, focusTop: gen.cover_focus_top });   // 4:5 크롭에서 얼굴이 안 잘리게
     media.push({ kind: 'photo', buffer: coverDesigned });
 
     /* 영상 미리보기 커버로 쓸 축소본. 텔레그램 thumbnail 은 JPEG · 320px 이하
@@ -497,67 +559,40 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
       console.warn('[celeb-brief] 영상 커버 축소 실패(커버 없이 진행):', (e && e.message) || e);
     }
 
-    /* 첫 슬라이드가 사진이면 그 원본은 커버로 이미 쓴 셈이라 다시 넣지 않는다.
-       영상이면 커버는 프레임일 뿐이므로 **영상 본체를 이어서 넣는다.** */
-    const rest = items[0].type === 'image' ? items.slice(1) : items;
-    let tooBig = 0;
+    /* 디자인 굽기도 판형이 정해진 뒤에 한다 — 종전에는 'reels' 로 **고정**돼
+       있어서 4:5 영상에 9:16 오버레이가 구워졌다. 기본은 꺼져 있고
+       CELEB_BURN_OVERLAY=on 일 때만 돈다. 실패하면 원본으로 계속 간다 —
+       굽기가 안 된다고 브리프가 사라지면 안 된다. */
     let burnedCount = 0;
     let burnFailed = 0;
     const burnedVideos = [];
-    const videoSizes = [];      // 크롭이 정말 필요한지 숫자로 보기 위해 기록한다
-    for (const it of rest) {
-      try {
-        const buf = await fetchBuffer(it.url, it.type === 'video' ? 60000 : 20000);
-        if (it.type === 'video' && buf.length > VIDEO_MAX_BYTES) { tooBig++; continue; }
-        if (it.type === 'video') {
-          /* 도메니코가 9:16 크롭을 요청했는데 크롭은 재인코딩이고 Vercel 에는
-             ffmpeg 가 없다(_lib/mp4Mute.js 머리말). 그래서 **원본이 이미 9:16 인지**
-             부터 잰다 — 그렇다면 할 일이 없다. 순수 JS 로 tkhd 만 읽는다. */
-          try {
-            const { mp4Dimensions } = require('../_lib/mp4Mute');
-            const dim = mp4Dimensions(buf);
-            if (dim) videoSizes.push(dim);
-          } catch (e) {
-            console.warn('[celeb-brief] 영상 해상도 읽기 실패:', (e && e.message) || e);
-          }
+    for (const f of fetched) {
+      if (f.type !== 'video') { media.push({ kind: 'photo', buffer: f.buffer }); continue; }
+      let vbuf = f.buffer;
+      if (videoOverlay.isEnabled()) {
+        try {
+          const { renderOverlay } = require('../_lib/celebThumb');
+          const ov = await renderOverlay(gen.title_ko || gen.title, gen.title_en || '', { variant });
+          const burned = await videoOverlay.burnIntro(f.buffer, ov);
+          if (burned) { vbuf = burned; burnedCount++; }
+          else burnFailed++;
+        } catch (e) {
+          burnFailed++;
+          console.error('[celeb-brief] 디자인 굽기 실패(원본으로 진행):', (e && e.message) || e);
         }
-        if (it.type === 'video') {
-          /* 영상에 PAP 디자인을 앞 3초만 굽는다 + 같은 인코딩에서 9:16 확대·크롭.
-             도메니코 2026-08-23: "영상 자체에 디자인을 올려서" · "앞 2-3초".
-             기본은 꺼져 있고 CELEB_BURN_OVERLAY=on 일 때만 돈다.
-             실패하면 **원본으로 계속 간다** — 굽기가 안 된다고 브리프가 사라지면 안 된다.
-
-             굽기를 게시할 때가 아니라 **여기서** 하는 이유: 게시 경로는 릴스
-             컨테이너 폴링에만 최대 180초를 쓴다. 거기에 인코딩(최대 240초)까지
-             얹으면 함수 상한 300초를 넘긴다. 여기서 한 번 굽고 결과를 저장해
-             게시는 그대로 가져다 쓴다. */
-          let vbuf = buf;
-          if (videoOverlay.isEnabled()) {
-            try {
-              const { renderOverlay } = require('../_lib/celebThumb');
-              const ov = await renderOverlay(gen.title_ko || gen.title, gen.title_en || '', { variant: 'reels' });
-              const burned = await videoOverlay.burnIntro(buf, ov);
-              if (burned) { vbuf = burned; burnedCount++; }
-              else burnFailed++;
-            } catch (e) {
-              burnFailed++;
-              console.error('[celeb-brief] 디자인 굽기 실패(원본으로 진행):', (e && e.message) || e);
-            }
-          }
-          media.push({ kind: 'video', buffer: vbuf, thumb: videoThumb });
-          if (vbuf !== buf) burnedVideos.push(vbuf);
-        } else {
-          media.push({ kind: 'photo', buffer: buf });
-        }
-      } catch (e) {
-        console.warn('[celeb-brief] 미디어 건너뜀:', (e && e.message) || e);
       }
+      media.push({ kind: 'video', buffer: vbuf, thumb: videoThumb });
+      if (vbuf !== f.buffer) burnedVideos.push(vbuf);
     }
-    /* 9:16 = 0.5625. 오차 2% 밖이면 세로 판형이 아니라는 뜻이다. */
-    const offRatio = videoSizes.filter((d) => Math.abs(d.ratio - 0.5625) > 0.0113);
+
+    /* 경고는 **고른 판형 기준**으로 낸다. 종전에는 0.5625 로 고정 비교라
+       4:5 를 올바르게 feed 로 보낸 경우까지 "9:16 아님" 이라고 짖었다. */
+    const targetRatio = variant === 'reels' ? 0.5625 : 0.8;
+    const offRatio = videoSizes.filter((d) => Math.abs(d.ratio - targetRatio) > 0.02);
     const sizeNote = videoSizes.length
       ? (' · 영상 ' + videoSizes.map((d) => d.width + 'x' + d.height).join(', ')
-         + (offRatio.length ? ' ⚠️9:16 아님' : ' (9:16)'))
+         + ' · 커버 ' + variant
+         + (offRatio.length ? (' ⚠️비율 불일치 ' + offRatio.length + '건') : ' (비율 일치)'))
       : '';
     const buffers = media;   // 아래 dry 응답 호환
 
