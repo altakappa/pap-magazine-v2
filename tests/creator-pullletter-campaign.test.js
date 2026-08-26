@@ -76,6 +76,20 @@ t('가입 유도가 전면에 나서지 않는다 — 주 CTA는 마이페이지
   assert.ok(/프리미엄 멤버십에 포함/.test(out.html), '각주에 프리미엄 요건 명시가 없다 (낚시 방지)');
 });
 
+t('심사제가 명시된다 — 신청=발급으로 읽히면 거절당한 크리에이터의 불만이 된다', () => {
+  // 2026-08-26 도메니코 정정: 무드보드·포토그래퍼 포트폴리오가 PAP 미감과
+  // 맞아야 승인. 그리고 풀레터 용도는 샘플 대여만이 아니라 로케이션 섭외 등
+  // 촬영 협조 전반의 어드벤테이지.
+  const ko = templates.creatorPullletter({ payload: {} }, { language: 'ko' }, 'T');
+  assert.ok(/심사제/.test(ko.html), 'ko: 심사제 명시가 없다');
+  assert.ok(/포트폴리오/.test(ko.html), 'ko: 포트폴리오 적합성 언급이 없다');
+  assert.ok(/로케이션/.test(ko.html), 'ko: 용도 확장(로케이션 섭외)이 없다');
+  const en = templates.creatorPullletter({ payload: {} }, { language: 'en' }, 'T');
+  assert.ok(/selective/i.test(en.html), 'en: 심사제 명시가 없다');
+  assert.ok(/portfolio/i.test(en.html), 'en: 포트폴리오 언급이 없다');
+  assert.ok(/locations?/i.test(en.html), 'en: 로케이션 언급이 없다');
+});
+
 t('템플릿(en + 비지원 언어 폴백): en 카피로 렌더된다', () => {
   const en = templates.creatorPullletter({}, { language: 'en' }, 'T1');
   assert.ok(/one request per month/.test(en.html), 'en 각주(월 1건) 문구가 없다');
