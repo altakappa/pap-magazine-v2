@@ -1124,11 +1124,11 @@ const templates = {
         subject: 'PAP 공식 풀레터, 크리에이터를 위한 샘플 대여 공문',
         preheader: '제출해 주신 작업 잘 봤습니다. PAP 공식 풀레터 제도를 소개합니다.',
         kicker: 'FOR CREATIVE TEAMS',
-        headline: 'PAP 공식 Pull Letter를 소개합니다',
+        headline: 'PAP 공식 Pull Letter를 소개합니다',
         p1: 'PAP Magazine에 작업을 제출해 주신 크리에이터분께 안내드립니다. 풀레터(Pull Letter)는 매거진 명의의 공식 공문으로, 브랜드·쇼룸 샘플 대여는 물론 로케이션 섭외 등 촬영과 관련한 협조를 요청하는 자리에서 PAP와 촬영을 진행한다는 사실을 공식적으로 증명하는 문서입니다.',
         p2: '발급은 심사제입니다. 제출하신 무드보드의 방향과 포토그래퍼의 포트폴리오가 PAP의 에디토리얼 미감과 맞는지 에디토리얼 팀이 검토하며, 승인된 요청에 한해 포토그래퍼·스타일리스트 이름과 발급일이 명시된 PDF 공문이 발급됩니다.',
         stepsTitle: 'HOW IT WORKS',
-        steps: ['마이페이지에서 무드보드와 팀 정보 제출', '에디토리얼 팀 심사 · 피드백 — 무드보드와 포트폴리오가 PAP의 방향과 맞아야 승인됩니다', '승인 시 PDF 공문 발급 (발급일로부터 2개월 유효)'],
+        steps: ['마이페이지에서 무드보드와 팀 정보 제출', '에디토리얼 팀 심사 · 피드백 (무드보드와 포트폴리오가 PAP의 방향과 맞아야 승인됩니다)', '승인 시 PDF 공문 발급 (발급일로부터 2개월 유효)'],
         cta: '풀레터 요청하기',
         footnote: '풀레터 요청은 프리미엄 멤버십에 포함되어 있으며 월 1건 요청할 수 있습니다.',
         footnoteLink: '멤버십 안내',
@@ -1137,11 +1137,11 @@ const templates = {
         subject: 'The Official PAP Pull Letter for Creative Teams',
         preheader: 'You have submitted work to PAP. Introducing the official PAP Pull Letter.',
         kicker: 'FOR CREATIVE TEAMS',
-        headline: 'Introducing the Official PAP Pull Letter',
-        p1: 'You are receiving this because you have submitted work to PAP Magazine. A Pull Letter is an official letter issued in the magazine’s name — formal proof that you are shooting with PAP, used when pulling samples from brands and showrooms, negotiating locations, and requesting production support of any kind.',
+        headline: 'The Official PAP Pull Letter',
+        p1: 'You are receiving this because you have submitted work to PAP Magazine. A Pull Letter is an official letter issued in the magazine’s name: formal proof that you are shooting with PAP, used when pulling samples from brands and showrooms, negotiating locations, and requesting production support of any kind.',
         p2: 'Issuance is selective. The editorial team reviews whether your moodboard and the photographer’s portfolio align with PAP’s editorial aesthetic; only approved requests receive a PDF letter carrying the photographer and stylist names and the date of issue.',
         stepsTitle: 'HOW IT WORKS',
-        steps: ['Submit your moodboard and team details from My Page', 'Editorial review and feedback — the moodboard and portfolio must align with PAP’s direction', 'If approved, a PDF letter is issued, valid for two months from the date of issue'],
+        steps: ['Submit your moodboard and team details from My Page', 'Editorial review and feedback (the moodboard and portfolio must align with PAP’s direction)', 'If approved, a PDF letter is issued, valid for two months from the date of issue'],
         cta: 'Request a Pull Letter',
         footnote: 'Pull Letter requests are part of the Premium membership, with one request per month.',
         footnoteLink: 'About membership',
@@ -1180,9 +1180,9 @@ const templates = {
     <tr><td style="padding:14px 40px 0;font-size:14px;color:#555;line-height:1.85;">${escapeHtml(C.p2)}</td></tr>
     <tr><td style="padding:30px 40px 0;">
       <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e5e5;">
-        <tr><td style="padding:20px 0 4px;font-family:${MONT};font-size:10px;font-weight:800;color:#999;letter-spacing:3px;text-transform:uppercase;">${escapeHtml(C.stepsTitle)}</td></tr>
+        <tr><td colspan="2" style="padding:20px 0 4px;font-family:${MONT};font-size:10px;font-weight:800;color:#999;letter-spacing:3px;text-transform:uppercase;">${escapeHtml(C.stepsTitle)}</td></tr>
         ${C.steps.map((st, i) => `
-        <tr><td style="padding:10px 0 0;font-size:13.5px;color:#555;line-height:1.7;"><span style="font-family:${MONT};font-weight:800;color:#891717;font-size:12px;letter-spacing:1px;">0${i + 1}</span>&nbsp;&nbsp;${escapeHtml(st)}</td></tr>`).join('')}
+        <tr><td width="30" valign="top" style="padding:10px 0 0;font-family:${MONT};font-weight:800;color:#891717;font-size:12px;letter-spacing:1px;line-height:1.9;">0${i + 1}</td><td valign="top" style="padding:10px 0 0;font-size:13.5px;color:#555;line-height:1.7;">${escapeHtml(st)}</td></tr>`).join('')}
       </table>
     </td></tr>
     <tr><td align="center" style="padding:30px 40px 0;">
