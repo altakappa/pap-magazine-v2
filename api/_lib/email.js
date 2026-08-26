@@ -709,6 +709,11 @@ const templates = {
         </table>
         <p>Our editorial team will review your work carefully. You'll receive an email once a decision has been made.</p>
         <a href="${FRONTEND_URL}/submission.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">VIEW MY SUBMISSIONS</a>
+        <div style="margin-top:28px;padding:16px;border:1px solid #3a3223;">
+          <span style="color:#c9a86a;font-size:10px;text-transform:uppercase;letter-spacing:2px;">For creative teams</span><br>
+          <span style="color:#ccc;font-size:13px;line-height:1.7;">Need garment loans for your next shoot? Premium members can request one official PAP Pull-Letter per month and browse the full editorial archive.</span><br>
+          <a href="${FRONTEND_URL}/subscribe?utm_source=submission_received_email&utm_medium=email" style="display:inline-block;margin-top:10px;color:#fff;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:underline;">EXPLORE PREMIUM →</a>
+        </div>
       `),
     };
   },
