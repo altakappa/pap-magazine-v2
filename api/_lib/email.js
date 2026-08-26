@@ -1129,10 +1129,10 @@ const templates = {
         preheader: 'You have submitted work to PAP. For your next shoot, bring an official PAP Pull Letter.',
         kicker: 'FOR CREATIVE TEAMS',
         headline: 'Introducing the Official PAP Pull Letter',
-        p1: 'You are receiving this because you have submitted work to PAP Magazine. A Pull Letter is an official letter issued in the magazine\\u2019s name, used by creative teams to pull samples from brands and showrooms for editorial shoots.',
+        p1: 'You are receiving this because you have submitted work to PAP Magazine. A Pull Letter is an official letter issued in the magazine’s name, used by creative teams to pull samples from brands and showrooms for editorial shoots.',
         p2: 'Submit your moodboard and team details from My Page. Once the PAP editorial team approves, a PDF letter is issued with your photographer and stylist names and the date of issue, valid for two months.',
         benefitTitle: 'Premium membership',
-        benefit: 'One official Pull-Letter request per month \\u00b7 full editorial archive access',
+        benefit: 'One official Pull-Letter request per month · full editorial archive access',
         cta: 'View membership',
       },
     };
