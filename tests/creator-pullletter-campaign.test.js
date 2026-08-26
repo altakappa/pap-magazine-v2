@@ -63,11 +63,24 @@ t('템플릿(ko): 수신거부 토큰·utm·실제 혜택 문구가 렌더된다
   assert.ok(/2개월/.test(out.html), '유효기간(2개월) 안내가 없다');
 });
 
+t('가입 유도가 전면에 나서지 않는다 — 주 CTA는 마이페이지, 멤버십은 각주 1회', () => {
+  // 2026-08-26 도메니코 지시: "회원 가입하라는 의도가 적나라하게
+  // 드러나지 않으면 좋겠어". 주 CTA는 실제 신청 위치(마이페이지 풀레터
+  // 섹션)로 가고, subscribe 링크는 하단 각주에 정확히 1회만 존재한다.
+  // 각주에는 프리미엄 요건이 명시돼 낚시가 되지 않는다.
+  const out = templates.creatorPullletter({ payload: {} }, { language: 'ko' }, 'T');
+  assert.ok(out.html.includes('/mypage?utm_source=creator_pullletter_campaign&utm_medium=email#mp-pullletters'),
+    '주 CTA가 마이페이지 풀레터 섹션이 아니다');
+  const subLinks = out.html.split('subscribe?utm_source=creator_pullletter_campaign').length - 1;
+  assert.strictEqual(subLinks, 1, 'subscribe 링크가 ' + subLinks + '회 — 각주 1회여야 한다');
+  assert.ok(/프리미엄 멤버십에 포함/.test(out.html), '각주에 프리미엄 요건 명시가 없다 (낚시 방지)');
+});
+
 t('템플릿(en + 비지원 언어 폴백): en 카피로 렌더된다', () => {
   const en = templates.creatorPullletter({}, { language: 'en' }, 'T1');
-  assert.ok(/Pull-Letter request per month/.test(en.html), 'en 혜택 문구가 없다');
+  assert.ok(/one request per month/.test(en.html), 'en 각주(월 1건) 문구가 없다');
   const ja = templates.creatorPullletter({}, { language: 'ja' }, 'T2');
-  assert.ok(/Pull-Letter request per month/.test(ja.html), 'ja → en 폴백이 안 된다');
+  assert.ok(/one request per month/.test(ja.html), 'ja → en 폴백이 안 된다');
 });
 
 console.log(`  ${pass} passed, ${fail} failed`);

@@ -1127,9 +1127,11 @@ const templates = {
         headline: 'PAP 공식 Pull Letter를 소개합니다',
         p1: 'PAP Magazine에 작업을 제출해 주신 크리에이터분께 안내드립니다. 풀레터(Pull Letter)는 촬영을 위해 브랜드·쇼룸에서 샘플을 대여할 때 필요한 매거진 명의의 공식 공문입니다.',
         p2: '마이페이지에서 무드보드와 팀 정보를 제출하면 PAP 에디토리얼 팀이 검토하고, 승인되면 포토그래퍼·스타일리스트 이름과 발급일이 명시된 PDF 공문이 발급됩니다. 발급일로부터 2개월간 유효합니다.',
-        benefitTitle: '프리미엄 멤버십 혜택',
-        benefit: '공식 Pull-Letter 요청 월 1건 · 전체 에디토리얼 아카이브 열람',
-        cta: '멤버십 살펴보기',
+        stepsTitle: 'HOW IT WORKS',
+        steps: ['마이페이지에서 무드보드와 팀 정보 제출', 'PAP 에디토리얼 팀 검토 · 피드백', 'PDF 공문 발급 (발급일로부터 2개월 유효)'],
+        cta: '풀레터 요청하기',
+        footnote: '풀레터 요청은 프리미엄 멤버십에 포함되어 있으며 월 1건 요청할 수 있습니다.',
+        footnoteLink: '멤버십 안내',
       },
       en: {
         subject: 'The Official PAP Pull Letter for Creative Teams',
@@ -1138,9 +1140,11 @@ const templates = {
         headline: 'Introducing the Official PAP Pull Letter',
         p1: 'You are receiving this because you have submitted work to PAP Magazine. A Pull Letter is an official letter issued in the magazine’s name, used by creative teams to pull samples from brands and showrooms for editorial shoots.',
         p2: 'Submit your moodboard and team details from My Page. Once the PAP editorial team approves, a PDF letter is issued with your photographer and stylist names and the date of issue, valid for two months.',
-        benefitTitle: 'Premium Membership',
-        benefit: 'One official Pull-Letter request per month · full editorial archive access',
-        cta: 'View Membership',
+        stepsTitle: 'HOW IT WORKS',
+        steps: ['Submit your moodboard and team details from My Page', 'The PAP editorial team reviews and gives feedback', 'A PDF letter is issued, valid for two months from the date of issue'],
+        cta: 'Request a Pull Letter',
+        footnote: 'Pull Letter requests are part of the Premium membership, with one request per month.',
+        footnoteLink: 'About membership',
       },
     };
     const C = COPY[lang] || COPY.en;
@@ -1151,7 +1155,13 @@ const templates = {
     const ov = ((campaign && campaign.payload && campaign.payload.i18n) || {})[lang] || {};
     const subject = ov.subject || C.subject;
     const preheader = ov.preheader || C.preheader;
-    const ctaUrl = `${FRONTEND_URL}/subscribe?utm_source=creator_pullletter_campaign&utm_medium=email`;
+    // 주 CTA는 '판매 페이지'가 아니라 실제로 풀레터를 신청하는 곳
+    // (마이페이지 풀레터 섹션)으로 보낸다 — 2026-08-26 도메니코 지시:
+    // 가입 유도가 적나라하게 드러나지 않게. 무료 회원은 신청 과정에서
+    // 프리미엄 요건(서버측 게이트)을 자연스럽게 만난다. 멤버십 링크는
+    // 하단 각주로만 두되, 낚시가 되지 않도록 각주에 요건을 명시한다.
+    const ctaUrl = `${FRONTEND_URL}/mypage?utm_source=creator_pullletter_campaign&utm_medium=email#mp-pullletters`;
+    const membershipUrl = `${FRONTEND_URL}/subscribe?utm_source=creator_pullletter_campaign&utm_medium=email`;
     const MONT = "'Montserrat','Inter',Helvetica,Arial,sans-serif";
 
     const html = `<!DOCTYPE html>
@@ -1169,14 +1179,16 @@ const templates = {
     <tr><td style="padding:26px 40px 0;font-size:14px;color:#555;line-height:1.85;">${escapeHtml(C.p1)}</td></tr>
     <tr><td style="padding:14px 40px 0;font-size:14px;color:#555;line-height:1.85;">${escapeHtml(C.p2)}</td></tr>
     <tr><td style="padding:30px 40px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#000000;">
-        <tr><td align="center" style="padding:26px 24px 0;font-family:${MONT};font-size:10px;font-weight:800;color:rgba(255,255,255,.55);letter-spacing:3px;text-transform:uppercase;">${escapeHtml(C.benefitTitle)}</td></tr>
-        <tr><td align="center" style="padding:12px 24px 0;font-size:14px;color:#ffffff;line-height:1.7;">${escapeHtml(C.benefit)}</td></tr>
-        <tr><td align="center" style="padding:22px 24px 28px;">
-          <a href="${ctaUrl}" style="display:inline-block;background:#ffffff;color:#000000;padding:14px 40px;font-family:${MONT};font-size:11px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;text-decoration:none;border:1.5px solid #ffffff;">${escapeHtml(C.cta)}</a>
-        </td></tr>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e5e5;">
+        <tr><td style="padding:20px 0 4px;font-family:${MONT};font-size:10px;font-weight:800;color:#999;letter-spacing:3px;text-transform:uppercase;">${escapeHtml(C.stepsTitle)}</td></tr>
+        ${C.steps.map((st, i) => `
+        <tr><td style="padding:10px 0 0;font-size:13.5px;color:#555;line-height:1.7;"><span style="font-family:${MONT};font-weight:800;color:#891717;font-size:12px;letter-spacing:1px;">0${i + 1}</span>&nbsp;&nbsp;${escapeHtml(st)}</td></tr>`).join('')}
       </table>
     </td></tr>
+    <tr><td align="center" style="padding:30px 40px 0;">
+      <a href="${ctaUrl}" style="display:inline-block;background:#000000;color:#ffffff;padding:14px 40px;font-family:${MONT};font-size:11px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;text-decoration:none;border:1.5px solid #000000;">${escapeHtml(C.cta)}</a>
+    </td></tr>
+    <tr><td align="center" style="padding:16px 40px 0;font-size:11.5px;color:#999;line-height:1.7;">${escapeHtml(C.footnote)} <a href="${membershipUrl}" style="color:#999;text-decoration:underline;">${escapeHtml(C.footnoteLink)}</a></td></tr>
     <tr><td style="padding:32px 40px 0;"><hr style="border:none;border-top:1px solid #e5e5e5;"></td></tr>
     <tr><td align="center" style="padding:18px 32px 0;font-size:11px;color:#999;line-height:2;">
       <div style="font-family:${MONT};font-size:9px;font-weight:700;letter-spacing:2px;color:#999;text-transform:uppercase;margin-bottom:4px;">${escapeHtml(L.languageLabel)}</div>
