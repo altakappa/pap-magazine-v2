@@ -271,7 +271,10 @@ async function runPublish(row, res, dry) {
       for (let i = 0; i < restPhotos.length && urls.length < celebBrief.MAX_SLIDES; i++) {
         try {
           const b = await fetchBuffer(restPhotos[i].url, 20000);
-          urls.push(await igPublish.uploadPublic(b, base + '/' + (i + 1) + '.jpg', 'image/jpeg'));
+          /* 브리프에서 본 것과 **같은 그림**이 올라가야 한다. 여기서 자르지 않으면
+             텔레그램에서 확인한 비율과 실제 게시물이 갈린다. */
+          const cropped = await require('../_lib/slideCrop').cropSlideToVariant(b, pub.variant);
+          urls.push(await igPublish.uploadPublic(cropped.buffer, base + '/' + (i + 1) + '.jpg', 'image/jpeg'));
         } catch (e) {
           console.warn('[celeb-brief] 게시용 이미지 건너뜀:', (e && e.message) || e);
         }
@@ -566,8 +569,20 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     let burnedCount = 0;
     let burnFailed = 0;
     const burnedVideos = [];
+    /* 사진은 전부 판형 비율로 채워 자른다 (2026-08-26 도메니코: "가로형 이미지는
+       확대를해서 다른 세로형 이미지들과 같게 잘라줘"). 인물 보호와 그 한계는
+       _lib/slideCrop.js 머리말에 적었다 — 많이 잘린 컷은 번호로 지목한다. */
+    const slideCrop = require('../_lib/slideCrop');
+    let croppedCount = 0;
+    const severeSlides = [];      // 원본의 60% 미만만 남은 컷 = 사람이 봐야 하는 컷
     for (const f of fetched) {
-      if (f.type !== 'video') { media.push({ kind: 'photo', buffer: f.buffer }); continue; }
+      if (f.type !== 'video') {
+        const c = await slideCrop.cropSlideToVariant(f.buffer, variant);
+        if (c.changed) croppedCount++;
+        if (c.severe) severeSlides.push(media.length + 1);   // 커버가 1번
+        media.push({ kind: 'photo', buffer: c.buffer });
+        continue;
+      }
       let vbuf = f.buffer;
       if (videoOverlay.isEnabled()) {
         try {
@@ -589,6 +604,15 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
        4:5 를 올바르게 feed 로 보낸 경우까지 "9:16 아님" 이라고 짖었다. */
     const targetRatio = variant === 'reels' ? 0.5625 : 0.8;
     const offRatio = videoSizes.filter((d) => Math.abs(d.ratio - targetRatio) > 0.02);
+    /* 자른 결과를 숨기지 않는다. 특히 많이 잘린 컷은 **번호로** 알린다 —
+       attention 은 휴리스틱이라 단체 사진에서 누군가를 놓칠 수 있다.
+       "인물이 안 잘렸다"고 장담하는 대신 위험한 컷을 지목한다. */
+    const cropNote = croppedCount
+      ? (' · 사진 ' + croppedCount + '장 ' + variant + ' 비율로 자름'
+         + (severeSlides.length
+            ? (' ⚠️많이 잘린 컷 ' + severeSlides.join('·') + '번 — 인물 확인 필요')
+            : ''))
+      : '';
     const sizeNote = videoSizes.length
       ? (' · 영상 ' + videoSizes.map((d) => d.width + 'x' + d.height).join(', ')
          + ' · 커버 ' + variant
@@ -619,7 +643,13 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     // ── 5. 텔레그램 회신 ──────────────────────────────────────
     const tg = require('../_lib/telegram');
     if (!tg.isConfigured()) return await fail('TELEGRAM_BOT_TOKEN/CHAT_ID 미설정');
-    const capWithNote = caption + (tooBig ? ('\n\n※ 용량이 커서 영상 ' + tooBig + '건은 뺐습니다(45MB 초과).') : '');
+    const capWithNote = caption
+      + (tooBig ? ('\n\n※ 용량이 커서 영상 ' + tooBig + '건은 뺐습니다(45MB 초과).') : '')
+      /* 많이 잘린 컷은 캡션에 적어 텔레그램에서 바로 보이게 한다. 크론 노트에만
+         적으면 도메니코가 못 본다 — 확인해야 할 사람이 볼 자리에 둔다. */
+      + (severeSlides.length
+         ? ('\n\n⚠️ ' + severeSlides.join('·') + '번 사진은 가로형이라 많이 잘렸습니다. 인물이 잘리지 않았는지 확인해 주세요.')
+         : '');
     const split = celebBrief.splitCaptionForTelegram(capWithNote);
     await tg.sendMediaToTelegram(media, split.caption, rows[0].chat_id);
     if (split.overflow) await tg.sendTextToChatSafe(rows[0].chat_id, split.overflow);
@@ -675,7 +705,7 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
         + (burnedCount ? (' · 디자인 굽기 ' + burnedCount + '건') : '')
         + (burnFailed ? (' ⚠️굽기 실패 ' + burnFailed + '건(원본 사용)') : '')
         + (tooBig ? (' ⚠️영상 ' + tooBig + '건 용량초과 제외') : '')
-        + ': ' + String(gen.title_ko || '').slice(0, 60) + ' (' + media.length + '장)' + sizeNote),
+        + ': ' + String(gen.title_ko || '').slice(0, 60) + ' (' + media.length + '장)' + sizeNote + cropNote),
     });
   } catch (e) {
     return await fail(String((e && e.message) || e).slice(0, 300));
