@@ -96,13 +96,17 @@ t('단일 동영상 게시물은 이미지가 0장이다', () => {
   );
 });
 
-t('여러 게시물 이미지를 보낸 순서대로 나열하고 10장에서 자른다', () => {
-  const a = Array.from({ length: 7 }, (_, i) => 'https://cdn/a' + i + '.jpg');
-  const b = Array.from({ length: 7 }, (_, i) => 'https://cdn/b' + i + '.jpg');
+t('여러 게시물 이미지를 보낸 순서대로 나열하고 MAX_SLIDES(20장)에서 자른다', () => {
+  // 2026-08-26 4887248 이 상한을 10 → 20(MAX_SLIDES)으로 올렸는데 이 테스트가
+  // 10 을 하드코딩한 채 남아 스위트가 깨졌다. 상한의 진실원천은 celebBrief 의
+  // MAX_SLIDES 하나 — 숫자를 다시 하드코딩하지 않고 그 값으로 검사한다.
+  const a = Array.from({ length: 12 }, (_, i) => 'https://cdn/a' + i + '.jpg');
+  const b = Array.from({ length: 12 }, (_, i) => 'https://cdn/b' + i + '.jpg');
   const merged = cb.mergeMediaUrls([a, b]);
-  assert.strictEqual(merged.length, 10, '인스타 캐러셀 상한');
+  assert.strictEqual(merged.length, cb.MAX_SLIDES, '인스타 캐러셀 상한(MAX_SLIDES)');
+  assert.strictEqual(cb.MAX_SLIDES, 20, 'MAX_SLIDES 가 20 이 아니면 판형 결정(4887248)과 어긋난다');
   assert.strictEqual(merged[0], 'https://cdn/a0.jpg');
-  assert.strictEqual(merged[7], 'https://cdn/b0.jpg');
+  assert.strictEqual(merged[12], 'https://cdn/b0.jpg');
 });
 
 t('중복 이미지 URL 은 한 번만', () => {
@@ -322,12 +326,16 @@ t('영상 게시물도 받는다 — 커버에만 디자인, 영상은 원본', 
   assert.strictEqual(cb.pickCoverUrl(items), 'https://cdn/t.jpg', '커버는 영상의 프레임을 쓴다');
 });
 
-t('영상이면 릴스 판형(9:16), 사진이면 피드 판형(4:5)', () => {
-  assert.ok(/const variant = items\[0\]\.type === 'video' \? 'reels' : 'feed';/.test(CRON_CODE),
-    '릴스를 4:5 로 뽑으면 인스타 릴스 업로드 때 위아래가 잘린다');
-  assert.ok(/renderThumb\([\s\S]{0,160}\{ variant[,\s}]/.test(CRON_CODE), '판형이 렌더러에 안 전달된다');
-  assert.ok(/focusTop: gen\.cover_focus_top/.test(CRON_CODE),
-    '얼굴 위치를 안 넘기면 피드 4:5 크롭에서 얼굴이 잘린다');
+t('판형은 실측으로 고른다 — pickVariant(items, firstDim) 가 렌더러까지 전달된다', () => {
+  // 2026-08-26 4887248 이 "type=video → 무조건 reels" 를 실측 비율 기반
+  // pickVariant 로 바꿨는데 이 테스트가 옛 삼항식을 정규식으로 고정한 채
+  // 남아 스위트가 깨졌다. pickVariant 의 동작 자체(9:16→reels, 4:5→feed,
+  // 실측 실패 시 reels 폴백)는 celeb-brief-ratio-gate.test.js 가 검사한다.
+  // 여기서는 cron 이 그 단일 진실원천을 쓰고 렌더러에 전달하는지만 고정한다.
+  assert.ok(/const variant = celebBrief\.pickVariant\(items, firstDim\);/.test(CRON_CODE),
+    '판형 결정이 pickVariant(실측) 를 거치지 않는다');
+  assert.ok(/\{ variant, focusTop: gen\.cover_focus_top \}/.test(CRON_CODE),
+    '판형·얼굴 위치가 렌더러에 안 전달된다 (피드 4:5 크롭에서 얼굴이 잘린다)');
 });
 
 t('영상이 첫 장이면 영상 본체도 함께 보낸다', () => {

@@ -97,5 +97,12 @@ t('템플릿(en + 비지원 언어 폴백): en 카피로 렌더된다', () => {
   assert.ok(/one request per month/.test(ja.html), 'ja → en 폴백이 안 된다');
 });
 
+t('일시 오류(421류)는 1회 재시도한다 — 2026-08-26 발송에서 3/28 누수 재발 방지', () => {
+  assert.ok(/TRANSIENT_RE/.test(CRON), '재시도 패턴이 없다');
+  assert.ok(/421/.test(CRON) && /setTimeout\(r, 5000\)/.test(CRON), '5초 대기 후 재시도가 없다');
+  const retries = CRON.split('await sendEmail(user.email, built)').length - 1;
+  assert.strictEqual(retries, 2, 'sendEmail 호출이 ' + retries + '회 — 정확히 2회(원발송+재시도 1회)여야 한다');
+});
+
 console.log(`  ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

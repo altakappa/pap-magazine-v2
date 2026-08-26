@@ -162,7 +162,21 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
               language: resolveEmailLang(user),
             };
             const built = templateFn(campaign, renderUser, tok.token);
-            const result = await sendEmail(user.email, built);
+
+            /* 일시 오류 1회 재시도 (2026-08-26 실측 후속).
+             * 첫 creator-pullletter 발송에서 28통 중 3통이 Gmail SMTP
+             * 421 'Temporary System Problem' 으로 죽었다 — 주소 문제가
+             * 아니라 배치를 한꺼번에 쏘면서 순간적으로 막힌 것.
+             * 4xx 일시 계열(421·4.3.0·try again)만 5초 뒤 정확히 1회
+             * 재시도한다. 영구 오류(550 주소 없음 등)는 재시도해도
+             * 같은 답이므로 그대로 실패 기록. */
+            const TRANSIENT_RE = /\b421\b|4\.[0-9]\.[0-9]|try again|temporar/i;
+            let result = await sendEmail(user.email, built);
+            if (!(result && result.sent === true)
+                && TRANSIENT_RE.test(String((result && result.error) || ''))) {
+              await new Promise((r) => setTimeout(r, 5000));
+              result = await sendEmail(user.email, built);
+            }
             const ok = result && result.sent === true;
 
             await supabaseAdmin.from('email_log').insert({
