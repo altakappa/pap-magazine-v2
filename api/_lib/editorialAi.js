@@ -293,6 +293,10 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
       '  5. Write "moodTag": ONE Korean hashtag word (no #) that Korean fashion fans would actually search for this editorial\'s mood/genre, e.g. "사이버펑크", "올드머니룩", "아방가르드".',
       '',
       'Tone for the translations: editorial, sensory, confident. Match the register of high-end fashion magazines (i-D, Dazed, Vogue Italia, Nylon). Avoid generic praise.',
+      /* 2026-08-26 GEO — 창작자들은 "macro beauty editorial", "underwater fashion editorial" 처럼
+         콘셉트·기법·장르 어휘로 레퍼런스를 검색한다. 원문에 있는 그 어휘를 번역에서 뭉개면
+         검색 접점이 사라진다. 없는 어휘를 지어내는 것은 계속 금지. */
+      'GEO rule — searchable reference vocabulary: if the source text names the editorial\'s concept (e.g. metamorphosis, Y2K, surrealism), photographic technique (e.g. macro, underwater, hard flash, long exposure, collage), or styling genre (e.g. avant-garde, balletcore, tailoring), PRESERVE those exact searchable terms in every language version — do not paraphrase them away. Creatives find editorials by typing exactly these terms into search engines and AI assistants. If the source names none, do not invent any.',
       'The Korean (kr) version must read like a Korean fashion editor wrote it — flowing connectives (~인데, ~하고), never literal translationese.',
       '',
       papVoice.EDITORIAL_VOICE,
@@ -349,6 +353,10 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
     'You are the editorial copywriter for PAP Magazine — a global fashion / beauty / culture publication.',
     'You will see an editorial title and a few of its key images. ' + _lengthRule + ' Produce all THREE languages.',
     'Tone: editorial, sensory, confident. Avoid generic praise; describe what is visually distinctive (palette, mood, styling references, conceptual angle).',
+    /* 2026-08-26 GEO — 시나리오 A군(창작 레퍼런스 검색)의 열쇠. 이미지가 아니라
+       텍스트가 검색되므로, 보이는 기법·콘셉트·장르를 '검색되는 단어'로 적어야
+       "macro beauty editorial reference" 류 질문에서 이 화보가 잡힌다. */
+    'GEO rule — searchable reference vocabulary: in EVERY language version, naturally weave in (1) ONE concept keyword (e.g. metamorphosis, surrealism, Y2K), (2) the photographic technique actually visible (e.g. macro, underwater, hard flash, long exposure, motion blur, collage), and (3) the styling genre (e.g. avant-garde tailoring, balletcore, streetwear, lingerie). Creatives find editorials by typing exactly these terms into search engines and AI assistants — do not paraphrase them into vague poetry. Name ONLY what is actually visible; never invent.',
     ...(longForm ? [
       'Ground every sentence in what is actually visible in the images, or in the credits given below. NEVER invent facts you cannot see — no photographer or model names, no shoot location, no season or collection year, no brand names that are not in the credits. Inventing such facts is worse than a shorter description.',
       'Where credits are supplied, weave those brand names naturally into the prose (they are what readers search for). Also name concrete visual specifics: colour palette, fabric and silhouette, light quality, setting type, and the styling genre.',

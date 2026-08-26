@@ -146,6 +146,19 @@ console.log('=== 동작 실측 (가짜 fetch) ===');
   t('이미지 0장이면 그것도 로그', warns.some(w => /비전 이미지 0장/.test(w)));
   console.warn = origWarn;
 
+  /* 2026-08-26 — GEO 검색 어휘 규칙. 창작자는 "macro beauty editorial" 처럼
+     콘셉트·기법·장르 어휘로 레퍼런스를 검색한다. 프롬프트가 이 어휘를
+     요구하지 않으면 설명문이 모호한 산문이 되어 LLM 검색 접점이 사라진다. */
+  console.log('=== GEO 검색 어휘 규칙 (2026-08-26) ===');
+  t('비전 프롬프트에 GEO 검색 어휘 규칙이 있다',
+    /GEO rule — searchable reference vocabulary/.test(src));
+  t('기법 어휘 예시(macro·underwater·hard flash)가 실려 있다',
+    /macro, underwater, hard flash/.test(src));
+  t('번역 모드에도 원문 어휘 보존 규칙이 있다 (GEO rule 2회 이상)',
+    (src.match(/GEO rule/g) || []).length >= 2);
+  t('GEO 규칙에도 지어내기 금지가 함께 간다',
+    /never invent/.test(src) && /do not invent any/.test(src));
+
   global.fetch = origFetch;
   console.log(`\npassed: ${pass}   failed: ${fail}`);
   if (fail) { console.log('❌ editorial-ai-vision-source tests FAILED'); process.exit(1); }
