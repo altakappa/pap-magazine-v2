@@ -1103,12 +1103,19 @@ const templates = {
   // (payload.audience='submitters_free', 발송기 측에서 세그먼트)에게
   // 풀레터 제도를 소개한다. 약속은 subscribe 페이지와 동일한 실제
   // 혜택만: Pull-Letter 요청 월 1건 + 전체 에디토리얼 아카이브.
-  // 크롬(수신거부·언어선택·다크 푸터)은 weeklyNews 와 동일 규격.
+  //
+  // 디자인은 웹사이트(pap-styles.css)를 그대로 따른다 (2026-08-26 지시):
+  //   · 검정 헤더 + 흰 로고(pap-logo.png), 페이지 배경 #f5f5f5(--bg)
+  //   · 브랜드 레드 #891717(--pap-red), 그레이 #e5e5e5/#999/#555
+  //   · 헤딩 Montserrat 800 대문자 자간, 본문 Inter (메일 클라이언트가
+  //     웹폰트를 막으면 Helvetica 볼드로 폴백해도 같은 인상 유지)
+  //   · 혜택 박스는 subscribe 페이지의 검정 플랜카드 + 흰 CTA 문법
+  // 수신거부·언어선택·법적 고지는 weeklyNews 와 동일 규격.
   creatorPullletter: (campaign, user, unsubToken) => {
     const lang = (user && user.language) || 'en';
     const L = emailUiStrings(lang);
     const langBar = SUPPORTED_LANGS.map(l => l === lang
-      ? `<span style="color:#1a1a1a;font-weight:700;text-decoration:underline;white-space:nowrap;">${LANG_LABELS[l]}</span>`
+      ? `<span style="color:#111;font-weight:700;text-decoration:underline;white-space:nowrap;">${LANG_LABELS[l]}</span>`
       : `<a href="${FRONTEND_URL}/api/email/language?token=${unsubToken}&amp;lang=${l}" style="color:#999;text-decoration:none;white-space:nowrap;">${LANG_LABELS[l]}</a>`
     ).join(' &nbsp;·&nbsp; ');
 
@@ -1131,9 +1138,9 @@ const templates = {
         headline: 'Introducing the Official PAP Pull Letter',
         p1: 'You are receiving this because you have submitted work to PAP Magazine. A Pull Letter is an official letter issued in the magazine’s name, used by creative teams to pull samples from brands and showrooms for editorial shoots.',
         p2: 'Submit your moodboard and team details from My Page. Once the PAP editorial team approves, a PDF letter is issued with your photographer and stylist names and the date of issue, valid for two months.',
-        benefitTitle: 'Premium membership',
+        benefitTitle: 'Premium Membership',
         benefit: 'One official Pull-Letter request per month · full editorial archive access',
-        cta: 'View membership',
+        cta: 'View Membership',
       },
     };
     const C = COPY[lang] || COPY.en;
@@ -1145,45 +1152,50 @@ const templates = {
     const subject = ov.subject || C.subject;
     const preheader = ov.preheader || C.preheader;
     const ctaUrl = `${FRONTEND_URL}/subscribe?utm_source=creator_pullletter_campaign&utm_medium=email`;
+    const MONT = "'Montserrat','Inter',Helvetica,Arial,sans-serif";
 
     const html = `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PAP Pull Letter</title></head>
-<body style="margin:0;padding:0;background:#f5f0eb;">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PAP Pull Letter</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;">
   <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader)}</div>
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;font-family:'Inter',Helvetica,Arial,sans-serif;background:#ffffff;">
-    <tr><td align="center" style="background-color:#6b1a1a;padding:28px 20px"><img src="https://lh3.googleusercontent.com/d/1IAVkzs1uAj10kM0P3h64ItZvB924WkET" width="50" style="display:block;" alt="PAP"></td></tr>
-    <tr><td align="center" style="background-color:#f5f0eb;padding:14px 20px;font-size:10px;font-weight:600;color:#6b1a1a;letter-spacing:4px;">ART &middot; FASHION &middot; BEAUTY &middot; CULTURE</td></tr>
-    <tr><td align="center" style="padding:34px 28px 0;font-size:10px;font-weight:700;color:#b08d57;letter-spacing:3px;">${escapeHtml(C.kicker)}</td></tr>
-    <tr><td align="center" style="padding:10px 28px 0;font-size:22px;font-weight:700;color:#1a1a1a;line-height:1.4;">${escapeHtml(C.headline)}</td></tr>
-    <tr><td style="padding:22px 32px 0;font-size:14px;color:#444;line-height:1.8;">${escapeHtml(C.p1)}</td></tr>
-    <tr><td style="padding:14px 32px 0;font-size:14px;color:#444;line-height:1.8;">${escapeHtml(C.p2)}</td></tr>
-    <tr><td style="padding:24px 32px 0;">
-      <div style="border:1px solid rgba(176,141,87,.45);padding:18px 20px;">
-        <div style="font-size:10px;font-weight:700;color:#b08d57;letter-spacing:2px;margin-bottom:8px;">${escapeHtml(C.benefitTitle)}</div>
-        <div style="font-size:13.5px;color:#1a1a1a;line-height:1.7;">${escapeHtml(C.benefit)}</div>
-      </div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;"><tr><td align="center" style="padding:0 0 32px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;font-family:'Inter',-apple-system,Helvetica,Arial,sans-serif;background:#ffffff;">
+    <tr><td align="center" style="background-color:#000000;padding:26px 20px;"><a href="${FRONTEND_URL}/?utm_source=creator_pullletter_campaign&utm_medium=email" style="text-decoration:none;"><img src="${FRONTEND_URL}/pap-logo.png" width="72" style="display:block;" alt="PAP MAGAZINE"></a></td></tr>
+    <tr><td align="center" style="padding:44px 32px 0;font-family:${MONT};font-size:10px;font-weight:800;color:#891717;letter-spacing:4px;text-transform:uppercase;">${escapeHtml(C.kicker)}</td></tr>
+    <tr><td align="center" style="padding:14px 32px 0;font-family:${MONT};font-size:22px;font-weight:800;color:#111;line-height:1.4;letter-spacing:1px;text-transform:uppercase;">${escapeHtml(C.headline)}</td></tr>
+    <tr><td align="center" style="padding:18px 32px 0;"><div style="width:36px;height:2px;background:#891717;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+    <tr><td style="padding:26px 40px 0;font-size:14px;color:#555;line-height:1.85;">${escapeHtml(C.p1)}</td></tr>
+    <tr><td style="padding:14px 40px 0;font-size:14px;color:#555;line-height:1.85;">${escapeHtml(C.p2)}</td></tr>
+    <tr><td style="padding:30px 40px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#000000;">
+        <tr><td align="center" style="padding:26px 24px 0;font-family:${MONT};font-size:10px;font-weight:800;color:rgba(255,255,255,.55);letter-spacing:3px;text-transform:uppercase;">${escapeHtml(C.benefitTitle)}</td></tr>
+        <tr><td align="center" style="padding:12px 24px 0;font-size:14px;color:#ffffff;line-height:1.7;">${escapeHtml(C.benefit)}</td></tr>
+        <tr><td align="center" style="padding:22px 24px 28px;">
+          <a href="${ctaUrl}" style="display:inline-block;background:#ffffff;color:#000000;padding:14px 40px;font-family:${MONT};font-size:11px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;text-decoration:none;border:1.5px solid #ffffff;">${escapeHtml(C.cta)}</a>
+        </td></tr>
+      </table>
     </td></tr>
-    <tr><td align="center" style="padding:28px 28px 4px;">
-      <a href="${ctaUrl}" style="display:inline-block;background:#6b1a1a;color:#ffffff;padding:13px 32px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">${escapeHtml(C.cta)}</a>
-    </td></tr>
-    <tr><td style="padding:18px 28px 0;"><hr style="border:none;border-top:1px solid #eee;"></td></tr>
-    <tr><td align="center" style="padding:16px 28px 0;font-size:11px;color:#999;line-height:2;">
-      <div style="font-size:9px;letter-spacing:2px;color:#bbb;text-transform:uppercase;margin-bottom:4px;">${escapeHtml(L.languageLabel)}</div>
+    <tr><td style="padding:32px 40px 0;"><hr style="border:none;border-top:1px solid #e5e5e5;"></td></tr>
+    <tr><td align="center" style="padding:18px 32px 0;font-size:11px;color:#999;line-height:2;">
+      <div style="font-family:${MONT};font-size:9px;font-weight:700;letter-spacing:2px;color:#999;text-transform:uppercase;margin-bottom:4px;">${escapeHtml(L.languageLabel)}</div>
       ${langBar}
     </td></tr>
-    <tr><td style="padding:18px 28px 0;font-size:11px;color:#888;line-height:1.6;">
+    <tr><td style="padding:18px 40px 28px;font-size:11px;color:#777;line-height:1.6;">
       ${L.consentNotice.replace(/<strong>/g, '<strong style="color:#555;">')}
       &nbsp;·&nbsp;
-      <a href="${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(L.unsubscribe)}</a>
+      <a href="${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}" style="color:#891717;text-decoration:underline;">${escapeHtml(L.unsubscribe)}</a>
       &nbsp;·&nbsp;
-      <a href="${FRONTEND_URL}/mypage#mp-preferences" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(L.managePrefs)}</a>
+      <a href="${FRONTEND_URL}/mypage#mp-preferences" style="color:#891717;text-decoration:underline;">${escapeHtml(L.managePrefs)}</a>
     </td></tr>
-    <tr><td align="center" style="background-color:#1a1a1a;padding:28px 20px;margin-top:18px;">
-      <div style="font-size:11px;font-weight:700;color:#ffffff;letter-spacing:4px;">P A P &nbsp; M A G A Z I N E</div>
-      <div style="font-size:11px;color:#888;margin-top:6px;">pap-magazine.com | @pap_magazine</div>
+    <tr><td align="center" style="background-color:#000000;padding:30px 20px;">
+      <div style="font-family:${MONT};font-size:11px;font-weight:800;color:#ffffff;letter-spacing:5px;">P A P &nbsp; M A G A Z I N E</div>
+      <div style="font-size:10px;color:#999;margin-top:8px;letter-spacing:1px;">ART &middot; FASHION &middot; BEAUTY &middot; CULTURE</div>
+      <div style="font-size:11px;color:#777;margin-top:8px;">pap-magazine.com | @pap_magazine</div>
     </td></tr>
   </table>
+  </td></tr></table>
 </body>
 </html>`;
     return { subject, html };
