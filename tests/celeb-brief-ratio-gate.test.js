@@ -79,36 +79,49 @@ t('kind 가 빈 문자열이면 판단 불가로 통과', cb.celebGate([{ ko: '�
 t('kind 가 섞여 있으면 있는 것만 본다 (브랜드만 표기 → 막힘)',
   cb.celebGate([{ ko: '디올', kind: 'brand' }, { ko: '무엇' }]).pass === false);
 
-console.log('\n[4-2] 주제 게이트 — 셀럽 "소식"만 (2026-08-26 2차 지시)');
-/* 도메니코: "제발 셀럽소식만 보내줘. 셀럽이 매거진에 실린소식은 안알려줘도돼.
-   챌린지도 알려줄필요없어."  인물이 있어도 통과하면 안 되는 것들이 있었다. */
-const P = [{ ko: '지수', kind: 'person' }];
+console.log('\n[4-2] 주제 게이트 — 막는 건 둘뿐, 나머지는 인물로 판단 (2026-08-26)');
+/* 도메니코 1차: "셀럽소식만. 매거진에 실린소식·챌린지는 안알려줘도돼."
+   도메니코 정정: "브랜드 캠페인이 차단이 아니라 **셀럽이 포함되지 않은**
+                  브랜드 캠페인이 없어도 된다는거야."
+   → brand_campaign 을 통째로 막던 것을 되돌린다. 샤넬 캠페인에 제니가 나오면
+     그건 우리가 원하는 기사다. 거를 것은 사람이 없는 캠페인이고, 그건 이미
+     celebGate 가 한다. 무조건 막는 것은 도메니코가 이름 댄 둘뿐이다. */
+const P = [{ ko: '제니', kind: 'person' }];
+const G = [{ ko: '라이즈', kind: 'group' }];
 const BR = [{ ko: '디올', kind: 'brand' }];
+
 t('셀럽 소식은 통과', cb.briefGate({ entities: P, brief_topic: 'celeb_news' }).pass === true);
-t('남의 매거진에 실린 소식은 막는다',
+t('셀럽이 있으면 브랜드 캠페인도 통과  ← 정정된 규칙',
+  cb.briefGate({ entities: [{ ko: '샤넬', kind: 'brand' }].concat(P), brief_topic: 'brand_campaign' }).pass === true);
+t('사람 없는 브랜드 캠페인은 막힌다 (주제가 아니라 인물로 막는다)',
+  cb.briefGate({ entities: BR, brief_topic: 'brand_campaign' }).pass === false);
+t('막힌 이유가 "인물 없음" 이다 (주제 탓이 아니다)',
+  /인물 없음/.test(cb.briefGate({ entities: BR, brief_topic: 'brand_campaign' }).reason || ''),
+  cb.briefGate({ entities: BR, brief_topic: 'brand_campaign' }).reason);
+t('other 도 인물이 있으면 통과', cb.briefGate({ entities: P, brief_topic: 'other' }).pass === true);
+t('other 인데 브랜드만이면 막힌다', cb.briefGate({ entities: BR, brief_topic: 'other' }).pass === false);
+
+console.log('\n[4-3] 무조건 막는 둘 — 셀럽이 나와도 막는다');
+t('남의 매거진에 실린 소식은 제니여도 막는다',
   cb.briefGate({ entities: P, brief_topic: 'magazine_feature' }).pass === false);
-t('챌린지는 막는다', cb.briefGate({ entities: P, brief_topic: 'challenge' }).pass === false);
-t('인물이 있어도 브랜드 캠페인이면 막는다',
-  cb.briefGate({ entities: P, brief_topic: 'brand_campaign' }).pass === false);
-t('other 도 막는다', cb.briefGate({ entities: P, brief_topic: 'other' }).pass === false);
+t('챌린지는 라이즈여도 막는다',
+  cb.briefGate({ entities: G, brief_topic: 'challenge' }).pass === false);
 t('막힌 이유에 주제가 적힌다',
   /매거진/.test(cb.briefGate({ entities: P, brief_topic: 'magazine_feature' }).reason || ''));
-t('브랜드만이면 주제가 celeb_news 여도 막는다',
-  cb.briefGate({ entities: BR, brief_topic: 'celeb_news' }).pass === false);
+t('무조건 막는 목록은 둘뿐이다', cb.TOPIC_BLOCK.size === 2, Array.from(cb.TOPIC_BLOCK));
+t('brand_campaign 은 그 목록에 없다', cb.TOPIC_BLOCK.has('brand_campaign') === false);
+t('other 도 그 목록에 없다', cb.TOPIC_BLOCK.has('other') === false);
 
-console.log('\n[4-3] 주제 게이트도 fail-open ← 표기가 흔들려도 전멸하면 안 된다');
+console.log('\n[4-4] fail-open — 표기가 흔들려도 전멸하면 안 된다');
 t('하이픈 표기(celeb-news)도 통과', cb.briefGate({ entities: P, brief_topic: 'celeb-news' }).pass === true);
-t('대문자(CELEB_NEWS)도 통과', cb.briefGate({ entities: P, brief_topic: 'CELEB_NEWS' }).pass === true);
+t('대문자(MAGAZINE_FEATURE)는 정규화돼 막힌다',
+  cb.briefGate({ entities: P, brief_topic: 'MAGAZINE FEATURE' }).pass === false);
 t('모르는 값이면 막지 않고 인물 판정으로 넘긴다',
   cb.briefGate({ entities: P, brief_topic: 'zzz_unknown' }).pass === true);
-t('brief_topic 이 아예 없으면 인물 판정으로만 통과',
-  cb.briefGate({ entities: P }).pass === true);
-t('그 사실이 이유에 남는다', /brief_topic/.test(cb.briefGate({ entities: P }).reason || ''));
+t('brief_topic 이 아예 없어도 인물이 있으면 통과', cb.briefGate({ entities: P }).pass === true);
 t('gen 이 null 이어도 던지지 않는다', cb.briefGate(null).pass === true);
-t('막는 목록이 프롬프트에 정의된 넷뿐이다 (모르는 값을 막지 않는다)',
-  cb.TOPIC_BLOCK.size === 4, Array.from(cb.TOPIC_BLOCK));
 
-console.log('\n[4-4] 크론이 주제 게이트를 쓴다');
+console.log('\n[4-5] 크론이 주제 게이트를 쓴다');
 t('celebGate 가 아니라 briefGate 를 부른다',
   /celebBrief\.briefGate\(gen\)/.test(CRON) && !/celebBrief\.celebGate\(gen\.entities\)/.test(CRON));
 t('막힌 건의 brief_topic 을 보관한다 (게이트가 과한지 세려면 필요하다)',
@@ -116,6 +129,8 @@ t('막힌 건의 brief_topic 을 보관한다 (게이트가 과한지 세려면 
 t('프롬프트가 brief_topic 을 요구한다', /"brief_topic"/.test(IMP));
 t('네 갈래를 전부 설명한다',
   ['celeb_news', 'magazine_feature', 'challenge', 'brand_campaign'].every((k) => IMP.includes(k)));
+t('프롬프트가 brand_campaign 을 중립으로 설명한다 (인물이 있으면 통과하므로)',
+  /brand_campaign[^\n]*셀럽이 나오면 entities/.test(IMP));
 
 console.log('\n[5] 슬라이드 상한 20 (인스타 캐러셀 상한)');
 t('MAX_SLIDES 가 20', cb.MAX_SLIDES === 20, cb.MAX_SLIDES);
