@@ -231,9 +231,9 @@ module.exports = async function handler(req, res) {
         const freeIds = await edAccess.latestFreeIds(supabaseAdmin);
         const verdict = edAccess.canView(tier, data, { freeIds });
         /* 2026-08-27 — 이미지는 '전부/전무'가 아니라 앞 2장까지 미리보기.
-         * 열람 판정(verdict)은 다운로드 버튼 등에 그대로 쓰이므로 건드리지
-         * 않고, 이미지 컷만 따로 적용한다. */
-        const shaped = edAccess.shapeGallery(data, tier);
+         * 판정 자체는 canView 하나를 그대로 쓴다(등급표를 두 벌로 만들지
+         * 않는다). 열람 권한이 있으면 전체, 없으면 앞 2장. */
+        const shaped = edAccess.shapeGallery(data, tier, { freeIds });
         return res.status(200).json({
           data: shaped,
           access: { tier, allowed: verdict.allowed, required_tier: verdict.requiredTier, reason: verdict.reason },
@@ -248,9 +248,9 @@ module.exports = async function handler(req, res) {
         // 게이트가 고장 나면 여는 게 아니라 잠근다. 열어두면 조용히 전부 공개된다.
         console.error('[editorial gate] 판정 실패 — 잠금으로 처리:', gateErr && gateErr.message);
         return res.status(200).json({
-          data: edAccess.shapeGallery(data, 'anon'),
+          data: edAccess.shapeGallery(data, 'anon'),   // 게이트 고장 시엔 잠그는 쪽으로
           access: { tier: 'anon', allowed: false, required_tier: 'free', reason: 'gate-error' },
-          images: { shown: edAccess.PREVIEW_IMAGES, total: Array.isArray(data.gallery) ? data.gallery.length : 0, locked: true, required_tier: 'standard' },
+          images: { shown: edAccess.PREVIEW_IMAGES, total: Array.isArray(data.gallery) ? data.gallery.length : 0, locked: true, required_tier: 'free' },
         });
       }
     } catch (err) {

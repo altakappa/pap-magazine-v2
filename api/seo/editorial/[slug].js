@@ -13,7 +13,8 @@
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
 const { renderSeoHtml, renderNotFoundHtml } = require('../../_lib/seoRenderer');
-const { PREVIEW_IMAGES } = require('../../_lib/editorialAccess');
+const edAccess = require('../../_lib/editorialAccess');
+const { PREVIEW_IMAGES } = edAccess;
 const { logSocialInclick } = require('../../_lib/socialInclick');
 // 2026-08-19 — AI 크롤러가 어떤 글을 읽어 갔는지 기록. 사람 유입(위)과 다른 신호다.
 const { logAiCrawl } = require('../../_lib/aiCrawlLog');
@@ -346,8 +347,16 @@ module.exports = async function handler(req, res) {
      * CDN 에 공용 캐시된다. 전체 이미지는 로그인한 스탠다드 이상이
      * /api/editorials/:id 로 브라우저에서 채운다. 근거는
      * api/_lib/editorialAccess.js 의 PREVIEW_IMAGES 주석에 있다. */
+    /* 잠금 패널이 "가입하면"이라고 할지 "STANDARD부터"라고 할지는 이 화보가
+     * 최신 10편(무료 회원 열람 범위) 안인지에 달렸다. 보는 사람과 무관한
+     * 값이라 공용 캐시에 얹어도 안전하다. */
+    let lockTier = 'premium';
+    try {
+      const freeIds = await edAccess.latestFreeIds(supabaseAdmin);
+      lockTier = edAccess.requiredTierFor(data, { freeIds });
+    } catch (_) { /* 실패하면 가장 보수적인 문구로 */ }
     return res.status(200).send(renderSeoHtml('editorial', data, {
-      lang, translation, availableLangs, galleryLimit: PREVIEW_IMAGES,
+      lang, translation, availableLangs, galleryLimit: PREVIEW_IMAGES, lockTier,
     }));
 
   } catch (err) {

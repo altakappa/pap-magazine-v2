@@ -931,6 +931,9 @@ function renderSeoHtml(kind, record, opts) {
   const GALLERY_LOCK_T = {
     ko: {
       count: (t, h) => `총 ${t}장 중 ${h}장이 더 있습니다`,
+      headFree: '가입하면 전체 이미지를 볼 수 있습니다',
+      subFree: '최신 에디토리얼 10편은 회원이면 무료입니다.',
+      ctaFree: '가입하고 보기',
       headStandard: 'STANDARD 멤버부터 전체 이미지를 볼 수 있습니다',
       headPremium: 'PREMIUM 멤버부터 전체 이미지를 볼 수 있습니다',
       subStandard: '최신 화보의 모든 컷과 이미지 다운로드가 열립니다.',
@@ -939,6 +942,9 @@ function renderSeoHtml(kind, record, opts) {
     },
     en: {
       count: (t, h) => `${h} more of ${t} images`,
+      headFree: 'Sign up to see every image',
+      subFree: 'The 10 most recent editorials are free for members.',
+      ctaFree: 'Sign up',
       headStandard: 'Standard members see the full set',
       headPremium: 'Premium members see the full set',
       subStandard: 'Every frame of recent editorials, plus image downloads.',
@@ -947,6 +953,9 @@ function renderSeoHtml(kind, record, opts) {
     },
     it: {
       count: (t, h) => `Altre ${h} immagini su ${t}`,
+      headFree: 'Iscriviti per vedere tutte le immagini',
+      subFree: 'Gli ultimi 10 editoriali sono gratuiti per i membri.',
+      ctaFree: 'Iscriviti',
       headStandard: 'I membri Standard vedono il servizio completo',
       headPremium: 'I membri Premium vedono il servizio completo',
       subStandard: 'Tutti gli scatti degli editoriali recenti, download inclusi.',
@@ -955,6 +964,9 @@ function renderSeoHtml(kind, record, opts) {
     },
     fr: {
       count: (t, h) => `${h} images de plus sur ${t}`,
+      headFree: 'Inscrivez-vous pour voir toutes les images',
+      subFree: 'Les 10 derniers éditoriaux sont gratuits pour les membres.',
+      ctaFree: 'S\'inscrire',
       headStandard: 'Les membres Standard voient la série complète',
       headPremium: 'Les membres Premium voient la série complète',
       subStandard: 'Toutes les images des éditoriaux récents, téléchargements inclus.',
@@ -963,6 +975,9 @@ function renderSeoHtml(kind, record, opts) {
     },
     es: {
       count: (t, h) => `${h} imágenes más de ${t}`,
+      headFree: 'Regístrate para ver todas las imágenes',
+      subFree: 'Los 10 editoriales más recientes son gratis para los miembros.',
+      ctaFree: 'Registrarse',
       headStandard: 'Los miembros Standard ven la serie completa',
       headPremium: 'Los miembros Premium ven la serie completa',
       subStandard: 'Todas las tomas de los editoriales recientes, con descargas.',
@@ -971,6 +986,9 @@ function renderSeoHtml(kind, record, opts) {
     },
     ja: {
       count: (t, h) => `全${t}枚のうち、あと${h}枚`,
+      headFree: '会員登録で全カットをご覧いただけます',
+      subFree: '最新エディトリアル10本は会員なら無料です。',
+      ctaFree: '登録して見る',
       headStandard: 'STANDARD 会員から全カットをご覧いただけます',
       headPremium: 'PREMIUM 会員から全カットをご覧いただけます',
       subStandard: '最新エディトリアルの全カットと画像ダウンロードが開きます。',
@@ -979,6 +997,9 @@ function renderSeoHtml(kind, record, opts) {
     },
     zh: {
       count: (t, h) => `共 ${t} 张,还有 ${h} 张`,
+      headFree: '注册后即可查看全部图片',
+      subFree: '最新 10 篇大片对会员免费。',
+      ctaFree: '注册查看',
       headStandard: 'STANDARD 会员可查看全部图片',
       headPremium: 'PREMIUM 会员可查看全部图片',
       subStandard: '最新大片的全部照片,并可下载图片。',
@@ -987,6 +1008,9 @@ function renderSeoHtml(kind, record, opts) {
     },
     de: {
       count: (t, h) => `${h} weitere von ${t} Bildern`,
+      headFree: 'Registriere dich, um alle Bilder zu sehen',
+      subFree: 'Die 10 neuesten Editorials sind für Mitglieder kostenlos.',
+      ctaFree: 'Registrieren',
       headStandard: 'Standard-Mitglieder sehen die komplette Strecke',
       headPremium: 'Premium-Mitglieder sehen die komplette Strecke',
       subStandard: 'Alle Aufnahmen aktueller Editorials, inklusive Downloads.',
@@ -995,6 +1019,9 @@ function renderSeoHtml(kind, record, opts) {
     },
     ru: {
       count: (t, h) => `Ещё ${h} из ${t} снимков`,
+      headFree: 'Зарегистрируйтесь, чтобы увидеть все снимки',
+      subFree: '10 свежих эдиториалов бесплатны для участников.',
+      ctaFree: 'Зарегистрироваться',
       headStandard: 'Участники Standard видят серию целиком',
       headPremium: 'Участники Premium видят серию целиком',
       subStandard: 'Все кадры свежих эдиториалов и скачивание изображений.',
@@ -1575,21 +1602,24 @@ function renderSeoHtml(kind, record, opts) {
      .seo-gallery-locked 는 위 hasPart 의 cssSelector 와 같아야 한다. */
   const galleryLockHtml = galleryLocked
     ? (() => {
-        const need = (() => {
-          const pd = String(record.published_date || '').slice(0, 10);
-          const now = new Date();
-          const q = Math.floor(now.getUTCMonth() / 3) * 3;
-          const cut = new Date(Date.UTC(now.getUTCFullYear(), q - 6, 1)).toISOString().slice(0, 10);
-          return pd && pd >= cut ? 'standard' : 'premium';
-        })();
+        /* 어느 등급부터 열리는가. 호출부(api/seo/editorial/[slug].js)가
+           최신 10편 여부까지 보고 넘겨준다. 없으면 가장 보수적으로. */
+        const need = ({ free: 'free', standard: 'standard' })[String((opts && opts.lockTier) || '')] || 'premium';
         const L = GALLERY_LOCK_T[lang] || GALLERY_LOCK_T.en;
         const hidden = galleryAll.length - gallery.length;
+        const head = need === 'free' ? L.headFree : (need === 'standard' ? L.headStandard : L.headPremium);
+        const sub = need === 'free' ? L.subFree : (need === 'standard' ? L.subStandard : L.subPremium);
+        /* 무료 회원이면 열리는 화보는 구독이 아니라 가입으로 보낸다.
+           돈을 낼 필요가 없는 사람을 결제 페이지로 보내면 그냥 이탈한다. */
+        const ctaHref = need === 'free'
+          ? SITE + '/auth?utm_source=editorial_gallery_lock&utm_medium=web'
+          : SITE + '/subscribe?utm_source=editorial_gallery_lock&utm_medium=web';
         return '<section class="seo-gallery-locked" aria-label="Members only">'
           + '<div class="sgl-count">' + escText(L.count(galleryAll.length, hidden)) + '</div>'
-          + '<div class="sgl-head">' + escText(need === 'standard' ? L.headStandard : L.headPremium) + '</div>'
-          + '<div class="sgl-sub">' + escText(need === 'standard' ? L.subStandard : L.subPremium) + '</div>'
-          + '<a class="sgl-cta" href="' + escAttr(SITE + '/subscribe?utm_source=editorial_gallery_lock&utm_medium=web') + '">'
-          + escText(L.cta) + '</a>'
+          + '<div class="sgl-head">' + escText(head) + '</div>'
+          + '<div class="sgl-sub">' + escText(sub) + '</div>'
+          + '<a class="sgl-cta" href="' + escAttr(ctaHref) + '">'
+          + escText(need === 'free' ? L.ctaFree : L.cta) + '</a>'
           + '</section>'
       })()
     : '';

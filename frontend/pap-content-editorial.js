@@ -1626,7 +1626,7 @@ function _openEditorialInner(title,thumb){
         var dst = edDetails[title] || {};
         if(dstLocked){
           dst.locked = true;
-          dst.requiredTier = (_img && _img.required_tier) || (_acc && _acc.required_tier) || 'standard';
+          dst.requiredTier = (_img && _img.required_tier) || (_acc && _acc.required_tier) || 'free';
           dst.galleryCount = Number((_img && _img.total) || full.gallery_count || 0);
           dst.previewCount = Number((_img && _img.shown) || 0);
         } else {
@@ -2033,19 +2033,28 @@ function _papEdApplyLock(det, gal){
    * 예전엔 이미지를 통째로 지웠다. 표지 한 장만 보이면 무엇을 놓치는지
    * 알 수 없어서 가입할 이유도 생기지 않는다. 서버가 이미 2장으로 잘라
    * 내려주므로 여기서는 지우지 않는다. */
-  var need = String(det.requiredTier || 'standard');
+  var need = String(det.requiredTier || 'free');
   var total = Number(det.galleryCount || 0);
   var shown = Number(det.previewCount || (det.images ? det.images.length : 0));
   var hidden = Math.max(0, total - shown);
-  var msg, cta, sub;
-  if(need === 'standard'){
+  var msg, cta, sub, href;
+  if(need === 'free'){
+    /* 돈을 낼 필요가 없는 사람을 결제 페이지로 보내면 그냥 이탈한다.
+       최신 10편은 회원이면 무료이므로 가입으로 보낸다. */
+    msg = '가입하면 전체 이미지를 볼 수 있습니다';
+    sub = '최신 에디토리얼 10편은 회원이면 무료입니다.';
+    cta = '가입하고 보기';
+    href = '/auth?utm_source=editorial_gallery_lock&utm_medium=web';
+  } else if(need === 'standard'){
     msg = 'STANDARD 멤버부터 전체 이미지를 볼 수 있습니다';
-    sub = '최신 화보의 모든 컷과 이미지 다운로드가 열립니다.';
+    sub = '최신 6개월 화보의 모든 컷과 이미지 다운로드가 열립니다.';
     cta = '멤버십 보기';
+    href = '/subscribe?utm_source=editorial_gallery_lock&utm_medium=web';
   } else {
     msg = 'PREMIUM 멤버부터 전체 이미지를 볼 수 있습니다';
     sub = '2019년부터의 전체 아카이브가 모든 컷과 함께 열립니다.';
     cta = '멤버십 보기';
+    href = '/subscribe?utm_source=editorial_gallery_lock&utm_medium=web';
   }
   var count = hidden > 0 ? ('<div style="font-size:12px;letter-spacing:.12em;opacity:.55;margin-bottom:18px">총 ' + total + '장 중 ' + hidden + '장이 더 있습니다</div>') : '';
   gal.insertAdjacentHTML('beforeend',
@@ -2053,7 +2062,7 @@ function _papEdApplyLock(det, gal){
       count +
       '<div style="font-size:17px;font-weight:600;margin-bottom:8px">' + msg + '</div>' +
       '<div style="font-size:13px;opacity:.6;margin-bottom:24px;line-height:1.6">' + sub + '</div>' +
-      '<a href="/subscribe?utm_source=editorial_gallery_lock&utm_medium=web" style="display:inline-block;padding:13px 30px;border:1px solid currentColor;border-radius:2px;font-size:12px;letter-spacing:.14em;text-decoration:none;color:inherit">' + cta + '</a>' +
+      '<a href="' + href + '" style="display:inline-block;padding:13px 30px;border:1px solid currentColor;border-radius:2px;font-size:12px;letter-spacing:.14em;text-decoration:none;color:inherit">' + cta + '</a>' +
     '</div>');
   return true;
 }
