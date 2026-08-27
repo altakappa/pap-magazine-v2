@@ -139,7 +139,11 @@ async function runEditorialFaqBackfillBatch({ batch = 10, timeoutMs = 90000 } = 
     e.statusCode = 503;
     throw e;
   }
-  const size = normalizeBatch(batch, 10);
+  /* 2026-08-27 라이브 실측: 배치 10 × max_tokens 4000 에서 10건 전부 '생성 결과
+     없음' — 응답이 토큰 상한에서 잘려 JSON 이 통째로 깨진 패턴. 화보 FAQ 는
+     기사보다 항목당 출력이 길다(질문 2~4 + 크레딧 인용). 배치를 6으로 줄이고
+     상한을 8000 으로 올린다. */
+  const size = Math.min(normalizeBatch(batch, 6), 6);
   const scan = await fetchPending(size);
   const rows = scan.rows;
   if (!rows.length) {
@@ -173,7 +177,7 @@ async function runEditorialFaqBackfillBatch({ batch = 10, timeoutMs = 90000 } = 
     },
     body: JSON.stringify({
       model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
-      max_tokens: 4000,
+      max_tokens: 8000,
       system: [
         'PAP MAGAZINE(서울·밀라노 기반, 아트를 중심으로 한 패션·뷰티·컬쳐 매거진)의',
         '오리지널 화보(에디토리얼)에 AEO(답변 엔진 최적화)용 FAQ 를 붙인다.',
@@ -202,6 +206,12 @@ async function runEditorialFaqBackfillBatch({ batch = 10, timeoutMs = 90000 } = 
   const j = await resp.json();
   const block = Array.isArray(j.content) ? j.content.find(b => b && typeof b.text === 'string') : null;
   const byId = parseFaqResponse(block && block.text, rows.map(r => r.id));
+  /* 전멸 파싱 실패는 원인 없이 '생성 결과 없음 ×N' 으로만 남아 며칠을 잡아먹는다 —
+     stop_reason 과 응답 머리를 로그로 남겨 다음 사람이 한 번에 보게 한다. */
+  if (!Object.keys(byId).length) {
+    console.error('[editorial-faq] parse empty · stop_reason=' + (j.stop_reason || '?')
+      + ' · head=' + String(block && block.text || '').slice(0, 200));
+  }
 
   const errors = [];
   let processed = 0;
@@ -209,7 +219,7 @@ async function runEditorialFaqBackfillBatch({ batch = 10, timeoutMs = 90000 } = 
     const faq = byId[String(row.id)];
     if (!faq) { errors.push({ id: row.id, reason: '생성 결과 없음' }); continue; }
     const { error } = await supabaseAdmin.from('editorials').update({ faq }).eq('id', row.id);
-    if (error) { errors.push({ id: row.id, reason: error.message }); continue; }
+    if (error) { console.error('[editorial-faq] update failed:', row.id, error.message); errors.push({ id: row.id, reason: error.message }); continue; }
     processed++;
   }
 
