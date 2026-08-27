@@ -16,6 +16,7 @@
 const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
 const { fetchAllRows } = require('./_lib/fetchAllRows');
+const { isRealImage } = require('./_lib/realImage');
 
 const SITE = 'https://www.pap-magazine.com';
 
@@ -104,7 +105,10 @@ module.exports = async function handler(req, res) {
         //   • image:caption  → "Editorial Title — Look N" for context
         const seen = new Set();
         const imgs = [];
-        const cover = ed.og_image || ed.cover_image || ed.thumbnail;
+        /* 플레이스홀더 SVG·죽은 드라이브 링크는 이미지로 광고하지 않는다
+           (2026-08-27 실사: 껍데기 14편 — realImage.js 참조).
+           페이지 URL 자체는 계속 싣는다 — 색인 제거는 발행 판단이라 도메니코 몫. */
+        const cover = [ed.og_image, ed.cover_image, ed.thumbnail].find(isRealImage);
         if (cover) {
           seen.add(cover);
           imgs.push({ src: cover, caption: (ed.title || '') + ' — Cover' });

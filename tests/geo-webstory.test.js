@@ -39,7 +39,9 @@ t('스토리 라우트 (/stories/:slug)',
 
 console.log('\n=== 스토리 사이트맵 ===');
 t('깨끗한 slug 만 광고 (^[a-z0-9-]+$)', /\^\[a-z0-9-\]\+\$/.test(smap));
-t('이미지 있는 화보만', /hasImage/.test(smap));
+/* 2026-08-27 — 조건이 'cover 존재'에서 '진짜 이미지 존재'로 강화됐다
+   (플레이스홀더 SVG·죽은 드라이브 제외 — real-image-guard 참조). */
+t('진짜 이미지 있는 화보만', /hasRealImagery\(e\)/.test(smap));
 t('라우트 + 사이트맵 인덱스 등록',
   (vercel.rewrites || []).some(r => r.source === '/sitemap-stories.xml')
   && /sitemap-stories\.xml/.test(smapIdx));

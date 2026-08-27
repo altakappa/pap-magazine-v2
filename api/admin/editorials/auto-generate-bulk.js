@@ -130,25 +130,37 @@ module.exports = async function handler(req, res) {
   const limit       = Math.max(1, Math.min(50, parseInt(body.limit, 10) || 25));
 
   try {
-    // Pull candidates. With onlyMissing=true we filter rows that have
-    // ANY of the three target fields empty or the placeholder "(KR)"
-    // stub that earlier code paths left behind.
-    let query = supabaseAdmin
-      .from('editorials')
-      .select('id, title, slug, gallery, credits, fashion, description, description_en, instagram_caption, source_submission_id')
-      .order('created_at', { ascending: true })
-      .limit(limit);
-
-    const { data: rows, error: listErr } = await query;
-    if (listErr) {
-      console.error('Bulk list error:', listErr);
-      return res.status(500).json({ message: 'List failed', detail: listErr.message });
-    }
-
-    const candidates = (rows || []).filter((r) => {
+    /* 2026-08-27 페이지네이션 수리 — '자른 뒤 거른다' 안티패턴 제거.
+       종전: 가장 오래된 limit 건만 SELECT 한 뒤 필터 → 앞줄이 전부 채워진
+       행이면 뒤의 진짜 대상(실측 14건)에 영원히 닿지 못했다. faqBackfill 의
+       2026-08-04 교훈과 동일 — '거른 뒤 자른다'로 뒤집고, 한 페이지가 전부
+       탈락이어도 다음 페이지로 걸어 나간다. */
+    const SPAN = Math.min(200, Math.max(limit * 8, 60));
+    const MAX_PAGES = 5;
+    const wanted = (r) => {
       if (!onlyMissing) return true;
       return _isEmpty(r.description) || _isEmpty(r.description_en) || _isEmpty(r.instagram_caption);
-    });
+    };
+    const candidates = [];
+    let scanned = 0;
+    for (let page = 0; page < MAX_PAGES && candidates.length < limit; page++) {
+      const from = page * SPAN;
+      const { data: rows, error: listErr } = await supabaseAdmin
+        .from('editorials')
+        .select('id, title, slug, gallery, credits, fashion, description, description_en, instagram_caption, source_submission_id')
+        .order('created_at', { ascending: true })
+        .range(from, from + SPAN - 1);
+      if (listErr) {
+        console.error('Bulk list error:', listErr);
+        return res.status(500).json({ message: 'List failed', detail: listErr.message });
+      }
+      scanned += (rows || []).length;
+      for (const r of (rows || [])) {
+        if (candidates.length >= limit) break;
+        if (wanted(r)) candidates.push(r);
+      }
+      if (!rows || rows.length < SPAN) break; // 마지막 페이지
+    }
 
     let updated = 0;
     let skipped = 0;

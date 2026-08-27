@@ -16,6 +16,7 @@
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
 const { PREVIEW_IMAGES } = require('../../_lib/editorialAccess');
+const { isRealImage, hasRealImagery } = require('../../_lib/realImage');
 
 const SITE = 'https://www.pap-magazine.com';
 
@@ -53,9 +54,11 @@ module.exports = async function handler(req, res) {
 
     const canonical = SITE + '/stories/' + encodeURIComponent(ed.slug);
     const editorialUrl = SITE + '/editorial/' + encodeURIComponent(ed.slug);
-    const cover = ed.cover_image || ed.thumbnail || '';
+    /* 플레이스홀더·죽은 이미지는 스토리 대상이 아니다 (realImage.js 참조) */
+    if (!hasRealImagery(ed)) return res.status(404).send('Not found');
+    const cover = [ed.cover_image, ed.thumbnail].find(isRealImage) || '';
     const gallery = (Array.isArray(ed.gallery) ? ed.gallery : [])
-      .filter(u => typeof u === 'string' && u)
+      .filter(isRealImage)
       .slice(0, PREVIEW_IMAGES); // 페이월 미리보기 허용량과 동일
     if (!cover && !gallery.length) return res.status(404).send('Not found');
 

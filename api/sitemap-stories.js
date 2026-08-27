@@ -8,6 +8,7 @@
 
 const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
+const { hasRealImagery } = require('./_lib/realImage');
 
 const SITE = 'https://www.pap-magazine.com';
 
@@ -41,9 +42,9 @@ module.exports = async function handler(req, res) {
     for (const e of (data || [])) {
       const slug = cleanHandle(e.slug);
       if (!slug) continue;
-      const hasImage = e.cover_image || e.thumbnail
-        || (Array.isArray(e.gallery) && e.gallery.length);
-      if (!hasImage) continue;
+      /* 플레이스홀더·죽은 링크는 스토리를 만들지 않는다 — 구글에 그라데이션을
+         광고하는 꼴이 된다 (2026-08-27 실사: 껍데기 14편). */
+      if (!hasRealImagery(e)) continue;
       urls.push('  <url><loc>' + xmlEscape(SITE + '/stories/' + slug) + '</loc>'
         + '<lastmod>' + fmtDate(e.updated_at || e.published_date) + '</lastmod></url>');
     }
