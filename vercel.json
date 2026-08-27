@@ -518,6 +518,8 @@
       "destination": "/business.html"
     },
     { "source": "/glossary", "destination": "/glossary.html" },
+    { "source": "/contributors", "destination": "/api/seo/contributors" },
+    { "source": "/contributor/:handle", "destination": "/api/seo/contributor/:handle" },
     { "source": "/llms-full.txt", "destination": "/api/llms-full" },
     { "source": "/api/public/content.json", "destination": "/api/public-content" },
     { "source": "/editorial-policy", "destination": "/editorial-policy.html" },
