@@ -120,5 +120,117 @@ t('서버 라틴 규칙이 프론트 pap-name-validator 와 동일하다', () =>
     '두 정규식이 다르다. 프론트=' + m[1] + ' 서버=' + NON_LATIN_RE.toString());
 });
 
+
+// ── 클라 미러 · 약관 · 적용 지점 (2026-08-27 추가) ──────────────────────
+const SUB_HTML = fs.readFileSync(path.join(ROOT, 'frontend/submission.html'), 'utf8');
+
+t('클라 SPA 미러가 서버 목록과 완전히 일치한다', () => {
+  const m = SUB_HTML.match(/var _PAP_SPA_BRANDS=\[([^\]]*)\];/);
+  assert.ok(m, 'submission.html 에서 _PAP_SPA_BRANDS 를 찾지 못했다');
+  const front = m[1].split(',').map((v) => v.trim().replace(/^'|'$/g, '')).filter(Boolean).sort();
+  const server = Array.from(st.SPA_BRANDS).sort();
+  assert.deepStrictEqual(front, server,
+    '어긋나면 제출 화면 안내와 서버 판정이 다른 말을 한다');
+});
+
+t('클라 발효일이 서버 상수와 같다', () => {
+  const m = SUB_HTML.match(/var _PAP_SPA_EFFECTIVE_AT='([^']+)';/);
+  assert.ok(m, '_PAP_SPA_EFFECTIVE_AT 를 찾지 못했다');
+  assert.strictEqual(m[1], st.SPA_RULE_EFFECTIVE_AT,
+    '발효일이 다르면 유예 기간에 화면과 서버가 다른 금액을 말한다');
+});
+
+t('클라가 SPA 를 핸들로 되살리지 않는다 (@zara 우회 차단)', () => {
+  assert.ok(/!\(applySpa && _papIsSpaBrand\(h0\)\)/.test(SUB_HTML),
+    '핸들 폴백에 SPA 필터가 없다');
+});
+
+t('제출 화면이 왜 4종이 안 되는지 이유를 보여준다', () => {
+  assert.ok(/submissionTypeSpaNote/.test(SUB_HTML), 'SPA 제외 안내 키가 없다');
+  assert.ok((SUB_HTML.match(/submissionTypeSpaNote/g) || []).length >= 10,
+    '9개 언어 + 사용처를 모두 채우지 않았다');
+});
+
+t('크레딧 수정 안내가 9개 언어로 있고 3개 제약을 함께 말한다', () => {
+  assert.ok((SUB_HTML.match(/creditEditNotice/g) || []).length >= 10, '9개 언어 키가 없다');
+  const ko = SUB_HTML.match(/creditEditNotice:'((?:[^'\\]|\\.)*)'/);
+  assert.ok(ko, 'ko 문구를 찾지 못했다');
+  const txt = ko[1];
+  assert.ok(/3회/.test(txt), '횟수 제약이 없다');
+  assert.ok(/줄일 수는 없/.test(txt), '브랜드 종류 수 제약이 없다');
+  assert.ok(/결제/.test(txt), '결제 조건이 없다');
+});
+
+// ── 약관 (9개 언어) ────────────────────────────────────────────────────
+const TERMS_SRC = fs.readFileSync(path.join(ROOT, 'frontend/submission-terms.js'), 'utf8');
+const TERMS = (function () {
+  const w = {};
+  new Function('window', TERMS_SRC)(w);
+  return w._PAPTerms;
+})();
+const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
+
+t('약관이 9개 언어 모두 12개 조항을 유지한다', () => {
+  LANGS.forEach((lg) => {
+    assert.ok(TERMS[lg], lg + ' 약관이 없다');
+    const n = (TERMS[lg].match(/<li>/g) || []).length;
+    assert.strictEqual(n, 12, lg + ' 조항 수가 ' + n + ' 이다 (12 여야 한다)');
+  });
+});
+
+t('제7조 SPA·빈티지 제외 조항이 9개 언어 전부에 있다', () => {
+  LANGS.forEach((lg) => {
+    const a7 = TERMS[lg].split('<li>')[7];
+    assert.ok(/⑤/.test(a7), lg + ' 제7조에 ⑤ 항이 없다');
+    assert.ok(/SPA/.test(a7), lg + ' 제7조 ⑤ 에 SPA 언급이 없다');
+  });
+});
+
+t('제3조②가 크레딧 수정 무료 횟수와 같은 값을 말한다', () => {
+  const { MAX_CREDIT_EDITS } = require(path.join(ROOT, 'api/_lib/creditEdit.js'));
+  const NUM = { ko: '3회', en: '3 times', de: 'dreimal', it: '3 volte', fr: '3 fois',
+                es: '3 veces', ja: '3回', zh: '3 次', ru: '3 раз' };
+  assert.strictEqual(MAX_CREDIT_EDITS, 3, '코드 한도가 3이 아니면 약관 문구도 같이 고쳐야 한다');
+  LANGS.forEach((lg) => {
+    const a3 = TERMS[lg].split('<li>')[3];
+    assert.ok(a3.indexOf(NUM[lg]) !== -1, lg + ' 제3조에 무료 3회 문구가 없다');
+    assert.ok(/100|€/.test(a3), lg + ' 제3조에서 유료 정정 수수료가 사라졌다');
+  });
+});
+
+t('제8조①이 크레딧 정정은 제3조에 따른다고 예외를 둔다', () => {
+  const REF = { ko: '제3조', en: 'Article 3', de: 'Artikel 3', it: 'Articolo 3',
+                fr: "l'Article 3", es: 'Artículo 3', ja: '第3条', zh: '第3条', ru: 'Статьёй 3' };
+  LANGS.forEach((lg) => {
+    const a8 = TERMS[lg].split('<li>')[8];
+    assert.ok(a8.indexOf(REF[lg]) !== -1,
+      lg + ' 제8조가 여전히 "게재 후 수정 불가"만 말한다 — 약관과 기능이 서로 다른 말을 한다');
+  });
+});
+
+t('약관 최종 수정일이 9개 언어 전부에서 갱신됐다', () => {
+  const hits = SUB_HTML.match(/termsEffective:'((?:[^'\\]|\\.)*)'/g) || [];
+  assert.strictEqual(hits.length, 9, 'termsEffective 키가 9개가 아니다: ' + hits.length);
+  hits.forEach((h) => {
+    assert.ok(/2026/.test(h) && !/(March 1|3월 1일|1\. März|1° marzo|1er mars|1 de marzo|3月1日|1 марта)/.test(h),
+      '옛 최종 수정일이 남아 있다: ' + h.slice(0, 80));
+  });
+});
+
+// ── 서버 적용 지점 ─────────────────────────────────────────────────────
+t('제출 API 가 비라틴 브랜드명을 서버에서 막는다', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'api/submissions/index.js'), 'utf8');
+  assert.ok(/require\('\.\.\/_lib\/latinOnly'\)/.test(src), 'latinOnly 를 쓰지 않는다');
+  assert.ok(/BRAND_LATIN_ONLY/.test(src), '거부 코드가 없다');
+  assert.ok(/it\.brand/.test(src) && /it\.instagram/.test(src),
+    '룩 크레딧의 브랜드명과 핸들 둘 다 검사해야 한다');
+});
+
+t('크레딧 수정 API 도 같은 검증을 건다 (제출은 영어, 수정으로 한글 우회 차단)', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'api/editorials/[id]/credits.js'), 'utf8');
+  assert.ok(/findNonLatin/.test(src), '수정 API 에 라틴 검증이 없다');
+});
+
+
 console.log(`  ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

@@ -16,6 +16,7 @@ const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit } = require('../_lib/submissionType');
+const { findNonLatin } = require('../_lib/latinOnly');
 const { feeForType } = require('../_lib/submissionPayment');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
 const { sendEmail, templates } = require('../_lib/email');
@@ -154,6 +155,31 @@ module.exports = async function handler(req, res) {
       // and is regression-tested. 'free' | 'paid_few_looks' | 'branded'.
       // 신규 제출/수정이므로 SPA 제외는 현재 시각 기준으로 판정된다
       // (submissionType.js:spaRuleApplies — 발효일 이전 기존 행은 소급 안 됨).
+      // 브랜드명·핸들은 영문(라틴)으로만 받는다 (2026-08-26 도메니코 지시).
+      // 프론트(pap-name-validator.js)가 이미 막고 있지만 그것뿐이라, API 를
+      // 직접 호출하면 비라틴 브랜드명이 그대로 저장됐다. 브랜드 집계와
+      // 크레딧 수정이 브랜드 문자열에 의존하므로 서버가 진실원천이어야 한다.
+      // 사람 이름(team)에는 적용하지 않는다 — 이번 규칙의 대상은 브랜드다.
+      const _brandEntries = [];
+      looks.forEach(function (lk, li) {
+        const items = (lk && Array.isArray(lk.items)) ? lk.items : [];
+        items.forEach(function (it, ii) {
+          if (!it) return;
+          const label = 'Look ' + ((lk && lk.n) || (li + 1)) + ' item ' + (ii + 1);
+          if (it.brand) _brandEntries.push({ label: label + ' brand', value: it.brand });
+          if (it.instagram) _brandEntries.push({ label: label + ' handle', value: it.instagram });
+        });
+      });
+      const _nonLatin = findNonLatin(_brandEntries);
+      if (_nonLatin.length) {
+        return res.status(400).json({
+          code: 'BRAND_LATIN_ONLY',
+          message: 'Brand names and handles must be written in English (Latin letters): '
+            + _nonLatin.map(function (x) { return x.value; }).join(', '),
+          violations: _nonLatin,
+        });
+      }
+
       const { submissionType } = classifySubmissionType(looks, lookImageMap);
       // 2026-07-21 (도메니코 지시) — 모든 룩은 최소 1개 크레딧(브랜드 또는 인스타)이
       // 있어야 제출/재제출 가능. 과거엔 강제하지 않아 룩 크레딧 없이 통과됐다(예: Marooned).

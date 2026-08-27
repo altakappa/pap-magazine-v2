@@ -200,7 +200,7 @@ const SPA_BRANDS = new Set([
    심사 시각이 아니라 제출 시각이다 — 구 규칙에서 제출했는데 심사가 늦어져
    유료가 되는 상황을 만들지 않기 위해서다.
    값을 바꿀 일이 있으면 **여기 한 곳만** 고친다. */
-const SPA_RULE_EFFECTIVE_AT = process.env.SPA_RULE_EFFECTIVE_AT || '2026-09-01T00:00:00Z';
+const SPA_RULE_EFFECTIVE_AT = process.env.SPA_RULE_EFFECTIVE_AT || '2026-09-03T00:00:00Z';
 
 /** SPA 브랜드인가. 정규화 키 완전 일치만 본다(부분 일치 금지 — "Zara Home" 통과). */
 function isSpaBrand(s) {
