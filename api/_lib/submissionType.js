@@ -158,6 +158,66 @@ const GENERIC_CREDIT_TERMS = new Set([
 ]);
 
 /** 브랜드/핸들 문자열이 "브랜드가 아닌 관용 표기"인지. 빈 값도 true. */
+/* ── SPA(패스트패션) 브랜드 (2026-08-26 도메니코 지시) ──────────────────
+   "브랜드 갯수를 세아릴 때 SPA 브랜드나 빈티지 브랜드는 브랜드로 카운트하지
+   않는다."
+
+   빈티지는 이미 GENERIC_CREDIT_TERMS('vintage','archive','secondhand',
+   'thrift' 등)로 처리되고 있었다. 개별 빈티지 숍 상호는 목록으로 열거할 수
+   없어 약관(제7조⑤)의 편집팀 판단으로 넘긴다. 코드가 자동으로 거르는 것은
+   아래 SPA 목록뿐이다.
+
+   ※ GENERIC_CREDIT_TERMS 와 합치지 않는다. "관용 표기"(브랜드가 아님)와
+     "SPA 브랜드"(브랜드지만 집계 제외)는 성격이 다르다. 합치면 나중에
+     구분이 불가능해진다.
+
+   ※ 한글·비라틴 키는 넣지 않는다. 브랜드명은 라틴 전용으로 받는다
+     (api/_lib/latinOnly.js, 2026-08-26 지시).
+
+   실측(2026-08-26, 룩 데이터 113건): SPA 제외로 무료→유료가 되는 건 3건.
+   SPA 를 쓴 서브미션은 약 20건이나 대부분 독립 디자이너를 함께 크레딧한다. */
+const SPA_BRANDS = new Set([
+  // Inditex
+  'zara', 'bershka', 'pullbear', 'pullandbear', 'stradivarius', 'massimodutti',
+  // 스페인 SPA (Inditex 아님)
+  'mango',
+  // H&M 그룹
+  'hm', 'handm', 'cos', 'arket', 'otherstories', 'andotherstories', 'monki',
+  // 패스트리테일링
+  'uniqlo', 'gu',
+  // 온라인·기타 글로벌
+  'asos', 'shein', 'primark', 'forever21', 'topshop', 'urbanoutfitters',
+  'evenandodd', 'boohoo', 'prettylittlething', 'missguided', 'hollister',
+  'brandymelville', 'reserved', 'newlook', 'gap', 'oldnavy',
+  // 이탈리아 체인
+  'calzedonia', 'intimissimi',
+  // 한국
+  'spao', '8seconds', 'eightseconds', 'mixxo',
+]);
+
+/* SPA 제외 규칙 발효일 (UTC).
+   이 시각 **이전에 제출된** 서브미션은 기존 규칙으로 판정한다. 판정 기준은
+   심사 시각이 아니라 제출 시각이다 — 구 규칙에서 제출했는데 심사가 늦어져
+   유료가 되는 상황을 만들지 않기 위해서다.
+   값을 바꿀 일이 있으면 **여기 한 곳만** 고친다. */
+const SPA_RULE_EFFECTIVE_AT = process.env.SPA_RULE_EFFECTIVE_AT || '2026-09-01T00:00:00Z';
+
+/** SPA 브랜드인가. 정규화 키 완전 일치만 본다(부분 일치 금지 — "Zara Home" 통과). */
+function isSpaBrand(s) {
+  const key = String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '');
+  return key !== '' && SPA_BRANDS.has(key);
+}
+
+/** 이 제출 시각에 SPA 제외 규칙이 적용되는가.
+    submittedAt 이 없으면(신규 입력·미리보기) 현재 시각으로 본다. */
+function spaRuleApplies(submittedAt) {
+  const eff = Date.parse(SPA_RULE_EFFECTIVE_AT);
+  if (!isFinite(eff)) return true;              // 상수가 깨졌으면 신규 규칙으로
+  const t = submittedAt ? Date.parse(submittedAt) : Date.now();
+  if (!isFinite(t)) return true;
+  return t >= eff;
+}
+
 function isGenericCredit(s) {
   const key = String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '');
   return key === '' || GENERIC_CREDIT_TERMS.has(key);
@@ -184,7 +244,9 @@ function imagesByLookFromMap(lookImageMap) {
 }
 
 /** Build a map lookN(string) → Set(normalized non-empty brands) from looks[]. */
-function brandSetsFromLooks(looks) {
+function brandSetsFromLooks(looks, opts) {
+  // 2026-08-26 SPA 제외. 발효일 이전 제출은 적용하지 않는다(유예).
+  const applySpa = spaRuleApplies(opts && opts.submittedAt);
   const byLook = {};
   if (Array.isArray(looks)) {
     for (const lk of looks) {
@@ -196,7 +258,7 @@ function brandSetsFromLooks(looks) {
           const b = normBrand(it && it.brand);
           // 2026-08-24 — 관용 표기(Stylist's Own 등)는 브랜드가 아니므로 집합에
           // 넣지 않는다. 브랜드칸이 관용 표기면 없는 것으로 보고 핸들로 넘어간다.
-          if (b && !isGenericCredit(b)) {
+          if (b && !isGenericCredit(b) && !(applySpa && isSpaBrand(b))) {
             set.add(b);
           } else {
             // 2026-07-22 (도메니코 QA) — 브랜드명을 비우고 @핸들만 입력하면
@@ -226,9 +288,13 @@ function brandSetsFromLooks(looks) {
  * @param {Array<string>} realLookKeys  이미지가 1장 이상인 룩 번호(문자열) 목록
  * @returns {Set<string>}
  */
-function clothingBrandUnion(looks, realLookKeys) {
+function clothingBrandUnion(looks, realLookKeys, opts) {
   const out = new Set();
   if (!Array.isArray(looks)) return out;
+  // 2026-08-26 SPA 제외. 무료 게재 자격(의상 브랜드 4종)을 세는 곳이 바로
+  // 여기이므로 반드시 여기에도 걸어야 한다. brandSetsFromLooks 에만 걸면
+  // 브랜디드 판정만 바뀌고 무료/유료 경계는 그대로다.
+  const applySpa = spaRuleApplies(opts && opts.submittedAt);
   const allowed = new Set((realLookKeys || []).map(String));
   for (const lk of looks) {
     if (!lk || lk.n == null) continue;
@@ -240,9 +306,17 @@ function clothingBrandUnion(looks, realLookKeys) {
       // 2026-08-24 — 관용 표기(Stylist's Own 등)는 의상 브랜드 수에도 넣지 않는다.
       // 안 그러면 "Stylist's Own ×4" 로 무료 자격(4종)을 채우는 우회로가 생긴다.
       const b = normBrand(it.brand);
-      if (b && !isGenericCredit(b)) { out.add(b); continue; }
+      if (b && isGenericCredit(b)) {
+        // 관용 표기 → 핸들 폴백으로 내려간다(종전 동작)
+      } else if (b && applySpa && isSpaBrand(b)) {
+        // SPA 브랜드는 집계에서 뺀다. 핸들 폴백으로도 되살리지 않는다
+        // (@zara 로 우회하는 길을 열면 규칙이 무의미해진다).
+        continue;
+      } else if (b) {
+        out.add(b); continue;
+      }
       const h = normHandle(it.instagram);
-      if (h && !isGenericCredit(h)) out.add('@' + h);
+      if (h && !isGenericCredit(h) && !(applySpa && isSpaBrand(h))) out.add('@' + h);
     }
   }
   return out;
@@ -259,13 +333,16 @@ function clothingBrandUnion(looks, realLookKeys) {
  *            accessoryOnlyExempt:boolean, singleClothingBrand:boolean,
  *            needsCreditReview:boolean }}
  */
-function classifySubmissionType(looks, lookImageMap) {
+function classifySubmissionType(looks, lookImageMap, opts) {
+  /* opts.submittedAt — SPA 제외 규칙의 유예 판정에 쓴다(2026-08-26).
+     신규 제출은 값이 없어도 되고(현재 시각), 기존 행을 다시 분류할 때는
+     반드시 그 행의 created_at 을 넘겨야 소급 적용이 일어나지 않는다. */
   const imgCounts = imagesByLookFromMap(lookImageMap);
   // Real looks = look numbers that carry ≥ 1 image.
   const realLookKeys = Object.keys(imgCounts).filter((k) => imgCounts[k] > 0);
   const realLookCount = realLookKeys.length;
 
-  const brandSets = brandSetsFromLooks(looks);
+  const brandSets = brandSetsFromLooks(looks, opts);
 
   // Branded detection (Domenico-confirmed 2026-07-19). Two triggers:
   //   (a) SINGLE BRAND across the whole submission — the union of all real-look
@@ -310,7 +387,7 @@ function classifySubmissionType(looks, lookImageMap) {
   // 한 브랜드의 브랜디드 콘텐츠로 볼 수 없다 → branded 해제.
   // sharedBrands 는 남겨둔다(관리자 참고용). 해제 뒤에는 아래 룩 수 규칙이 그대로
   // 다시 적용되므로 4룩 미만이면 free 가 아니라 paid_few_looks 로 떨어진다.
-  const clothingBrandSet = clothingBrandUnion(looks, realLookKeys);
+  const clothingBrandSet = clothingBrandUnion(looks, realLookKeys, opts);
   const clothingBrandCount = clothingBrandSet.size;
   const multiBrandExempt = branded && clothingBrandCount >= MIN_CLOTHING_BRANDS;
   if (multiBrandExempt) branded = false;
@@ -414,6 +491,10 @@ module.exports = {
   normItemType,
   GENERIC_CREDIT_TERMS,
   isGenericCredit,
+  SPA_BRANDS,
+  SPA_RULE_EFFECTIVE_AT,
+  isSpaBrand,
+  spaRuleApplies,
   clothingBrandUnion,
   classifySubmissionType,
   looksMissingCredit,

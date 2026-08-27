@@ -210,6 +210,8 @@ module.exports = async function handler(req, res) {
       const lookImageMap = Array.isArray(data.lookImageMap) ? data.lookImageMap : [];
       // Recompute submission-type on resubmit so a revision that changes the
       // look count or brand mix re-classifies correctly (mirror of POST path).
+      // 신규 제출/수정이므로 SPA 제외는 현재 시각 기준으로 판정된다
+      // (submissionType.js:spaRuleApplies — 발효일 이전 기존 행은 소급 안 됨).
       const { submissionType } = classifySubmissionType(looks, lookImageMap);
       // 2026-07-21 (도메니코 지시) — 모든 룩은 최소 1개 크레딧(브랜드 또는 인스타)이
       // 있어야 제출/재제출 가능. 과거엔 강제하지 않아 룩 크레딧 없이 통과됐다(예: Marooned).
