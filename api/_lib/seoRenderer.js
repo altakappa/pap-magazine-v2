@@ -612,6 +612,17 @@ const FAQ_HEADING = {
   zh: '常见问题', ru: 'Частые вопросы',
 };
 
+/* 2026-08-27 (확장전략55 Ⅰ-1, 도메니코 확정) — 요약 라벨.
+   본문에 TL;DR 문단을 새로 쓰지 않는다: .seo-desc-primary 가 이미 40~60단어급
+   요약이다. 빠져 있던 것은 "이것이 요약이다"라는 **명시 라벨**뿐 — 생성 엔진의
+   발췌기는 라벨 붙은 요약 블록을 우선 집는다. PAP 문체 규격(본문 소제목·요약형
+   금지)은 본문이 아니라 메타 영역이므로 건드리지 않는다. */
+const TLDR_LABEL = {
+  ko: '한눈에 · TL;DR', en: 'TL;DR', ja: '要約 · TL;DR', fr: 'TL;DR',
+  es: 'Resumen · TL;DR', it: 'In breve · TL;DR', de: 'Kurz gefasst · TL;DR',
+  zh: '摘要 · TL;DR', ru: 'Кратко · TL;DR',
+};
+
 function renderSeoHtml(kind, record, opts) {
   const cfg = KIND[kind] || KIND.editorial;
   const slug = record.slug || record.custom_url || record.id;
@@ -915,6 +926,83 @@ function renderSeoHtml(kind, record, opts) {
     .concat([`<link rel="alternate" hreflang="x-default" href="${escAttr(koCanonical)}">`])
     .join('\n');
 
+  /* 갤러리 잠금 패널 카피 — 9개 언어 (2026-08-27 도메니코 결정).
+     전체 이미지는 스탠다드부터. 그 아래 등급에는 앞 2장만 나간다. */
+  const GALLERY_LOCK_T = {
+    ko: {
+      count: (t, h) => `총 ${t}장 중 ${h}장이 더 있습니다`,
+      headStandard: 'STANDARD 멤버부터 전체 이미지를 볼 수 있습니다',
+      headPremium: 'PREMIUM 멤버부터 전체 이미지를 볼 수 있습니다',
+      subStandard: '최신 화보의 모든 컷과 이미지 다운로드가 열립니다.',
+      subPremium: '2019년부터의 전체 아카이브가 모든 컷과 함께 열립니다.',
+      cta: '멤버십 보기',
+    },
+    en: {
+      count: (t, h) => `${h} more of ${t} images`,
+      headStandard: 'Standard members see the full set',
+      headPremium: 'Premium members see the full set',
+      subStandard: 'Every frame of recent editorials, plus image downloads.',
+      subPremium: 'The full archive since 2019, every frame included.',
+      cta: 'See membership',
+    },
+    it: {
+      count: (t, h) => `Altre ${h} immagini su ${t}`,
+      headStandard: 'I membri Standard vedono il servizio completo',
+      headPremium: 'I membri Premium vedono il servizio completo',
+      subStandard: 'Tutti gli scatti degli editoriali recenti, download inclusi.',
+      subPremium: "L'archivio completo dal 2019, scatto per scatto.",
+      cta: 'Scopri gli abbonamenti',
+    },
+    fr: {
+      count: (t, h) => `${h} images de plus sur ${t}`,
+      headStandard: 'Les membres Standard voient la série complète',
+      headPremium: 'Les membres Premium voient la série complète',
+      subStandard: 'Toutes les images des éditoriaux récents, téléchargements inclus.',
+      subPremium: "L'archive complète depuis 2019, image par image.",
+      cta: 'Voir les abonnements',
+    },
+    es: {
+      count: (t, h) => `${h} imágenes más de ${t}`,
+      headStandard: 'Los miembros Standard ven la serie completa',
+      headPremium: 'Los miembros Premium ven la serie completa',
+      subStandard: 'Todas las tomas de los editoriales recientes, con descargas.',
+      subPremium: 'El archivo completo desde 2019, toma por toma.',
+      cta: 'Ver membresías',
+    },
+    ja: {
+      count: (t, h) => `全${t}枚のうち、あと${h}枚`,
+      headStandard: 'STANDARD 会員から全カットをご覧いただけます',
+      headPremium: 'PREMIUM 会員から全カットをご覧いただけます',
+      subStandard: '最新エディトリアルの全カットと画像ダウンロードが開きます。',
+      subPremium: '2019年からの全アーカイブが、全カットとともに開きます。',
+      cta: 'メンバーシップを見る',
+    },
+    zh: {
+      count: (t, h) => `共 ${t} 张,还有 ${h} 张`,
+      headStandard: 'STANDARD 会员可查看全部图片',
+      headPremium: 'PREMIUM 会员可查看全部图片',
+      subStandard: '最新大片的全部照片,并可下载图片。',
+      subPremium: '2019 年至今的完整档案,一张不少。',
+      cta: '查看会员方案',
+    },
+    de: {
+      count: (t, h) => `${h} weitere von ${t} Bildern`,
+      headStandard: 'Standard-Mitglieder sehen die komplette Strecke',
+      headPremium: 'Premium-Mitglieder sehen die komplette Strecke',
+      subStandard: 'Alle Aufnahmen aktueller Editorials, inklusive Downloads.',
+      subPremium: 'Das komplette Archiv seit 2019, jede Aufnahme.',
+      cta: 'Mitgliedschaft ansehen',
+    },
+    ru: {
+      count: (t, h) => `Ещё ${h} из ${t} снимков`,
+      headStandard: 'Участники Standard видят серию целиком',
+      headPremium: 'Участники Premium видят серию целиком',
+      subStandard: 'Все кадры свежих эдиториалов и скачивание изображений.',
+      subPremium: 'Полный архив с 2019 года, каждый кадр.',
+      cta: 'Смотреть подписку',
+    },
+  };
+
   /* IG 퍼널 CTA 카피 — 언어별. 유입자가 인스타로 넘어가는 마지막 관문까지 해당 언어로. */
   const FUNNEL_T = {
     ko: {
@@ -1037,7 +1125,27 @@ function renderSeoHtml(kind, record, opts) {
   const contributors = extractContributors(record);
 
   /* Gallery for editorials/articles */
-  const gallery = asArray(record.gallery).filter(u => typeof u === 'string').slice(0, 60);
+  const galleryAll = asArray(record.gallery).filter(u => typeof u === 'string').slice(0, 60);
+  /* 이미지 미리보기 (2026-08-27 도메니코 결정) ──────────────────────────
+   * SSR 페이지에는 열람 게이트가 아예 없었다. /editorial/:slug 는 모든
+   * 방문자에게 이 HTML 을 주므로, 잠금은 여기서 걸어야 실제로 걸린다.
+   *
+   * 로그인 여부로 HTML 을 다르게 주지 않는다. 이 응답은 CDN 에 공용으로
+   * 캐시되므로 사람마다 달라지면 한 사람의 화면이 다른 사람에게 캐시된다.
+   * 크롤러에게만 전체를 주는 방법도 있지만(구글이 페이월 마크업과 함께
+   * 허용한다) UA 로 응답이 갈리면 캐시가 쪼개진다. 실측상 화보의 이미지
+   * 검색 유입이 사실상 0(최근 30일 상위 60개 중 화보 1개, 클릭 0)이라
+   * 잃을 것이 없어 **모두에게 같은 2장**을 준다.
+   *
+   * 전체 이미지는 로그인한 스탠다드 이상이 브라우저에서 채운다
+   * (pap-content-editorial.js → /api/editorials/:id). */
+  const galleryPreviewLimit = (opts && Number.isFinite(opts.galleryLimit))
+    ? Math.max(0, opts.galleryLimit)
+    : null;
+  const galleryLocked = galleryPreviewLimit !== null && galleryAll.length > galleryPreviewLimit;
+  const gallery = galleryLocked ? galleryAll.slice(0, galleryPreviewLimit) : galleryAll;
+  /* 스키마의 image 는 실제로 보이는 것만 싣는다. 안 보이는 이미지를 구조화
+     데이터로만 흘리면 색인과 화면이 어긋난다. */
   const allImages = [ogImage, ...gallery].filter(Boolean);
 
   /* Build the primary schema (Article / NewsArticle / VideoObject).
@@ -1126,7 +1234,15 @@ function renderSeoHtml(kind, record, opts) {
       inLanguage: LANG_META[lang].inLang,
       // QA #187 — explicit isAccessibleForFree so Google news/Discover
       // doesn't mistake the editorial for paywalled content.
-      isAccessibleForFree: true,
+      // 2026-08-27 — 이미지가 잘린 화보는 실제로 회원 전용 구간이 있으므로
+      // 거짓으로 true 를 말하지 않는다. 구글의 페이월 마크업 규격대로
+      // hasPart 로 어느 구간이 잠겼는지 알린다.
+      isAccessibleForFree: !galleryLocked,
+      hasPart: galleryLocked ? {
+        '@type': 'WebPageElement',
+        isAccessibleForFree: false,
+        cssSelector: '.seo-gallery-locked',
+      } : undefined,
       // 2026-07-16 (GEO) — speakable: 음성 어시스턴트/AI 답변 엔진에게
       // "이 페이지를 읽어줄 때 인용할 핵심 구간"을 명시. 제목 + 리드 문단.
       speakable: {
@@ -1454,6 +1570,30 @@ function renderSeoHtml(kind, record, opts) {
       '</section>'
     : '';
 
+  /* 잠금 패널 (2026-08-27) — 몇 장이 남았는지, 어느 등급부터 열리는지,
+     다음 행동이 무엇인지 셋 다 말한다. 하나라도 빠지면 문의가 들어온다.
+     .seo-gallery-locked 는 위 hasPart 의 cssSelector 와 같아야 한다. */
+  const galleryLockHtml = galleryLocked
+    ? (() => {
+        const need = (() => {
+          const pd = String(record.published_date || '').slice(0, 10);
+          const now = new Date();
+          const q = Math.floor(now.getUTCMonth() / 3) * 3;
+          const cut = new Date(Date.UTC(now.getUTCFullYear(), q - 6, 1)).toISOString().slice(0, 10);
+          return pd && pd >= cut ? 'standard' : 'premium';
+        })();
+        const L = GALLERY_LOCK_T[lang] || GALLERY_LOCK_T.en;
+        const hidden = galleryAll.length - gallery.length;
+        return '<section class="seo-gallery-locked" aria-label="Members only">'
+          + '<div class="sgl-count">' + escText(L.count(galleryAll.length, hidden)) + '</div>'
+          + '<div class="sgl-head">' + escText(need === 'standard' ? L.headStandard : L.headPremium) + '</div>'
+          + '<div class="sgl-sub">' + escText(need === 'standard' ? L.subStandard : L.subPremium) + '</div>'
+          + '<a class="sgl-cta" href="' + escAttr(SITE + '/subscribe?utm_source=editorial_gallery_lock&utm_medium=web') + '">'
+          + escText(L.cta) + '</a>'
+          + '</section>'
+      })()
+    : '';
+
   /* Content body for articles.
      QA(2026-07): admin v2 는 content 를 JSON 블록 배열
      ([{type:'text'|'image'|'quote'|'video'|'videogroup'|'gallery'|'slide', …}])
@@ -1664,6 +1804,7 @@ ${ogImage && !(cfg.schemaType === 'VideoObject' && isValidYtId)
   .seo-meta h1{font-family:'Playfair Display',serif;font-size:clamp(28px,5vw,56px);margin:0 0 4px}
   .seo-meta .alt{opacity:.65;font-style:italic;margin:0 0 4px}
   .seo-meta time{opacity:.5;font-size:11px;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:0}
+  .seo-meta .seo-tldr-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.5;margin:32px 0 -24px}
   .seo-meta .seo-desc-primary{font-size:15px;line-height:1.8;margin:32px 0 12px;white-space:pre-line}
   .seo-meta .seo-desc-en{font-size:13px;line-height:1.75;margin:0 0 12px;opacity:.6;white-space:pre-line;padding-top:14px;border-top:1px dashed rgba(255,255,255,.12)}
   /* 2026-08-22 — 가운데 정렬이 빠져 있었다. <article> 직계 자식인데 형제들(.seo-meta·
@@ -1713,6 +1854,13 @@ ${ogImage && !(cfg.schemaType === 'VideoObject' && isValidYtId)
   .seo-related-films{display:flex;flex-direction:column;gap:0}
   .seo-gallery{max-width:1200px;margin:48px auto;padding:0 16px;display:grid;grid-template-columns:1fr;gap:24px}
   .seo-gallery figure{margin:0}
+  .seo-gallery-locked{max-width:1200px;margin:0 auto 48px;padding:56px 24px;text-align:center;
+    border:1px solid rgba(255,255,255,.14)}
+  .sgl-count{font-size:12px;letter-spacing:.12em;opacity:.55;margin-bottom:18px}
+  .sgl-head{font-size:17px;font-weight:600;margin-bottom:8px}
+  .sgl-sub{font-size:13px;opacity:.62;margin-bottom:24px;line-height:1.6}
+  .sgl-cta{display:inline-block;padding:13px 30px;border:1px solid currentColor;
+    font-size:12px;letter-spacing:.14em;text-decoration:none;color:inherit}
   /* 로딩 스켈레톤 (2026-07-20, QA 공백 페이지 대응) — 이미지가 로딩되는 동안
      검은 배경과 구분되는 은은한 셔머를 보여줘 "빈 블록"으로 보이지 않게 한다.
      로딩 완료 후에는 이미지가 배경을 덮어 보이지 않는다. */
@@ -1937,6 +2085,7 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
            기여자가 있으면 실명, 없으면 매체 편집부. 링크는 걸지 않는다
            (기여자 프로필 페이지가 아직 없어 죽은 링크가 된다). */ ''}
       <p class="seo-byline">By ${escText(contributors.length ? contributors.join(', ') : SITE_NAME + ' Editorial')}</p>
+      ${descDisplay ? `<div class="seo-tldr-label" aria-hidden="true">${escText(TLDR_LABEL[lang] || 'TL;DR')}</div>` : ''}
       <p class="seo-desc-primary">${escText(descDisplay)}</p>
       ${!isEn && descAltDisplay && descAltDisplay !== descDisplay ? `<p class="seo-desc-en">${escText(descAltDisplay)}</p>` : ''}
     </div>
@@ -2003,6 +2152,7 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
     })()}
     ${bodyHtml}
     ${galleryHtml}
+    ${galleryLockHtml}
     ${videoHtml}
     ${/* 2026-08-09 도메니코: 크레딧은 사진과 별점 사이 · SHOP 은 다운로드 위.
         기사·필름은 종전 순서 유지. */ ''}

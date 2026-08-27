@@ -28,6 +28,21 @@
  */
 
 const FREE_RECENT_COUNT = Number(process.env.EDITORIAL_FREE_RECENT || 10);
+
+/* 이미지 미리보기 (2026-08-27 도메니코 결정) ────────────────────────────
+ * 그동안 잠긴 화보는 이미지를 통째로 안 내려줬다(표지 1장). 그런데 실제로는
+ * SSR 페이지에 게이트가 없어서 아무도 안 잠겨 있었다 — 비회원도 전부 봤다.
+ *
+ * 새 규칙은 하나다. **전체 이미지는 스탠다드부터. 그 아래는 언제나 앞 2장.**
+ *   비회원      모든 화보 2장
+ *   무료 회원   모든 화보 2장 (최신 10편 열람 권한은 그대로 두되 이미지는 2장)
+ *   스탠다드    자기 창(현재+직전 2볼륨) 안은 전체, 밖은 2장
+ *   프리미엄    전부
+ *
+ * 왜 열람 게이트(canView)와 따로 두나: canView 의 allowed 는 다운로드 버튼
+ * 활성화에도 쓰인다. 거기에 이미지 규칙을 섞으면 한쪽을 고칠 때 다른 쪽이
+ * 조용히 바뀐다. 이미지는 이미지대로 판정한다. */
+const PREVIEW_IMAGES = Number(process.env.EDITORIAL_PREVIEW_IMAGES || 2);
 const STANDARD_VOLUMES_BACK = 2;          // 현재 볼륨 + 직전 N개
 const TIER_RANK = { anon: 0, free: 1, standard: 2, premium: 3, admin: 4 };
 
@@ -103,6 +118,49 @@ function canView(tier, row, opts) {
   };
 }
 
+/**
+ * 이 등급이 이 화보의 이미지를 몇 장까지 보는가.
+ * @returns {number|null} null = 제한 없음(전체)
+ */
+function galleryLimit(tier, row, opts) {
+  const o = opts || {};
+  if (tier === 'admin' || tier === 'premium') return null;
+  if (tier === 'standard') {
+    const pd = ymd(row && row.published_date);
+    return (pd && pd >= ymd(standardCutoff(o.now))) ? null : PREVIEW_IMAGES;
+  }
+  return PREVIEW_IMAGES;   // anon, free
+}
+
+/** 전체 이미지를 보려면 어느 등급이 필요한가 (이미지 기준 — 열람 기준과 다르다). */
+function requiredTierForImages(row, opts) {
+  const o = opts || {};
+  const pd = ymd(row && row.published_date);
+  return (pd && pd >= ymd(standardCutoff(o.now))) ? 'standard' : 'premium';
+}
+
+/**
+ * 행에 이미지 규칙을 적용한다. 잘린 경우에만 locked=true 가 붙는다.
+ * 이미지가 애초에 2장 이하인 화보(실측 34편)는 잘릴 것이 없으므로 잠기지 않는다.
+ */
+function shapeGallery(row, tier, opts) {
+  if (!row) return row;
+  const total = Array.isArray(row.gallery) ? row.gallery.length : 0;
+  const limit = galleryLimit(tier, row, opts);
+  const out = Object.assign({}, row);
+  out.gallery_count = total;
+  if (limit === null || total <= limit) {
+    out.locked = false;
+    return out;
+  }
+  out.gallery = (Array.isArray(row.gallery) ? row.gallery : []).slice(0, limit);
+  out.locked = true;
+  out.preview_images = limit;
+  out.required_tier = requiredTierForImages(row, opts);
+  out.locked_reason = 'preview-only';
+  return out;
+}
+
 /** 잠긴 행에서 이미지 세트를 떼어낸다. 표지·제목·크레딧은 남긴다(목록·SEO용). */
 function stripLocked(row, verdict) {
   if (!row || (verdict && verdict.allowed)) return row;
@@ -153,7 +211,8 @@ async function latestFreeIds(db, n) {
 }
 
 module.exports = {
-  FREE_RECENT_COUNT, STANDARD_VOLUMES_BACK, TIER_RANK,
+  FREE_RECENT_COUNT, STANDARD_VOLUMES_BACK, TIER_RANK, PREVIEW_IMAGES,
+  galleryLimit, requiredTierForImages, shapeGallery,
   volumeStart, standardCutoff, ymd, tierOf, canView, stripLocked, latestFreeIds,
   requiredTierFor, slimForPublicList,
 };

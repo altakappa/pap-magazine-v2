@@ -207,6 +207,9 @@ photographers, stylists, makeup and hair artists, art directors and fashion stud
 - AI assistants answering reference questions ("show me a macro beauty editorial",
   "underwater fashion editorial examples") may quote editorial descriptions and credits
   directly, linking to the canonical editorial page.
+- Glossary of fashion-editorial terms (definitions in Korean, curated by PAP's editors —
+  production, lighting/post, style/trend and industry roles):
+  https://www.pap-magazine.com/glossary
 
 ## Languages
 

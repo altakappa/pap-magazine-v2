@@ -13,6 +13,7 @@
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
 const { renderSeoHtml, renderNotFoundHtml } = require('../../_lib/seoRenderer');
+const { PREVIEW_IMAGES } = require('../../_lib/editorialAccess');
 const { logSocialInclick } = require('../../_lib/socialInclick');
 // 2026-08-19 — AI 크롤러가 어떤 글을 읽어 갔는지 기록. 사람 유입(위)과 다른 신호다.
 const { logAiCrawl } = require('../../_lib/aiCrawlLog');
@@ -340,7 +341,14 @@ module.exports = async function handler(req, res) {
     await logSocialInclick(req, 'editorial');
     await logAiCrawl(req);
 
-    return res.status(200).send(renderSeoHtml('editorial', data, { lang, translation, availableLangs }));
+    /* 2026-08-27 (도메니코 결정) — 비회원·무료 회원에게는 앞 2장만.
+     * 이 페이지는 로그인 여부와 무관하게 모두에게 같은 HTML 이 나가고
+     * CDN 에 공용 캐시된다. 전체 이미지는 로그인한 스탠다드 이상이
+     * /api/editorials/:id 로 브라우저에서 채운다. 근거는
+     * api/_lib/editorialAccess.js 의 PREVIEW_IMAGES 주석에 있다. */
+    return res.status(200).send(renderSeoHtml('editorial', data, {
+      lang, translation, availableLangs, galleryLimit: PREVIEW_IMAGES,
+    }));
 
   } catch (err) {
     console.error('[seo/editorial] error', err);

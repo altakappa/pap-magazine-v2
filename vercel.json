@@ -517,6 +517,7 @@
       "source": "/business",
       "destination": "/business.html"
     },
+    { "source": "/glossary", "destination": "/glossary.html" },
     {
       "source": "/studio",
       "destination": "/studio.html"
