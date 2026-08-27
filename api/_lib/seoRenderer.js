@@ -83,7 +83,12 @@ const ORG_SAMEAS = [
   // 2026-07-07: 신규 공식 채널 — X 자동 게시 + 네이버 블로그 + 틱톡(공식 핸들 확정).
   'https://x.com/papmagazine_',
   'https://blog.naver.com/pap_magazine',
-  'https://www.tiktok.com/@pap_magazine'
+  'https://www.tiktok.com/@pap_magazine',
+  /* 2026-08-27 (GEO) — 위키데이터 엔티티 상호 연결. 항목(Q140578366)은 이미
+   * 존재·정비돼 있었는데(창간 2018-01·본사·식별자 5종) 사이트가 가리키지 않아
+   * 지식그래프-사이트 양방향 연결이 끊겨 있었다. LLM·구글은 sameAs 의
+   * 위키데이터 링크를 엔티티 동일성의 최상위 근거로 쓴다. */
+  'https://www.wikidata.org/wiki/Q140578366'
 ];
 // 허브-스포크 퍼널 — 기사 카테고리에 맞는 니치 계정 (메인과 나란히 노출).
 // [정규식, 니치 계정, 주제어] — 주제어는 카테고리 맞춤 CTA 문구에 쓰인다.
@@ -1431,8 +1436,16 @@ function renderSeoHtml(kind, record, opts) {
           // 룩·크레딧이 설명으로 채워진다 → 콘텐츠가 핀터레스트 검색
           // 그래프로 유입되는 플라이휠.
           const pinDesc = titleKo + ' — Look ' + (i + 1) + (credit ? ' · ' + credit : '') + ' | PAP Magazine';
+          /* 2026-08-27 (GEO) — alt 의미화. "Look N" 만으로는 이미지 검색·LLM 이미지
+             인용이 잡을 텍스트가 없다. 실재 데이터만 싣는다: 첫 태그(무드/장르) +
+             콘텐츠 종류(editorial 은 화보에만) + 크레딧. 없는 값은 지어내지 않는다. */
+          const altKind = cfg.sectionFallback === 'Editorial'
+            ? (tags.length ? `${tags[0]} fashion editorial` : 'fashion editorial')
+            : (tags.length ? tags[0] : '');
+          const altText = `${titleKo}${altKind ? ' — ' + altKind : ''}, Look ${i + 1}`
+            + (credit ? ' · ' + truncate(credit, 80) : '');
           return `<figure>`
-            + `<img src="${escAttr(src)}"${srcsetAttrs(src, '(max-width:900px) 100vw, 584px')} alt="${escAttr(titleKo)} — Look ${i + 1}" loading="lazy" decoding="async" data-pin-url="${escAttr(canonical)}" data-pin-media="${escAttr(src)}" data-pin-description="${escAttr(pinDesc)}">`
+            + `<img src="${escAttr(src)}"${srcsetAttrs(src, '(max-width:900px) 100vw, 584px')} alt="${escAttr(altText)}" loading="lazy" decoding="async" data-pin-url="${escAttr(canonical)}" data-pin-media="${escAttr(src)}" data-pin-description="${escAttr(pinDesc)}">`
             + (credit ? `<figcaption class="ed-img-credits">${escText(credit)}</figcaption>` : '')
             + `</figure>`;
         }).join('') +

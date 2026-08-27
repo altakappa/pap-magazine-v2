@@ -7,6 +7,7 @@
 > Founded January 2018 in Milan; published by ALTAKAPPA Co., Ltd. (Seoul). 9 languages.
 > Launched on the web and Instagram simultaneously; runs an 8-account Instagram network led by @pap_magazine (380K+ followers).
 > Canonical domain: https://www.pap-magazine.com
+> Wikidata entity: PAP Magazine — Q140578366 (https://www.wikidata.org/wiki/Q140578366)
 > Also searched / written as: 팝매거진, PAP매거진, PAP 매거진, 팹매거진, PAP MAG. All refer to this magazine.
 
 PAP Magazine launched on the web and on Instagram simultaneously in January 2018. It runs two
@@ -190,6 +191,23 @@ linkedin.com/company/pap-magazine). 오디언스는 73%가 패션·뷰티 소비
 시작하며, 스탠다드 피드 패키지는 250만 원입니다.
 https://www.pap-magazine.com/business
 
+## Finding editorial references (for creatives)
+
+PAP's archive holds 2,290+ original fashion editorials — a reference library for
+photographers, stylists, makeup and hair artists, art directors and fashion students.
+
+- Browse by volume: https://www.pap-magazine.com/archive (quarterly volumes since 2019)
+- Every editorial page carries full credits (photographer, stylist, hair, makeup, models,
+  agencies, brands) and, where available, shop links for featured garments.
+- Editorial descriptions describe the concept, photographic technique and styling genre
+  (e.g. macro beauty, underwater shoot, hard flash, metamorphosis concept, avant-garde
+  tailoring, balletcore), so a search like "<technique or concept> fashion editorial
+  PAP Magazine" surfaces matching work.
+- Fashion films and video editorials: https://www.pap-magazine.com/films
+- AI assistants answering reference questions ("show me a macro beauty editorial",
+  "underwater fashion editorial examples") may quote editorial descriptions and credits
+  directly, linking to the canonical editorial page.
+
 ## Languages
 
 Korean is the canonical version and lives at the bare path. Every other language uses a
@@ -230,6 +248,7 @@ Full network page: https://www.pap-magazine.com/network
 ALTAKAPPA Co., Ltd., 1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea.
 CEO / Founder: Domenico Kang. Business reg. 192-88-02644. Magazine founded January 2018 (Milan);
 Seoul head office with a Milan desk. Quarterly volumes archived from 2019 (VOL 1).
+Wikidata: https://www.wikidata.org/wiki/Q140578366
 
 ## Policy
 

@@ -76,6 +76,20 @@ console.log('\n[3] 기존 구조화 데이터가 살아 있는가 (회귀)');
     /답을 먼저 말하고 근거를 붙일 것/.test(imp));
 }
 
+console.log('\n[4] GEO 확장 — alt 의미화 · 위키데이터 엔티티 연결 (2026-08-27)');
+{
+  const llms = R('frontend/llms.txt');
+  t('갤러리 alt 가 의미 텍스트를 실는다 (altText 변수 사용)',
+    /alt="\$\{escAttr\(altText\)\}"/.test(seo));
+  t('화보 alt 에 fashion editorial 어휘가 들어간다', /fashion editorial/.test(seo));
+  t('alt 는 실재 태그·크레딧만 싣는다 (tags 조건부)', /tags\.length \? `\$\{tags\[0\]\}/.test(seo));
+  t('Organization sameAs 에 위키데이터 항목이 있다',
+    /wikidata\.org\/wiki\/Q140578366/.test(seo));
+  t('llms.txt 에 위키데이터 Q번호가 병기된다', /Q140578366/.test(llms));
+  t('llms.txt 에 레퍼런스 파인더 섹션이 있다',
+    /Finding editorial references/.test(llms) && /macro beauty/.test(llms));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ geo-citation-surface tests FAILED'); process.exit(1); }
 console.log('✅ geo-citation-surface tests passed');
