@@ -135,6 +135,15 @@ console.log('\n=== 도달 배분 논리 + 전환 증거 (2026-08-27 도메니코
      probes.filter((x) => !biz.includes(x)).join(','));
   t('전환 증거 수치가 실려 있다 (64% 비팔로워 · 공유율 1.6% · 팔로우 1,091)',
      /64%가 비팔로워/.test(biz) && /공유율 1\.6%/.test(biz) && /1,091/.test(biz));
+  // 2026-08-27 (도메니코 확정): 타 매체 전환 수치는 비공개라 "우리가 더 높다"는 단정 금지.
+  // 대신 "캠페인마다 실측 리포트로 직접 제공" — 비공개 수치를 신뢰 장치로 전환.
+  const reportProbes = ['실측 리포트로 직접 제공', 'measured campaign reports', '実測レポートで直接提供',
+    'report misurati', 'rapports mesurés', 'informes medidos', '实测报告',
+    'измеренных отчётах', 'gemessene Reports'];
+  t('9개 언어 전부에 실측 리포트 제공 문장이 있다', reportProbes.every((x) => biz.includes(x)),
+     reportProbes.filter((x) => !biz.includes(x)).join(','));
+  t('전환율 우위 단정 문구 없음 (검증 불가 주장 금지)',
+     !/전환율이 더 높/.test(biz) && !/higher conversion rate than/.test(biz));
 }
 
 console.log('\n=== SUMMARY ===');
