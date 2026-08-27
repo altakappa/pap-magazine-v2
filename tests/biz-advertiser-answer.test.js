@@ -126,6 +126,17 @@ console.log('\n[4] 발견 표면');
   t('사이트맵에 /business', /['"]\/business['"]/.test(sitemap));
 }
 
+console.log('\n=== 도달 배분 논리 + 전환 증거 (2026-08-27 도메니코 지시) ===');
+{
+  const probes = ['도달이 전환으로 이어집니다', 'reach converts', 'リーチが転換につながります',
+    'la reach converte', 'la portée convertit', 'el alcance convierte', '触达带来转化',
+    'охват даёт конверсию', 'Reichweite konvertiert'];
+  t('9개 언어 전부에 전환 논리 문장이 있다', probes.every((x) => biz.includes(x)),
+     probes.filter((x) => !biz.includes(x)).join(','));
+  t('전환 증거 수치가 실려 있다 (64% 비팔로워 · 공유율 1.6% · 팔로우 1,091)',
+     /64%가 비팔로워/.test(biz) && /공유율 1\.6%/.test(biz) && /1,091/.test(biz));
+}
+
 console.log('\n=== SUMMARY ===');
 console.log('passed: ' + pass + '   failed: ' + fail);
 if (fail > 0) process.exit(1);
