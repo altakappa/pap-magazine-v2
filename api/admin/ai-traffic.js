@@ -88,6 +88,9 @@ module.exports = async function handler(req, res) {
 
     const crawlByPk = new Map();    // '플랫폼|목적' → hits
     const crawlByPath = new Map();  // 경로 → hits
+    /* Ⅵ-52 (확장전략55, 2026-08-27) — 일별 추이. 총량은 "얼마나"만 답하고
+       "느는가 주는가"는 못 답한다. 날짜 × 플랫폼 표가 그 답이다. */
+    const crawlByDay = new Map();   // day → Map(platform → hits)
     let crawlTotal = 0;
     (crawlRows || []).forEach((r) => {
       const h = Number(r.hits || 0);
@@ -95,6 +98,9 @@ module.exports = async function handler(req, res) {
       const k = r.platform + '|' + r.kind;
       crawlByPk.set(k, (crawlByPk.get(k) || 0) + h);
       crawlByPath.set(r.path, (crawlByPath.get(r.path) || 0) + h);
+      const dm = crawlByDay.get(r.day) || new Map();
+      dm.set(r.platform, (dm.get(r.platform) || 0) + h);
+      crawlByDay.set(r.day, dm);
     });
 
     const sortDesc = (m) => Array.from(m.entries()).sort((a, b) => {
@@ -120,6 +126,13 @@ module.exports = async function handler(req, res) {
           platform: k.split('|')[0], kind: k.split('|')[1], hits: v,
         })),
         top_paths: sortDesc(crawlByPath).slice(0, 25).map(([k, v]) => ({ path: k, hits: v })),
+        by_day: Array.from(crawlByDay.entries())
+          .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+          .map(([day, dm]) => ({
+            day,
+            total: Array.from(dm.values()).reduce((s, x) => s + x, 0),
+            platforms: Object.fromEntries(dm),
+          })),
       },
     };
 
