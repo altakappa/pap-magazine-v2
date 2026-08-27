@@ -620,37 +620,69 @@ function pickVariant(items, firstDim) {
   return ratio <= REELS_MAX_RATIO ? 'reels' : 'feed';
 }
 
-/* 셀럽 게이트 (2026-08-26) ──────────────────────────────────────────────
-   도메니코: "모두 셀럽이 포함된 기사여야만해. 그냥 디올 기사같은건 필요없어."
+/* 셀럽 게이트 (2026-08-26, 3차) ─────────────────────────────────────────
+   도메니코 1차: "모두 셀럽이 포함된 기사여야만해. 그냥 디올 기사같은건 필요없어."
+   도메니코 2차: "브랜드 캠페인이 차단이 아니라 셀럽이 포함되지 않은 브랜드
+                  캠페인이 없어도 된다는거야."
+   도메니코 3차: "룩북의경우 사람이 아니고 한국셀럽이 있어야함. 사람은 차단.
+                  인물도 한국셀럽이어야함. 그냥 인물이면안됌."
 
-   실측(브리프 42건): 디올 단독 9건. 4시간 안에 같은 테일러링 캠페인으로
-   3건이 나갔다 — "디올이 말하는 테일러링의 정밀함" / "디올 테일러링 스터디" /
-   "디올 테일러링의 여유로운 럭셔리". 전부 인물이 없다.
+   즉 기준이 두 번 좁아졌다: 브랜드만 아니면 됨 → 사람이 있으면 됨 →
+   **한국 셀럽이 있어야 함.** 룩북에 이름 없는 모델이 나오는 건 사람이지만
+   셀럽이 아니다. 그건 우리 기사가 아니다.
 
-   **계정을 지우지 않는다.** 같은 프라다 계정에서 "해리 스타일스, 멕시코시티
-   무대에서 입은 프라다"(브리프 42)가 나왔다. 거르는 기준은 계정이 아니라
-   기사에 사람이 있느냐다.
+   실측(브리프 42건): 디올 단독 9건이 전부 룩북·캠페인이었고, 그중 다수에
+   모델이 등장한다. person 만 보면 그게 전부 통과한다.
 
-   fail-open 이 핵심이다. 모델이 kind 를 안 주거나 파싱이 깨졌을 때
-   "person 이 없다"로 읽으면 **브리프가 전부 사라진다.** 오늘 아침 자기
-   리퍼러 건에서 겪은 것과 같은 모양의 사고다. 그래서 판단할 근거 자체가
-   없으면 통과시키고 이유를 적는다. */
+   "한국 셀럽" 의 범위 — 국적이 아니라 **한국 연예계에서 활동하는가**로 본다.
+   리사(태국)·닝닝(중국)처럼 K팝 그룹 멤버는 국적과 무관하게 포함한다.
+   그렇게 안 잡으면 블랙핑크 기사에서 리사만 빠지는 이상한 일이 난다.
+   반대로 해리 스타일스처럼 한국 활동이 없는 해외 셀럽은 제외된다 — 이건
+   도메니코가 "한국셀럽"이라고 못박은 결과다.
+
+   fail-open 은 유지하되 **시끄럽게 한다.** 모델이 kr 표기를 아예 안 주면
+   판단 근거가 없으므로 막지 않지만, 그 사실을 이유에 적어 크론 노트에 남긴다.
+   여기서 fail-closed 로 가면 브리프가 전멸하고 원인을 못 찾는다 (오늘 아침
+   자기 리퍼러 건과 같은 모양). 대신 kr 이 **있는데 전부 false** 면 그건
+   판단이 있는 것이므로 막는다. */
+const SUBJECT_KINDS = new Set(['person', 'group']);
+
+/** 이 항목이 한국 셀럽으로 표시됐나. 모델이 boolean 이 아닌 값을 줄 수도 있다. */
+function _isKrCeleb(e) {
+  if (!e || !SUBJECT_KINDS.has(e.kind)) return false;
+  const v = e.kr;
+  if (v === true) return true;
+  if (typeof v === 'string') return /^(true|yes|y|1)$/i.test(v.trim());
+  return false;
+}
+function _hasKrField(e) {
+  return e && SUBJECT_KINDS.has(e.kind) && e.kr !== undefined && e.kr !== null && e.kr !== '';
+}
 
 /**
- * 이 기사에 사람(인물·그룹)이 등장하는가.
- * @param {{ko?:string,en?:string,kind?:string}[]} entities
- * @returns {{pass:boolean, reason:string|null}} reason 은 통과/차단 사유 메모
+ * 이 기사에 **한국 셀럽**이 등장하는가.
+ * @param {{ko?:string,en?:string,kind?:string,kr?:boolean}[]} entities
+ * @returns {{pass:boolean, reason:string|null}}
  */
 function celebGate(entities) {
   const list = Array.isArray(entities) ? entities.filter(Boolean) : [];
   if (!list.length) return { pass: true, reason: 'entities 없음 — 판단 불가라 통과' };
   const withKind = list.filter((e) => typeof e.kind === 'string' && e.kind);
   if (!withKind.length) return { pass: true, reason: 'kind 표기 없음 — 판단 불가라 통과' };
-  if (withKind.some((e) => e.kind === 'person' || e.kind === 'group')) {
-    return { pass: true, reason: null };
-  }
+
+  const subjects = withKind.filter((e) => SUBJECT_KINDS.has(e.kind));
   const names = list.map((e) => e.ko || e.en).filter(Boolean).slice(0, 3).join('·');
-  return { pass: false, reason: '인물 없음 — 브랜드만 등장' + (names ? ' (' + names + ')' : '') };
+  if (!subjects.length) {
+    return { pass: false, reason: '인물 없음 — 브랜드만 등장' + (names ? ' (' + names + ')' : '') };
+  }
+  if (subjects.some(_isKrCeleb)) return { pass: true, reason: null };
+  /* 사람은 있는데 한국 셀럽 표시가 하나도 없다. 판단이 없는 것과 있는 것을 가른다. */
+  if (subjects.some(_hasKrField)) {
+    return { pass: false, reason: '한국 셀럽 아님 — 등장 인물이 전부 비대상'
+      + (names ? ' (' + names + ')' : '') };
+  }
+  return { pass: true, reason: '⚠️kr 표기 없음 — 한국 셀럽 여부를 확인 못 하고 통과'
+    + (names ? ' (' + names + ')' : '') };
 }
 
 /* 주제 게이트 (2026-08-26, 2차 수정) ────────────────────────────────────

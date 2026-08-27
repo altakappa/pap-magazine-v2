@@ -513,8 +513,18 @@ async function generateArticleFromPost(post, opts){
     //   (도메니코: "모두 셀럽이 포함된 기사여야만해. 그냥 디올 기사같은건 필요없어").
     //   person=개인, group=팀·그룹, brand=브랜드·기업·매체. 셋 중 하나만 쓴다.
     //   추측하지 말 것 — 캡션·이미지에서 확인되는 주체만 적는다.
-    '    {"ko": "지수", "en": "JISOO", "kind": "person"},',
-    '    {"ko": "블랙핑크", "en": "BLACKPINK", "kind": "group"},',
+    // 2026-08-26 (3차) — 도메니코: "룩북의경우 사람이 아니고 한국셀럽이 있어야함.
+    //   사람은 차단. 인물도 한국셀럽이어야함. 그냥 인물이면안됌."
+    //   person·group 에는 "kr" 을 반드시 붙인다 — 한국 연예계에서 활동하는
+    //   셀럽이면 true, 아니면 false.
+    //     true  : 아이돌·배우·가수·모델 중 한국 활동자. K팝 그룹 멤버는 국적과
+    //             무관하게 true (리사·닝닝·한 등).
+    //     false : 이름 없는 런웨이/룩북 모델, 일반인, 해외 셀럽(한국 활동 없음),
+    //             디자이너·임원 등 업계 인사.
+    //   확실하지 않으면 false. 추측해서 true 로 적지 말 것.
+    '    {"ko": "지수", "en": "JISOO", "kind": "person", "kr": true},',
+    '    {"ko": "블랙핑크", "en": "BLACKPINK", "kind": "group", "kr": true},',
+    '    {"ko": "", "en": "Runway model", "kind": "person", "kr": false},',
     '    {"ko": "알로", "en": "ALO", "kind": "brand"}',
     '  ],',
     /* 2026-08-23 — 첫 댓글은 우리가 직접 단다. 기사 마지막이 질문으로 끝나는 비율이

@@ -58,26 +58,47 @@ t('ratio 가 NaN → reels', cb.pickVariant([{ type: 'video' }], { ratio: NaN })
 t('사진이면 실측과 무관하게 feed', cb.pickVariant([{ type: 'image' }], { ratio: 0.5625 }) === 'feed');
 t('슬라이드가 비면 feed', cb.pickVariant([], null) === 'feed');
 
-console.log('\n[3] 셀럽 게이트 — 인물이 있어야 통과');
-t('브랜드만 → 막는다', cb.celebGate([{ ko: '디올', kind: 'brand' }]).pass === false);
-t('막힌 이유가 남는다', /인물 없음/.test(cb.celebGate([{ ko: '디올', kind: 'brand' }]).reason || ''));
-t('개인이 있으면 통과',
-  cb.celebGate([{ ko: '디올', kind: 'brand' }, { ko: '지수', kind: 'person' }]).pass === true);
-t('그룹이 있으면 통과',
-  cb.celebGate([{ ko: '프라다', kind: 'brand' }, { ko: '라이즈', kind: 'group' }]).pass === true);
-t('브랜드 여러 개여도 인물 없으면 막는다',
-  cb.celebGate([{ ko: '디올', kind: 'brand' }, { ko: '샤넬', kind: 'brand' }]).pass === false);
+console.log('\n[3] 셀럽 게이트 — 사람이 아니라 **한국 셀럽**이 있어야 한다');
+/* 기준이 두 번 좁아졌다 (2026-08-26):
+     브랜드만 아니면 됨 → 사람이 있으면 됨 → 한국 셀럽이 있어야 함
+   도메니코 3차: "룩북의경우 사람이 아니고 한국셀럽이 있어야함. 사람은 차단.
+                  인물도 한국셀럽이어야함. 그냥 인물이면안됌."
+   룩북에 이름 없는 모델이 나오는 건 사람이지만 셀럽이 아니다. */
+const KR = (ko) => ({ ko: ko, kind: 'person', kr: true });
+const MODEL = { en: 'Runway model', kind: 'person', kr: false };
+const DIOR = { ko: '디올', kind: 'brand' };
 
-console.log('\n[4] fail-open — 판단 불가를 "인물 없음"으로 읽지 않는다  ← 핵심');
-t('kind 가 하나도 없으면 통과 (모델이 안 줬을 때 브리프가 전멸하면 안 된다)',
-  cb.celebGate([{ ko: '디올' }, { ko: '지수' }]).pass === true);
-t('그 이유가 기록된다', /판단 불가/.test(cb.celebGate([{ ko: '디올' }]).reason || ''));
+t('한국 셀럽이면 통과', cb.celebGate([KR('지수')]).pass === true);
+t('K팝 그룹도 통과', cb.celebGate([{ ko: '라이즈', kind: 'group', kr: true }]).pass === true);
+t('룩북 모델(사람이지만 셀럽 아님)은 막는다  ← 3차 지시의 핵심',
+  cb.celebGate([DIOR, MODEL]).pass === false, cb.celebGate([DIOR, MODEL]).reason);
+t('막힌 이유가 "한국 셀럽 아님" 이다 (브랜드 탓이 아니다)',
+  /한국 셀럽 아님/.test(cb.celebGate([DIOR, MODEL]).reason || ''));
+t('한국 활동 없는 해외 셀럽도 막는다',
+  cb.celebGate([{ ko: '프라다', kind: 'brand' }, { en: 'Harry Styles', kind: 'person', kr: false }]).pass === false);
+t('모델과 한국 셀럽이 섞여 있으면 통과 (하나만 있으면 된다)',
+  cb.celebGate([MODEL, KR('제니')]).pass === true);
+t('브랜드만이면 여전히 "인물 없음" 으로 막는다',
+  cb.celebGate([DIOR]).pass === false && /인물 없음/.test(cb.celebGate([DIOR]).reason || ''));
+t('브랜드에는 kr 을 요구하지 않는다 (사람만 대상이다)',
+  cb.celebGate([DIOR, KR('지수')]).pass === true);
+t('kr 이 문자열 "true" 여도 인정한다 (모델이 boolean 을 안 줄 수 있다)',
+  cb.celebGate([{ ko: '지수', kind: 'person', kr: 'true' }]).pass === true);
+t('kr 이 문자열 "false" 면 막는다',
+  cb.celebGate([{ ko: '모델', kind: 'person', kr: 'false' }]).pass === false);
+
+console.log('\n[4] fail-open — 판단 불가를 "아님" 으로 읽지 않는다  ← 핵심');
+/* 여기서 fail-closed 로 가면 브리프가 전멸하고 원인을 못 찾는다.
+   대신 판단 근거가 없다는 사실을 **이유에 적어** 크론 노트에 남긴다. */
+t('kr 표기가 하나도 없으면 통과시킨다 (모델이 새 필드를 안 줄 때 전멸 방지)',
+  cb.celebGate([{ ko: '누군가', kind: 'person' }]).pass === true);
+t('그때 이유에 경고가 붙는다', /kr 표기 없음/.test(cb.celebGate([{ ko: '누군가', kind: 'person' }]).reason || ''));
+t('kr 이 **있는데 전부 false** 면 막는다 (판단이 있는 것과 없는 것을 가른다)',
+  cb.celebGate([MODEL]).pass === false);
+t('kind 가 하나도 없으면 통과', cb.celebGate([{ ko: '디올' }]).pass === true);
 t('entities 가 빈 배열이면 통과', cb.celebGate([]).pass === true);
 t('entities 가 null 이면 통과', cb.celebGate(null).pass === true);
 t('entities 가 undefined 면 통과', cb.celebGate(undefined).pass === true);
-t('kind 가 빈 문자열이면 판단 불가로 통과', cb.celebGate([{ ko: '디올', kind: '' }]).pass === true);
-t('kind 가 섞여 있으면 있는 것만 본다 (브랜드만 표기 → 막힘)',
-  cb.celebGate([{ ko: '디올', kind: 'brand' }, { ko: '무엇' }]).pass === false);
 
 console.log('\n[4-2] 주제 게이트 — 막는 건 둘뿐, 나머지는 인물로 판단 (2026-08-26)');
 /* 도메니코 1차: "셀럽소식만. 매거진에 실린소식·챌린지는 안알려줘도돼."
@@ -86,8 +107,8 @@ console.log('\n[4-2] 주제 게이트 — 막는 건 둘뿐, 나머지는 인물
    → brand_campaign 을 통째로 막던 것을 되돌린다. 샤넬 캠페인에 제니가 나오면
      그건 우리가 원하는 기사다. 거를 것은 사람이 없는 캠페인이고, 그건 이미
      celebGate 가 한다. 무조건 막는 것은 도메니코가 이름 댄 둘뿐이다. */
-const P = [{ ko: '제니', kind: 'person' }];
-const G = [{ ko: '라이즈', kind: 'group' }];
+const P = [{ ko: '제니', kind: 'person', kr: true }];
+const G = [{ ko: '라이즈', kind: 'group', kr: true }];
 const BR = [{ ko: '디올', kind: 'brand' }];
 
 t('셀럽 소식은 통과', cb.briefGate({ entities: P, brief_topic: 'celeb_news' }).pass === true);
@@ -131,6 +152,9 @@ t('네 갈래를 전부 설명한다',
   ['celeb_news', 'magazine_feature', 'challenge', 'brand_campaign'].every((k) => IMP.includes(k)));
 t('프롬프트가 brand_campaign 을 중립으로 설명한다 (인물이 있으면 통과하므로)',
   /brand_campaign[^\n]*셀럽이 나오면 entities/.test(IMP));
+t('프롬프트가 entities 에 kr 을 요구한다', /"kr": true/.test(IMP) && /"kr": false/.test(IMP));
+t('K팝 그룹 멤버는 국적과 무관하게 true 라고 못박는다', /국적과\s*\n?.*무관하게 true/.test(IMP) || /국적과[^\n]*무관하게 true/.test(IMP));
+t('확실하지 않으면 false 라고 못박는다', /확실하지 않으면 false/.test(IMP));
 
 console.log('\n[5] 슬라이드 상한 20 (인스타 캐러셀 상한)');
 t('MAX_SLIDES 가 20', cb.MAX_SLIDES === 20, cb.MAX_SLIDES);
