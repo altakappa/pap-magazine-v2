@@ -32,6 +32,35 @@ function cleanDesc(s) {
   return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
 }
 
+/* Ⅱ-23 (확장전략55, 2026-08-27) — RSS 풀텍스트.
+   요약만 나가면 LLM 수집기·피드 리더가 본문을 못 가져간다. 기사 본문을
+   content:encoded(CDATA)로 싣는다. 블록 JSON([{...}])이면 텍스트만 뽑아
+   문단으로 잇고, HTML 이면 그대로 둔다(리더가 렌더). 40KB 컷 — 피드 전체가
+   수 MB 가 되면 수집기가 통째로 버린다. 에디토리얼은 본문이 이미지라 제외. */
+function fullContent(raw) {
+  if (raw == null) return '';
+  let s = String(raw);
+  const t = s.trim();
+  if (t.startsWith('[') || t.startsWith('{')) {
+    try {
+      const blocks = JSON.parse(t);
+      const arr = Array.isArray(blocks) ? blocks : [blocks];
+      s = arr.map(b => {
+        if (!b) return '';
+        if (typeof b === 'string') return b;
+        return b.text || b.content || b.caption || '';
+      }).filter(Boolean).map(x => '<p>' + String(x) + '</p>').join('\n');
+    } catch (_) { /* JSON 이 아니면 원문 그대로 */ }
+  }
+  s = s.trim();
+  if (!s) return '';
+  return s.length > 40000 ? s.slice(0, 40000) + '…' : s;
+}
+function cdata(s) {
+  /* CDATA 안에 ]]> 가 오면 섹션이 깨진다 — 표준 분할 이스케이프 */
+  return '<![CDATA[' + String(s).split(']]>').join(']]]]><![CDATA[>') + ']]>';
+}
+
 /* 신디케이션 utm — 규칙·이유는 _lib/rssUtm.js (rss-editorials.js 와 공유) */
 const { srcParam, withRssUtm } = require('./_lib/rssUtm');
 
@@ -43,7 +72,7 @@ module.exports = async function handler(req, res) {
     const [artsR, edsR] = await Promise.all([
       supabaseAdmin
         .from('articles')
-        .select('id, title, slug, custom_url, published_date, description, hero_image_url, thumbnail_url')
+        .select('id, title, slug, custom_url, published_date, description, content, hero_image_url, thumbnail_url')
         .eq('status', 'published')
         .order('published_date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -68,6 +97,7 @@ module.exports = async function handler(req, res) {
         title: a.title,
         link: SITE + '/article/' + encodeURIComponent(handle),
         desc: cleanDesc(a.description),
+        body: fullContent(a.content),
         date: a.published_date,
         img: a.hero_image_url || a.thumbnail_url || '',
         category: 'Article',
@@ -99,13 +129,14 @@ module.exports = async function handler(req, res) {
       '      <pubDate>' + rfc822(it.date) + '</pubDate>\n' +
       '      <category>' + xmlEscape(it.category) + '</category>\n' +
       (it.desc ? '      <description>' + xmlEscape(it.desc) + '</description>\n' : '') +
+      (it.body ? '      <content:encoded>' + cdata(it.body) + '</content:encoded>\n' : '') +
       (it.img ? '      <media:content url="' + xmlEscape(it.img) + '" medium="image" />\n' : '') +
       '    </item>'
     ).join('\n');
 
     const xml =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
-      '<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom">\n' +
+      '<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">\n' +
       '  <channel>\n' +
       '    <title>' + xmlEscape(FEED_TITLE) + '</title>\n' +
       '    <link>' + SITE + '</link>\n' +

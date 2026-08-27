@@ -242,6 +242,10 @@ const ORG_PUBLISHER = {
   url: SITE,
   logo: { '@type': 'ImageObject', url: ORG_LOGO },
   sameAs: ORG_SAMEAS,
+  /* Ⅲ-31 (2026-08-27) — 편집·정정 정책 명문화. 뉴스 신뢰 신호(E-E-A-T):
+     정책 페이지가 있어도 스키마로 선언하지 않으면 기계는 모른다. */
+  publishingPrinciples: SITE + '/editorial-policy',
+  correctionsPolicy: SITE + '/editorial-policy#corrections',
 
   /* ── AI/GEO 엔티티 보강 (2026-08-12) ───────────────────────────────────
    * 왜: ChatGPT 등에 "디지털 매거진 추천"을 물으면 PAP 이 안 나오고, 나와도
@@ -402,6 +406,40 @@ function extractContributors(record) {
     }
   } catch { /* free-form text — ignore */ }
   return Array.from(names).slice(0, 30);
+}
+
+/* Ⅱ-18 (확장전략55, 2026-08-27) — Person 엔티티화.
+ * 이름 문자열만으로는 "김OO"이 누구인지 기계가 특정 못 한다. credits 의
+ * instagram 핸들을 sameAs 로 붙이면 Person 이 실존 프로필과 연결된 엔티티가
+ * 되고, 생성 엔진이 "이 화보의 포토그래퍼" 답에 프로필까지 인용할 수 있다.
+ * roles 는 jobTitle 로. 이미 공개 게재 중인 크레딧 정보만 쓴다 — 새 정보 없음. */
+function extractPersonEntities(record) {
+  let c = record.credits;
+  if (!c) return [];
+  const seen = new Map();
+  try {
+    const obj = typeof c === 'string' ? JSON.parse(c) : c;
+    const arr = Array.isArray(obj) ? obj : [];
+    for (const entry of arr) {
+      if (!entry || typeof entry !== 'object' || !entry.name) continue;
+      const name = String(entry.name).trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      const cur = seen.get(key) || { '@type': 'Person', name, _roles: new Set() };
+      (Array.isArray(entry.roles) ? entry.roles : []).forEach(r => r && cur._roles.add(String(r)));
+      const ig = String(entry.instagram || '').trim().replace(/^@/, '');
+      if (ig && !cur.sameAs && /^[A-Za-z0-9._]{1,60}$/.test(ig)) {
+        cur.sameAs = ['https://www.instagram.com/' + ig + '/'];
+      }
+      seen.set(key, cur);
+    }
+  } catch { return []; }
+  return Array.from(seen.values()).slice(0, 30).map(pn => {
+    const out = { '@type': 'Person', name: pn.name };
+    if (pn._roles.size) out.jobTitle = Array.from(pn._roles).slice(0, 4).join(', ');
+    if (pn.sameAs) out.sameAs = pn.sameAs;
+    return out;
+  });
 }
 
 /* ── QA #177 — structured credit helpers ────────────────────────────
@@ -1216,9 +1254,12 @@ function renderSeoHtml(kind, record, opts) {
     //   creator            — 실제 기여자(포토그래퍼 등), 없으면 매체명
     //   license            — 이용약관(이미지 사용 조건이 명시된 페이지)
     //   acquireLicensePage — 사용 문의 경로
-    const imgCreator = contributors.length
-      ? contributors.map(name => ({ '@type': 'Person', name }))
-      : { '@type': 'Organization', name: SITE_NAME };
+    const personEntities = extractPersonEntities(record);
+    const imgCreator = personEntities.length
+      ? personEntities
+      : (contributors.length
+        ? contributors.map(name => ({ '@type': 'Person', name }))
+        : { '@type': 'Organization', name: SITE_NAME });
     const imageObjects = allImages.map((u, i) => ({
       '@type': 'ImageObject',
       url: u,
@@ -1247,7 +1288,9 @@ function renderSeoHtml(kind, record, opts) {
       wordCount: isEn ? undefined : wordCount,
       datePublished: published,
       dateModified: modified,
-      author: contributors.length
+      author: personEntities.length
+        ? personEntities
+        : contributors.length
         ? contributors.map(name => ({ '@type': 'Person', name }))
         : [{ '@type': 'Organization', name: SITE_NAME, url: SITE }],
       publisher: ORG_PUBLISHER,

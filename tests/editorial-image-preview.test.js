@@ -10,8 +10,14 @@
  *   같은 사고를 다시 내지 않으려면 "함수가 옳게 동작한다"만으로는 부족하다.
  *   **호출부가 그 함수를 실제로 부르는지**를 고정해야 한다. 아래 ②가 그것이다.
  *
- * 규칙: 열람 권한이 있으면 이미지 전체, 없으면 앞 2장.
- *   비회원 2장 / 무료 회원 최신 10편 전체 / 스탠다드 현재+직전 2볼륨 전체 / 프리미엄 전부
+ * 규칙 (도메니코 2026-08-27): 자기 범위는 전체, 바로 다음 단계는 앞 2장,
+ * 그 너머는 아예 안 열린다(클릭하면 팝업).
+ *
+ *              최신 10편    6개월 안     옛 화보
+ *   비회원     preview      blocked     blocked
+ *   무료 회원  full         preview     blocked
+ *   스탠다드   full         full        preview
+ *   프리미엄   full         full        full
  */
 'use strict';
 
@@ -46,42 +52,57 @@ console.log('\n=== ① 등급별 이미지 수 ===');
 const LATEST10 = new Set(['top']);          // 무료 회원 열람 범위(최신 10편)
 const O = { freeIds: LATEST10 };
 
-t('비회원은 최신 10편이라도 2장 (로그인이 첫 관문)', () => {
-  const out = ed.shapeGallery(rec('top', RECENT), 'anon', O);
-  assert.strictEqual(out.gallery.length, 2);
-  assert.strictEqual(out.required_tier, 'free', '비회원에게는 가입하라고 말해야 한다');
+/* 표 전체를 한 번에 못박는다. 한 칸이라도 바뀌면 여기서 걸린다. */
+const TABLE = {
+  anon:     { top: 'preview', mid: 'blocked', old: 'blocked' },
+  free:     { top: 'full',    mid: 'preview', old: 'blocked' },
+  standard: { top: 'full',    mid: 'full',    old: 'preview' },
+  premium:  { top: 'full',    mid: 'full',    old: 'full' },
+  admin:    { top: 'full',    mid: 'full',    old: 'full' },
+};
+const PD = { top: RECENT, mid: RECENT, old: OLD };
+const SHOWN = { full: 13, preview: 2, blocked: 0 };
+
+t('등급 × 화보 표가 정확하다 (15칸 전부)', () => {
+  Object.keys(TABLE).forEach((tier) => {
+    Object.keys(TABLE[tier]).forEach((key) => {
+      const want = TABLE[tier][key];
+      const out = ed.shapeGallery(rec(key, PD[key]), tier, O);
+      assert.strictEqual(out.view_state, want, tier + ' × ' + key + ' 가 ' + out.view_state);
+      assert.strictEqual((out.gallery || []).length, SHOWN[want],
+        tier + ' × ' + key + ' 이미지 수');
+    });
+  });
 });
-t('무료 회원은 최신 10편을 전체로 본다', () => {
-  const out = ed.shapeGallery(rec('top', RECENT), 'free', O);
-  assert.strictEqual(out.gallery.length, 13);
-  assert.strictEqual(out.locked, false);
+t('막힌 화보는 이미지를 한 장도 안 내려준다', () => {
+  const out = ed.shapeGallery(rec('old', OLD), 'anon', O);
+  assert.strictEqual((out.gallery || []).length, 0, '한 장이라도 새면 팝업의 의미가 없다');
+  assert.strictEqual(out.locked_reason, 'tier-blocked');
 });
-t('무료 회원도 최신 10편 밖은 2장', () => {
-  const inWin = ed.shapeGallery(rec('mid', RECENT), 'free', O);
-  const outWin = ed.shapeGallery(rec('old', OLD), 'free', O);
-  assert.strictEqual(inWin.gallery.length, 2);
-  assert.strictEqual(inWin.required_tier, 'standard', '6개월 안이면 스탠다드부터');
-  assert.strictEqual(outWin.gallery.length, 2);
-  assert.strictEqual(outWin.required_tier, 'premium', '옛 화보는 프리미엄부터');
+t('바로 다음 단계까지만 맛보여 준다 (두 칸 위는 안 보여준다)', () => {
+  assert.strictEqual(ed.viewState('anon', rec('mid', RECENT), O), 'blocked',
+    '비회원에게 6개월치를 미리 보여주면 가입 이유가 흐려진다');
+  assert.strictEqual(ed.viewState('free', rec('old', OLD), O), 'blocked');
 });
-t('스탠다드는 자기 창 안은 전체, 밖은 2장', () => {
-  assert.strictEqual(ed.shapeGallery(rec('mid', RECENT), 'standard', O).gallery.length, 13);
-  assert.strictEqual(ed.shapeGallery(rec('old', OLD), 'standard', O).gallery.length, 2);
+t('잠긴 화보는 어느 등급이 필요한지 함께 말한다', () => {
+  assert.strictEqual(ed.shapeGallery(rec('top', RECENT), 'anon', O).required_tier, 'free');
+  assert.strictEqual(ed.shapeGallery(rec('mid', RECENT), 'free', O).required_tier, 'standard');
+  assert.strictEqual(ed.shapeGallery(rec('old', OLD), 'standard', O).required_tier, 'premium');
 });
-t('프리미엄·관리자는 전부', () => {
-  for (const tier of ['premium', 'admin']) {
-    assert.strictEqual(ed.shapeGallery(rec('old', OLD), tier, O).gallery.length, 13);
-    assert.strictEqual(ed.shapeGallery(rec('old', OLD), tier, O).locked, false);
-  }
-});
-t('등급표를 두 벌로 만들지 않았다 (canView 하나만 쓴다)', () => {
+t('등급 눈금을 두 벌로 만들지 않았다', () => {
   const src = read('api/_lib/editorialAccess.js');
-  assert.ok(/function galleryLimit\(tier, row, opts\) \{\s*\n\s*return canView\(/.test(src),
-    '이미지용 등급 판정을 따로 만들면 열람 판정과 반드시 어긋난다');
+  assert.ok(/REQUIRED_RANK\[requiredTierFor\(row, opts\)\]/.test(src),
+    '필요 등급 판정은 requiredTierFor 하나만 쓴다');
 });
-t('이미지가 2장 이하인 화보는 잠기지 않는다 (실측 34편)', () => {
-  const out = ed.shapeGallery(rec('e', OLD, ['x.jpg', 'y.jpg']), 'anon', O);
+t('미리보기 단계에서 이미지가 2장 이하면 잠기지 않는다 (실측 34편)', () => {
+  const out = ed.shapeGallery(rec('top', RECENT, ['x.jpg', 'y.jpg']), 'anon', O);
+  assert.strictEqual(out.view_state, 'preview');
   assert.strictEqual(out.locked, false, '잘릴 것이 없는데 패널을 띄우면 거짓말이 된다');
+});
+t('막힌 단계는 2장짜리 화보라도 열지 않는다', () => {
+  const out = ed.shapeGallery(rec('old', OLD, ['x.jpg', 'y.jpg']), 'anon', O);
+  assert.strictEqual(out.locked, true, '장수가 적다고 등급을 건너뛰면 규칙이 무너진다');
+  assert.strictEqual((out.gallery || []).length, 0);
 });
 t('총 장수는 잠겨도 알려준다 (무엇을 놓치는지 보여야 다음 등급으로 갈 이유가 생긴다)', () => {
   assert.strictEqual(ed.shapeGallery(rec('f', OLD), 'anon', O).gallery_count, 13);
@@ -182,6 +203,56 @@ t('SPA 잠금 패널이 미리보기 이미지를 지우지 않는다', () => {
 });
 t('SPA 도 utm 을 붙인다 (SSR 과 같은 이름)', () => {
   assert.ok(/utm_source=editorial_gallery_lock/.test(read('frontend/pap-content-editorial.js')));
+});
+
+console.log('\n=== ⑤ 못 여는 화보 → 팝업 ===');
+const SUB = read('frontend/pap-subscription.js');
+t('클라이언트가 서버와 같은 3단계를 계산한다', () => {
+  assert.ok(/function _papViewState\(d\)/.test(SUB));
+  assert.ok(/have === want - 1\) return 'preview'/.test(SUB), '바로 다음 단계 규칙이 같아야 한다');
+  assert.ok(/free: 1, standard: 2, premium: 3/.test(SUB), '눈금이 서버와 같아야 한다');
+});
+t('클라이언트 판정이 서버 판정과 실제로 일치한다 (돌려서 비교)', () => {
+  // 클라 함수를 떼어내 서버와 같은 입력으로 돌린다. 문자열 검사만으로는
+  // "같은 규칙처럼 보이는 다른 규칙"을 못 잡는다.
+  const fn = SUB.slice(SUB.indexOf('function _papViewState(d)'),
+                       SUB.indexOf('/* 못 여는 화보를 눌렀을 때'));
+  const make = (tier) => new Function('isLoggedIn', 'isStandardOrAbove', 'isPremium', 'localStorage',
+    fn + '; return _papViewState;')(
+      () => tier !== 'anon',
+      () => tier === 'standard' || tier === 'premium',
+      () => tier === 'premium',
+      { getItem: () => 'ko' });
+  ['anon', 'free', 'standard', 'premium'].forEach((tier) => {
+    const client = make(tier);
+    Object.keys(TABLE[tier]).forEach((key) => {
+      const server = ed.viewState(tier, rec(key, PD[key]), O);
+      const got = client({ requiredTier: ed.requiredTierFor(rec(key, PD[key]), O) });
+      assert.strictEqual(got, server, tier + ' × ' + key + ': 클라=' + got + ' 서버=' + server);
+    });
+  });
+});
+t('못 여는 화보를 누르면 상세로 안 가고 팝업이 뜬다', () => {
+  const src = read('frontend/pap-content-editorial.js');
+  const fn = src.slice(src.indexOf('function openEditorial('), src.indexOf('function _renderEditorialVideo'));
+  assert.ok(/_papViewState\(_edMeta\) === 'blocked'/.test(fn), '진입점에서 막지 않으면 빈 상세가 열린다');
+  assert.ok(/_papShowLockedPopup\(/.test(fn));
+  assert.ok(fn.indexOf('return;') > fn.indexOf('_papShowLockedPopup('), '팝업만 띄우고 끝내야 한다');
+});
+t('팝업이 등급별로 다른 말을 하고 가입은 /auth 로 보낸다', () => {
+  assert.ok(/가입하면 볼 수 있습니다/.test(SUB));
+  assert.ok(/STANDARD 멤버부터 볼 수 있습니다/.test(SUB));
+  assert.ok(/PREMIUM 멤버부터 볼 수 있습니다/.test(SUB));
+  assert.ok(/\/auth\?utm_source=editorial_locked_popup/.test(SUB), '비회원을 결제 페이지로 보내면 이탈한다');
+  assert.ok(/\/subscribe\?utm_source=editorial_locked_popup/.test(SUB));
+});
+t('팝업을 닫을 수 있다 (가둬두지 않는다)', () => {
+  assert.ok(/papLockedPopupClose/.test(SUB) && /removeChild\(ov\)/.test(SUB));
+});
+t('2장만 보이는 화면에도 다음 단계 유도 문구가 있다', () => {
+  const src = read('frontend/pap-content-editorial.js');
+  assert.ok(/가입하면 전체 이미지를 볼 수 있습니다/.test(src));
+  assert.ok(/최신 에디토리얼 10편은 회원이면 무료입니다/.test(src));
 });
 
 console.log('\n화보 미리보기: ' + pass + '건 통과' + (fail ? ' · ' + fail + '건 실패' : ''));

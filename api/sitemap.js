@@ -38,6 +38,7 @@ const STATIC_PAGES = [
   { path: '/about',       priority: '0.7', changefreq: 'monthly' },
   { path: '/business',    priority: '0.6', changefreq: 'monthly' },
   { path: '/glossary',    priority: '0.6', changefreq: 'monthly' },
+  { path: '/editorial-policy', priority: '0.5', changefreq: 'yearly' },
   // 2026-07-29: pap-studios.com 을 접고 /studio 로 일원화하면서 등재.
   // 그동안 사이트맵에도 내부 링크에도 없어 색인 경로가 아예 없었다.
   { path: '/studio',      priority: '0.7', changefreq: 'monthly' },

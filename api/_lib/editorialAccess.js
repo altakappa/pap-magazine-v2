@@ -33,15 +33,19 @@ const FREE_RECENT_COUNT = Number(process.env.EDITORIAL_FREE_RECENT || 10);
  * 그동안 잠긴 화보는 이미지를 통째로 안 내려줬다(표지 1장). 그런데 실제로는
  * SSR 페이지에 게이트가 없어서 아무도 안 잠겨 있었다 — 비회원도 전부 봤다.
  *
- * 새 규칙은 하나다. **열람 권한이 있으면 이미지 전체, 없으면 앞 2장.**
- *   비회원      모든 화보 2장 (로그인이 첫 관문)
- *   무료 회원   최신 10편은 전체, 그 밖은 2장
- *   스탠다드    현재+직전 2볼륨은 전체, 그 밖은 2장
- *   프리미엄    전부
+ * 새 규칙은 세 단계다 (도메니코 2026-08-27).
+ *   full     자기 등급의 범위 안 → 이미지 전체
+ *   preview  **바로 다음 단계**의 화보 → 앞 2장 + 다음 단계 유도 문구
+ *   blocked  그 너머 → 열리지 않는다. 클릭하면 팝업으로 가입·업그레이드 안내
  *
- * 즉 등급표(canView)는 그대로 두고, '잠긴 상태에서 몇 장을 보여주나'만
- * 0장(표지 1장)에서 앞 2장으로 바꾼 것이다. 무엇을 놓치는지 보여야
- * 다음 등급으로 갈 이유가 생긴다. */
+ *              최신 10편    6개월 안     옛 화보
+ *   비회원     preview      blocked     blocked
+ *   무료 회원  full         preview     blocked
+ *   스탠다드   full         full        preview
+ *   프리미엄   full         full        full
+ *
+ * 왜 '바로 다음 단계'까지만 맛보여 주나: 두 단계 위를 미리 보여주면
+ * 다음 등급으로 갈 이유가 흐려진다. 한 칸 위만 보여야 그 한 칸이 팔린다. */
 const PREVIEW_IMAGES = Number(process.env.EDITORIAL_PREVIEW_IMAGES || 2);
 const STANDARD_VOLUMES_BACK = 2;          // 현재 볼륨 + 직전 N개
 const TIER_RANK = { anon: 0, free: 1, standard: 2, premium: 3, admin: 4 };
@@ -118,13 +122,30 @@ function canView(tier, row, opts) {
   };
 }
 
+/** 화보가 요구하는 등급의 서열. TIER_RANK 와 같은 눈금을 쓴다. */
+const REQUIRED_RANK = { free: 1, standard: 2, premium: 3 };
+
+/**
+ * 이 등급이 이 화보를 어떻게 보는가.
+ * @returns {'full'|'preview'|'blocked'}
+ */
+function viewState(tier, row, opts) {
+  if (tier === 'admin') return 'full';
+  const have = TIER_RANK[tier] != null ? TIER_RANK[tier] : 0;
+  const want = REQUIRED_RANK[requiredTierFor(row, opts)] || 3;
+  if (have >= want) return 'full';
+  if (have === want - 1) return 'preview';
+  return 'blocked';
+}
+
 /**
  * 이 등급이 이 화보의 이미지를 몇 장까지 보는가.
- * 판정은 canView 하나만 쓴다 — 등급표를 두 벌로 만들면 반드시 어긋난다.
  * @returns {number|null} null = 제한 없음(전체)
  */
 function galleryLimit(tier, row, opts) {
-  return canView(tier, row, opts).allowed ? null : PREVIEW_IMAGES;
+  const st = viewState(tier, row, opts);
+  if (st === 'full') return null;
+  return st === 'preview' ? PREVIEW_IMAGES : 0;
 }
 
 /**
@@ -136,18 +157,21 @@ function galleryLimit(tier, row, opts) {
 function shapeGallery(row, tier, opts) {
   if (!row) return row;
   const total = Array.isArray(row.gallery) ? row.gallery.length : 0;
-  const verdict = canView(tier, row, opts);
+  const state = viewState(tier, row, opts);
   const out = Object.assign({}, row);
   out.gallery_count = total;
-  if (verdict.allowed || total <= PREVIEW_IMAGES) {
+  out.view_state = state;
+  if (state === 'full' || (state === 'preview' && total <= PREVIEW_IMAGES)) {
     out.locked = false;
+    if (state !== 'full') out.required_tier = requiredTierFor(row, opts);
     return out;
   }
-  out.gallery = (Array.isArray(row.gallery) ? row.gallery : []).slice(0, PREVIEW_IMAGES);
+  const limit = state === 'preview' ? PREVIEW_IMAGES : 0;
+  out.gallery = (Array.isArray(row.gallery) ? row.gallery : []).slice(0, limit);
   out.locked = true;
-  out.preview_images = PREVIEW_IMAGES;
-  out.required_tier = verdict.requiredTier;
-  out.locked_reason = 'preview-only';
+  out.preview_images = limit;
+  out.required_tier = requiredTierFor(row, opts);
+  out.locked_reason = state === 'preview' ? 'preview-only' : 'tier-blocked';
   return out;
 }
 
@@ -202,7 +226,7 @@ async function latestFreeIds(db, n) {
 
 module.exports = {
   FREE_RECENT_COUNT, STANDARD_VOLUMES_BACK, TIER_RANK, PREVIEW_IMAGES,
-  galleryLimit, shapeGallery,
+  galleryLimit, shapeGallery, viewState, REQUIRED_RANK,
   volumeStart, standardCutoff, ymd, tierOf, canView, stripLocked, latestFreeIds,
   requiredTierFor, slimForPublicList,
 };

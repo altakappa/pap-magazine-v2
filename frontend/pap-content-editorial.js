@@ -304,11 +304,21 @@ function getLogoFolderId(t){if(edLogoFolders[t])return edLogoFolders[t];var tL=t
 // (Interstitial state vars and functions extracted to pap-subscription.js — mission 6.)
 
 function openEditorial(title,thumb){
+  var _edMeta = (typeof edDetails !== 'undefined' && edDetails[title]) || {};
+  /* 못 여는 화보는 상세로 들어가지 않고 그 자리에서 팝업을 띄운다
+     (도메니코 2026-08-27). 빈 상세 화면을 보여주는 것보다 다음 행동을
+     주는 편이 낫다. 판정은 목록이 실어준 required_tier 로 한다 —
+     서버가 다시 검사하므로 화면 판정이 낡아도 새 나가지 않는다. */
+  if(typeof _papViewState === 'function' && typeof _papShowLockedPopup === 'function'){
+    if(_papViewState(_edMeta) === 'blocked'){
+      _papShowLockedPopup((_edMeta && _edMeta.requiredTier) || 'premium', { title: title });
+      return;
+    }
+  }
   // Show interstitial for free users (session limited).
   // 2026-08-21 — 단, 어차피 잠금화면이 뜰 화보에는 붙이지 않는다.
   // '광고 보고 → 못 봄' 은 수익도 전환도 아니고 이탈만 만든다.
-  var _edWillLock = (typeof _papWillLock === 'function')
-    && _papWillLock((typeof edDetails !== 'undefined' && edDetails[title]) || {});
+  var _edWillLock = (typeof _papWillLock === 'function') && _papWillLock(_edMeta);
   if(!_edWillLock && !isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
     showPremiumInterstitial(function(){
       _openEditorialInner(title,thumb);
@@ -1629,9 +1639,11 @@ function _openEditorialInner(title,thumb){
           dst.requiredTier = (_img && _img.required_tier) || (_acc && _acc.required_tier) || 'free';
           dst.galleryCount = Number((_img && _img.total) || full.gallery_count || 0);
           dst.previewCount = Number((_img && _img.shown) || 0);
+          dst.viewState = (_img && _img.state) || '';
         } else {
           dst.locked = false;
           dst.previewCount = 0;
+          dst.viewState = 'full';
         }
         dst.id    = full.id || dst.id || '';
         dst.slug  = full.slug || dst.slug || '';
@@ -2037,21 +2049,24 @@ function _papEdApplyLock(det, gal){
   var total = Number(det.galleryCount || 0);
   var shown = Number(det.previewCount || (det.images ? det.images.length : 0));
   var hidden = Math.max(0, total - shown);
+  /* 서버가 blocked 로 준 화보는 이미지가 0장이다. 직접 URL 로 들어온
+     경우이므로 (목록 클릭은 팝업에서 걸린다) 여기서도 같은 말을 한다. */
+  var blocked = String(det.viewState || '') === 'blocked' || shown === 0;
   var msg, cta, sub, href;
   if(need === 'free'){
     /* 돈을 낼 필요가 없는 사람을 결제 페이지로 보내면 그냥 이탈한다.
        최신 10편은 회원이면 무료이므로 가입으로 보낸다. */
-    msg = '가입하면 전체 이미지를 볼 수 있습니다';
+    msg = blocked ? '가입하면 볼 수 있습니다' : '가입하면 전체 이미지를 볼 수 있습니다';
     sub = '최신 에디토리얼 10편은 회원이면 무료입니다.';
     cta = '가입하고 보기';
     href = '/auth?utm_source=editorial_gallery_lock&utm_medium=web';
   } else if(need === 'standard'){
-    msg = 'STANDARD 멤버부터 전체 이미지를 볼 수 있습니다';
+    msg = blocked ? 'STANDARD 멤버부터 볼 수 있습니다' : 'STANDARD 멤버부터 전체 이미지를 볼 수 있습니다';
     sub = '최신 6개월 화보의 모든 컷과 이미지 다운로드가 열립니다.';
     cta = '멤버십 보기';
     href = '/subscribe?utm_source=editorial_gallery_lock&utm_medium=web';
   } else {
-    msg = 'PREMIUM 멤버부터 전체 이미지를 볼 수 있습니다';
+    msg = blocked ? 'PREMIUM 멤버부터 볼 수 있습니다' : 'PREMIUM 멤버부터 전체 이미지를 볼 수 있습니다';
     sub = '2019년부터의 전체 아카이브가 모든 컷과 함께 열립니다.';
     cta = '멤버십 보기';
     href = '/subscribe?utm_source=editorial_gallery_lock&utm_medium=web';

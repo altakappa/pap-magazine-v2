@@ -238,6 +238,7 @@ module.exports = async function handler(req, res) {
           data: shaped,
           access: { tier, allowed: verdict.allowed, required_tier: verdict.requiredTier, reason: verdict.reason },
           images: {
+            state: shaped.view_state || 'full',      // full | preview | blocked
             shown: Array.isArray(shaped.gallery) ? shaped.gallery.length : 0,
             total: shaped.gallery_count || 0,
             locked: !!shaped.locked,
@@ -250,7 +251,7 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({
           data: edAccess.shapeGallery(data, 'anon'),   // 게이트 고장 시엔 잠그는 쪽으로
           access: { tier: 'anon', allowed: false, required_tier: 'free', reason: 'gate-error' },
-          images: { shown: edAccess.PREVIEW_IMAGES, total: Array.isArray(data.gallery) ? data.gallery.length : 0, locked: true, required_tier: 'free' },
+          images: { state: 'blocked', shown: 0, total: Array.isArray(data.gallery) ? data.gallery.length : 0, locked: true, required_tier: 'free' },
         });
       }
     } catch (err) {

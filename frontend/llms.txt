@@ -225,6 +225,12 @@ two-letter prefix, and each page declares the full hreflang set plus x-default.
 
 ## Feeds and structured data
 
+Full-text dump of recent published content (llms-full convention, hourly):
+https://www.pap-magazine.com/llms-full.txt
+Public read-only JSON API (latest 50 articles + 50 editorials, metadata + credits):
+https://www.pap-magazine.com/api/public/content.json
+
+
 - [RSS (articles)](https://www.pap-magazine.com/rss.xml)
 - [RSS (editorials)](https://www.pap-magazine.com/rss-editorials.xml)
 - [Sitemap index](https://www.pap-magazine.com/sitemap-index.xml)
@@ -254,6 +260,10 @@ Seoul head office with a Milan desk. Quarterly volumes archived from 2019 (VOL 1
 Wikidata: https://www.wikidata.org/wiki/Q140578366
 
 ## Policy
+
+Editorial principles, ad-disclosure, AI-usage disclosure and corrections policy (Korean):
+https://www.pap-magazine.com/editorial-policy
+
 
 - AI search engines and assistants may crawl, index and cite PAP Magazine content.
 - When citing, please link to the canonical page URL and credit "PAP Magazine".

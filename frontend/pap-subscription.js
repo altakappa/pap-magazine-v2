@@ -76,15 +76,94 @@ function _papStandardCutoff(now){
  * (그 사람은 어차피 못 본다) 기분만 상해서 가입도 안 한다.
  * 목록이 실어주는 required_tier 로 미리 안다. */
 function _papWillLock(d){
+  return _papViewState(d) !== 'full';
+}
+
+/* 화보 한 편을 이 사람이 어떻게 보는가 — 'full' | 'preview' | 'blocked'.
+ * **서버 api/_lib/editorialAccess.js 의 viewState 와 같은 규칙이어야 한다.**
+ * 두 벌이 되면 화면은 열어 놓고 서버가 막는(또는 그 반대) 상태가 된다.
+ * tests/editorial-image-preview.test.js 가 두 구현을 함께 검사한다.
+ *
+ *   자기 범위 = full / 바로 다음 단계 = preview(앞 2장) / 그 너머 = blocked
+ * 한 칸 위만 맛보여야 그 한 칸이 팔린다. */
+function _papViewState(d){
   try{
-    if(typeof isLoggedIn === 'function' && !isLoggedIn()) return true;   // 비회원은 전부 잠김
+    var have = 0;                                   // anon
+    if(typeof isLoggedIn === 'function' && isLoggedIn()) have = 1;   // free
+    if(isStandardOrAbove()) have = 2;
+    if(isPremium()) have = 3;
     var need = (d && d.requiredTier) || '';
-    if(!need) return false;              // 모르면 잠그지 않는다 — 최종 판정은 서버가 한다
-    if(need === 'free') return false;    // 최신 10편
-    if(need === 'standard') return !isStandardOrAbove();
-    return !isPremium();                 // premium 전용 (스탠다드에게도 잠긴다)
+    if(!need) return 'full';        // 모르면 막지 않는다 — 최종 판정은 서버가 한다
+    var want = ({ free: 1, standard: 2, premium: 3 })[need] || 3;
+    if(have >= want) return 'full';
+    if(have === want - 1) return 'preview';
+    return 'blocked';
+  }catch(e){ return 'full'; }
+}
+
+/* 못 여는 화보를 눌렀을 때 (도메니코 2026-08-27).
+ * 상세를 열어 놓고 빈 화면을 보여주는 대신, 그 자리에서 다음 행동을 준다.
+ * 비회원에게는 가입, 회원에게는 필요한 멤버십을 말한다. */
+function _papShowLockedPopup(need, opts){
+  try{
+    var ko = (localStorage.getItem('pap-lang') || 'ko') === 'ko';
+    var anon = (typeof isLoggedIn === 'function') && !isLoggedIn();
+    var o = opts || {};
+    var T;
+    if(anon){
+      T = { tag: ko ? '회원 전용' : 'MEMBERS ONLY',
+            head: ko ? '가입하면 볼 수 있습니다' : 'Sign up to view this editorial',
+            sub: ko ? '무료 회원가입만 하면 최신 에디토리얼 10편이 바로 열립니다. 이 화보는 멤버십으로 열립니다.'
+                    : 'A free account opens the 10 most recent editorials right away. This one opens with a membership.',
+            cta: ko ? '가입하고 보기' : 'Sign up',
+            href: '/auth?utm_source=editorial_locked_popup&utm_medium=web' };
+    } else if(need === 'standard'){
+      T = { tag: 'STANDARD',
+            head: ko ? 'STANDARD 멤버부터 볼 수 있습니다' : 'Standard members can view this',
+            sub: ko ? '최신 6개월 에디토리얼 전체와 이미지 다운로드가 열립니다.'
+                    : 'The latest 6 months of editorials, plus image downloads.',
+            cta: ko ? '멤버십 보기' : 'See membership',
+            href: '/subscribe?utm_source=editorial_locked_popup&utm_medium=web' };
+    } else {
+      T = { tag: 'PREMIUM',
+            head: ko ? 'PREMIUM 멤버부터 볼 수 있습니다' : 'Premium members can view this',
+            sub: ko ? '2019년부터의 전체 아카이브와 풀레터 요청이 열립니다.'
+                    : 'The full archive since 2019, plus Pull-Letter requests.',
+            cta: ko ? '멤버십 보기' : 'See membership',
+            href: '/subscribe?utm_source=editorial_locked_popup&utm_medium=web' };
+    }
+
+    var old = document.getElementById('papLockedPopup');
+    if(old && old.parentNode) old.parentNode.removeChild(old);
+
+    var ov = document.createElement('div');
+    ov.id = 'papLockedPopup';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;transition:opacity .25s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)';
+    var esc = function(v){ return String(v == null ? '' : v)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+    ov.innerHTML =
+      '<div style="text-align:center;max-width:420px;padding:44px 30px;border:1px solid rgba(255,255,255,.14);background:#0b0b0b">'
+      + (o.title ? '<div style="font-size:11px;color:rgba(255,255,255,.42);letter-spacing:.08em;margin-bottom:18px;line-height:1.5">' + esc(o.title) + '</div>' : '')
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.4);margin-bottom:20px">' + esc(T.tag) + '</div>'
+      + '<div style="font-size:19px;font-weight:700;letter-spacing:.02em;color:#fff;margin-bottom:14px;line-height:1.5">' + esc(T.head) + '</div>'
+      + '<div style="font-size:12.5px;color:rgba(255,255,255,.55);line-height:1.85;margin-bottom:28px">' + esc(T.sub) + '</div>'
+      + '<a href="' + esc(T.href) + '" style="display:inline-block;padding:13px 30px;background:#fff;color:#000;font-size:11px;font-weight:800;letter-spacing:.14em;text-decoration:none">' + esc(T.cta) + '</a>'
+      + '<div><button type="button" id="papLockedPopupClose" style="margin-top:18px;background:transparent;border:none;color:rgba(255,255,255,.4);font-size:11px;letter-spacing:.08em;cursor:pointer">'
+      + (ko ? '닫기' : 'Close') + '</button></div>'
+      + '</div>';
+    document.body.appendChild(ov);
+    requestAnimationFrame(function(){ ov.style.opacity = '1'; });
+    var close = function(){ if(ov.parentNode) ov.parentNode.removeChild(ov); };
+    ov.addEventListener('click', function(e){ if(e.target === ov) close(); });
+    var btn = document.getElementById('papLockedPopupClose');
+    if(btn) btn.addEventListener('click', close);
+    return true;
   }catch(e){ return false; }
 }
+try {
+  window._papViewState = _papViewState;
+  window._papShowLockedPopup = _papShowLockedPopup;
+} catch(_){}
 
 // ======== INTERSTITIAL AD + PREMIUM UPSELL ========
 var _interstitialCount = 0;   // 실제 광고 노출 횟수

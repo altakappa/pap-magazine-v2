@@ -133,7 +133,19 @@ t('잠길 화보에는 광고를 붙이지 않는다', () => {
 });
 
 t('비회원은 항상 잠김으로 본다 (광고 대신 가입 안내)', () => {
-  assert.ok(/!isLoggedIn\(\)\) return true/.test(SUBJS), '비회원 판정이 없다');
+  /* 2026-08-27 — 판정이 2단계(_papWillLock)에서 3단계(_papViewState)로 바뀌었다.
+     비회원은 어떤 화보에서도 full 이 될 수 없어야 한다. 구현 문자열이 아니라
+     그 사실을 검사한다. */
+  const fn = SUBJS.slice(SUBJS.indexOf('function _papViewState(d)'),
+                         SUBJS.indexOf('/* 못 여는 화보를 눌렀을 때'));
+  assert.ok(fn, '_papViewState 가 없다');
+  const anon = new Function('isLoggedIn', 'isStandardOrAbove', 'isPremium', 'localStorage',
+    fn + '; return _papViewState;')(() => false, () => false, () => false, { getItem: () => 'ko' });
+  ['free', 'standard', 'premium'].forEach((need) => {
+    assert.notStrictEqual(anon({ requiredTier: need }), 'full', need + ' 화보가 비회원에게 열린다');
+  });
+  assert.ok(/_papWillLock\(d\)\{\s*\n?\s*return _papViewState\(d\) !== 'full'/.test(SUBJS.replace(/\r/g, '')),
+    '광고 판정이 열람 판정과 갈라졌다');
 });
 
 t('목록의 required_tier 가 카탈로그까지 전달된다', () => {
