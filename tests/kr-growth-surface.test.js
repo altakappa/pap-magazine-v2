@@ -1031,6 +1031,13 @@ console.log('\n[20] 언어별 진입 페이지 /ja · /en');
         && (v.redirects||[]).some((r)=>r.source==='/instagram-magazine.html');
   })());
   t('최상급 표현이 없다 (비교 근거는 실측 수치만)', !/국내 최고|최대 규모|1위 매체/.test(im));
+  // 2026-08-27 (도메니코 지시) — 성장·광고 성과 정량 섹션. 카테고리 성장 서사에
+  // PAP 실측 수치를 함께 실어 광고주 메리트를 숫자로 말한다. 전부 기실측·기공개 수치.
+  t('성장·광고 성과 정량 섹션이 있다', /성장과 광고 성과/.test(im) && /686만/.test(im) && /93,429/.test(im));
+  t('광고 효과 FAQ 가 화면·JSON-LD 양쪽에 있다',
+    (im.match(/인스타그램 매거진 광고는 효과가 있나요\?/g) || []).length >= 2);
+  t('ko 광고 표면은 원화만 (3원칙 ②)', /250만 원/.test(im) && /150만 원/.test(im) && !/EUR|€/.test(im));
+  t('해외 비중 신호 미노출 (3원칙 ①)', !/93% international|해외 비중|international audience/.test(im));
 }
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
