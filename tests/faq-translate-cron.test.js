@@ -61,14 +61,21 @@ console.log('\n[2] 프롬프트 배선');
   ok('article src 가 __faq 를 싣는다', /faq: a\.__faq \|\| undefined/.test(src));
   ok('배치 프롬프트에 faq 번역 규칙', /If an input has "faq"/.test(src) && /same length, same order, no new items/.test(src));
   ok('출력 shape 에 faq 포함', /"faq":\[\{"q":"\.\.\.","a":"\.\.\."\}\]/.test(src));
-  ok('프롬프트 직전에 attachFaqs 호출', /if \(cfg\.translateBody\) await attachFaqs\(items\);/.test(src));
+  /* 2026-08-27 — 화보 FAQ 가 생기면서 attachFaqs 가 kind 무관이 됐다.
+     지키려는 것은 '프롬프트 직전에 원문 FAQ 를 붙인다'이지 기사 전용이 아니다. */
+  ok('프롬프트 직전에 attachFaqs 호출 (kind 무관)',
+    /await attachFaqs\(items, cfg\);/.test(src));
 }
 
 console.log('\n[3] 저장 안전장치');
 {
   ok('저장 전 normalizeFaq 재검증', /const trFaq = normalizeFaq\(t\.faq\);/.test(src));
   ok('유효할 때만 faq 컬럼 포함 (null 덮어쓰기 금지)', /if \(trFaq\) upPayload\.faq = trFaq;/.test(src));
-  ok('editorial 경로는 faq 를 저장하지 않는다', /if \(cfg\.translateBody\) \{\s*\n\s*const trFaq = normalizeFaq/.test(src));
+  /* 2026-08-27 정책 변경 — 화보에도 FAQ 가 생겼으므로 editorial 경로도 저장한다.
+     대신 '유효할 때만 저장'(바로 위 검사)이 null 덮어쓰기를 계속 막는다.
+     화보 FAQ 언어판 배선 전체는 editorial-faq-i18n 이 지킨다. */
+  ok('editorial src 도 __faq 를 싣는다 (화보 FAQ 언어판)',
+    /faq: e\.__faq \|\| undefined/.test(src));
 }
 
 console.log('\n[4] 실패 격리');

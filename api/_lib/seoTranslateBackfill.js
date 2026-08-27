@@ -129,6 +129,10 @@ const KINDS = {
       title: e.title,
       title_en: e.title_en || null,
       description: String(e.description_en || e.description || '').slice(0, EDITORIAL_SRC_MAX),
+      /* 2026-08-27 — 화보 FAQ 도 함께 번역한다. 화보 FAQ 는 8/27 에 생겼는데
+         (editorials.faq) 번역 경로가 기사 전용이라 ko 판에만 뜨고 8개 언어판
+         페이지에는 FAQ 가 통째로 비어 있었다 — GEO 표면의 절반이 빈 셈. */
+      faq: e.__faq || undefined,
     }),
     /* 번역할 원본이 실제로 있는가. 없으면 호출해봐야 빈 값만 저장되고
        그 행이 다시 '완료' 로 잡혀 영구 제외된다 — 그게 지금 상태다.
@@ -144,6 +148,8 @@ const KINDS = {
     fromQueueRow: (r) => ({
       id: r.id, title: r.title, title_en: r.title_en,
       description: r.src, description_en: r.src, description_it: r.extra,
+      /* 큐 RPC 는 화보 faq 를 돌려주지 않는다 → undefined 로 남겨 attachFaqs 가
+         editorials 에서 배치로 붙이게 한다 (기사는 RPC 가 실어 준다). */
     }),
   },
   article: {
@@ -760,7 +766,8 @@ function normalizeFaq(f) {
   }
   return out.length ? out : null;
 }
-async function attachFaqs(items) {
+async function attachFaqs(items, cfg) {
+  const table = (cfg && cfg.table) || 'articles';
   const need = items.filter(it => it && it.__faq === undefined);
   if (!need.length) return;
   /* 행이 faq 를 이미 들고 있으면(폴백 경로의 articles select) 그걸 쓴다.
@@ -774,7 +781,7 @@ async function attachFaqs(items) {
   if (!unknown.length) return;
   try {
     const { data } = await supabaseAdmin
-      .from('articles').select('id, faq')
+      .from(table).select('id, faq')
       .in('id', unknown.map(it => it.id));
     const map = new Map((data || []).map(r => [r.id, normalizeFaq(r.faq)]));
     for (const it of unknown) it.__faq = map.get(it.id) || null;
@@ -801,7 +808,8 @@ function buildBatchPrompt(items, cfg, lang) {
       `Rules:\n` +
       styleRules(lang) +
       `- The description must read like native ${LANG_NAMES[lang]} fashion-editorial copy — elegant, concise, no literal machine translation.\n` +
-      `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","description":"..."}. No prose, no code fences.\n` +
+      `- If an input has "faq" (array of {"q","a"}), translate every q and a into ${LANG_NAMES[lang]} and include "faq" in your output object — same length, same order, no new items. Keep person names, brand names and handles in their original spelling. If an input has no "faq", omit the key.\n` +
+      `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","description":"...","faq":[{"q":"...","a":"..."}]}. No prose, no code fences.\n` +
       `- Inside JSON strings, escape every double quote as \\". Prefer the target language's own quotation marks in the text.\n` +
       `Input JSON:\n` + JSON.stringify(src);
 }
@@ -1015,8 +1023,9 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
     const queue = pending.filter(e => !failedIds.has(e.id));
     const items = pickItems(queue, size - processed, cfg);
     if (!items.length) break;
-    /* 2026-08-17 — 기사면 FAQ 원문을 붙인다 (큐 RPC 행에는 없다). */
-    if (cfg.translateBody) await attachFaqs(items);
+    /* 2026-08-17 — FAQ 원문을 붙인다 (큐 RPC 행에는 없다).
+       2026-08-27 — 화보도 대상. 화보 FAQ 가 ko 에만 뜨던 구멍을 막는다. */
+    await attachFaqs(items, cfg);
 
     /* 배치 호출 한 번 쓸 시간이 없으면 여기서 접는다. */
     if (!canCall(deadlineAt, timeoutMs)) { ranOut = true; break; }
@@ -1119,7 +1128,7 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
       /* 2026-08-17 — 번역 FAQ. normalizeFaq 를 다시 통과시켜 모델이 형태를
          어긴 응답(문자열·초과 항목·빈 q/a)을 걸러낸다. 유효할 때만 컬럼을
          포함한다 — null 로 덮어써서 수동 시드분을 지우는 사고 방지. */
-      if (cfg.translateBody) {
+      {
         const trFaq = normalizeFaq(t.faq);
         if (trFaq) upPayload.faq = trFaq;
       }
