@@ -923,6 +923,8 @@ function renderSeoHtml(kind, record, opts) {
       niche: (nm) => `${nm.topic} 소식은 <b>@${nm.acct}</b>에서,<br>PAP의 화보와 매거진 전체는 <b>@pap_magazine</b>에서 편하게 보실 수 있습니다.`,
       main: 'PAP의 화보와 필름, 패션·셀럽 소식을<br><b>인스타그램</b>에서 편하게 만나보세요.',
       topPost: '인스타그램에서 기사 확인하기',
+      // 화보는 '기사'가 아니다. 같은 자리에 다른 말이 나가야 한다 (도메니코 2026-08-27)
+      topPostEditorial: '인스타그램에서 에디토리얼 확인하기',
       topProfile: 'PAP 인스타그램 팔로우',
       pin: 'Pinterest에 저장',
       sub: '전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼 · <a href="' + SITE + '/network" style="color:inherit">PAP 인스타그램 네트워크 →</a>',
@@ -1989,9 +1991,13 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
       const href = bucketPost
         ? `/api/ig-out?src=ssr_top&to=post&url=${encodeURIComponent(igUrl.split('?')[0])}`
         : `/api/ig-out?src=ssr_top&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F`;
+      // 화보/기사에 따라 문구가 갈린다. 없는 언어는 topPost 로 폴백한다.
+      const topLabel = bucketPost
+        ? ((kind === 'editorial' && FT.topPostEditorial) || FT.topPost)
+        : FT.topProfile;
       return `<a class="ig-top" href="${href}" target="_blank" rel="noopener">
       <span class="ig-top-mark" aria-hidden="true">◎</span>
-      <span class="ig-top-txt">${escText(bucketPost ? FT.topPost : FT.topProfile)}</span>
+      <span class="ig-top-txt">${escText(topLabel)}</span>
       <span class="ig-top-go" aria-hidden="true">↗</span>
     </a>`;
     })()}

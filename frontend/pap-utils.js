@@ -427,7 +427,7 @@ function papIgTopHtml(igUrl, opts){
   var lang = 'ko';
   try { lang = localStorage.getItem('pap-lang') || 'ko'; } catch(_){}
   var T = {
-    ko: { post: '인스타그램에서 기사 확인하기', prof: 'PAP 인스타그램 팔로우' },
+    ko: { post: '인스타그램에서 기사 확인하기', postEd: '인스타그램에서 에디토리얼 확인하기', prof: 'PAP 인스타그램 팔로우' },
     ja: { post: 'この記事のInstagram原文を見る',   prof: 'PAPのInstagramをフォロー' },
     zh: { post: '查看 Instagram 原帖',            prof: '关注 PAP Instagram' },
     it: { post: 'Guarda il post originale su Instagram', prof: 'Segui PAP su Instagram' },
@@ -438,7 +438,10 @@ function papIgTopHtml(igUrl, opts){
     en: { post: 'See the original post on Instagram',    prof: 'Follow PAP on Instagram' }
   };
   var t = T[lang] || T.en;
-  var label = bucketPost ? t.post : t.prof;
+  /* 화보는 '기사'가 아니다 — kind 가 editorial 이면 화보 문구를 쓴다.
+     해당 언어에 화보 문구가 없으면 기사 문구로 폴백한다 (SSR 과 같은 규칙). */
+  var isEd = !!(opts && opts.kind === 'editorial');
+  var label = bucketPost ? ((isEd && t.postEd) || t.post) : t.prof;
   /* 인라인 스타일로 그린다 — pap-styles.css 는 SSR 에서 늦게 오고(preload→onload),
      이 줄은 첫 화면에 보여야 한다. SSR 쪽 .ig-top 과 같은 모양을 맞춘 값이다. */
   return '<a href="' + href + '" target="_blank" rel="noopener" class="ig-top" '

@@ -1748,7 +1748,7 @@ function _openEditorialInner(title,thumb){
   try {
     var _igTopEd = document.getElementById('edDetailIgTop');
     if (_igTopEd && typeof window.papIgTopHtml === 'function') {
-      _igTopEd.innerHTML = window.papIgTopHtml(det && det.ig, { src: 'spa_top' });
+      _igTopEd.innerHTML = window.papIgTopHtml(det && det.ig, { src: 'spa_top', kind: 'editorial' });
     }
   } catch(_){}
   // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).
@@ -2083,7 +2083,7 @@ function _openEditorialInner_noPush(title,thumb){
   try {
     var _igTopEd = document.getElementById('edDetailIgTop');
     if (_igTopEd && typeof window.papIgTopHtml === 'function') {
-      _igTopEd.innerHTML = window.papIgTopHtml(det && det.ig, { src: 'spa_top' });
+      _igTopEd.innerHTML = window.papIgTopHtml(det && det.ig, { src: 'spa_top', kind: 'editorial' });
     }
   } catch(_){}
   // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).
