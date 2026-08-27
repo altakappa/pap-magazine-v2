@@ -14,8 +14,11 @@
  *   ③ 크롭 창이 인물 쪽으로 이동한다 (가운데 고정이면 가장자리 인물이 날아간다)
  *   ④ EXIF 회전을 반영한다 (세로 사진을 가로로 오판하면 엉뚱하게 자른다)
  *   ⑤ 실패해도 **원본을 돌려준다** — 사진이 사라지는 것보다 낫다
- *   ⑥ 많이 잘린 컷은 번호로 지목한다 ← attention 은 얼굴 인식이 아니다.
- *      "안 잘린다"고 장담하는 대신 사람이 봐야 할 컷을 알린다.
+ *   ⑥ **잘려나간 자리에 사람이 있으면 그 슬라이드를 뺀다** (2026-08-26 2차)
+ *      도메니코: "좌우가 잘리더라도 캐러셀에 맞는 비율로. 다만 인물이 잘릴경우에는
+ *      그냥 안쓸게." 처음엔 경고만 하고 실었는데, 빼는 것으로 바꿨다.
+ *      판정은 크롭 후 **버려진 띠의 살색 비율**로 한다 — attention 은 한 덩어리로만
+ *      창을 옮기므로, 좌우 양끝에 두 사람이 있으면 안쪽만 봐서는 절대 모른다.
  */
 'use strict';
 
@@ -138,17 +141,55 @@ async function skinShare(buf) {
   t('celebThumb 도 같은 숫자를 쓴다',
     /W: 1080, H: 1350/.test(THUMB) && /W: 1080, H: 1920/.test(THUMB));
 
-  console.log('\n[8] 배선 — 브리프와 실제 게시가 같은 그림이어야 한다');
+  console.log('\n[8] 잘려나간 자리에 사람이 있으면 뺀다  ← 2026-08-26 2차 지시');
+  /* attention 은 창을 **한 덩어리**로만 옮긴다. 좌우 양끝에 두 사람이 서 있으면
+     한쪽은 반드시 버려지는데, 창 안쪽만 봐서는 그걸 절대 알 수 없다. */
+  const twoEnds = await makePhoto(1920, 1080, { x: 30, y: 140, w: 340, h: 800 });
+  const twoEndsBoth = await sharp(twoEnds).composite([{
+    input: await sharp({ create: { width: 340, height: 800, channels: 3, background: { r: 232, g: 180, b: 148 } } }).jpeg().toBuffer(),
+    left: 1550, top: 140,
+  }]).jpeg({ quality: 95 }).toBuffer();
+  const rTwo = await sc.cropSlideToVariant(twoEndsBoth, 'feed');
+  t('양끝에 인물 둘 → 한쪽이 잘리므로 뺀다', rTwo.drop === true, rTwo.skin);
+  t('뺀 이유가 남는다', /인물로 보이는/.test(rTwo.reason || ''), rTwo.reason);
+
+  const midOnly = await makePhoto(1920, 1080, { x: 790, y: 140, w: 340, h: 800 });
+  t('가운데 인물 하나면 안 뺀다', (await sc.cropSlideToVariant(midOnly, 'feed')).drop === false);
+  const edgeOnly = await makePhoto(1920, 1080, { x: 30, y: 140, w: 340, h: 800 });
+  t('한쪽 끝 인물 하나는 attention 이 살리므로 안 뺀다',
+    (await sc.cropSlideToVariant(edgeOnly, 'feed')).drop === false);
+  t('인물이 없으면 안 뺀다', (await sc.cropSlideToVariant(wide, 'feed')).drop === false);
+  t('자르지 않은 사진은 검사 자체를 안 한다', rSame.drop === false && rSame.skin === null);
+  t('깨진 버퍼는 안 뺀다 (못 본 것을 근거로 버리지 않는다)', rJunk.drop === false);
+  t('경계값이 1%', sc.CUT_SUBJECT_SKIN === 0.01);
+  /* 못 읽은 띠를 "사람이 있다"로 세면 멀쩡한 사진이 무더기로 사라진다.
+     띠 하나가 실패해도 나머지로 판단하고, 전부 실패하면 안 뺀다. */
+  t('띠를 못 읽어도 잘렸다고 하지 않는다',
+    (await sc.findCutSubject(sharp, junk, 1920, 1080, sc.TARGETS.feed, -660, 0)).cut === false);
+  t('그때 살색은 0 으로 본다',
+    (await sc.findCutSubject(sharp, junk, 1920, 1080, sc.TARGETS.feed, -660, 0)).skin === 0);
+  t('잘린 자리가 없으면(같은 비율) 검사할 띠도 없다',
+    (await sc.findCutSubject(sharp, already, 1080, 1350, sc.TARGETS.feed, 0, 0)).cut === false);
+
+  console.log('\n[9] 살색 판정은 색 규칙이다 (얼굴 인식이 아니다)');
+  t('살색을 잡는다', sc.isSkinPixel(232, 180, 148) === true);
+  t('어두운 배경은 아니다', sc.isSkinPixel(20, 20, 22) === false);
+  t('흰색은 아니다 (채도 없음)', sc.isSkinPixel(250, 250, 250) === false);
+  t('파랑은 아니다', sc.isSkinPixel(40, 90, 200) === false);
+
+  console.log('\n[10] 배선 — 브리프와 실제 게시가 같은 그림이어야 한다');
   t('브리프 조립에서 자른다', /slideCrop\.cropSlideToVariant\(f\.buffer, variant\)/.test(CRON));
+  t('브리프에서 인물 잘린 장을 뺀다', /if \(c\.drop\) \{ droppedCut\+\+; continue; \}/.test(CRON));
   t('게시 업로드에서도 자른다', /cropSlideToVariant\(b, pub\.variant\)/.test(CRON));
+  t('게시에서도 같은 장을 뺀다 (규칙이 한쪽에만 있으면 갈린다)',
+    /if \(cropped\.drop\) continue;/.test(CRON));
   t('게시가 자른 결과를 올린다 (원본 b 를 올리지 않는다)',
     /uploadPublic\(cropped\.buffer,/.test(CRON) && !/uploadPublic\(b, base/.test(CRON));
-  t('많이 잘린 컷 번호를 모은다', /severeSlides\.push\(media\.length \+ 1\)/.test(CRON));
-  t('경고가 **캡션**에 실린다 (크론 노트만으로는 도메니코가 못 본다)',
-    /severeSlides\.length[\s\S]{0,200}인물이 잘리지 않았는지/.test(CRON));
-  t('크론 노트에도 남는다', /많이 잘린 컷/.test(CRON));
+  t('뺀 장수를 **캡션**에 적는다 (조용히 사라지면 왜 3장뿐인지 모른다)',
+    /droppedCut[\s\S]{0,160}인물이 잘려서 뺐습니다/.test(CRON));
+  t('크론 노트에도 남는다', /인물이 잘려 ' \+ droppedCut/.test(CRON));
   t('영상은 자르지 않는다 (Vercel 에 ffmpeg 가 없다 — 사진만 대상)',
-    /if \(f\.type !== 'video'\)[\s\S]{0,400}cropSlideToVariant/.test(CRON));
+    /if \(f\.type !== 'video'\)[\s\S]{0,600}cropSlideToVariant/.test(CRON));
 
   console.log('\n' + (fail ? '✗' : '✓') + ' slide-crop: ' + pass + ' passed / ' + fail + ' failed');
   process.exit(fail ? 1 : 0);

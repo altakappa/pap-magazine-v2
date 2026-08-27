@@ -274,6 +274,9 @@ async function runPublish(row, res, dry) {
           /* 브리프에서 본 것과 **같은 그림**이 올라가야 한다. 여기서 자르지 않으면
              텔레그램에서 확인한 비율과 실제 게시물이 갈린다. */
           const cropped = await require('../_lib/slideCrop').cropSlideToVariant(b, pub.variant);
+          /* 브리프에서 뺀 장은 게시에서도 빠져야 한다. 규칙이 한쪽에만 있으면
+             텔레그램에서 확인한 캐러셀과 실제 게시물이 갈린다. */
+          if (cropped.drop) continue;
           urls.push(await igPublish.uploadPublic(cropped.buffer, base + '/' + (i + 1) + '.jpg', 'image/jpeg'));
         } catch (e) {
           console.warn('[celeb-brief] 게시용 이미지 건너뜀:', (e && e.message) || e);
@@ -456,12 +459,15 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
 
        버리지 않고 상태로 남긴다 — 게이트가 과하게 잡는지 나중에 셀 수 있어야
        한다. 텔레그램에는 아무것도 보내지 않는다(조용해지는 게 목적이다). */
-    const gate = celebBrief.celebGate(gen.entities);
+    /* 2026-08-26 (2차) — 인물 유무에 **주제**를 더한다. 도메니코: "제발 셀럽소식만.
+       셀럽이 매거진에 실린소식은 안알려줘도돼. 챌린지도 알려줄필요없어." */
+    const gate = celebBrief.briefGate(gen);
     if (!gate.pass) {
       await supabaseAdmin.from('celeb_brief_queue').update({
         status: 'skipped_no_celeb', processed_at: new Date().toISOString(),
         error: gate.reason,
-        result: { title: gen.title_ko || gen.title, entities: gen.entities, skipped: gate.reason },
+        result: { title: gen.title_ko || gen.title, entities: gen.entities,
+          brief_topic: gen.brief_topic || null, skipped: gate.reason },
       }).in('id', ids);
       return res.status(200).json({
         ok: true, skipped: 'no_celeb', title: gen.title_ko,
@@ -574,12 +580,17 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
        _lib/slideCrop.js 머리말에 적었다 — 많이 잘린 컷은 번호로 지목한다. */
     const slideCrop = require('../_lib/slideCrop');
     let croppedCount = 0;
-    const severeSlides = [];      // 원본의 60% 미만만 남은 컷 = 사람이 봐야 하는 컷
+    /* 2026-08-26 (2차) 도메니코: "좌우가 잘리더라도 캐러셀에 맞는 비율로 만들어줘야
+       해. 다만 인물이 잘릴경우에는 그냥 안쓸게."
+       → 좌우가 많이 잘리는 것 자체는 이제 경고하지 않는다. 대신 **잘려나간
+       자리에 사람이 있으면 그 슬라이드를 뺀다**(slideCrop.findCutSubject).
+       뺀 건 반드시 숫자로 알린다 — 조용히 사라지면 왜 3장뿐인지 알 수 없다. */
+    let droppedCut = 0;
     for (const f of fetched) {
       if (f.type !== 'video') {
         const c = await slideCrop.cropSlideToVariant(f.buffer, variant);
+        if (c.drop) { droppedCut++; continue; }            // 인물이 잘렸다 — 쓰지 않는다
         if (c.changed) croppedCount++;
-        if (c.severe) severeSlides.push(media.length + 1);   // 커버가 1번
         media.push({ kind: 'photo', buffer: c.buffer });
         continue;
       }
@@ -607,12 +618,8 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     /* 자른 결과를 숨기지 않는다. 특히 많이 잘린 컷은 **번호로** 알린다 —
        attention 은 휴리스틱이라 단체 사진에서 누군가를 놓칠 수 있다.
        "인물이 안 잘렸다"고 장담하는 대신 위험한 컷을 지목한다. */
-    const cropNote = croppedCount
-      ? (' · 사진 ' + croppedCount + '장 ' + variant + ' 비율로 자름'
-         + (severeSlides.length
-            ? (' ⚠️많이 잘린 컷 ' + severeSlides.join('·') + '번 — 인물 확인 필요')
-            : ''))
-      : '';
+    const cropNote = (croppedCount ? (' · 사진 ' + croppedCount + '장 ' + variant + ' 비율로 자름') : '')
+      + (droppedCut ? (' · 인물이 잘려 ' + droppedCut + '장 제외') : '');
     const sizeNote = videoSizes.length
       ? (' · 영상 ' + videoSizes.map((d) => d.width + 'x' + d.height).join(', ')
          + ' · 커버 ' + variant
@@ -645,10 +652,10 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     if (!tg.isConfigured()) return await fail('TELEGRAM_BOT_TOKEN/CHAT_ID 미설정');
     const capWithNote = caption
       + (tooBig ? ('\n\n※ 용량이 커서 영상 ' + tooBig + '건은 뺐습니다(45MB 초과).') : '')
-      /* 많이 잘린 컷은 캡션에 적어 텔레그램에서 바로 보이게 한다. 크론 노트에만
-         적으면 도메니코가 못 본다 — 확인해야 할 사람이 볼 자리에 둔다. */
-      + (severeSlides.length
-         ? ('\n\n⚠️ ' + severeSlides.join('·') + '번 사진은 가로형이라 많이 잘렸습니다. 인물이 잘리지 않았는지 확인해 주세요.')
+      /* 뺀 장수는 캡션에 적어 텔레그램에서 바로 보이게 한다. 크론 노트에만 적으면
+         도메니코가 못 본다 — 왜 원본보다 장수가 적은지 볼 자리에 둬야 한다. */
+      + (droppedCut
+         ? ('\n\n※ 가로 사진 ' + droppedCut + '장은 비율을 맞추면 인물이 잘려서 뺐습니다.')
          : '');
     const split = celebBrief.splitCaptionForTelegram(capWithNote);
     await tg.sendMediaToTelegram(media, split.caption, rows[0].chat_id);

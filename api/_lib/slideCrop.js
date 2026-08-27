@@ -14,6 +14,11 @@
  * 여기서 하는 일: 모든 사진을 **선택된 판형과 같은 비율로** 채워 자른다
  * (fit:'cover' — 여백을 두지 않고 확대해서 채운다).
  *
+ * 2026-08-26 (2차) — 도메니코: "가로 이미지는 좌우가 잘리더라도 캐러셀에 맞는
+ * 비율로 만들어줘야해. 다만 인물이 잘릴경우에는 그냥 안쓸게."
+ *   → 경고만 하고 싣던 것을 **버리는** 것으로 바꾼다. 잘려나간 자리에 사람이
+ *     있으면 그 슬라이드는 캐러셀에서 뺀다. 판정 방법은 findCutSubject 참고.
+ *
  * 인물 보호 — 할 수 있는 것과 못 하는 것을 구분해 적는다 ──────────────
  * sharp 의 `strategy.attention` 은 휘도 변화·채도·**피부톤**이 몰린 영역으로
  * 크롭 창을 옮긴다. 얼굴 인식이 아니라 휴리스틱이다. 대부분의 인물 사진에서
@@ -64,6 +69,87 @@ function targetRatio(variant) {
   return T.W / T.H;
 }
 
+/* 잘려나간 자리에 사람이 있었나 (2026-08-26) ──────────────────────────
+   도메니코: "인물이 잘릴경우에는 그냥 안쓸게."
+
+   얼굴 인식은 못 한다(Vercel 에 모델이 없다). 대신 **버려진 픽셀을 직접 본다.**
+   sharp 가 크롭 후 info.cropOffsetLeft/Top 을 준다 — 어디를 잘랐는지 알 수 있다.
+   그 바깥 띠에서 살색 픽셀 비율을 재고, 일정 이상이면 "사람이 잘렸다"고 본다.
+
+   왜 이 방식인가: attention 은 **한 덩어리**로만 창을 옮긴다. 좌우 양끝에 두
+   사람이 서 있으면 한쪽은 반드시 버려지는데, 창 안쪽만 봐서는 그걸 절대 모른다.
+   버린 쪽을 봐야 안다.
+
+   한계는 명확히 적는다 — 살색 판정은 색 규칙이라 나무·모래·베이지 옷·조명에도
+   걸린다. 즉 **멀쩡한 사진을 빼는 쪽으로 틀린다.** 반대(사람이 잘렸는데 통과)
+   보다 이쪽이 낫다는 게 도메니코의 결정이다("그냥 안쓸게").
+   빼는 이유는 항상 이름을 대서 알린다 — 조용히 사라지면 왜 3장뿐인지 모른다. */
+
+/** 흔한 RGB 살색 규칙. 얼굴 인식이 아니라 색 필터다. */
+function isSkinPixel(rr, gg, bb) {
+  const mx = Math.max(rr, gg, bb), mn = Math.min(rr, gg, bb);
+  return rr > 95 && gg > 40 && bb > 20 && (mx - mn) > 15
+    && Math.abs(rr - gg) > 15 && rr > gg && rr > bb;
+}
+
+/* 버려진 띠에서 살색이 이 비율을 넘으면 사람이 잘렸다고 본다.
+   1% 는 1080x1350 기준 약 14,600 픽셀 — 얼굴 하나가 충분히 들어간다. */
+const CUT_SUBJECT_SKIN = 0.01;
+/* 띠가 이보다 얇으면 보지 않는다 (반올림 오차로 1~2px 이 남는 경우). */
+const MIN_STRIP_PX = 8;
+
+async function _skinShare(sharp, buf, left, top, width, height) {
+  if (width < MIN_STRIP_PX || height < MIN_STRIP_PX) return 0;
+  const { data, info } = await sharp(buf, { failOn: 'none' })
+    .rotate()
+    .extract({ left: Math.round(left), top: Math.round(top), width: Math.round(width), height: Math.round(height) })
+    .resize(48, 48, { fit: 'fill' })
+    .removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  let hit = 0, n = 0;
+  for (let i = 0; i + 2 < data.length; i += info.channels) {
+    n++;
+    if (isSkinPixel(data[i], data[i + 1], data[i + 2])) hit++;
+  }
+  return n ? hit / n : 0;
+}
+
+/**
+ * 크롭에서 **버려진 자리**에 사람이 있었는지 본다.
+ * @returns {Promise<{cut:boolean, skin:number}>} skin 은 버려진 띠의 최대 살색 비율
+ */
+async function findCutSubject(sharp, buffer, srcW, srcH, T, cropOffsetLeft, cropOffsetTop) {
+  const scale = Math.max(T.W / srcW, T.H / srcH);
+  /* sharp 의 cropOffsetLeft/Top 은 **음수**다 (2026-08-26 실측: 1920x1080 을
+     4:5 로 자를 때 -660). 이미지에 적용한 이동량이라 잘라낸 시작점은 그 부호를
+     뒤집은 값이다. 그대로 쓰면 유지 구간이 음수로 나오고, 실제로 남은 사람을
+     "잘렸다"고 오판한다 — 처음 짤 때 이걸로 틀렸다.
+     또 확대된 좌표계이므로 scale 로 나눠 원본 좌표로 되돌린다. */
+  const keepL = Math.abs(cropOffsetLeft || 0) / scale;
+  const keepT = Math.abs(cropOffsetTop || 0) / scale;
+  const keepW = T.W / scale;
+  const keepH = T.H / scale;
+
+  const strips = [];
+  if (keepW < srcW - MIN_STRIP_PX) {                     // 좌우가 잘렸다
+    strips.push([0, 0, keepL, srcH]);                    // 왼쪽 버린 띠
+    strips.push([keepL + keepW, 0, srcW - (keepL + keepW), srcH]);   // 오른쪽 버린 띠
+  }
+  if (keepH < srcH - MIN_STRIP_PX) {                     // 위아래가 잘렸다
+    strips.push([0, 0, srcW, keepT]);
+    strips.push([0, keepT + keepH, srcW, srcH - (keepT + keepH)]);
+  }
+
+  let worst = 0;
+  for (const [l, t2, w2, h2] of strips) {
+    if (w2 < MIN_STRIP_PX || h2 < MIN_STRIP_PX) continue;
+    try {
+      const share = await _skinShare(sharp, buffer, l, t2, w2, h2);
+      if (share > worst) worst = share;
+    } catch (e) { /* 띠 하나를 못 읽어도 나머지로 판단한다 */ }
+  }
+  return { cut: worst >= CUT_SUBJECT_SKIN, skin: worst };
+}
+
 /**
  * 사진 한 장을 판형 비율로 채워 자른다.
  *
@@ -72,11 +158,12 @@ function targetRatio(variant) {
  *
  * @param {Buffer} buffer 원본 사진
  * @param {'feed'|'reels'} variant 커버가 정한 판형
- * @returns {Promise<{buffer:Buffer, changed:boolean, severe:boolean,
- *                    kept:number|null, from:string|null, reason:string|null}>}
+ * @returns {Promise<{buffer:Buffer, changed:boolean, severe:boolean, drop:boolean,
+ *                    skin:number|null, kept:number|null, from:string|null, reason:string|null}>}
+ *          drop=true 면 **캐러셀에서 빼야 한다** — 잘려나간 자리에 사람이 있었다.
  */
 async function cropSlideToVariant(buffer, variant) {
-  const out = { buffer, changed: false, severe: false, kept: null, from: null, reason: null };
+  const out = { buffer, changed: false, severe: false, drop: false, skin: null, kept: null, from: null, reason: null };
   if (!buffer || !buffer.length) { out.reason = '빈 버퍼'; return out; }
   let sharp;
   try { sharp = require('sharp'); } catch (e) { out.reason = 'sharp 없음'; return out; }
@@ -102,12 +189,28 @@ async function cropSlideToVariant(buffer, variant) {
     /* position: attention — 피부톤·채도·휘도가 몰린 쪽으로 크롭 창을 옮긴다.
        가운데 고정(centre)이면 화면 가장자리에 선 인물이 그대로 날아간다.
        .rotate() 를 먼저 걸어 EXIF 방향을 실제 픽셀에 반영한다. */
-    out.buffer = await sharp(buffer, { failOn: 'none' })
+    const done = await sharp(buffer, { failOn: 'none' })
       .rotate()
       .resize(T.W, T.H, { fit: 'cover', position: sharp.strategy.attention })
       .jpeg({ quality: 92 })
-      .toBuffer();
+      .toBuffer({ resolveWithObject: true });
+    out.buffer = done.data;
     out.changed = true;
+
+    /* 버려진 자리에 사람이 있었으면 이 슬라이드는 쓰지 않는다. */
+    try {
+      const cutInfo = await findCutSubject(sharp, buffer, w, h, T,
+        done.info.cropOffsetLeft, done.info.cropOffsetTop);
+      out.skin = cutInfo.skin;
+      if (cutInfo.cut) {
+        out.drop = true;
+        out.reason = '잘려나간 자리에 인물로 보이는 영역이 있다 ('
+          + Math.round(cutInfo.skin * 100) + '%)';
+      }
+    } catch (e) {
+      /* 검사가 실패하면 **빼지 않는다.** 못 본 것을 근거로 사진을 버리지 않는다. */
+      out.reason = '인물 검사 실패(그대로 사용): ' + String((e && e.message) || e).slice(0, 80);
+    }
     return out;
   } catch (e) {
     out.reason = '자르기 실패: ' + String((e && e.message) || e).slice(0, 120);
@@ -116,6 +219,6 @@ async function cropSlideToVariant(buffer, variant) {
 }
 
 module.exports = {
-  cropSlideToVariant, keptFraction, targetRatio,
-  TARGETS, RATIO_TOLERANCE, SEVERE_KEEP,
+  cropSlideToVariant, keptFraction, targetRatio, findCutSubject, isSkinPixel,
+  TARGETS, RATIO_TOLERANCE, SEVERE_KEEP, CUT_SUBJECT_SKIN,
 };

@@ -79,6 +79,44 @@ t('kind 가 빈 문자열이면 판단 불가로 통과', cb.celebGate([{ ko: '�
 t('kind 가 섞여 있으면 있는 것만 본다 (브랜드만 표기 → 막힘)',
   cb.celebGate([{ ko: '디올', kind: 'brand' }, { ko: '무엇' }]).pass === false);
 
+console.log('\n[4-2] 주제 게이트 — 셀럽 "소식"만 (2026-08-26 2차 지시)');
+/* 도메니코: "제발 셀럽소식만 보내줘. 셀럽이 매거진에 실린소식은 안알려줘도돼.
+   챌린지도 알려줄필요없어."  인물이 있어도 통과하면 안 되는 것들이 있었다. */
+const P = [{ ko: '지수', kind: 'person' }];
+const BR = [{ ko: '디올', kind: 'brand' }];
+t('셀럽 소식은 통과', cb.briefGate({ entities: P, brief_topic: 'celeb_news' }).pass === true);
+t('남의 매거진에 실린 소식은 막는다',
+  cb.briefGate({ entities: P, brief_topic: 'magazine_feature' }).pass === false);
+t('챌린지는 막는다', cb.briefGate({ entities: P, brief_topic: 'challenge' }).pass === false);
+t('인물이 있어도 브랜드 캠페인이면 막는다',
+  cb.briefGate({ entities: P, brief_topic: 'brand_campaign' }).pass === false);
+t('other 도 막는다', cb.briefGate({ entities: P, brief_topic: 'other' }).pass === false);
+t('막힌 이유에 주제가 적힌다',
+  /매거진/.test(cb.briefGate({ entities: P, brief_topic: 'magazine_feature' }).reason || ''));
+t('브랜드만이면 주제가 celeb_news 여도 막는다',
+  cb.briefGate({ entities: BR, brief_topic: 'celeb_news' }).pass === false);
+
+console.log('\n[4-3] 주제 게이트도 fail-open ← 표기가 흔들려도 전멸하면 안 된다');
+t('하이픈 표기(celeb-news)도 통과', cb.briefGate({ entities: P, brief_topic: 'celeb-news' }).pass === true);
+t('대문자(CELEB_NEWS)도 통과', cb.briefGate({ entities: P, brief_topic: 'CELEB_NEWS' }).pass === true);
+t('모르는 값이면 막지 않고 인물 판정으로 넘긴다',
+  cb.briefGate({ entities: P, brief_topic: 'zzz_unknown' }).pass === true);
+t('brief_topic 이 아예 없으면 인물 판정으로만 통과',
+  cb.briefGate({ entities: P }).pass === true);
+t('그 사실이 이유에 남는다', /brief_topic/.test(cb.briefGate({ entities: P }).reason || ''));
+t('gen 이 null 이어도 던지지 않는다', cb.briefGate(null).pass === true);
+t('막는 목록이 프롬프트에 정의된 넷뿐이다 (모르는 값을 막지 않는다)',
+  cb.TOPIC_BLOCK.size === 4, Array.from(cb.TOPIC_BLOCK));
+
+console.log('\n[4-4] 크론이 주제 게이트를 쓴다');
+t('celebGate 가 아니라 briefGate 를 부른다',
+  /celebBrief\.briefGate\(gen\)/.test(CRON) && !/celebBrief\.celebGate\(gen\.entities\)/.test(CRON));
+t('막힌 건의 brief_topic 을 보관한다 (게이트가 과한지 세려면 필요하다)',
+  /brief_topic: gen\.brief_topic/.test(CRON));
+t('프롬프트가 brief_topic 을 요구한다', /"brief_topic"/.test(IMP));
+t('네 갈래를 전부 설명한다',
+  ['celeb_news', 'magazine_feature', 'challenge', 'brand_campaign'].every((k) => IMP.includes(k)));
+
 console.log('\n[5] 슬라이드 상한 20 (인스타 캐러셀 상한)');
 t('MAX_SLIDES 가 20', cb.MAX_SLIDES === 20, cb.MAX_SLIDES);
 const kids = { children: { data: Array.from({ length: 25 }, (_, i) => ({ media_type: 'IMAGE', media_url: 'https://x/' + i + '.jpg' })) } };

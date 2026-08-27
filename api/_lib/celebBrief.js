@@ -653,7 +653,57 @@ function celebGate(entities) {
   return { pass: false, reason: '인물 없음 — 브랜드만 등장' + (names ? ' (' + names + ')' : '') };
 }
 
+/* 주제 게이트 (2026-08-26) ──────────────────────────────────────────────
+   도메니코: "제발 셀럽소식만 보내줘. 그리고 셀럽이 매거진에 실린소식은
+   안알려줘도돼. 그리고 챌린지도 알려줄필요없어."
+
+   celebGate(인물이 있나)만으로는 부족했다. 인물이 있어도
+     · "지수, OO 매거진 9월호 커버" → 남의 매거진 발행 소식이다. 우리 기사가 아니다.
+     · "OO 챌린지 참여하고 굿즈 받아가세요" → 셀럽이 나와도 소식이 아니라 이벤트다.
+   둘 다 인물이 있어서 celebGate 를 통과한다. 그래서 주제로 한 번 더 거른다.
+
+   fail-open 은 여기서도 같다 — brief_topic 이 없거나 모르는 값이면 **막지
+   않고** celebGate 판단으로 넘긴다. 모델이 새 필드를 안 주기 시작하면
+   브리프가 전멸하는 사고를 막는다. */
+/* 막는 값은 **프롬프트에 정의된 것만** 넣는다. 모르는 문자열(오타·표기 흔들림,
+   예: "celeb-news")은 막지 않고 인물 판정으로 넘긴다 — 모델이 표기를 조금
+   바꾸는 것만으로 브리프가 전멸하면 안 된다. 하이픈·공백은 밑줄로 맞춰 준다. */
+const TOPIC_BLOCK = new Set(['magazine_feature', 'challenge', 'brand_campaign', 'other']);
+const TOPIC_ALLOW = new Set(['celeb_news']);
+const TOPIC_LABEL = {
+  magazine_feature: '남의 매거진에 실린 소식',
+  challenge: '챌린지·이벤트',
+  brand_campaign: '인물이 주인공이 아닌 브랜드 캠페인',
+  other: '셀럽 소식이 아님',
+};
+
+/**
+ * 이 브리프를 보낼 것인가. 인물 유무(celebGate) + 주제를 함께 본다.
+ * @param {{entities?:any[], brief_topic?:string}} gen 기사 생성 결과
+ * @returns {{pass:boolean, reason:string|null}}
+ */
+function briefGate(gen) {
+  const g = gen || {};
+  const topic = typeof g.brief_topic === 'string'
+    ? g.brief_topic.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+    : '';
+  if (topic && TOPIC_BLOCK.has(topic)) {
+    return { pass: false, reason: (TOPIC_LABEL[topic] || '셀럽 소식이 아님') + ' (' + topic + ')' };
+  }
+  /* 인물 판정이 먼저다 — 주제가 celeb_news 라 해도 브랜드만 나오면 막는다. */
+  const c = celebGate(g.entities);
+  if (!c.pass) return c;
+  if (topic && TOPIC_ALLOW.has(topic)) return { pass: true, reason: null };
+  /* 여기까지 왔다 = topic 이 없거나 우리가 모르는 값이다. 막지 않는다. */
+  return { pass: true, reason: topic
+    ? 'brief_topic 이 모르는 값(' + topic + ') — 인물 판정으로만 통과'
+    : 'brief_topic 없음 — 인물 판정으로만 통과' };
+}
+
 module.exports = {
+  briefGate,
+  TOPIC_BLOCK,
+  TOPIC_ALLOW,
   pickVariant,
   celebGate,
   REELS_MAX_RATIO,
