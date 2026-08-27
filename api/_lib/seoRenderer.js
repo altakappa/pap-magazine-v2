@@ -922,7 +922,7 @@ function renderSeoHtml(kind, record, opts) {
       srcBtn: '인스타그램에서 보기 ↗',
       niche: (nm) => `${nm.topic} 소식은 <b>@${nm.acct}</b>에서,<br>PAP의 화보와 매거진 전체는 <b>@pap_magazine</b>에서 편하게 보실 수 있습니다.`,
       main: 'PAP의 화보와 필름, 패션·셀럽 소식을<br><b>인스타그램</b>에서 편하게 만나보세요.',
-      topPost: '이 기사의 인스타그램 원본 보기',
+      topPost: '인스타그램에서 기사 확인하기',
       topProfile: 'PAP 인스타그램 팔로우',
       pin: 'Pinterest에 저장',
       sub: '전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼 · <a href="' + SITE + '/network" style="color:inherit">PAP 인스타그램 네트워크 →</a>',

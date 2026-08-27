@@ -427,7 +427,7 @@ function papIgTopHtml(igUrl, opts){
   var lang = 'ko';
   try { lang = localStorage.getItem('pap-lang') || 'ko'; } catch(_){}
   var T = {
-    ko: { post: '이 기사의 인스타그램 원본 보기', prof: 'PAP 인스타그램 팔로우' },
+    ko: { post: '인스타그램에서 기사 확인하기', prof: 'PAP 인스타그램 팔로우' },
     ja: { post: 'この記事のInstagram原文を見る',   prof: 'PAPのInstagramをフォロー' },
     zh: { post: '查看 Instagram 原帖',            prof: '关注 PAP Instagram' },
     it: { post: 'Guarda il post originale su Instagram', prof: 'Segui PAP su Instagram' },

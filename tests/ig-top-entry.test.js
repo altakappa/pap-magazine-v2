@@ -87,7 +87,7 @@ console.log('\n=== 2. 목적지 반반 (팔로워 판정용) · 없으면 프로
     for (let i = 0; i < 60; i++) {
       const h = renderSeoHtml('article', Object.assign({}, WITH_IG, { id: 'q-' + i, slug: 'q' + i }), { lang: 'ko' });
       const to = h.match(/src=ssr_top&to=(post|profile)/)[1];
-      const wantsPost = h.indexOf('이 기사의 인스타그램 원본 보기') > -1;
+      const wantsPost = h.indexOf('인스타그램에서 기사 확인하기') > -1;
       if ((to === 'post') !== wantsPost) return false;
     }
     return true;
@@ -122,7 +122,7 @@ console.log('\n=== 3. SSR 과 SPA 가 같은 말을 한다 (규칙 두 벌 방�
   /* 문구가 갈라지면 두 화면이 다른 약속을 한다 */
   const ssr = renderSeoHtml('article', WITH_IG, { lang: 'ko' });
   /* 목적지가 갈리므로 '한 문구'가 아니라 '두 문구 세트'가 같아야 한다 */
-  const KO = ['이 기사의 인스타그램 원본 보기', 'PAP 인스타그램 팔로우'];
+  const KO = ['인스타그램에서 기사 확인하기', 'PAP 인스타그램 팔로우'];
   t('SSR 이 한국어 문구 세트 안에서 말한다', KO.some((k) => ssr.indexOf(k) > -1));
   t('SPA 가 같은 문구 세트를 쓴다', KO.some((k) => spa.indexOf(k) > -1));
   t('두 화면이 프로필 문구도 같이 갖고 있다',
