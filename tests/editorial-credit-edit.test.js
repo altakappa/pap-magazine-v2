@@ -342,6 +342,32 @@ async function patch(body) {
     ok('  → 목록 응답은 캐시하지 않는다', res._out.headers['Cache-Control'] === 'private, no-store');
   }
 
+  console.log('\n=== ⑪ 마이페이지 화면 ===');
+  const MP = read('frontend/mypage.html');
+  ok('기존 #mp-contributions 를 재사용한다 (새 섹션을 만들지 않았다)',
+    /id="mp-contributions"/.test(MP) && (MP.match(/id="mpContributionsList"/g) || []).length === 1);
+  ok('목록 로더가 /api/editorials/mine 을 부른다', /fetch\('\/api\/editorials\/mine'/.test(MP));
+  ok('수정 버튼은 서버가 준 canEditCredits 로만 그린다',
+    /if\(e\.canEditCredits\)/.test(MP) && /mpOpenCreditEdit/.test(MP));
+  ok('무료 회원에게는 버튼 대신 한 줄 안내가 나간다',
+    /not_premium/.test(MP) && /utm_source=mypage_credit_edit/.test(MP),
+    '판매 문구를 전면에 세우지 않되, 왜 못 고치는지는 알려야 한다');
+  ok('저장은 PATCH /api/editorials/:id/credits 로 간다',
+    /method: 'PATCH'/.test(MP) && /\/credits'/.test(MP));
+  ok('화면이 SPA·관용 표기 목록을 복사하지 않았다',
+    !/_PAP_SPA|SPA_BRANDS/.test(MP) && !/_PAP_GENERIC_CREDITS/.test(MP),
+    '목록을 복사하면 서버와 갈라져 화면은 되는데 저장이 안 되는 상태가 된다');
+  ok('라틴 전용 검사는 서브미션 폼과 같은 검사기를 쓴다',
+    /pap-name-validator\.js/.test(MP) && /_papValidateLatinOnly/.test(MP));
+  ok('저장 전 변경 요약을 확인받는다', /_mpDiffSummary/.test(MP) && /confirm\(summary/.test(MP));
+  ok('모달 문구 i18n 키가 ko·en 양쪽에 있다',
+    (MP.match(/mpcBrandNote:/g) || []).length >= 2 && (MP.match(/mpcTeam:/g) || []).length >= 2);
+  ok('안내 문구에 3개 제약(횟수·종류 수·SPA)이 함께 적혀 있다',
+    /브랜드 종류 수를 줄일 수는 없습니다/.test(MP) && /SPA/.test(MP) && /남은 수정 횟수/.test(MP),
+    '셋을 함께 안 쓰면 "왜 수정이 안 되냐"는 문의가 그대로 들어온다');
+  ok('"곧 출시" 안내가 남아 있지 않다', !/contribComing"/.test(MP),
+    '기능이 나왔는데 준비 중이라고 적혀 있으면 아무도 안 쓴다');
+
   console.log('\n크레딧 수정 가드: ' + pass + '건 통과' + (fails.length ? ' · ' + fails.length + '건 실패' : ''));
   if (fails.length) { console.log('\n실패:\n - ' + fails.join('\n - ')); process.exit(1); }
 })();

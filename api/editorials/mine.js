@@ -47,7 +47,7 @@ module.exports = async function handler(req, res) {
 
     const { data: rows, error } = await supabaseAdmin
       .from('editorials')
-      .select('id, title, slug, cover_image, thumbnail, published_date, status, source_submission_id, credits_edit_count, updated_at')
+      .select('id, title, slug, cover_image, thumbnail, published_date, status, source_submission_id, credits, fashion, credits_edit_count, updated_at')
       .in('source_submission_id', subList.map((s) => s.id))
       .eq('status', 'published')
       .order('published_date', { ascending: false });
@@ -58,9 +58,14 @@ module.exports = async function handler(req, res) {
       const used = Number(r.credits_edit_count || 0);
       // 화이트리스트 — 새 상태값이 생겨도 조용히 열리지 않는다.
       const paidOk = PAYMENT_EDITABLE.includes(pay);
+      const fashion = r.fashion && typeof r.fashion === 'object' && !Array.isArray(r.fashion) ? r.fashion : {};
       return {
         id: r.id,
         title: r.title,
+        // 수정 화면이 바로 채워지도록 현재 크레딧을 함께 내린다. 모달을 열 때
+        // 다시 조회하면 목록과 화면이 다른 시점을 보게 된다.
+        credits: Array.isArray(r.credits) ? r.credits : [],
+        brands: Array.isArray(fashion.brands) ? fashion.brands : [],
         slug: r.slug,
         cover: r.cover_image || r.thumbnail || null,
         publishedDate: r.published_date,
