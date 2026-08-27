@@ -646,6 +646,7 @@ module.exports = async function handler(req, res) {
     // can't parse "{photographer: ['Name (@handle)']}". The converters
     // below normalise everything before INSERT.
     let stagedEditorialId = null;
+    let stagedEditorialSlug = null; // Ⅳ-41 링크 킷 — 승인 메일에 /editorial/<slug> 전달용
     let alreadyStaged = false;
     if (status === 'approved') {
       try {
@@ -659,12 +660,13 @@ module.exports = async function handler(req, res) {
         // editorials_source_submission_uniq 부분 유니크 인덱스로 2차 방어.
         const { data: existingEd } = await supabaseAdmin
           .from('editorials')
-          .select('id')
+          .select('id, slug')
           .eq('source_submission_id', submission.id)
           .limit(1)
           .maybeSingle();
         if (existingEd && existingEd.id) {
           stagedEditorialId = existingEd.id;
+          stagedEditorialSlug = existingEd.slug || null;
           alreadyStaged = true;
         }
         const desc = submission.description ? JSON.parse(submission.description) : {};
@@ -787,6 +789,7 @@ module.exports = async function handler(req, res) {
             console.error('Stage-as-editorial failed:', edErr);
           } else {
             stagedEditorialId = editorial.id;
+            stagedEditorialSlug = editorial.slug || null;
             const notePrefix = reviewNote || '';
             const newNote = notePrefix + (notePrefix ? '\n' : '') + '[Staged as editorial id: ' + editorial.id + ']';
             // 2026-07-22 — PostgREST 빌더는 .catch 가 없다(thenable 이지만
@@ -869,7 +872,9 @@ module.exports = async function handler(req, res) {
           status,
           // approvalDay/Month 는 여전히 미전달(발행일 확정 시 편집자 재발송이 갱신).
           // feeCents 만 주입 → 유료/브랜디드 승인 메일에 결제요청 블록이 뜬다.
-          { feeCents: _feeCents }
+          // editorialSlug: Ⅳ-41 링크 킷 — 승인 메일에 게재 페이지 링크+배지 임베드 코드.
+          // slug 미확정(비승인 상태 등)이면 템플릿이 킷 블록을 생략한다.
+          { feeCents: _feeCents, editorialSlug: stagedEditorialSlug || '' }
         );
         // ★ 반드시 await 한다. 예전엔 fire-and-forget(.then)이라 Vercel 서버리스가
         // res 반환 직후 함수를 얼려 전송이 실제로 나가지 않았다(실측: approval_email_sent_at

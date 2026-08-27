@@ -140,6 +140,9 @@ const SUBMISSION_REVIEW_I18N = {
     apHeading: '게재가 승인되었습니다',
     apCongrats: '축하드립니다! 보내주신 작품 {title}의 게재가 승인되었습니다.',
     apCongratsPaid: '축하드립니다! 보내주신 작품 {title}의 유료 게재가 승인되었습니다.',
+    kitTitle: 'PAP 게재 링크 킷',
+    kitBody: '작품이 공개되면 아래 페이지 링크와 "Featured in PAP" 배지를 포트폴리오·웹사이트·인스타그램 바이오에 자유롭게 사용하실 수 있습니다. 링크를 걸어주시면 작품이 검색과 AI 추천에 더 잘 노출됩니다.',
+    kitBadgeLabel: '배지 임베드 코드',
   },
   en: {
     subject: 'Your submission review is complete — "{title}"',
@@ -156,6 +159,9 @@ const SUBMISSION_REVIEW_I18N = {
     apHeading: 'Your Submission Is Approved',
     apCongrats: 'Congratulations! Your submission {title} has been approved for publication.',
     apCongratsPaid: 'Congratulations! Your submission {title} has been approved for paid publication.',
+    kitTitle: 'PAP Publication Link Kit',
+    kitBody: 'Once your work is live, feel free to use the page link and the "Featured in PAP" badge on your portfolio, website or Instagram bio. Linking back helps your work surface in search and AI recommendations.',
+    kitBadgeLabel: 'Badge embed code',
   },
   it: {
     subject: 'La tua revisione è completa — "{title}"',
@@ -172,6 +178,9 @@ const SUBMISSION_REVIEW_I18N = {
     apHeading: 'Il tuo invio è approvato',
     apCongrats: 'Congratulazioni! Il tuo invio {title} è stato approvato per la pubblicazione.',
     apCongratsPaid: 'Congratulazioni! Il tuo invio {title} è stato approvato per la pubblicazione a pagamento.',
+    kitTitle: 'Link kit di pubblicazione PAP',
+    kitBody: 'Quando il lavoro sarà online, potrai usare liberamente il link della pagina e il badge "Featured in PAP" su portfolio, sito o bio Instagram. Il link aiuta il tuo lavoro a emergere nelle ricerche e nei consigli AI.',
+    kitBadgeLabel: 'Codice embed del badge',
   },
   fr: {
     subject: 'Votre soumission a été examinée — "{title}"',
@@ -188,6 +197,9 @@ const SUBMISSION_REVIEW_I18N = {
     apHeading: 'Votre soumission est approuvée',
     apCongrats: 'Félicitations ! Votre soumission {title} a été approuvée pour publication.',
     apCongratsPaid: 'Félicitations ! Votre soumission {title} a été approuvée pour une publication payante.',
+    kitTitle: 'Kit de liens de publication PAP',
+    kitBody: 'Une fois votre travail en ligne, utilisez librement le lien de la page et le badge "Featured in PAP" sur votre portfolio, site ou bio Instagram. Le lien aide votre travail à ressortir dans les recherches et les recommandations IA.',
+    kitBadgeLabel: 'Code d\'intégration du badge',
   },
   es: {
     subject: 'Tu envío ha sido revisado — "{title}"',
@@ -204,6 +216,9 @@ const SUBMISSION_REVIEW_I18N = {
     apHeading: 'Tu envío ha sido aprobado',
     apCongrats: '¡Enhorabuena! Tu envío {title} ha sido aprobado para su publicación.',
     apCongratsPaid: '¡Enhorabuena! Tu envío {title} ha sido aprobado para su publicación de pago.',
+    kitTitle: 'Kit de enlaces de publicación PAP',
+    kitBody: 'Cuando tu trabajo esté publicado, puedes usar libremente el enlace de la página y la insignia "Featured in PAP" en tu portfolio, web o bio de Instagram. Enlazar ayuda a que tu trabajo aparezca en búsquedas y recomendaciones de IA.',
+    kitBadgeLabel: 'Código de inserción de la insignia',
   },
   ja: {
     subject: '審査が完了しました — "{title}"',
@@ -220,6 +235,9 @@ const SUBMISSION_REVIEW_I18N = {
     apHeading: '掲載が承認されました',
     apCongrats: 'おめでとうございます！ご投稿いただいた作品 {title} の掲載が承認されました。',
     apCongratsPaid: 'おめでとうございます！ご投稿いただいた作品 {title} の有料掲載が承認されました。',
+    kitTitle: 'PAP掲載リンクキット',
+    kitBody: '作品が公開されたら、ページのリンクと「Featured in PAP」バッジをポートフォリオ・ウェブサイト・Instagramのプロフィールで自由にご利用ください。リンクを貼ると検索やAIレコメンドで作品が見つかりやすくなります。',
+    kitBadgeLabel: 'バッジ埋め込みコード',
   },
   zh: {
     subject: '您的投稿审核已完成 — "{title}"',
@@ -236,6 +254,9 @@ const SUBMISSION_REVIEW_I18N = {
     apHeading: '投稿已通过审核',
     apCongrats: '恭喜！您提交的作品 {title} 已通过审核并将刊登。',
     apCongratsPaid: '恭喜！您提交的作品 {title} 已通过审核，将进行付费刊登。',
+    kitTitle: 'PAP 刊登链接工具包',
+    kitBody: '作品上线后，欢迎在作品集、网站或 Instagram 主页自由使用页面链接和 "Featured in PAP" 徽章。添加链接有助于作品在搜索和 AI 推荐中被发现。',
+    kitBadgeLabel: '徽章嵌入代码',
   },
   ru: {
     subject: 'Рассмотрение вашей заявки завершено — "{title}"',
@@ -252,6 +273,9 @@ const SUBMISSION_REVIEW_I18N = {
     apHeading: 'Ваша работа одобрена',
     apCongrats: 'Поздравляем! Ваша работа {title} одобрена к публикации.',
     apCongratsPaid: 'Поздравляем! Ваша работа {title} одобрена к платной публикации.',
+    kitTitle: 'Линк-кит публикации PAP',
+    kitBody: 'Когда работа выйдет, свободно используйте ссылку на страницу и бейдж "Featured in PAP" в портфолио, на сайте или в био Instagram. Ссылка помогает работе появляться в поиске и рекомендациях ИИ.',
+    kitBadgeLabel: 'Код вставки бейджа',
   },
   de: {
     subject: 'Die Prüfung deiner Einreichung ist abgeschlossen — "{title}"',
@@ -268,6 +292,9 @@ const SUBMISSION_REVIEW_I18N = {
     apHeading: 'Deine Einreichung ist angenommen',
     apCongrats: 'Herzlichen Glückwunsch! Deine Einreichung {title} wurde zur Veröffentlichung angenommen.',
     apCongratsPaid: 'Herzlichen Glückwunsch! Deine Einreichung {title} wurde zur kostenpflichtigen Veröffentlichung angenommen.',
+    kitTitle: 'PAP Publikations-Link-Kit',
+    kitBody: 'Sobald deine Arbeit online ist, kannst du den Seitenlink und das "Featured in PAP"-Badge frei in Portfolio, Website oder Instagram-Bio verwenden. Ein Link hilft deiner Arbeit, in Suche und KI-Empfehlungen aufzutauchen.',
+    kitBadgeLabel: 'Badge-Embed-Code',
   },
 };
 
@@ -827,6 +854,25 @@ const templates = {
       _firstPara = L.body1.replace('{title}', _titleStrong);
     }
 
+    /* Ⅳ-41 (확장전략55, 2026-08-27 도메니코 확정) — 게재 링크 킷.
+       크레딧 받은 크루가 자기 손으로 링크를 퍼뜨리는 자발적 백링크 루프.
+       배지(/badge.svg)와 파트너 안내(/partners)는 이미 있었지만 **전달 경로**가
+       없었다 — 승인 메일이 그 경로다. slug 가 확정된 경우에만 싣는다. */
+    const _slug = _opts && _opts.editorialSlug ? String(_opts.editorialSlug) : '';
+    const _kitBlock = (_isApproved && _slug)
+      ? (() => {
+          const pageUrl = `${FRONTEND_URL}/editorial/${encodeURIComponent(_slug)}`;
+          const embed = `&lt;a href="${pageUrl}"&gt;&lt;img src="${FRONTEND_URL}/badge.svg" alt="Featured in PAP Magazine" width="240" height="64"&gt;&lt;/a&gt;`;
+          return `<div style="margin:20px 0;padding:16px 18px;background:#141414;border-left:3px solid #891717;">
+           <span style="color:#c33b3b;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:700;">${L.kitTitle}</span><br>
+           <span style="color:#ccc;font-size:13px;line-height:1.7;">${L.kitBody}</span><br>
+           <a href="${pageUrl}" style="color:#fff;font-size:13px;">${pageUrl}</a><br>
+           <span style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.kitBadgeLabel}</span><br>
+           <code style="display:block;margin-top:6px;padding:10px;background:#000;color:#9ad;font-size:11px;word-break:break-all;">${embed}</code>
+         </div>`;
+        })()
+      : '';
+
     return {
       subject: _subject,
       html: wrapHtml(`
@@ -835,6 +881,7 @@ const templates = {
         <p>${_firstPara}</p>
         <p>${L.body2}</p>
         ${_payBlock}
+        ${_kitBlock}
         <a href="${ctaUrl}" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
         <p style="font-size:12px;color:#888;margin-top:24px;">${L.footer}</p>
       `, lang),

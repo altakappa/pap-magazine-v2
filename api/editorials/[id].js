@@ -89,7 +89,10 @@ async function _maybeSendApprovalEmail(editorialRow, opts) {
       { title: editorialRow.title || submission.title },
       lang,
       'approved',
-      { approvalDay: opts.approvalDay || '', approvalMonth: opts.approvalMonth || '', feeCents: _feeCents }
+      { approvalDay: opts.approvalDay || '', approvalMonth: opts.approvalMonth || '',
+        feeCents: _feeCents,
+        // Ⅳ-41 게재 링크 킷 — 이 경로는 에디토리얼이 이미 존재하므로 slug 확정
+        editorialSlug: editorialRow.slug || '' }
     );
     const result = await sendEmail(profile.email, tpl);
     // QA #214 — record the result in approval_email_status so the admin
