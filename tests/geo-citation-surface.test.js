@@ -68,7 +68,10 @@ console.log('\n[2] 신뢰 신호 — 화면에 보이는 작성자·날짜');
 
 console.log('\n[3] 기존 구조화 데이터가 살아 있는가 (회귀)');
 {
-  t('Article 스키마에 author 가 있다', /author: contributors\.length/.test(seo));
+  /* 2026-08-27 — author 의 출처가 contributors 에서 personEntities 로 바뀌었다.
+     이 테스트가 지키려는 것은 'author 가 살아 있는가'이지 변수 이름이 아니다.
+     둘 다 받아 다음에 출처가 또 바뀌어도 엉뚱하게 빨간불이 되지 않게 한다. */
+  t('Article 스키마에 author 가 있다', /author: (contributors|personEntities)\.length/.test(seo));
   t('datePublished · dateModified 가 있다',
     /datePublished: published/.test(seo) && /dateModified: modified/.test(seo));
   t('mainEntityOfPage 가 있다', /mainEntityOfPage: \{ '@type': 'WebPage'/.test(seo));
