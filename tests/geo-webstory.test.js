@@ -37,6 +37,26 @@ t('스토리 라우트 (/stories/:slug)',
   (vercel.rewrites || []).some(r => r.source === '/stories/:slug'
     && r.destination === '/api/seo/story-editorial/:slug'));
 
+console.log('\n=== AMP CSP (2026-08-27 라이브 실측으로 발견) ===');
+{
+  /* 라이브에서 AMP 런타임이 통째로 죽어 있었다 — 전역 CSP 의 script-src 에
+     cdn.ampproject.org 가 없어 v0.js 가 차단됐다(window.AMP undefined,
+     body visibility:hidden, 이미지 0장). 스토리 경로 전용 CSP 로 연다. */
+  const blocks = (vercel.headers || []).filter(h => h.source === '/stories/(.*)');
+  t('스토리 경로 CSP 블록 존재', blocks.length === 1);
+  const csp = blocks.length ? (blocks[0].headers.find(k => k.key === 'Content-Security-Policy') || {}).value || '' : '';
+  const seg = (d) => (csp.split(d)[1] || '').split(';')[0];
+  t('script-src 에 cdn.ampproject.org', seg('script-src').includes('cdn.ampproject.org'));
+  t('style-src·img-src 에도 허용',
+    seg('style-src').includes('cdn.ampproject.org') && seg('img-src').includes('cdn.ampproject.org'));
+  t('스토리 CSP 가 전역보다 뒤에 온다 (같은 키는 뒤가 이긴다)',
+    (vercel.headers || []).map(h => h.source).lastIndexOf('/stories/(.*)')
+      > (vercel.headers || []).map(h => h.source).indexOf('/(.*)'));
+  t('전역 CSP 는 그대로 (스토리 밖에는 AMP 를 열지 않는다)',
+    !(((vercel.headers || []).find(h => h.source === '/(.*)') || { headers: [] })
+      .headers.find(k => k.key === 'Content-Security-Policy') || {}).value.includes('ampproject'));
+}
+
 console.log('\n=== 스토리 사이트맵 ===');
 t('깨끗한 slug 만 광고 (^[a-z0-9-]+$)', /\^\[a-z0-9-\]\+\$/.test(smap));
 /* 2026-08-27 — 조건이 'cover 존재'에서 '진짜 이미지 존재'로 강화됐다
