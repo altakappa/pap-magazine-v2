@@ -39,7 +39,11 @@ t('content:encoded + content 네임스페이스',
   /content:encoded/.test(rss) && /xmlns:content="http:\/\/purl\.org\/rss\/1\.0\/modules\/content\/"/.test(rss));
 t('CDATA 이스케이프 (]]> 분할)', /\]\]>/.test(rss) && /split\(']\]>'\)/.test(rss));
 t('크기 상한 (피드 폭주 방지)', /40000/.test(rss));
-t('기사 content 를 select 에 포함', /custom_url, published_date, description, content,/.test(rss));
+t('기사 content 를 select 에 포함 + 실재 컬럼만 (articles 에 description 없음)',
+  /seo_description, description_en, content,/.test(rss) && !/published_date, description, content/.test(rss));
+// 화보(editorials)의 description 은 실재 컬럼 — 금지 대상은 articles select 안의 유령 컬럼뿐.
+t('세 표면의 articles select 가 실재 컬럼(seo_description) 사용 + 쿼리 에러 가시화',
+  [rss, llmsFull, pubApi].every(s => /seo_description/.test(s) && /artsR\.error/.test(s)));
 
 console.log('\n=== Ⅱ-24 llms-full.txt ===');
 t('라우트 (/llms-full.txt → /api/llms-full)',
@@ -50,8 +54,9 @@ t('전체 상한 + 캐시', /400000/.test(llmsFull) && /s-maxage=3600/.test(llms
 t('llms.txt 에서 참조', /llms-full\.txt/.test(llms));
 
 console.log('\n=== Ⅱ-25 공개 JSON API ===');
-t('라우트 (/api/public/content.json)',
-  (vercel.rewrites || []).some(r => r.source === '/api/public/content.json'));
+t('라우트 (/api/public/content.json + robots 안전 별칭 /content.json)',
+  (vercel.rewrites || []).some(r => r.source === '/api/public/content.json')
+  && (vercel.rewrites || []).some(r => r.source === '/content.json'));
 t('본문·비공개 필드 미노출 (메타데이터만)',
   !/content/.test(pubApi.match(/from\('articles'\)[\s\S]*?limit\(50\)/)[0])
   && /published'\)/.test(pubApi));

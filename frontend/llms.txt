@@ -230,7 +230,9 @@ two-letter prefix, and each page declares the full hreflang set plus x-default.
 Full-text dump of recent published content (llms-full convention, hourly):
 https://www.pap-magazine.com/llms-full.txt
 Public read-only JSON API (latest 50 articles + 50 editorials, metadata + credits):
-https://www.pap-magazine.com/api/public/content.json
+https://www.pap-magazine.com/content.json
+(alias: /api/public/content.json — note robots.txt disallows /api/ for crawlers,
+so automated agents should use /content.json)
 
 
 - [RSS (articles)](https://www.pap-magazine.com/rss.xml)

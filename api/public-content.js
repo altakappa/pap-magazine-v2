@@ -28,7 +28,8 @@ module.exports = async function handler(req, res) {
   try {
     const [artsR, edsR] = await Promise.all([
       supabaseAdmin.from('articles')
-        .select('title, title_en, slug, custom_url, id, published_date, description')
+        /* articles 에 description 컬럼 없음 (2026-08-27 실측) — seo_description 사용 */
+        .select('title, title_en, slug, custom_url, id, published_date, seo_description, description_en')
         .eq('status', 'published')
         .order('published_date', { ascending: false })
         .order('created_at', { ascending: false })
@@ -42,12 +43,15 @@ module.exports = async function handler(req, res) {
         .limit(50),
     ]);
 
+    if (artsR.error) console.error('[public-content] articles query failed:', artsR.error.message);
+    if (edsR.error) console.error('[public-content] editorials query failed:', edsR.error.message);
+
     const articles = (artsR.data || []).map(a => ({
       title: a.title,
       title_en: a.title_en || undefined,
       url: SITE + '/article/' + encodeURIComponent(a.slug || a.custom_url || a.id),
       published_date: a.published_date,
-      description: a.description || undefined,
+      description: a.seo_description || a.description_en || undefined,
     }));
     const editorials = (edsR.data || []).map(e => ({
       title: e.title,

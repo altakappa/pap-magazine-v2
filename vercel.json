@@ -522,6 +522,7 @@
     { "source": "/contributor/:handle", "destination": "/api/seo/contributor/:handle" },
     { "source": "/llms-full.txt", "destination": "/api/llms-full" },
     { "source": "/api/public/content.json", "destination": "/api/public-content" },
+    { "source": "/content.json", "destination": "/api/public-content" },
     { "source": "/editorial-policy", "destination": "/editorial-policy.html" },
     {
       "source": "/studio",

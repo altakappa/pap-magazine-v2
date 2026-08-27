@@ -54,7 +54,8 @@ module.exports = async function handler(req, res) {
   try {
     const [artsR, edsR] = await Promise.all([
       supabaseAdmin.from('articles')
-        .select('title, slug, custom_url, id, published_date, description, content, faq')
+        /* articles 에 description 컬럼 없음 (2026-08-27 실측) — seo_description 사용 */
+        .select('title, slug, custom_url, id, published_date, seo_description, description_en, content, faq')
         .eq('status', 'published')
         .order('published_date', { ascending: false })
         .order('created_at', { ascending: false })
@@ -67,6 +68,9 @@ module.exports = async function handler(req, res) {
         .order('created_at', { ascending: false })
         .limit(60),
     ]);
+
+    if (artsR.error) console.error('[llms-full] articles query failed:', artsR.error.message);
+    if (edsR.error) console.error('[llms-full] editorials query failed:', edsR.error.message);
 
     const out = [];
     out.push('# PAP MAGAZINE — llms-full.txt');
@@ -84,7 +88,8 @@ module.exports = async function handler(req, res) {
       out.push('### ' + a.title);
       out.push('URL: ' + SITE + '/article/' + encodeURIComponent(handle));
       if (a.published_date) out.push('Published: ' + String(a.published_date).slice(0, 10));
-      if (a.description) out.push(plain(a.description, 400));
+      const adesc = a.seo_description || a.description_en;
+      if (adesc) out.push(plain(adesc, 400));
       const body = plain(a.content, 2000);
       if (body) { out.push(''); out.push(body); }
       const fq = faqText(a.faq);

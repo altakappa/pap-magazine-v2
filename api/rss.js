@@ -72,7 +72,11 @@ module.exports = async function handler(req, res) {
     const [artsR, edsR] = await Promise.all([
       supabaseAdmin
         .from('articles')
-        .select('id, title, slug, custom_url, published_date, description, content, hero_image_url, thumbnail_url')
+        /* 2026-08-27 실측: articles 에는 description 컬럼이 없다(seo_description·
+           description_en 뿐). 종전 select 가 그 유령 컬럼 때문에 400으로 죽는데
+           error 를 안 봐서 **피드에서 기사가 조용히 전멸**해 있었다 — 에디토리얼만
+           나가는 피드를 아무도 눈치 못 챘다. 실재 컬럼으로 교정 + 아래 error 가시화. */
+        .select('id, title, slug, custom_url, published_date, seo_description, description_en, content, hero_image_url, thumbnail_url')
         .eq('status', 'published')
         .order('published_date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -88,6 +92,10 @@ module.exports = async function handler(req, res) {
         .limit(30),
     ]);
 
+    /* 한쪽 소스가 죽으면 로그에 이유를 남긴다 — 조용한 반쪽 피드 금지 */
+    if (artsR.error) console.error('[rss] articles query failed:', artsR.error.message);
+    if (edsR.error) console.error('[rss] editorials query failed:', edsR.error.message);
+
     const items = [];
 
     (artsR.data || []).forEach(a => {
@@ -96,7 +104,7 @@ module.exports = async function handler(req, res) {
       items.push({
         title: a.title,
         link: SITE + '/article/' + encodeURIComponent(handle),
-        desc: cleanDesc(a.description),
+        desc: cleanDesc(a.seo_description || a.description_en),
         body: fullContent(a.content),
         date: a.published_date,
         img: a.hero_image_url || a.thumbnail_url || '',
