@@ -255,5 +255,19 @@ t('2장만 보이는 화면에도 다음 단계 유도 문구가 있다', () => 
   assert.ok(/최신 에디토리얼 10편은 회원이면 무료입니다/.test(src));
 });
 
+console.log('\n=== ⑥ 계측 (벽의 효과를 재는가) ===');
+t('두 벽이 깔때기 단계로 기록된다', () => {
+  const step = read('api/funnel/step.js');
+  assert.ok(/gallery_lock_view/.test(step) && /locked_popup_view/.test(step),
+    '화이트리스트에 없으면 서버가 400 으로 버린다');
+  assert.ok(/_papFunnelStep\('gallery_lock_view'\)/.test(read('frontend/pap-content-editorial.js')));
+  assert.ok(/_papFunnelStep\('locked_popup_view'\)/.test(SUB));
+});
+t('계측 실패가 화면을 막지 않는다', () => {
+  const fn = SUB.slice(SUB.indexOf('function _papFunnelStep'), SUB.indexOf('/* 못 여는 화보를 눌렀을 때'));
+  assert.ok(/\.catch\(function\(\)\{\}\)/.test(fn), '기록 실패로 잠금 화면이 안 뜨면 본말전도다');
+  assert.ok(/try\{/.test(fn));
+});
+
 console.log('\n화보 미리보기: ' + pass + '건 통과' + (fail ? ' · ' + fail + '건 실패' : ''));
 if (fail) process.exit(1);

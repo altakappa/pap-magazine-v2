@@ -101,6 +101,29 @@ function _papViewState(d){
   }catch(e){ return 'full'; }
 }
 
+/* 페이월 계측 (2026-08-27) — 벽을 세웠으면 몇 명이 부딪히는지 재야 한다.
+ * fire-and-forget. 실패해도 화면은 그대로 뜬다.
+ * 다음 걸음(subscribe_view)은 이미 재고 있고 CTA 에 utm 이 붙어 있어
+ * 어느 벽에서 넘어온 가입인지도 구분된다. */
+function _papFunnelStep(step){
+  try{
+    var KNOWN = ['x','ig','naver','kakao','newsletter','threads','tiktok','youtube'];
+    var utm = '';
+    try { utm = (new URLSearchParams(location.search).get('utm_source') || '').toLowerCase(); } catch(_){}
+    var src;
+    if(KNOWN.indexOf(utm) >= 0) src = utm;
+    else if(document.referrer && document.referrer.indexOf(location.host) >= 0) src = 'internal';
+    else if(!document.referrer) src = 'direct';
+    else src = 'other';
+    fetch('/api/funnel/step', {
+      method:'POST', credentials:'same-origin', keepalive:true,
+      headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+      body: JSON.stringify({ step: step, source: src, path: location.pathname })
+    }).catch(function(){});
+  }catch(e){}
+}
+try { window._papFunnelStep = _papFunnelStep; } catch(_){}
+
 /* 못 여는 화보를 눌렀을 때 (도메니코 2026-08-27).
  * 상세를 열어 놓고 빈 화면을 보여주는 대신, 그 자리에서 다음 행동을 준다.
  * 비회원에게는 가입, 회원에게는 필요한 멤버십을 말한다. */
@@ -157,6 +180,7 @@ function _papShowLockedPopup(need, opts){
     ov.addEventListener('click', function(e){ if(e.target === ov) close(); });
     var btn = document.getElementById('papLockedPopupClose');
     if(btn) btn.addEventListener('click', close);
+    _papFunnelStep('locked_popup_view');
     return true;
   }catch(e){ return false; }
 }

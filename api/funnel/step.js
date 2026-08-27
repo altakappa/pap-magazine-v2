@@ -26,7 +26,13 @@ const { verifyToken } = require('../_lib/auth');
 
 /* 화이트리스트 — 아무 문자열이나 받으면 표가 쓰레기통이 된다.
    결제 단계는 의도적으로 없다(위 주석 참조). */
-const STEPS = new Set(['subscribe_view']);
+/* 2026-08-27 — 화보 페이월 계측. 벽을 세웠으면 몇 명이 부딪히고 몇 명이
+   넘어오는지 재야 한다. 안 재면 이 변경이 먹혔는지 알 수 없다.
+   gallery_lock_view  = 앞 2장 + 잠금 패널을 본 횟수
+   locked_popup_view  = 못 여는 화보를 눌러 팝업이 뜬 횟수
+   그 다음 걸음(subscribe_view)은 이미 재고 있고, CTA 에 utm 이 붙어 있어
+   어느 벽에서 넘어왔는지도 구분된다. */
+const STEPS = new Set(['subscribe_view', 'gallery_lock_view', 'locked_popup_view']);
 
 /* 성장 헌법 3항의 utm_source 목록 + 내부 유입. 그 외는 'other' 로 접는다 —
    자유 문자열을 그대로 저장하면 집계가 안 된다. */

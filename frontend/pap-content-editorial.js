@@ -2079,6 +2079,7 @@ function _papEdApplyLock(det, gal){
       '<div style="font-size:13px;opacity:.6;margin-bottom:24px;line-height:1.6">' + sub + '</div>' +
       '<a href="' + href + '" style="display:inline-block;padding:13px 30px;border:1px solid currentColor;border-radius:2px;font-size:12px;letter-spacing:.14em;text-decoration:none;color:inherit">' + cta + '</a>' +
     '</div>');
+  if(typeof _papFunnelStep === 'function') _papFunnelStep('gallery_lock_view');
   return true;
 }
 
