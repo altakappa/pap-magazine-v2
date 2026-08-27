@@ -172,6 +172,10 @@
       "schedule": "3,33 * * * *"
     },
     {
+      "path": "/api/cron/backfill-editorial-faq",
+      "schedule": "4,14,24,34,44,54 * * * *"
+    },
+    {
       "path": "/api/cron/gsc-sync",
       "schedule": "20 5 * * *"
     },
