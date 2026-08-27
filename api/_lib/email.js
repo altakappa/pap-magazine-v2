@@ -657,64 +657,110 @@ const PULLLETTER_ISSUED_I18N = {
   de: { subject: 'Ihre Pull-Letter wurde ausgestellt', heading: 'Pull-Letter ausgestellt', body: 'Ihre Pull-Letter wurde ausgestellt. Sie können das PDF in Ihrer My Page herunterladen.', cta: 'PDF HERUNTERLADEN' },
 };
 
+/* ── 접수 확인·환영 메일 i18n (2026-08-26) ─────────────────────────
+   도메니코 지시: "모든 안내가 회원이 선택한 언어로 나가야 한다."
+   실측: submissionReceived 는 영어 하드코딩이었고(심지어 어디서도 발송되지
+   않았다), welcome 도 영어 고정에 fire-and-forget 이라 서버리스 프리즈로
+   실제 발송이 보장되지 않았다. 둘 다 9개 언어 + 호출부 await 로 고친다. */
+const SUBMISSION_RECEIVED_I18N = {
+  ko: { subject: '서브미션 접수: {title}', heading: '서브미션 접수 완료', body1: '보내주신 에디토리얼 서브미션 {title}이(가) 접수되었습니다.', statusLabel: '상태', statusValue: '심사 중', etaLabel: '예상 회신', etaValue: '영업일 1~3일', body2: '에디토리얼 팀이 꼼꼼히 검토한 뒤 결과를 이메일로 알려드립니다.', cta: '내 서브미션 보기', premKicker: '크리에이티브 팀을 위해', premBody: '다음 촬영에 브랜드 의상 대여가 필요하신가요? 프리미엄 멤버는 PAP 명의의 공식 Pull-Letter를 월 1건 요청할 수 있고, 전체 에디토리얼 아카이브를 열람할 수 있습니다.', premCta: '프리미엄 알아보기 →' },
+  en: { subject: 'Submission Received: {title}', heading: 'Submission Received', body1: 'We’ve received your editorial submission {title}.', statusLabel: 'Status', statusValue: 'Under Review', etaLabel: 'Expected Response', etaValue: '1–3 business days', body2: 'Our editorial team will review your work carefully. You’ll receive an email once a decision has been made.', cta: 'VIEW MY SUBMISSIONS', premKicker: 'For creative teams', premBody: 'Need garment loans for your next shoot? Premium members can request one official PAP Pull-Letter per month and browse the full editorial archive.', premCta: 'EXPLORE PREMIUM →' },
+  it: { subject: 'Candidatura ricevuta: {title}', heading: 'Candidatura ricevuta', body1: 'Abbiamo ricevuto il tuo editoriale {title}.', statusLabel: 'Stato', statusValue: 'In revisione', etaLabel: 'Risposta prevista', etaValue: '1–3 giorni lavorativi', body2: 'Il team editoriale esaminerà il tuo lavoro con attenzione. Riceverai un’email con l’esito.', cta: 'LE MIE CANDIDATURE', premKicker: 'Per i team creativi', premBody: 'Ti servono capi in prestito per il prossimo shooting? I membri Premium possono richiedere una Pull-Letter ufficiale PAP al mese e consultare l’intero archivio editoriale.', premCta: 'SCOPRI PREMIUM →' },
+  fr: { subject: 'Soumission reçue : {title}', heading: 'Soumission reçue', body1: 'Nous avons bien reçu votre éditorial {title}.', statusLabel: 'Statut', statusValue: 'En cours d’examen', etaLabel: 'Réponse prévue', etaValue: '1 à 3 jours ouvrés', body2: 'Notre équipe éditoriale examinera votre travail avec soin. Vous recevrez un e-mail dès qu’une décision sera prise.', cta: 'MES SOUMISSIONS', premKicker: 'Pour les équipes créatives', premBody: 'Besoin d’emprunter des vêtements pour votre prochain shooting ? Les membres Premium peuvent demander une Pull-Letter officielle PAP par mois et consulter toutes les archives éditoriales.', premCta: 'DÉCOUVRIR PREMIUM →' },
+  es: { subject: 'Propuesta recibida: {title}', heading: 'Propuesta recibida', body1: 'Hemos recibido tu editorial {title}.', statusLabel: 'Estado', statusValue: 'En revisión', etaLabel: 'Respuesta estimada', etaValue: '1–3 días hábiles', body2: 'Nuestro equipo editorial revisará tu trabajo con atención. Recibirás un correo cuando haya una decisión.', cta: 'MIS PROPUESTAS', premKicker: 'Para equipos creativos', premBody: '¿Necesitas préstamo de prendas para tu próxima sesión? Los miembros Premium pueden solicitar una Pull-Letter oficial de PAP al mes y consultar todo el archivo editorial.', premCta: 'DESCUBRE PREMIUM →' },
+  ja: { subject: '応募受付: {title}', heading: '応募を受け付けました', body1: 'エディトリアル応募 {title} を受け付けました。', statusLabel: 'ステータス', statusValue: '審査中', etaLabel: '回答目安', etaValue: '営業日1～3日', body2: '編集チームが丁寧に拝見し、結果をメールでお知らせします。', cta: '応募履歴を見る', premKicker: 'クリエイティブチームの皆様へ', premBody: '次の撮影で衣装リースが必要ですか？プレミアム会員は毎月1件、PAP名義の公式Pull-Letterをリクエストでき、全エディトリアルアーカイブを閲覧できます。', premCta: 'プレミアムを見る →' },
+  zh: { subject: '投稿已收到：{title}', heading: '投稿已收到', body1: '我们已收到您的编辑大片投稿 {title}。', statusLabel: '状态', statusValue: '审核中', etaLabel: '预计回复', etaValue: '1–3 个工作日', body2: '编辑团队将仔细审阅您的作品，结果将通过邮件通知您。', cta: '查看我的投稿', premKicker: '致创意团队', premBody: '下次拍摄需要借用服装？高级会员每月可申请一份 PAP 官方 Pull-Letter，并可浏览全部编辑档案。', premCta: '了解高级会员 →' },
+  ru: { subject: 'Заявка получена: {title}', heading: 'Заявка получена', body1: 'Мы получили ваш редакционный материал {title}.', statusLabel: 'Статус', statusValue: 'На рассмотрении', etaLabel: 'Ответ', etaValue: '1–3 рабочих дня', body2: 'Редакция внимательно изучит вашу работу. Решение придёт на почту.', cta: 'МОИ ЗАЯВКИ', premKicker: 'Для креативных команд', premBody: 'Нужна одежда для следующей съёмки? Участники Premium могут раз в месяц запросить официальный Pull-Letter PAP и пользоваться всем архивом.', premCta: 'ПОДРОБНЕЕ О PREMIUM →' },
+  de: { subject: 'Einreichung erhalten: {title}', heading: 'Einreichung erhalten', body1: 'Wir haben Ihr Editorial {title} erhalten.', statusLabel: 'Status', statusValue: 'In Prüfung', etaLabel: 'Antwort voraussichtlich', etaValue: '1–3 Werktage', body2: 'Unser Redaktionsteam prüft Ihre Arbeit sorgfältig. Sie erhalten eine E-Mail, sobald eine Entscheidung vorliegt.', cta: 'MEINE EINREICHUNGEN', premKicker: 'Für Kreativteams', premBody: 'Benötigen Sie Leihgaben für Ihr nächstes Shooting? Premium-Mitglieder können monatlich eine offizielle PAP Pull-Letter anfragen und das gesamte Editorial-Archiv einsehen.', premCta: 'PREMIUM ENTDECKEN →' },
+};
+
+const WELCOME_I18N = {
+  ko: { subject: 'PAP Magazine에 오신 것을 환영합니다', heading: '환영합니다, {name}님.', intro: '떠오르는 패션 크리에이티브를 위한 플랫폼, PAP Magazine에 가입해 주셔서 감사합니다.', introList: '지금 바로 할 수 있는 것들:', b1t: '작업 제출하기', b1d: '에디토리얼을 큐레이션 팀에 보내 보세요', b2t: 'Pull-Letter 요청', b2d: '디자이너 쇼룸에서 의상을 대여하세요', b3t: '커뮤니티 참여', b3d: '포토그래퍼·스타일리스트·모델과 연결되세요', cta: '서브미션 시작하기' },
+  en: { subject: 'Welcome to PAP Magazine', heading: 'Welcome, {name}.', intro: 'Thank you for joining PAP Magazine — a platform for emerging fashion creatives.', introList: 'Here’s what you can do now:', b1t: 'Submit Your Work', b1d: 'Share your editorial with our curation team', b2t: 'Request a Pull-Letter', b2d: 'Borrow garments from designer showrooms', b3t: 'Join the Community', b3d: 'Connect with photographers, stylists, and models', cta: 'START SUBMITTING' },
+  it: { subject: 'Benvenuto su PAP Magazine', heading: 'Benvenuto, {name}.', intro: 'Grazie per esserti unito a PAP Magazine, la piattaforma per creativi emergenti della moda.', introList: 'Ecco cosa puoi fare subito:', b1t: 'Invia il tuo lavoro', b1d: 'Condividi il tuo editoriale con il nostro team', b2t: 'Richiedi una Pull-Letter', b2d: 'Prendi in prestito capi dagli showroom', b3t: 'Unisciti alla community', b3d: 'Entra in contatto con fotografi, stylist e modelli', cta: 'INIZIA A INVIARE' },
+  fr: { subject: 'Bienvenue sur PAP Magazine', heading: 'Bienvenue, {name}.', intro: 'Merci d’avoir rejoint PAP Magazine, la plateforme des créatifs émergents de la mode.', introList: 'Voici ce que vous pouvez faire dès maintenant :', b1t: 'Soumettre votre travail', b1d: 'Partagez votre éditorial avec notre équipe', b2t: 'Demander une Pull-Letter', b2d: 'Empruntez des vêtements auprès des showrooms', b3t: 'Rejoindre la communauté', b3d: 'Connectez-vous avec photographes, stylistes et modèles', cta: 'COMMENCER' },
+  es: { subject: 'Bienvenido a PAP Magazine', heading: 'Bienvenido, {name}.', intro: 'Gracias por unirte a PAP Magazine, la plataforma para creativos emergentes de la moda.', introList: 'Esto es lo que puedes hacer ahora:', b1t: 'Envía tu trabajo', b1d: 'Comparte tu editorial con nuestro equipo', b2t: 'Solicita una Pull-Letter', b2d: 'Pide prendas prestadas a los showrooms', b3t: 'Únete a la comunidad', b3d: 'Conecta con fotógrafos, estilistas y modelos', cta: 'EMPEZAR' },
+  ja: { subject: 'PAP Magazineへようこそ', heading: 'ようこそ、{name}さん。', intro: '新進ファッションクリエイターのためのプラットフォーム、PAP Magazineへご登録ありがとうございます。', introList: '今すぐできること:', b1t: '作品を応募', b1d: 'エディトリアルを編集チームへ', b2t: 'Pull-Letterをリクエスト', b2d: 'デザイナーショールームから衣装をリース', b3t: 'コミュニティに参加', b3d: 'フォトグラファーやスタイリストとつながる', cta: '応募を始める' },
+  zh: { subject: '欢迎加入 PAP Magazine', heading: '欢迎，{name}。', intro: '感谢加入 PAP Magazine —— 新锐时尚创意人的平台。', introList: '您现在可以：', b1t: '投稿作品', b1d: '向策展团队分享您的编辑大片', b2t: '申请 Pull-Letter', b2d: '从设计师 showroom 借用服装', b3t: '加入社区', b3d: '结识摄影师、造型师与模特', cta: '开始投稿' },
+  ru: { subject: 'Добро пожаловать в PAP Magazine', heading: 'Добро пожаловать, {name}.', intro: 'Спасибо, что присоединились к PAP Magazine — платформе для новых имён в моде.', introList: 'Что можно сделать уже сейчас:', b1t: 'Отправить работу', b1d: 'Покажите свой материал нашей редакции', b2t: 'Запросить Pull-Letter', b2d: 'Берите одежду в шоурумах', b3t: 'Присоединиться к сообществу', b3d: 'Общайтесь с фотографами и стилистами', cta: 'НАЧАТЬ' },
+  de: { subject: 'Willkommen bei PAP Magazine', heading: 'Willkommen, {name}.', intro: 'Danke, dass Sie PAP Magazine beigetreten sind — der Plattform für aufstrebende Fashion-Kreative.', introList: 'Das können Sie jetzt tun:', b1t: 'Arbeit einreichen', b1d: 'Teilen Sie Ihr Editorial mit unserem Team', b2t: 'Pull-Letter anfragen', b2d: 'Leihen Sie Kleidung aus Designer-Showrooms', b3t: 'Community beitreten', b3d: 'Vernetzen Sie sich mit Fotografen, Stylisten und Models', cta: 'JETZT EINREICHEN' },
+};
+
+const PULLLETTER_REVISION_I18N = {
+  ko: { subject: '[PAP Magazine] 풀레터 무드보드 수정 요청', heading: '무드보드 수정 요청', body1: '보내주신 풀레터 신청을 검토했습니다. 발급 전에 무드보드에 아래 수정이 필요합니다.', noteLabel: '에디터 피드백', body2: '마이페이지에서 수정한 무드보드를 다시 올려주시면 재검토 후 발급해 드립니다.', cta: '수정본 올리기' },
+  en: { subject: '[PAP Magazine] Pull-Letter: revision requested', heading: 'Revision requested', body1: 'We have reviewed your Pull-Letter request. Before we can issue the letter, the mood board needs the following revisions.', noteLabel: 'Editor feedback', body2: 'Please upload your revised mood board from My Page — we will review it again and issue the letter once it is ready.', cta: 'Upload revision' },
+  it: { subject: '[PAP Magazine] Pull-Letter: revisione richiesta', heading: 'Revisione richiesta', body1: 'Abbiamo esaminato la tua richiesta di Pull-Letter. Prima dell’emissione, la moodboard richiede le seguenti modifiche.', noteLabel: 'Feedback editoriale', body2: 'Carica la moodboard aggiornata dalla tua My Page: la riesamineremo ed emetteremo la lettera.', cta: 'Carica revisione' },
+  fr: { subject: '[PAP Magazine] Pull-Letter : révision demandée', heading: 'Révision demandée', body1: 'Nous avons examiné votre demande de Pull-Letter. Avant émission, le moodboard nécessite les révisions suivantes.', noteLabel: 'Retour de l’éditeur', body2: 'Téléversez votre moodboard révisé depuis My Page : nous le réexaminerons et émettrons la lettre.', cta: 'Envoyer la révision' },
+  es: { subject: '[PAP Magazine] Pull-Letter: revisión solicitada', heading: 'Revisión solicitada', body1: 'Hemos revisado tu solicitud de Pull-Letter. Antes de emitirla, el moodboard necesita los siguientes cambios.', noteLabel: 'Comentarios del editor', body2: 'Sube el moodboard revisado desde My Page: lo revisaremos de nuevo y emitiremos la carta.', cta: 'Subir revisión' },
+  ja: { subject: '[PAP Magazine] Pull-Letter：ムードボードの修正依頼', heading: '修正のお願い', body1: 'Pull-Letterのリクエストを拝見しました。発行前に、ムードボードに以下の修正が必要です。', noteLabel: 'エディターフィードバック', body2: 'マイページから修正版を再アップロードしてください。再審査のうえ発行します。', cta: '修正版を送る' },
+  zh: { subject: '[PAP Magazine] Pull-Letter：需修改情绪板', heading: '需要修改', body1: '我们已审阅您的 Pull-Letter 申请。签发前，情绪板需作以下修改。', noteLabel: '编辑反馈', body2: '请在“我的页面”重新上传修改后的情绪板，复审后即可签发。', cta: '上传修改稿' },
+  ru: { subject: '[PAP Magazine] Pull-Letter: нужна доработка', heading: 'Нужна доработка', body1: 'Мы рассмотрели ваш запрос Pull-Letter. Перед выдачей мудборд нужно доработать.', noteLabel: 'Комментарий редактора', body2: 'Загрузите обновлённый мудборд в My Page — мы проверим его и выдадим письмо.', cta: 'Загрузить' },
+  de: { subject: '[PAP Magazine] Pull-Letter: Überarbeitung erbeten', heading: 'Überarbeitung erbeten', body1: 'Wir haben Ihre Pull-Letter-Anfrage geprüft. Vor der Ausstellung benötigt das Moodboard folgende Überarbeitungen.', noteLabel: 'Feedback der Redaktion', body2: 'Laden Sie das überarbeitete Moodboard in Ihrer My Page hoch — wir prüfen erneut und stellen die Letter aus.', cta: 'Überarbeitung hochladen' },
+};
+
 const templates = {
   // 1. Welcome email after signup
-  welcome(user) {
+  welcome(user, lang) {
+    const L = WELCOME_I18N[lang] || WELCOME_I18N.en;
+    const heading = L.heading.replace('{name}', (user && user.name) || 'Creative');
     return {
-      subject: 'Welcome to PAP Magazine',
+      subject: L.subject,
       html: wrapHtml(`
-        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">Welcome, ${user.name || 'Creative'}.</h2>
-        <p>Thank you for joining PAP Magazine — a platform for emerging fashion creatives.</p>
-        <p>Here's what you can do now:</p>
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${heading}</h2>
+        <p>${L.intro}</p>
+        <p>${L.introList}</p>
         <table cellpadding="0" cellspacing="0" style="margin:20px 0;">
           <tr><td style="padding:8px 0;color:#ccc;">
-            <strong style="color:#fff;">Submit Your Work</strong><br>
-            <span style="color:#999;font-size:13px;">Share your editorial with our curation team</span>
+            <strong style="color:#fff;">${L.b1t}</strong><br>
+            <span style="color:#999;font-size:13px;">${L.b1d}</span>
           </td></tr>
           <tr><td style="padding:8px 0;color:#ccc;">
-            <strong style="color:#fff;">Request a Pull-Letter</strong><br>
-            <span style="color:#999;font-size:13px;">Borrow garments from designer showrooms</span>
+            <strong style="color:#fff;">${L.b2t}</strong><br>
+            <span style="color:#999;font-size:13px;">${L.b2d}</span>
           </td></tr>
           <tr><td style="padding:8px 0;color:#ccc;">
-            <strong style="color:#fff;">Join the Community</strong><br>
-            <span style="color:#999;font-size:13px;">Connect with photographers, stylists, and models</span>
+            <strong style="color:#fff;">${L.b3t}</strong><br>
+            <span style="color:#999;font-size:13px;">${L.b3d}</span>
           </td></tr>
         </table>
-        <a href="${FRONTEND_URL}/submission.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">START SUBMITTING</a>
-      `),
+        <a href="${FRONTEND_URL}/submission.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+      `, lang),
     };
   },
 
   // 2. Submission received confirmation
-  submissionReceived(user, submission) {
+  submissionReceived(user, submission, lang) {
+    const L = SUBMISSION_RECEIVED_I18N[lang] || SUBMISSION_RECEIVED_I18N.en;
+    const greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
+    const titleStrong = `<strong style="color:#fff;">"${(submission && submission.title) || '—'}"</strong>`;
     return {
-      subject: `Submission Received: ${submission.title}`,
+      subject: L.subject.replace('{title}', (submission && submission.title) || '—'),
       html: wrapHtml(`
-        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">Submission Received</h2>
-        <p>Hi ${user.name || 'there'},</p>
-        <p>We've received your editorial submission <strong style="color:#fff;">"${submission.title}"</strong>.</p>
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <p>${greet}</p>
+        <p>${L.body1.replace('{title}', titleStrong)}</p>
         <table style="margin:20px 0;width:100%;">
           <tr>
             <td style="padding:12px 16px;background:#1a1a1a;border-left:3px solid #fff;">
-              <span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Status</span><br>
-              <span style="color:#fff;font-size:14px;font-weight:600;">Under Review</span>
+              <span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.statusLabel}</span><br>
+              <span style="color:#fff;font-size:14px;font-weight:600;">${L.statusValue}</span>
             </td>
           </tr>
           <tr>
             <td style="padding:12px 16px;background:#1a1a1a;border-left:3px solid #333;">
-              <span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Expected Response</span><br>
-              <span style="color:#fff;font-size:14px;">1–3 business days</span>
+              <span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.etaLabel}</span><br>
+              <span style="color:#fff;font-size:14px;">${L.etaValue}</span>
             </td>
           </tr>
         </table>
-        <p>Our editorial team will review your work carefully. You'll receive an email once a decision has been made.</p>
-        <a href="${FRONTEND_URL}/submission.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">VIEW MY SUBMISSIONS</a>
+        <p>${L.body2}</p>
+        <a href="${FRONTEND_URL}/submission.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
         <div style="margin-top:28px;padding:16px;border:1px solid #3a3223;">
-          <span style="color:#c9a86a;font-size:10px;text-transform:uppercase;letter-spacing:2px;">For creative teams</span><br>
-          <span style="color:#ccc;font-size:13px;line-height:1.7;">Need garment loans for your next shoot? Premium members can request one official PAP Pull-Letter per month and browse the full editorial archive.</span><br>
-          <a href="${FRONTEND_URL}/subscribe?utm_source=submission_received_email&utm_medium=email" style="display:inline-block;margin-top:10px;color:#fff;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:underline;">EXPLORE PREMIUM →</a>
+          <span style="color:#c9a86a;font-size:10px;text-transform:uppercase;letter-spacing:2px;">${L.premKicker}</span><br>
+          <span style="color:#ccc;font-size:13px;line-height:1.7;">${L.premBody}</span><br>
+          <a href="${FRONTEND_URL}/subscribe?utm_source=submission_received_email&utm_medium=email" style="display:inline-block;margin-top:10px;color:#fff;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:underline;">${L.premCta}</a>
         </div>
-      `),
+      `, lang),
     };
   },
 
@@ -883,26 +929,16 @@ const templates = {
 
   // 7c. Pull-letter revision requested (2026-08-25 도메니코 — 무드보드 피드백 왕복)
   pullletterRevision(user, note, lang) {
-    var isKo = lang === 'ko';
+    var L = PULLLETTER_REVISION_I18N[lang] || PULLLETTER_REVISION_I18N.en;
     var greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
-    var subject = isKo ? '[PAP Magazine] 풀레터 무드보드 수정 요청' : '[PAP Magazine] Pull-Letter: revision requested';
-    var heading = isKo ? '무드보드 수정 요청' : 'Revision requested';
-    var body1 = isKo
-      ? '보내주신 풀레터 신청을 검토했습니다. 발급 전에 무드보드에 아래 수정이 필요합니다.'
-      : 'We have reviewed your Pull-Letter request. Before we can issue the letter, the mood board needs the following revisions.';
-    var noteLabel = isKo ? '에디터 피드백' : 'Editor feedback';
-    var body2 = isKo
-      ? '마이페이지에서 수정한 무드보드를 다시 올려주시면 재검토 후 발급해 드립니다.'
-      : 'Please upload your revised mood board from My Page — we will review it again and issue the letter once it is ready.';
-    var cta = isKo ? '수정본 올리기' : 'Upload revision';
-    var noteHtml = note ? ('<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #E6B800;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">' + noteLabel + '</span><br><span style="color:#ccc;font-size:14px;white-space:pre-line;">' + note + '</span></div>') : '';
-    var html = '<h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">' + heading + '</h2>'
+    var noteHtml = note ? ('<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #E6B800;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">' + L.noteLabel + '</span><br><span style="color:#ccc;font-size:14px;white-space:pre-line;">' + note + '</span></div>') : '';
+    var html = '<h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">' + L.heading + '</h2>'
       + '<p>' + greet + '</p>'
-      + '<p>' + body1 + '</p>'
+      + '<p>' + L.body1 + '</p>'
       + noteHtml
-      + '<p>' + body2 + '</p>'
-      + '<a href="' + FRONTEND_URL + '/mypage#mp-pullletters" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">' + cta + '</a>';
-    return { subject: subject, html: wrapHtml(html, lang) };
+      + '<p>' + L.body2 + '</p>'
+      + '<a href="' + FRONTEND_URL + '/mypage#mp-pullletters" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">' + L.cta + '</a>';
+    return { subject: L.subject, html: wrapHtml(html, lang) };
   },
 
   // 8. Subscription confirmation

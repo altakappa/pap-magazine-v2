@@ -150,7 +150,8 @@ module.exports = async function handler(req, res) {
           : isPositive
             ? templates.pullletterAccepted({ name: profile.name }, reviewNote, _lang)
             : templates.pullletterRejected({ name: profile.name }, reviewNote, _lang);
-      sendEmail(profile.email, tpl).catch(() => {});
+      try { await sendEmail(profile.email, tpl); }
+      catch (_e) { console.error('[pullletter-review] 결과 메일 실패(심사는 저장됨):', (_e && _e.message) || _e); }
     }
 
     return res.status(200).json({ pullLetter });

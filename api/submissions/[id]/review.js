@@ -8,6 +8,7 @@
  */
 
 const { supabaseAdmin } = require('../../_lib/supabase');
+const { resolveEmailLang } = require('../../_lib/emailLocale');
 const { requireAdmin, requireMainAdmin } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
 const { sendEmail, templates, DEFAULT_REJECTION_NOTE } = require('../../_lib/email');
@@ -825,7 +826,7 @@ module.exports = async function handler(req, res) {
     {
       const { data: profile } = await supabaseAdmin
         .from('profiles')
-        .select('email, display_name, language, email_language, subscription_plan, subscription_status')
+        .select('email, display_name, language, email_language, country, subscription_plan, subscription_status')
         .eq('id', submission.user_id)
         .single();
 
@@ -848,7 +849,9 @@ module.exports = async function handler(req, res) {
       }
 
       if (profile && profile.email) {
-        const lang = profile.email_language || profile.language || 'en';
+        // resolveEmailLang: email_language > language > 국가 추정 > en — 발송기·
+        // 구독 메일과 동일한 단일 규칙 (2026-08-26 도메니코: 모든 안내를 회원 언어로)
+        const lang = resolveEmailLang(profile);
         // 유료/브랜디드 서브미션 승인 시 게재료 결제요청 문구를 메일에 포함.
         // 금액은 서버 단일 소스(feeForType)로 산출 — 유형별 euro-cents(€380/€790).
         // free/그 외 유형은 null → 메일에 결제 블록 미표시.

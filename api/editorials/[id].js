@@ -6,6 +6,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
+const { resolveEmailLang } = require('../_lib/emailLocale');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin, verifyToken } = require('../_lib/auth');
 const edAccess = require('../_lib/editorialAccess');
@@ -75,12 +76,12 @@ async function _maybeSendApprovalEmail(editorialRow, opts) {
 
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('email, display_name, language, email_language')
+      .select('email, display_name, language, email_language, country')
       .eq('id', submission.user_id)
       .single();
     if (!profile || !profile.email) return;
 
-    const lang = profile.email_language || profile.language || 'en';
+    const lang = resolveEmailLang(profile);   // 단일 규칙 (2026-08-26)
     const tpl = templates.submissionReviewComplete(
       { name: profile.display_name || '' },
       // Use the editorial's CURRENT title — admin may have renamed it

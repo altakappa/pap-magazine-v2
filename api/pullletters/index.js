@@ -299,7 +299,8 @@ module.exports = async function handler(req, res) {
       // Confirmation email (non-blocking)
       if (profile) {
         const _lang = resolveEmailLang(profile);
-        sendEmail(profile.email, templates.pullletterReceived({ name: profile.name }, _lang)).catch(() => {});
+        try { await sendEmail(profile.email, templates.pullletterReceived({ name: profile.name }, _lang)); }
+        catch (_e) { console.error('[pullletters] 접수 메일 실패(신청은 저장됨):', (_e && _e.message) || _e); }
       }
 
       // Premium 전용 서비스 — 운영자가 바로 검토할 수 있도록 텔레그램 즉시 알림.

@@ -18,6 +18,8 @@ const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit } = require('../_lib/submissionType');
 const { feeForType } = require('../_lib/submissionPayment');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
+const { sendEmail, templates } = require('../_lib/email');
+const { resolveEmailLang } = require('../_lib/emailLocale');
 // 2026-08-03 — 관리자 목록에 '무료체험 중 · 전환 D-N' 배지를 달기 위한 공용 판정.
 // 서브미션은 '접수 자동 보류'를 하지 않는다(무료회원 투고가 매거진의 핵심 입력이라
 // 파이프라인을 막으면 안 됨). 배지로 표시만 하고 판단은 에디터가 한다.
@@ -206,9 +208,26 @@ module.exports = async function handler(req, res) {
         throw error;
       }
 
-      // No email — submitter is directed to check MY SUBMISSIONS on the
-      // website within 3 business days. Keeps users engaged with the site
-      // and avoids spam-folder deliverability issues.
+      /* 접수 확인 메일 (2026-08-26 도메니코 지시 — 모든 안내를 회원 언어로).
+       * 과거에는 '메일 없음'이 의도된 결정이었지만(스팸함 우려·사이트 재방문
+       * 유도), 접수 메일에 프리미엄 안내를 싣는 퍼널(8/25)과 함께 방침 변경.
+       * 언어는 resolveEmailLang(뉴스레터 설정 > 사이트 언어 > 국가 > en).
+       * ★ 반드시 await — fire-and-forget 은 서버리스 프리즈로 실제 발송이
+       * 안 된다(승인 메일 0/35 실측 전례). 실패해도 접수는 막지 않는다. */
+      try {
+        const { data: _prof } = await supabaseAdmin
+          .from('profiles')
+          .select('email, display_name, language, email_language, country')
+          .eq('id', user.id)
+          .single();
+        if (_prof && _prof.email) {
+          const _lang = resolveEmailLang(_prof);
+          await sendEmail(_prof.email, templates.submissionReceived(
+            { name: _prof.display_name || '' }, { title: submission.title }, _lang));
+        }
+      } catch (_e) {
+        console.error('[submissions] 접수 메일 실패(접수는 저장됨):', (_e && _e.message) || _e);
+      }
 
       return res.status(201).json({ submission });
     } catch (error) {

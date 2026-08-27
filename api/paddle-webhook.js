@@ -292,7 +292,8 @@ module.exports = async function handler(req, res) {
         const { data: profile } = await supabaseAdmin
           .from('profiles').select('email, name, email_language, language, country').eq('id', userId).single();
         if (profile && templates.subscriptionConfirmed) {
-          sendEmail(profile.email, templates.subscriptionConfirmed({ name: profile.name }, plan, resolveEmailLang(profile))).catch(() => {});
+          try { await sendEmail(profile.email, templates.subscriptionConfirmed({ name: profile.name }, plan, resolveEmailLang(profile))); }
+          catch (_e) { console.error('[paddle-webhook] 구독 메일 실패:', (_e && _e.message) || _e); }
         }
         // 유료 구독 발생 → 도메니코 텔레그램 즉시 알림 (2026-07-10 요청, 실패 무해)
         {

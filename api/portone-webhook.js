@@ -164,11 +164,13 @@ module.exports = async function handler(req, res) {
           .from('profiles').select('email, display_name, subscription_plan, email_language, language, country').eq('id', userId).single();
 
         if (profile && profile.email) {
-          sendEmail(profile.email, templates.subscriptionConfirmed(
-            { name: profile.display_name || profile.email },
-            profile.subscription_plan,
-            resolveEmailLang(profile)
-          )).catch(() => {});
+          try {
+            await sendEmail(profile.email, templates.subscriptionConfirmed(
+              { name: profile.display_name || profile.email },
+              profile.subscription_plan,
+              resolveEmailLang(profile)
+            ));
+          } catch (_e) { console.error('[portone-webhook] 구독 메일 실패:', (_e && _e.message) || _e); }
         }
 
         /* Payment confirmed */

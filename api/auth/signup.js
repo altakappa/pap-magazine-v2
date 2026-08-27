@@ -195,8 +195,15 @@ module.exports = async function handler(req, res) {
     setAuthCookie(res, token);
     setCsrfCookie(res);
 
-    // Send welcome email (non-blocking)
-    sendEmail(email, templates.welcome(user)).catch(() => {});
+    // 환영 메일 — 가입 폼에서 고른 언어로, await 로 실제 발송 보장
+    // (fire-and-forget 은 서버리스 프리즈로 발송이 유실된다 — 승인 메일 0/35 전례).
+    // 실패해도 가입은 막지 않는다.
+    {
+      const _welcomeLang = safeEmailLang
+        || (SUPPORTED_LANGS.includes(language) ? language : 'en');
+      try { await sendEmail(email, templates.welcome(user, _welcomeLang)); }
+      catch (_e) { console.error('[signup] 환영 메일 실패(가입은 완료):', (_e && _e.message) || _e); }
+    }
 
     return res.status(201).json({ token, user });
   } catch (error) {
