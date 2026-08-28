@@ -1322,14 +1322,23 @@ function renderSeoHtml(kind, record, opts) {
     };
   }
 
-  /* AEO FAQ (2026-07-16, 083 · 2026-08-17 다국어 확장) — 기사 생성 파이프라인이
-     만든 {q,a} 배열. 기존엔 ko 전용이었는데, Ahrefs 실측으로 AI Overview 사정권
-     페이지(상위 20위 + AIO 존재)가 대부분 ja/fr/en 이라는 게 드러났다 — 정작
-     인용될 페이지에 답변형 블록이 없던 것. 번역 FAQ(seo_translations.faq)가
-     있으면 그 언어로 렌더한다. 원문(ko)을 다른 언어 페이지에 섞지 않으므로
-     언어 신호 혼선 없음 — 번역이 없으면 종전처럼 렌더하지 않는다. */
+  /* AEO FAQ (2026-07-16, 083 · 2026-08-17 다국어 확장 · 2026-08-28 en 배선) —
+     기사 생성 파이프라인이 만든 {q,a} 배열. 기존엔 ko 전용이었는데, Ahrefs 실측으로
+     AI Overview 사정권 페이지(상위 20위 + AIO 존재)가 대부분 ja/fr/en 이라는 게
+     드러났다 — 정작 인용될 페이지에 답변형 블록이 없던 것. 번역 FAQ
+     (seo_translations.faq)가 있으면 그 언어로 렌더한다. 원문(ko)을 다른 언어
+     페이지에 섞지 않으므로 언어 신호 혼선 없음 — 번역이 없으면 렌더하지 않는다.
+
+     ⚠️ en 은 seo_translations 를 **읽지 않는다**. 이 저장소에서 en 은 일관되게
+     DB 원본 칼럼 언어이고(title_en·description_en·content_en), seo_translations
+     에는 en 행이 0개다(실측: de·es·fr·it·ja·ru·zh 뿐). 그런데 2026-08-28 까지
+     이 삼항식이 en 을 `tr` 쪽으로 보냈다 → tr 은 언제나 null → **영문 페이지
+     전량에 FAQ 블록도 FAQPage 스키마도 한 번도 뜬 적이 없었다.** 백필이 밀린 게
+     아니라 경로가 없었다. en 은 faq_en 칼럼을 본다(마이그레이션 139). */
   const faqItems = (() => {
-    let f = (lang === 'ko') ? record.faq : ((tr && tr.faq) || null);
+    let f = (lang === 'ko') ? record.faq
+          : (lang === 'en') ? (record.faq_en || null)
+          : ((tr && tr.faq) || null);
     if (typeof f === 'string') { try { f = JSON.parse(f); } catch (_) { f = null; } }
     return Array.isArray(f)
       ? f.filter(x => x && typeof x.q === 'string' && typeof x.a === 'string' && x.q.trim() && x.a.trim()).slice(0, 5)

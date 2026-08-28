@@ -30,7 +30,17 @@ const handler = R('api/seo/article/[slug].js');
 console.log('\n[1] 렌더러 — 번역 FAQ 다국어 렌더');
 {
   t('ko 전용 하드블록이 사라졌다', !/if \(lang !== 'ko'\) return \[\];\s*\n\s*let f = record\.faq/.test(seo));
-  t('비-ko 는 번역 FAQ(tr.faq)를 쓴다', /\(lang === 'ko'\) \? record\.faq : \(\(tr && tr\.faq\) \|\| null\)/.test(seo));
+  /* 2026-08-28 — en 이 이 분기에서 빠졌다. en 은 seo_translations 에 행이
+     0개인 DB 원본 칼럼 언어(title_en·description_en·content_en)라 tr 이 언제나
+     null 이었고, 그래서 **영문 페이지 FAQ 가 통째로 비어 있었다**. 아래 [2]
+     에서 FAQ_HEADING.en 이 정의돼 있는지까지 검사하고 있었는데, 정작 그
+     제목 아래 들어갈 항목이 영원히 0개였다는 게 이 테스트로도 안 보였다.
+     en 은 faq_en 칼럼을 본다 — tests/faq-en.test.js 가 그쪽을 지킨다. */
+  t('번역판(ko·en 외)은 번역 FAQ(tr.faq)를 쓴다',
+    /\(\(tr && tr\.faq\) \|\| null\)/.test(seo)
+    && /\(lang === 'ko'\) \? record\.faq/.test(seo));
+  t('en 은 faq_en 칼럼을 쓴다 (tr 로 되돌리면 영문 FAQ 가 사라진다)',
+    /lang === 'en'\) \? \(record\.faq_en \|\| null\)/.test(seo));
   t('번역이 없으면 렌더하지 않는다 — ko 원문 폴백 금지',
     !/tr\.faq\) \|\| record\.faq/.test(seo) && !/tr\.faq \|\| record\.faq/.test(seo));
   t('q/a 형태 검증은 그대로 살아 있다', /typeof x\.q === 'string' && typeof x\.a === 'string'/.test(seo));

@@ -1,0 +1,106 @@
+/**
+ * 영문판 FAQ (faq_en) — 가드 (2026-08-28)
+ *
+ * 무엇을 지키나:
+ *   /en/ 페이지에는 FAQ 블록도 FAQPage 스키마도 **한 번도 뜬 적이 없었다.**
+ *   백필이 밀린 게 아니라 경로가 없었다 — seoRenderer 의 삼항식이 en 을
+ *   seo_translations(`tr`) 쪽으로 보냈는데 거기엔 en 행이 0개다.
+ *   실측(2026-08-28): seo_translations.lang = de·es·fr·it·ja·ru·zh 뿐.
+ *
+ *   영어는 버릴 수 없는 표면이다 — geo-citation-surface 의 10일 실측에서
+ *   인용 언어가 ko 42 / en 41 로 거의 동률이었다.
+ *
+ * 규칙의 품질(번역이 좋은가)은 기계로 못 잰다. 규칙이 코드에서 사라지지
+ * 않게만 지킨다 — geo-citation-surface.test.js 와 같은 방침.
+ */
+
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+
+let pass = 0, fail = 0;
+function t(name, ok, extra) {
+  if (ok) { pass++; console.log('  ✓ ' + name); }
+  else { fail++; console.log('  ✗ ' + name + (extra ? ' — ' + extra : '')); }
+}
+
+const root = path.join(__dirname, '..');
+const rd = f => fs.readFileSync(path.join(root, f), 'utf8');
+const renderer = rd('api/_lib/seoRenderer.js');
+const lib = rd('api/_lib/faqEnBackfill.js');
+const cron = rd('api/cron/backfill-faq.js');
+const migration = rd('supabase_migrations/139_faq_en.sql');
+const vercel = JSON.parse(rd('vercel.json'));
+
+console.log('=== 렌더러 — en 은 faq_en 을 읽는다 ===');
+t('en 분기가 실제로 존재한다',
+  /lang === 'en'\) \? \(record\.faq_en \|\| null\)/.test(renderer));
+t('ko 는 종전대로 record.faq', /\(lang === 'ko'\) \? record\.faq/.test(renderer));
+t('나머지 언어는 종전대로 seo_translations',
+  /\(\(tr && tr\.faq\) \|\| null\)/.test(renderer));
+/* 재발 방지의 핵심 한 줄. en 을 tr 쪽으로 되돌리면 영문 FAQ 가 통째로 사라진다. */
+t('en 을 tr 쪽으로 되돌리지 않는다',
+  !/lang === 'ko'\) \? record\.faq : \(\(tr && tr\.faq\)/.test(renderer));
+t('FAQPage 스키마는 같은 faqItems 를 쓴다 (블록만 있고 스키마 없는 상태 방지)',
+  /faqSchema = faqItems\.length/.test(renderer)
+  && /'@type': 'FAQPage'/.test(renderer));
+
+console.log('\n=== 마이그레이션 ===');
+t('두 표 모두 faq_en 추가',
+  /alter table articles\s+add column if not exists faq_en jsonb/.test(migration)
+  && /alter table editorials add column if not exists faq_en jsonb/.test(migration));
+t('nullable — 기존 페이지 동작 불변', !/not null/i.test(migration));
+t('되돌리기 방법이 적혀 있다', /drop column if exists faq_en/.test(migration));
+
+console.log('\n=== 백필 라이브러리 ===');
+t('두 표를 대상으로 한다',
+  /table: 'articles'/.test(lib) && /table: 'editorials'/.test(lib));
+t('원본 faq 보유 + faq_en 비어 있는 발행분만',
+  /\.eq\('status', 'published'\)/.test(lib)
+  && /\.not\('faq', 'is', null\)/.test(lib)
+  && /\.is\('faq_en', null\)/.test(lib));
+t('faq_en 만 UPDATE — 원본 faq·본문 미변경',
+  /\.update\(\{ faq_en: en \}\)/.test(lib)
+  && !/update\(\{[^}]*\bfaq:/.test(lib)
+  && !/\.insert\(/.test(lib));
+t('최신순 — 인용 가능성이 높은 쪽 먼저',
+  /\.order\('published_date', \{ ascending: false \}\)/.test(lib));
+t('항목 수 불일치는 버린다 (반쪽 FAQ 저장 금지)',
+  /en\.length !== row\.faq\.length/.test(lib));
+t('normalizeFaq 재사용 — 형태 규칙을 복제하지 않는다',
+  /require\('\.\/seoTranslateBackfill'\)/.test(lib) && /normalizeFaq/.test(lib));
+/* 2026-08-25 에 넷째 칸까지 붙인 jsonRepair 계단. 여기서 정규식을 새로 쓰면
+   그 수리가 또 복제되고, 다음 고장 때 한쪽만 고쳐진다 (교훈 2). */
+t('JSON 파싱은 공용 계단(parseJsonArray)을 쓴다',
+  /parseJsonArray/.test(lib) && !/text\.match\(\/\\\[\[/.test(lib));
+t('callClaude 반환 객체에서 .text 를 꺼낸다',
+  /callClaude\(/.test(lib) && /\(raw && raw\.text\)/.test(lib));
+t('String(raw) 오용을 하지 않는다', !/String\(raw \|\| ''\)/.test(lib));
+t('env 손잡이로 범위를 자를 수 있다 (기본 무제한)',
+  /FAQ_EN_RECENT/.test(lib) && /\|\| '0'/.test(lib));
+/* 켜지 않은 기능이 매 회차 DB 를 때리면 안 된다. */
+t('무제한이면 컷오프 질의를 아예 하지 않는다',
+  /if \(!n\) return null;/.test(lib));
+t('API 키 없으면 503 으로 멈춘다 (조용한 0건 금지)',
+  /ANTHROPIC_API_KEY/.test(lib) && /statusCode = 503/.test(lib));
+t('한 표 실패가 나머지를 막지 않는다',
+  /catch \(err\)[\s\S]{0,200}per\.push\(target\.label \+ ':실패'\)/.test(lib));
+
+console.log('\n=== 크론 배선 (별도 크론 아님 — 호출 예산) ===');
+/* 별도 크론을 등록하면 vercel-cost-guard 의 하루 총 호출 상한을 넘긴다.
+   같은 호출 안에서 이어 돌면 호출 수 증가가 0이다. */
+t('기사 FAQ 크론이 영문판을 이어서 돈다', /runFaqEnBatch/.test(cron));
+t('별도 크론을 등록하지 않는다 (호출 예산 보호)',
+  !(vercel.crons || []).some(c => /faq-en/.test(c.path)));
+t('시간 예산을 나눈다 — 원본 먼저, 남으면 영문판',
+  /timeoutMs: 55000/.test(cron) && /left > 25000/.test(cron));
+t('영문판 실패가 원본 결과를 덮지 않는다',
+  /\.\.\.out, en/.test(cron) && /console\.error\('\[backfill-faq\/en\]'/.test(cron));
+/* note 가 없으면 '돌았다 ≠ 했다' 를 또 못 본다 (교훈 1 · 2026-08-04). */
+t('cron_runs.note 에 영문판 생산량이 남는다',
+  /en && en\.note/.test(cron) && /'영문FAQ '/.test(lib));
+
+console.log('\npassed: ' + pass + '   failed: ' + fail);
+if (fail > 0) process.exit(1);
+console.log('✓ faq-en tests passed');

@@ -48,7 +48,15 @@ t('normalizeFaq 를 다시 통과 (형태 어긴 응답 차단)', /const trFaq =
 console.log('\n=== SSR 읽기 ===');
 t('화보 SSR 이 번역 faq 를 select 한다', /select\('lang, title, description, faq'\)/.test(edSsr));
 t('translation 객체에 faq 를 싣는다', /translation = \{ title: t\.title, description: t\.description, faq: t\.faq \}/.test(edSsr));
-t('렌더러가 비-ko 에서 tr.faq 를 쓴다', /\(lang === 'ko'\) \? record\.faq : \(\(tr && tr\.faq\) \|\| null\)/.test(renderer));
+/* 2026-08-28 — en 이 분기에서 빠졌다. en 은 seo_translations 에 행이 0개인
+   DB 원본 칼럼 언어라 tr 이 언제나 null 이었고, 그래서 영문 페이지 FAQ 가
+   통째로 비어 있었다. en 은 faq_en 칼럼을 본다(tests/faq-en.test.js).
+   여기서 지키는 것은 그대로다 — **번역판 7개 언어는 tr.faq 를 쓴다.** */
+t('렌더러가 번역판(ko·en 외)에서 tr.faq 를 쓴다',
+  /\(\(tr && tr\.faq\) \|\| null\)/.test(renderer)
+  && /\(lang === 'ko'\) \? record\.faq/.test(renderer));
+t('en 은 tr 이 아니라 faq_en 칼럼을 본다',
+  /lang === 'en'\) \? \(record\.faq_en \|\| null\)/.test(renderer));
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail > 0) process.exit(1);

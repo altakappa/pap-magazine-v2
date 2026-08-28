@@ -25,8 +25,11 @@
 const { supabaseAdmin } = require('./supabase');
 const { normalizeFaq, callClaude, LANG_NAMES } = require('./seoTranslateBackfill');
 
-/* ko 는 원본. en 은 seo_translations 에 행이 있는 경우가 있어 포함한다. */
-const TARGET_LANGS = ['en', 'it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
+/* ko 는 원본, en 은 faq_en 칼럼(마이그레이션 139 · faqEnBackfill.js)이 담당한다.
+   2026-08-28 까지 이 목록에 'en' 이 있었지만 죽은 항목이었다 — 이 백필은
+   **기존 번역행 UPDATE 만** 하는데 seo_translations 에 en 행은 0개다.
+   매 회차 조회 0건으로 조용히 넘어가느라 죽은 줄도 안 보였다. */
+const TARGET_LANGS = ['it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
 
 function recentLimit() {
   const n = parseInt(process.env.EDITORIAL_FAQ_I18N_RECENT || '300', 10);
@@ -81,8 +84,14 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
     '- Return ONLY a JSON array, one object per input: {"i":<index>,"faq":[{"q":"...","a":"..."}]}. No prose, no code fences.\n' +
     'Input JSON:\n' + JSON.stringify(payload);
 
+  /* callClaude 는 문자열이 아니라 {text, stopReason} 객체를 돌려준다.
+     2026-08-27~28 사이 이 자리는 String(raw) 였고, 그 값은 언제나
+     "[object Object]" 였다 → JSON.parse 실패 → 배열 정규식도 실패 →
+     매 회차 조용히 processed:0. cron_runs 에 '화보FAQ 언어판 0 · it:0 fr:0'
+     이 24시간 찍히는 동안 Claude 호출만 나가고 저장은 0건이었다.
+     (GROWTH-LEDGER 교훈 1 "돌았다 ≠ 했다" 의 네 번째 재발) */
   const raw = await callClaude(prompt, 8000, model, timeoutMs);
-  const text = String(raw || '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  const text = String((raw && raw.text) || '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
   let arr;
   try { arr = JSON.parse(text); }
   catch (_) {

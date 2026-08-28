@@ -14,6 +14,7 @@
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { runFaqBackfillBatch, normalizeBatch } = require('../_lib/faqBackfill');
+const { runFaqEnBatch } = require('../_lib/faqEnBackfill');
 
 module.exports = withCronGuard('backfill-faq', async function handler(req, res) {
   res.locals = res.locals || {};
@@ -28,14 +29,33 @@ module.exports = withCronGuard('backfill-faq', async function handler(req, res) 
     (req.query && req.query.batch) || process.env.FAQ_BACKFILL_BATCH, 10);
 
   try {
-    // 크론 함수 예산 안에서 끝나도록 번역 백필과 같은 타임아웃 방침.
-    const out = await runFaqBackfillBatch({ batch, timeoutMs: 90000 });
+    /* ① ko 원본 생성 — 이 크론의 본업. 함수 예산의 절반을 준다. */
+    const started = Date.now();
+    const out = await runFaqBackfillBatch({ batch, timeoutMs: 55000 });
+
+    /* ② 남은 시간에 영문판(faq_en)을 이어서 돈다 (2026-08-28).
+       왜 별도 크론이 아닌가: 화보 쪽과 같은 이유다 — 크론 호출 예산 가드가
+       하루 총 호출 상한을 지키는데 새 크론을 등록하면 그 상한을 넘긴다.
+       같은 호출 안에서 이어 돌면 호출 수 증가가 0이다.
+       ②가 실패해도 ①의 결과는 그대로 보고한다. */
+    let en = null;
+    const left = 100000 - (Date.now() - started);
+    if (left > 25000) {
+      try {
+        en = await runFaqEnBatch({ batch: 8, timeoutMs: left });
+      } catch (e) {
+        console.error('[backfill-faq/en]', (e && e.message) || e);
+        en = { note: '영문FAQ 실패 — ' + String((e && e.message) || 'failed').slice(0, 80) };
+      }
+    }
+
     /* 실행 요약을 cron_runs.note 에 남긴다. 'ok' 는 함수가 안 죽었다는 뜻이지
        일을 했다는 뜻이 아니다 — 이 한 줄이 없어서 FAQ 백필이 매 10분 성실히
        돌면서 실제로는 0건만 만든 걸 2주 가까이 못 봤다. (2026-08-04) */
-    res.locals.cronNote = out.note || ('FAQ ' + (out.processed || 0) + ' · 잔여 '
+    const base = out.note || ('FAQ ' + (out.processed || 0) + ' · 잔여 '
       + (out.remaining == null ? '?' : out.remaining));
-    return res.status(200).json({ ok: true, ...out });
+    res.locals.cronNote = base + (en && en.note ? ' | ' + en.note : '');
+    return res.status(200).json({ ok: true, ...out, en });
   } catch (err) {
     const code = err && err.statusCode ? err.statusCode : 500;
     console.error('[backfill-faq]', (err && err.message) || err);
