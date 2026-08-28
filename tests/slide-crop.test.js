@@ -141,17 +141,40 @@ async function skinShare(buf) {
   t('celebThumb 도 같은 숫자를 쓴다',
     /W: 1080, H: 1350/.test(THUMB) && /W: 1080, H: 1920/.test(THUMB));
 
-  console.log('\n[8] 잘려나간 자리에 사람이 있으면 뺀다  ← 2026-08-26 2차 지시');
+  console.log('\n[8] 잘려나간 자리에 **얼굴**이 있으면 뺀다  ← 2026-08-28 기준 변경');
   /* attention 은 창을 **한 덩어리**로만 옮긴다. 좌우 양끝에 두 사람이 서 있으면
-     한쪽은 반드시 버려지는데, 창 안쪽만 봐서는 그걸 절대 알 수 없다. */
+     한쪽은 반드시 버려지는데, 창 안쪽만 봐서는 그걸 절대 알 수 없다.
+
+     2026-08-28 — 도메니코 "얼굴만 안 잘리면 괜찮아". 그래서 이 픽스처도
+     **얼굴로** 바꾼다. 종전 픽스처는 균일한 살색 사각형이라, 새 규칙에서는
+     팔·벽과 구별되지 않는다(그게 이번 변경의 목적이다). 눈 두 개를 그려
+     "얼굴이 잘리면 뺀다"를 그대로 검사한다. */
+  const facePatch = async (w, h) => sharp({
+    create: { width: w, height: h, channels: 3, background: { r: 232, g: 180, b: 148 } },
+  }).composite([
+    { input: await sharp({ create: { width: Math.round(w * 0.16), height: Math.round(h * 0.07), channels: 3, background: { r: 30, g: 24, b: 22 } } }).jpeg().toBuffer(),
+      left: Math.round(w * 0.18), top: Math.round(h * 0.24) },
+    { input: await sharp({ create: { width: Math.round(w * 0.16), height: Math.round(h * 0.07), channels: 3, background: { r: 30, g: 24, b: 22 } } }).jpeg().toBuffer(),
+      left: Math.round(w * 0.62), top: Math.round(h * 0.24) },
+  ]).jpeg({ quality: 95 }).toBuffer();
+
   const twoEnds = await makePhoto(1920, 1080, { x: 30, y: 140, w: 340, h: 800 });
-  const twoEndsBoth = await sharp(twoEnds).composite([{
+  /* 얼굴은 세로로 긴 몸통이 아니라 **거의 정사각형**이다. 340x800 짜리
+     살색 기둥은 새 규칙에서 팔·몸통으로 걸러진다(그게 맞다). */
+  const twoEndsBoth = await sharp(twoEnds).composite([
+    { input: await facePatch(340, 380), left: 30, top: 140 },
+    { input: await facePatch(340, 380), left: 1550, top: 140 },
+  ]).jpeg({ quality: 95 }).toBuffer();
+  const rTwo = await sc.cropSlideToVariant(twoEndsBoth, 'feed');
+  t('양끝에 얼굴 둘 → 한쪽이 잘리므로 뺀다', rTwo.drop === true, rTwo.skin);
+  t('뺀 이유가 남는다', /얼굴로 보이는/.test(rTwo.reason || ''), rTwo.reason);
+  /* 이번 변경의 핵심: 얼굴이 아닌 살색 덩어리는 잘려도 쓴다. */
+  const twoEndsFlat = await sharp(twoEnds).composite([{
     input: await sharp({ create: { width: 340, height: 800, channels: 3, background: { r: 232, g: 180, b: 148 } } }).jpeg().toBuffer(),
     left: 1550, top: 140,
   }]).jpeg({ quality: 95 }).toBuffer();
-  const rTwo = await sc.cropSlideToVariant(twoEndsBoth, 'feed');
-  t('양끝에 인물 둘 → 한쪽이 잘리므로 뺀다', rTwo.drop === true, rTwo.skin);
-  t('뺀 이유가 남는다', /인물로 보이는/.test(rTwo.reason || ''), rTwo.reason);
+  const rFlat = await sc.cropSlideToVariant(twoEndsFlat, 'feed');
+  t('얼굴이 아닌 살색(팔·옷·벽)은 잘려도 안 뺀다  ← 8/28 지시', rFlat.drop === false, rFlat.skin);
 
   const midOnly = await makePhoto(1920, 1080, { x: 790, y: 140, w: 340, h: 800 });
   t('가운데 인물 하나면 안 뺀다', (await sc.cropSlideToVariant(midOnly, 'feed')).drop === false);
@@ -161,7 +184,7 @@ async function skinShare(buf) {
   t('인물이 없으면 안 뺀다', (await sc.cropSlideToVariant(wide, 'feed')).drop === false);
   t('자르지 않은 사진은 검사 자체를 안 한다', rSame.drop === false && rSame.skin === null);
   t('깨진 버퍼는 안 뺀다 (못 본 것을 근거로 버리지 않는다)', rJunk.drop === false);
-  t('경계값이 1%', sc.CUT_SUBJECT_SKIN === 0.01);
+  t('살색 경계값은 참고 수치로 남는다 (판정 근거는 아니다)', sc.CUT_SUBJECT_SKIN === 0.01);
   /* 못 읽은 띠를 "사람이 있다"로 세면 멀쩡한 사진이 무더기로 사라진다.
      띠 하나가 실패해도 나머지로 판단하고, 전부 실패하면 안 뺀다. */
   t('띠를 못 읽어도 잘렸다고 하지 않는다',

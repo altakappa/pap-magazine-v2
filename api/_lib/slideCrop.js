@@ -69,20 +69,36 @@ function targetRatio(variant) {
   return T.W / T.H;
 }
 
-/* 잘려나간 자리에 사람이 있었나 (2026-08-26) ──────────────────────────
-   도메니코: "인물이 잘릴경우에는 그냥 안쓸게."
+/* 잘려나간 자리에 **얼굴**이 있었나 (2026-08-28 기준 변경) ──────────────
+   도메니코 2026-08-26: "인물이 잘릴경우에는 그냥 안쓸게."
+   도메니코 2026-08-28: **"얼굴만 안 잘리면 괜찮아"**
+
+   기준이 바뀐 이유: 살색만 보면 팔·다리·손·베이지 옷·나무·모래까지 사람으로
+   센다. 실제로 8/28 페리 로즈 브리프에서 **9장 중 6장이 빠졌다.** 한 브리프의
+   3분의 2가 사라지는 건 규칙이 과한 것이다.
+
+   그래서 판정이 "살색이 있나" 에서 "**얼굴처럼 생긴 덩어리가 있나**" 로 바뀐다.
+   덩달아 기본 태도도 뒤집힌다: 종전에는 애매하면 뺐고, 이제는 애매하면 쓴다.
+
+   ⚠️ 이건 여전히 얼굴 '인식'이 아니다. Vercel 크론에 모델을 올릴 수 없다
+   (face-api 는 TF + 수 MB 모델 — 콜드스타트가 브리프보다 오래 걸린다).
+   아래는 네 가지 신호를 함께 보는 휴리스틱이다. 정면 얼굴은 잘 잡고,
+   아주 작거나 옆얼굴·가려진 얼굴은 놓칠 수 있다. 장담하지 않는다.
 
    얼굴 인식은 못 한다(Vercel 에 모델이 없다). 대신 **버려진 픽셀을 직접 본다.**
    sharp 가 크롭 후 info.cropOffsetLeft/Top 을 준다 — 어디를 잘랐는지 알 수 있다.
    그 바깥 띠에서 살색 픽셀 비율을 재고, 일정 이상이면 "사람이 잘렸다"고 본다.
 
-   왜 이 방식인가: attention 은 **한 덩어리**로만 창을 옮긴다. 좌우 양끝에 두
+   왜 버린 쪽을 보나: attention 은 **한 덩어리**로만 창을 옮긴다. 좌우 양끝에 두
    사람이 서 있으면 한쪽은 반드시 버려지는데, 창 안쪽만 봐서는 그걸 절대 모른다.
-   버린 쪽을 봐야 안다.
 
-   한계는 명확히 적는다 — 살색 판정은 색 규칙이라 나무·모래·베이지 옷·조명에도
-   걸린다. 즉 **멀쩡한 사진을 빼는 쪽으로 틀린다.** 반대(사람이 잘렸는데 통과)
-   보다 이쪽이 낫다는 게 도메니코의 결정이다("그냥 안쓸게").
+   얼굴 판정의 네 신호 (넷 다 맞아야 얼굴로 본다)
+     ① 살색 픽셀이 **한 덩어리로 이어져** 있다 (흩어진 점은 배경·노이즈)
+     ② 그 덩어리가 **충분히 크다** — 짧은 변의 6% 이상. 손끝·발끝은 걸러진다
+     ③ **납작하지 않다** — 가로세로비 0.55~1.9. 팔·다리는 길쭉해서 걸러진다
+     ④ 덩어리 안에 **어두운 부분이 있다** (눈·눈썹·입).
+        맨팔이나 베이지 벽은 균일해서 여기서 걸러진다. 이게 가장 센 신호다.
+
    빼는 이유는 항상 이름을 대서 알린다 — 조용히 사라지면 왜 3장뿐인지 모른다. */
 
 /** 흔한 RGB 살색 규칙. 얼굴 인식이 아니라 색 필터다. */
@@ -92,11 +108,22 @@ function isSkinPixel(rr, gg, bb) {
     && Math.abs(rr - gg) > 15 && rr > gg && rr > bb;
 }
 
-/* 버려진 띠에서 살색이 이 비율을 넘으면 사람이 잘렸다고 본다.
-   1% 는 1080x1350 기준 약 14,600 픽셀 — 얼굴 하나가 충분히 들어간다. */
+/* 버려진 띠의 살색 비율. 이제 **빼는 근거가 아니라 참고 수치**다 —
+   노트에 같이 적어 두면 나중에 기준을 다시 손볼 때 판단 재료가 된다. */
 const CUT_SUBJECT_SKIN = 0.01;
 /* 띠가 이보다 얇으면 보지 않는다 (반올림 오차로 1~2px 이 남는 경우). */
 const MIN_STRIP_PX = 8;
+
+/* 얼굴 판정 기준 (2026-08-28) ─────────────────────────────────────────
+   숫자를 한곳에 모아 둔다. 너무 많이 빠지거나 너무 안 빠지면 여기만 만진다. */
+const FACE_GRID = 160;          // 분석 격자의 긴 변 (원본 좌표계 기준)
+const FACE_MIN_SIDE = 0.06;     // 얼굴 최소 크기 = 원본 짧은 변의 6% (1080 → 65px)
+const FACE_ASPECT_MIN = 0.55;   // 이보다 납작·길쭉하면 팔다리로 본다
+const FACE_ASPECT_MAX = 1.9;
+const FACE_FILL_MIN = 0.42;     // bbox 를 이만큼은 채워야 덩어리다 (길쭉한 팔 배제)
+const FACE_DARK_MIN = 0.015;    // 덩어리 안 어두운 구멍 최소 (눈·눈썹·입)
+const FACE_DARK_MAX = 0.75;     // 상한은 느슨하게 둔다 — 어두운 배경 앞의 얼굴은
+                                // bbox 모서리가 통째로 어둡다. 진짜 판별은 ⑤ 눈 한 쌍이 한다.
 
 async function _skinShare(sharp, buf, left, top, width, height) {
   if (width < MIN_STRIP_PX || height < MIN_STRIP_PX) return 0;
@@ -113,9 +140,173 @@ async function _skinShare(sharp, buf, left, top, width, height) {
   return n ? hit / n : 0;
 }
 
+/* 덩어리 안에서 눈 한 쌍을 찾는다 (2026-08-28).
+   조건: 위쪽 60% 안에 있고 · 가로로 15~70% 떨어져 있고 · 세로 차이가 작고 ·
+   크기가 서로 비슷한 어두운 점 두 개. 얼굴이 기울어도 어느 정도 견딘다. */
+function _eyePair(skin, luma, gw, minX, minY, maxX, maxY, darkCut) {
+  const bw = maxX - minX + 1, bh = maxY - minY + 1;
+  const upperY = minY + Math.round(bh * 0.62);
+  const w = bw, h = upperY - minY + 1;
+  if (w < 4 || h < 3) return null;
+  const n = w * h;
+  const mask = new Uint8Array(n);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const gi = (minY + y) * gw + (minX + x);
+      if (!skin[gi] && luma[gi] < darkCut) mask[y * w + x] = 1;
+    }
+  }
+  const seen = new Uint8Array(n);
+  const stack = new Int32Array(n);
+  const blobs = [];
+  for (let st = 0; st < n; st++) {
+    if (!mask[st] || seen[st]) continue;
+    let sp = 0; stack[sp++] = st; seen[st] = 1;
+    let area = 0, sx = 0, sy = 0, x0 = w, x1 = -1, y0 = h, y1 = -1;
+    while (sp > 0) {
+      const idx = stack[--sp];
+      const x = idx % w, y = (idx - x) / w;
+      area++; sx += x; sy += y;
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (x > 0 && mask[idx - 1] && !seen[idx - 1]) { seen[idx - 1] = 1; stack[sp++] = idx - 1; }
+      if (x + 1 < w && mask[idx + 1] && !seen[idx + 1]) { seen[idx + 1] = 1; stack[sp++] = idx + 1; }
+      if (y > 0 && mask[idx - w] && !seen[idx - w]) { seen[idx - w] = 1; stack[sp++] = idx - w; }
+      if (y + 1 < h && mask[idx + w] && !seen[idx + w]) { seen[idx + w] = 1; stack[sp++] = idx + w; }
+    }
+    /* 눈은 아주 작지도, 얼굴을 덮을 만큼 크지도 않다. */
+    if (area < 1 || area > bw * bh * 0.12) continue;
+    if ((x1 - x0 + 1) > bw * 0.45) continue;        // 가로로 긴 그늘은 눈이 아니다
+    blobs.push({ x: sx / area, y: sy / area, area: area });
+  }
+  for (let i = 0; i < blobs.length; i++) {
+    for (let j = i + 1; j < blobs.length; j++) {
+      const a = blobs[i], b = blobs[j];
+      const dx = Math.abs(a.x - b.x), dy = Math.abs(a.y - b.y);
+      if (dx < bw * 0.15 || dx > bw * 0.70) continue;      // 너무 붙거나 너무 멀다
+      if (dy > bh * 0.14) continue;                        // 나란하지 않다
+      const big = Math.max(a.area, b.area), small = Math.min(a.area, b.area);
+      if (small * 4 < big) continue;                       // 크기가 너무 다르다
+      return { dx: +(dx / bw).toFixed(3), dy: +(dy / bh).toFixed(3) };
+    }
+  }
+  return null;
+}
+
 /**
- * 크롭에서 **버려진 자리**에 사람이 있었는지 본다.
- * @returns {Promise<{cut:boolean, skin:number}>} skin 은 버려진 띠의 최대 살색 비율
+ * 살색 마스크에서 **이어진 덩어리**를 찾아 얼굴처럼 생긴 것이 있는지 본다.
+ * 순수 계산이라 테스트에서 직접 호출한다(픽셀 배열만 넘기면 된다).
+ *
+ * @param {Uint8Array|Buffer} rgb   격자 픽셀 (RGB, 채널 3)
+ * @param {number} gw               격자 가로
+ * @param {number} gh               격자 세로
+ * @param {number} minSidePx        얼굴 최소 한 변 (격자 좌표계)
+ * @returns {{face:boolean, blob:{w:number,h:number,fill:number,dark:number}|null}}
+ */
+function findFaceInMask(rgb, gw, gh, minSidePx) {
+  const n = gw * gh;
+  const skin = new Uint8Array(n);
+  const luma = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const r = rgb[i * 3], g = rgb[i * 3 + 1], b = rgb[i * 3 + 2];
+    luma[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+    if (isSkinPixel(r, g, b)) skin[i] = 1;
+  }
+
+  /* 4방향 연결 성분. 재귀 대신 스택 — 격자가 커도 스택오버플로가 없다. */
+  const seen = new Uint8Array(n);
+  const stack = new Int32Array(n);
+  let best = null;
+  for (let start = 0; start < n; start++) {
+    if (!skin[start] || seen[start]) continue;
+    let sp = 0;
+    stack[sp++] = start;
+    seen[start] = 1;
+    let area = 0, minX = gw, maxX = -1, minY = gh, maxY = -1;
+    while (sp > 0) {
+      const idx = stack[--sp];
+      const x = idx % gw, y = (idx - x) / gw;
+      area++;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      if (x > 0 && skin[idx - 1] && !seen[idx - 1]) { seen[idx - 1] = 1; stack[sp++] = idx - 1; }
+      if (x + 1 < gw && skin[idx + 1] && !seen[idx + 1]) { seen[idx + 1] = 1; stack[sp++] = idx + 1; }
+      if (y > 0 && skin[idx - gw] && !seen[idx - gw]) { seen[idx - gw] = 1; stack[sp++] = idx - gw; }
+      if (y + 1 < gh && skin[idx + gw] && !seen[idx + gw]) { seen[idx + gw] = 1; stack[sp++] = idx + gw; }
+    }
+    const bw = maxX - minX + 1, bh = maxY - minY + 1;
+    if (bw < minSidePx || bh < minSidePx) continue;              // ② 너무 작다
+    const aspect = bw / bh;
+    if (aspect < FACE_ASPECT_MIN || aspect > FACE_ASPECT_MAX) continue;   // ③ 길쭉하다
+    const fill = area / (bw * bh);
+    if (fill < FACE_FILL_MIN) continue;                          // ③ 덩어리가 아니다
+
+    /* ④ 덩어리 **안쪽의 구멍**이 어두운가 (눈·눈썹·입).
+       살색 영역의 평균 밝기를 기준으로 삼는다 — 어두운 조명에서 얼굴 전체가
+       어둡다고 눈이 없다고 보면 안 된다.
+       세는 대상은 bbox 안의 **살색이 아닌** 픽셀이다. bbox 전체를 세면 배경이
+       어두울 때 아무 살색 덩어리나 통과한다(첫 구현이 그랬다). */
+    let sum = 0, cnt = 0;
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const i2 = y * gw + x;
+        if (!skin[i2]) continue;
+        sum += luma[i2]; cnt++;
+      }
+    }
+    const mean = cnt ? sum / cnt : 0;
+    const darkCut = mean * 0.62;
+    let dark = 0, boxN = 0;
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const i2 = y * gw + x;
+        boxN++;
+        if (!skin[i2] && luma[i2] < darkCut) dark++;
+      }
+    }
+    const darkShare = boxN ? dark / boxN : 0;
+    /* 너무 없으면 맨팔·벽, 너무 많으면 얼굴이 아니라 어두운 배경에 걸친
+       살색 조각이다. 얼굴은 그 사이에 있다. */
+    if (darkShare < FACE_DARK_MIN || darkShare > FACE_DARK_MAX) continue;
+
+    /* ⑤ 눈 한 쌍이 있나 — 가장 구체적인 신호다.
+       어두운 구멍들을 덩어리로 묶고, 그중 **위쪽 절반에 나란히 놓인 두 개**를
+       찾는다. 손·팔에도 그늘은 지지만 "비슷한 크기의 두 점이 가로로 나란히"
+       놓이는 일은 드물다. 실측에서 손 한 장이 여기서 걸러졌다. */
+    const eyes = _eyePair(skin, luma, gw, minX, minY, maxX, maxY, darkCut);
+    const cand = { w: bw, h: bh, fill: fill, dark: darkShare, eyes: eyes };
+    if (!eyes) continue;
+    if (!best || bw * bh > best.w * best.h) best = cand;
+  }
+  return { face: !!best, blob: best };
+}
+
+/**
+ * 버려진 띠 하나를 격자로 떠서 얼굴을 찾는다.
+ * 격자 크기는 **원본 전체 기준**으로 잡는다 — 띠만 늘려 보면 손톱만 한 살색도
+ * 얼굴처럼 커 보인다(그래서 종전 규칙이 그렇게 많이 뺐다).
+ */
+async function _faceInStrip(sharp, buf, left, top, width, height, srcW, srcH) {
+  if (width < MIN_STRIP_PX || height < MIN_STRIP_PX) return { face: false, blob: null };
+  const scale = FACE_GRID / Math.max(srcW, srcH);
+  const gw = Math.max(1, Math.round(width * scale));
+  const gh = Math.max(1, Math.round(height * scale));
+  const minSide = Math.max(3, Math.round(Math.min(srcW, srcH) * FACE_MIN_SIDE * scale));
+  if (gw < minSide || gh < minSide) return { face: false, blob: null };   // 띠 자체가 얼굴보다 좁다
+  const { data } = await sharp(buf, { failOn: 'none' })
+    .rotate()
+    .extract({ left: Math.round(left), top: Math.round(top), width: Math.round(width), height: Math.round(height) })
+    .resize(gw, gh, { fit: 'fill' })
+    .removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  return findFaceInMask(data, gw, gh, minSide);
+}
+
+/**
+ * 크롭에서 **버려진 자리**에 얼굴이 있었는지 본다.
+ * @returns {Promise<{cut:boolean, skin:number, blob:object|null}>}
+ *          cut=true 면 얼굴로 보이는 덩어리가 잘렸다. skin 은 참고 수치.
  */
 async function findCutSubject(sharp, buffer, srcW, srcH, T, cropOffsetLeft, cropOffsetTop) {
   const scale = Math.max(T.W / srcW, T.H / srcH);
@@ -140,14 +331,21 @@ async function findCutSubject(sharp, buffer, srcW, srcH, T, cropOffsetLeft, crop
   }
 
   let worst = 0;
+  let face = null;
   for (const [l, t2, w2, h2] of strips) {
     if (w2 < MIN_STRIP_PX || h2 < MIN_STRIP_PX) continue;
     try {
       const share = await _skinShare(sharp, buffer, l, t2, w2, h2);
       if (share > worst) worst = share;
+      if (!face) {
+        const f = await _faceInStrip(sharp, buffer, l, t2, w2, h2, srcW, srcH);
+        if (f.face) face = f.blob;
+      }
     } catch (e) { /* 띠 하나를 못 읽어도 나머지로 판단한다 */ }
   }
-  return { cut: worst >= CUT_SUBJECT_SKIN, skin: worst };
+  /* 2026-08-28 — 빼는 근거는 **얼굴** 하나다 (도메니코: "얼굴만 안 잘리면 괜찮아").
+     살색 비율은 노트에 참고로만 남긴다. */
+  return { cut: !!face, skin: worst, blob: face };
 }
 
 /**
@@ -163,7 +361,7 @@ async function findCutSubject(sharp, buffer, srcW, srcH, T, cropOffsetLeft, crop
  *          drop=true 면 **캐러셀에서 빼야 한다** — 잘려나간 자리에 사람이 있었다.
  */
 async function cropSlideToVariant(buffer, variant) {
-  const out = { buffer, changed: false, severe: false, drop: false, skin: null, kept: null, from: null, reason: null };
+  const out = { buffer, changed: false, severe: false, drop: false, skin: null, face: null, kept: null, from: null, reason: null };
   if (!buffer || !buffer.length) { out.reason = '빈 버퍼'; return out; }
   let sharp;
   try { sharp = require('sharp'); } catch (e) { out.reason = 'sharp 없음'; return out; }
@@ -202,9 +400,10 @@ async function cropSlideToVariant(buffer, variant) {
       const cutInfo = await findCutSubject(sharp, buffer, w, h, T,
         done.info.cropOffsetLeft, done.info.cropOffsetTop);
       out.skin = cutInfo.skin;
+      out.face = cutInfo.blob || null;
       if (cutInfo.cut) {
         out.drop = true;
-        out.reason = '잘려나간 자리에 인물로 보이는 영역이 있다 ('
+        out.reason = '잘려나간 자리에 얼굴로 보이는 덩어리가 있다 (살색 '
           + Math.round(cutInfo.skin * 100) + '%)';
       }
     } catch (e) {
@@ -219,6 +418,7 @@ async function cropSlideToVariant(buffer, variant) {
 }
 
 module.exports = {
-  cropSlideToVariant, keptFraction, targetRatio, findCutSubject, isSkinPixel,
+  cropSlideToVariant, keptFraction, targetRatio, findCutSubject, isSkinPixel, findFaceInMask,
   TARGETS, RATIO_TOLERANCE, SEVERE_KEEP, CUT_SUBJECT_SKIN,
+  FACE_GRID, FACE_MIN_SIDE, FACE_ASPECT_MIN, FACE_ASPECT_MAX, FACE_FILL_MIN, FACE_DARK_MIN, FACE_DARK_MAX,
 };
