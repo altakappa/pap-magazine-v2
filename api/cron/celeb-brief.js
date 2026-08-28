@@ -525,6 +525,7 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     const fetched = [];         // { type, buffer } — 받아만 두고 조립은 판형 확정 뒤에
     for (let ri = 0; ri < rest.length; ri++) {
       const it = rest[ri];
+      let vdim = null;
       try {
         const buf = await fetchBuffer(it.url, it.type === 'video' ? 60000 : 20000);
         if (it.type === 'video' && buf.length > VIDEO_MAX_BYTES) { tooBig++; continue; }
@@ -536,13 +537,14 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
             const dim = mp4Dimensions(buf);
             if (dim) {
               videoSizes.push(dim);
+              vdim = dim;                                   // 아래 비율 맞추기에서 재사용
               if (ri === 0 && items[0].type === 'video') firstDim = dim;
             }
           } catch (e) {
             console.warn('[celeb-brief] 영상 해상도 읽기 실패:', (e && e.message) || e);
           }
         }
-        fetched.push({ type: it.type, buffer: buf });
+        fetched.push({ type: it.type, buffer: buf, dim: vdim });
       } catch (e) {
         console.warn('[celeb-brief] 미디어 건너뜀:', (e && e.message) || e);
       }
@@ -580,6 +582,10 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
        _lib/slideCrop.js 머리말에 적었다 — 많이 잘린 컷은 번호로 지목한다. */
     const slideCrop = require('../_lib/slideCrop');
     let croppedCount = 0;
+    /* 판형의 목표 비율. 영상 비율 맞추기와 아래 경고가 같은 값을 봐야 한다. */
+    const targetRatio = variant === 'reels' ? 0.5625 : 0.8;
+    let ratioFixed = 0;        // 비율을 실제로 고친 영상 수
+    let videoOffRatio = 0;     // 끝내 못 맞춘 영상 수 (ffmpeg 없음·실패)
     /* 2026-08-26 (2차) 도메니코: "좌우가 잘리더라도 캐러셀에 맞는 비율로 만들어줘야
        해. 다만 인물이 잘릴경우에는 그냥 안쓸게."
        → 좌우가 많이 잘리는 것 자체는 이제 경고하지 않는다. 대신 **잘려나간
@@ -595,35 +601,53 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
         continue;
       }
       let vbuf = f.buffer;
+      let sized = false;          // 이 영상이 판형 비율로 인코딩됐는가
       if (videoOverlay.isEnabled()) {
         try {
           const { renderOverlay } = require('../_lib/celebThumb');
           const ov = await renderOverlay(gen.title_ko || gen.title, gen.title_en || '', { variant });
-          const burned = await videoOverlay.burnIntro(f.buffer, ov);
-          if (burned) { vbuf = burned; burnedCount++; }
+          /* 2026-08-28 — **판형을 반드시 넘긴다.** 안 넘기면 9:16 으로 고정 인코딩돼
+             4:5 브리프에서 오버레이(1080x1350)가 1080x1920 배경 위쪽에만 붙는다.
+             실제로 8/26~8/28 feed 브리프 4건이 그렇게 나갔다. */
+          const burned = await videoOverlay.burnIntro(f.buffer, ov, { variant });
+          if (burned) { vbuf = burned; burnedCount++; sized = true; }
           else burnFailed++;
         } catch (e) {
           burnFailed++;
           console.error('[celeb-brief] 디자인 굽기 실패(원본으로 진행):', (e && e.message) || e);
         }
       }
+      /* 굽기가 꺼져 있거나 실패했어도 **비율은 맞춰서 보낸다.** 굽기는 선택이지만
+         비율은 선택이 아니다 — 한 캐러셀 안에서 비율이 갈리면 인스타가 눌러 버린다.
+         이미 목표 비율이면 cropToVariant 가 null 을 돌려주고 원본을 그대로 쓴다. */
+      if (!sized) {
+        try {
+          const fitted = await videoOverlay.cropToVariant(f.buffer, variant, { dim: f.dim });
+          if (fitted) { vbuf = fitted; ratioFixed++; sized = true; }
+          else if (f.dim && Math.abs(Number(f.dim.ratio) - targetRatio) <= 0.02) sized = true;
+        } catch (e) {
+          console.error('[celeb-brief] 영상 비율 맞추기 실패(원본으로 진행):', (e && e.message) || e);
+        }
+      }
+      if (!sized) videoOffRatio++;
       media.push({ kind: 'video', buffer: vbuf, thumb: videoThumb });
       if (vbuf !== f.buffer) burnedVideos.push(vbuf);
     }
 
-    /* 경고는 **고른 판형 기준**으로 낸다. 종전에는 0.5625 로 고정 비교라
-       4:5 를 올바르게 feed 로 보낸 경우까지 "9:16 아님" 이라고 짖었다. */
-    const targetRatio = variant === 'reels' ? 0.5625 : 0.8;
-    const offRatio = videoSizes.filter((d) => Math.abs(d.ratio - targetRatio) > 0.02);
+    /* 2026-08-28 — 경고를 **출력 기준**으로 바꿨다. 종전에는 원본 크기만 보고
+       "비율 일치" 라고 적었는데, 정작 굽기가 9:16 으로 고정돼 있어서 4:5 원본을
+       9:16 으로 내보내면서도 "일치" 라고 보고했다(8/27 프라다 카페 건이 그 예다).
+       이제는 실제로 내보낸 영상이 판형과 맞는지를 센다. */
     /* 자른 결과를 숨기지 않는다. 특히 많이 잘린 컷은 **번호로** 알린다 —
        attention 은 휴리스틱이라 단체 사진에서 누군가를 놓칠 수 있다.
        "인물이 안 잘렸다"고 장담하는 대신 위험한 컷을 지목한다. */
     const cropNote = (croppedCount ? (' · 사진 ' + croppedCount + '장 ' + variant + ' 비율로 자름') : '')
       + (droppedCut ? (' · 인물이 잘려 ' + droppedCut + '장 제외') : '');
     const sizeNote = videoSizes.length
-      ? (' · 영상 ' + videoSizes.map((d) => d.width + 'x' + d.height).join(', ')
-         + ' · 커버 ' + variant
-         + (offRatio.length ? (' ⚠️비율 불일치 ' + offRatio.length + '건') : ' (비율 일치)'))
+      ? (' · 영상 원본 ' + videoSizes.map((d) => d.width + 'x' + d.height).join(', ')
+         + ' · 판형 ' + variant
+         + (ratioFixed ? (' · 영상 ' + ratioFixed + '건 비율 맞춤') : '')
+         + (videoOffRatio ? (' ⚠️비율 못 맞춘 영상 ' + videoOffRatio + '건') : ' (비율 일치)'))
       : '';
     const buffers = media;   // 아래 dry 응답 호환
 

@@ -562,7 +562,9 @@ t('영상 해상도를 재서 기록한다 (크롭이 필요한지 숫자로 본
   assert.ok(/mp4Dimensions/.test(CRON_CODE), '영상 해상도를 안 잰다');
   assert.ok(/video_sizes: videoSizes/.test(CRON_CODE), '기록에 남지 않으면 나중에 확인할 수 없다');
   assert.ok(/0\.5625/.test(CRON_CODE), '9:16 기준값이 없다');
-  assert.ok(/9:16 아님/.test(CRON), '9:16 이 아닐 때 알리지 않는다');
+  /* 2026-08-28 — 경고 문구가 "9:16 아님"에서 판형 기준으로 바뀌었다.
+     지키려는 것은 문구가 아니라 "비율이 안 맞으면 조용히 넘어가지 않는다"이다. */
+  assert.ok(/비율 못 맞춘 영상/.test(CRON), '비율을 못 맞췄을 때 알리지 않는다');
   const MUTE = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/mp4Mute.js'), 'utf8');
   assert.ok(/function mp4Dimensions/.test(MUTE) && /mp4Dimensions,/.test(MUTE), 'mp4Dimensions 가 없거나 export 안 됐다');
 });
