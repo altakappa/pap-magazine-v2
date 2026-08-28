@@ -105,6 +105,26 @@ t('시간이 부족하면 부르지 않고 건너뛴다 (돈만 쓰고 데이터
   /deadline - 15000/.test(lib) && /skipped\.push/.test(lib));
 t('키 없는 엔진은 호출하지 않는다', /engines\.filter\(engineReady\)/.test(lib));
 t('쓸 엔진이 하나도 없으면 503 (조용한 0건 금지)', /statusCode = 503/.test(lib));
+/* 웹검색 도구 이름이 모델·시점마다 갈리는데 로컬에 OpenAI 키가 없어 확인을
+   못 했다. 틀린 이름을 고르면 chatgpt/search 8칸이 매주 통째로 빈다. */
+t('OpenAI 웹검색 도구 이름을 두 가지로 시도한다 (첫 회차부터 데이터가 남게)',
+  /OPENAI_SEARCH_TOOLS = \['web_search', 'web_search_preview'\]/.test(lib));
+t('400 이 아니면 재시도하지 않는다 (401·429·5xx 를 헛되이 두 번 부르지 않는다)',
+  /res\.status !== 400\) break/.test(lib));
+/* 서버 도구는 실패해도 예외를 안 던진다 — HTTP 200 에 에러 객체가 온다.
+   검색이 안 돌았는데 search 로 세면 학습 레이어 답을 답변 레이어 칸에 넣는
+   것이고, 그러면 두 레이어를 나눈 의미가 통째로 사라진다. */
+t('검색이 실제로 돌았는지 응답에서 확인한다',
+  /web_search_tool_result' && Array\.isArray\(b\.content\)/.test(lib)
+  && /web_search\/\.test\(item\.type\)/.test(lib));
+t('검색이 안 돌았으면 답변 레이어로 세지 않는다 (판정 불가로 남김)',
+  /mode === 'search' && !searched/.test(lib) && /웹검색 미실행/.test(lib));
+/* 최신 web_search 도구는 Sonnet 4.6+/Opus 4.6+ 전용이다. 저장소 공용
+   ANTHROPIC_MODEL(기본 claude-sonnet-4-5)로는 못 쓴다 — 프로브는 자기 모델을 쓴다. */
+t('프로브가 공용 ANTHROPIC_MODEL 에 묶이지 않는다',
+  /SOV_ANTHROPIC_MODEL/.test(lib) && !/process\.env\.ANTHROPIC_MODEL/.test(lib));
+t('Claude 웹검색 도구도 신·구 두 이름을 시도한다',
+  /CLAUDE_SEARCH_TOOLS = \['web_search_20260209', 'web_search_20250305'\]/.test(lib));
 
 console.log('\n=== 등장 판정을 AI 에게 맡기지 않는다 ===');
 /* 모델에게 "내가 나왔니?" 를 물으면 자기 답을 채점하는 꼴이다. */

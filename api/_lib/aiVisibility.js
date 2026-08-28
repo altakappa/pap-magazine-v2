@@ -202,27 +202,47 @@ function extractCitations(text, extra) {
    두 API 모두 "웹검색 도구를 붙였나" 로 모드가 갈린다. 도구를 안 붙이면
    모델은 학습 데이터만으로 답한다 — 그게 pretrain 레이어다. */
 
+/* 프로브 전용 모델. 저장소 공용 ANTHROPIC_MODEL 을 쓰지 않는다 —
+   그쪽 기본값은 claude-sonnet-4-5 이고, 아래 최신 web_search 도구를 지원하지
+   않는다. 그리고 이 계기는 "요즘 답변 엔진이 뭐라고 답하나" 를 재는 것이라
+   백필용 모델과 수명주기를 묶으면 안 된다. */
+const SOV_CLAUDE_MODEL = process.env.SOV_ANTHROPIC_MODEL || 'claude-sonnet-5';
+
+/* 웹검색 도구 타입도 세대가 갈린다: 최신은 web_search_20260209(동적 필터링,
+   Sonnet 4.6+·Opus 4.6+), 구형 모델은 web_search_20250305 뿐이다.
+   OpenAI 쪽과 같은 이유로 두 이름을 순서대로 시도한다 — 로컬에 키가 없어
+   어느 쪽이 통하는지 확인하지 못했고, 틀리면 8칸이 매주 통째로 빈다. */
+const CLAUDE_SEARCH_TOOLS = ['web_search_20260209', 'web_search_20250305'];
+
 async function askClaude(question, mode, timeoutMs) {
-  const body = {
-    model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
-    max_tokens: 1500,
-    messages: [{ role: 'user', content: question }],
-  };
-  if (mode === 'search') {
-    body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }];
+  const attempts = mode === 'search' ? CLAUDE_SEARCH_TOOLS : [null];
+  let j = null;
+  let lastStatus = 0;
+
+  for (const tool of attempts) {
+    const body = {
+      model: SOV_CLAUDE_MODEL,
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: question }],
+    };
+    if (tool) body.tools = [{ type: tool, name: 'web_search', max_uses: 5 }];
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (res.ok) { j = await res.json(); break; }
+    lastStatus = res.status;
+    if (res.status !== 400) break;   // 도구 이름 문제가 아니면 재시도해도 같다
   }
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!res.ok) throw new Error('anthropic ' + res.status);
-  const j = await res.json();
+  if (!j) throw new Error('anthropic ' + lastStatus);
+
   const blocks = Array.isArray(j.content) ? j.content : [];
   const text = blocks.filter((b) => b && b.type === 'text').map((b) => b.text).join('\n');
   // 인용은 text 블록의 citations 에 담겨 온다.
@@ -230,40 +250,66 @@ async function askClaude(question, mode, timeoutMs) {
   for (const b of blocks) {
     for (const c of (b && b.citations) || []) if (c && c.url) urls.push(c.url);
   }
-  return { text, urls };
+  /* 서버 도구는 실패해도 예외를 던지지 않는다 — HTTP 200 에 결과 블록의
+     content 가 에러 객체로 온다(성공은 배열). 검색이 실제로 돌았는지 여기서
+     가른다. 안 돌았는데 search 로 세면 그건 학습 레이어 답변을 답변 레이어
+     칸에 넣는 것이고, 두 레이어를 나눈 의미가 사라진다. */
+  const searched = blocks.some(
+    (b) => b && b.type === 'web_search_tool_result' && Array.isArray(b.content));
+  return { text, urls, searched };
 }
+
+/* 웹검색 도구 타입이 모델·시점마다 'web_search' 와 'web_search_preview' 로
+   갈린다. **로컬에 OpenAI 키가 없어 어느 쪽이 맞는지 확인하지 못했다**(비밀값은
+   도메니코가 콘솔에서만 다룬다). 틀린 쪽을 고르면 chatgpt/search 8칸이 매주
+   통째로 비고, 그건 한 주가 지나야 안다. 그래서 400 이면 다른 이름으로 한 번
+   더 시도한다 — 맞는 이름이 무엇이든 첫 회차부터 데이터가 남는다.
+   재시도는 400(도구 이름 거절)에만 한다. 401·429·5xx 는 그대로 실패시킨다. */
+const OPENAI_SEARCH_TOOLS = ['web_search', 'web_search_preview'];
 
 async function askChatGpt(question, mode, timeoutMs) {
   /* Responses API — 웹검색 도구가 여기 붙는다. chat/completions 에는 없다. */
-  const body = {
-    model: process.env.OPENAI_SOV_MODEL || 'gpt-4.1',
-    input: question,
-    max_output_tokens: 1500,
-  };
-  if (mode === 'search') body.tools = [{ type: 'web_search' }];
+  const attempts = mode === 'search' ? OPENAI_SEARCH_TOOLS : [null];
+  let res = null;
+  let lastStatus = 0;
 
-  const res = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: 'Bearer ' + process.env.OPENAI_API_KEY,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!res.ok) throw new Error('openai ' + res.status);
+  for (const tool of attempts) {
+    const body = {
+      model: process.env.OPENAI_SOV_MODEL || 'gpt-4.1',
+      input: question,
+      max_output_tokens: 1500,
+    };
+    if (tool) body.tools = [{ type: tool }];
+
+    res = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer ' + process.env.OPENAI_API_KEY,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (res.ok) break;
+    lastStatus = res.status;
+    if (res.status !== 400) break;   // 도구 이름 문제가 아니면 재시도해도 같다
+  }
+  if (!res || !res.ok) throw new Error('openai ' + (lastStatus || (res && res.status)));
   const j = await res.json();
 
   let text = '';
   const urls = [];
+  let searched = false;
   for (const item of (j.output || [])) {
+    // Responses API 는 검색이 돌면 web_search_call 항목을 출력에 남긴다.
+    if (item && typeof item.type === 'string' && /web_search/.test(item.type)) searched = true;
     for (const c of (item && item.content) || []) {
       if (c && typeof c.text === 'string') text += (text ? '\n' : '') + c.text;
       for (const a of (c && c.annotations) || []) if (a && a.url) urls.push(a.url);
     }
   }
   if (!text && typeof j.output_text === 'string') text = j.output_text;
-  return { text, urls };
+  return { text, urls, searched };
 }
 
 function engineReady(engine) {
@@ -319,8 +365,22 @@ async function runSovProbe({ timeoutMs = 240000, probes = PROBES, engines = ENGI
       if (Date.now() > deadline - 15000) { skipped.push(p.key + '/' + engine + '/' + mode); continue; }
 
       try {
-        const { text, urls } = await ask(engine, p.q, mode,
+        const { text, urls, searched } = await ask(engine, p.q, mode,
           Math.max(15000, Math.min(60000, deadline - Date.now() - 5000)));
+
+        /* 검색 모드인데 검색이 실제로 안 돌았으면 그 답은 학습 레이어 답이다.
+           그걸 답변 레이어 칸에 넣으면 두 레이어를 나눈 의미가 사라지고,
+           더 나쁘게는 'GPTBot 차단이 학습 레이어를 깎았나' 라는 질문에
+           오염된 답을 준다. 판정 불가로 남긴다 — 빼지는 않는다. */
+        if (mode === 'search' && !searched) {
+          rows.push({
+            ...base, present: null, described: null, desc_ok: null,
+            rivals: [], citations: [],
+            error: '웹검색 미실행 — 답변 레이어로 세지 않음',
+          });
+          continue;
+        }
+
         const a = analyze(text);
         rows.push({
           ...base,

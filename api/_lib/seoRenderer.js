@@ -906,18 +906,28 @@ function renderSeoHtml(kind, record, opts) {
     // 여전히 짧으면 제목(유니크) + 매체 소개 서명으로 110자 이상 확보.
     // 제목이 앞에 오므로 페이지마다 고유 — 중복 meta 로 잡히지 않는다.
     if (parts.join(' ').length < 110) {
+      /* 2026-08-28 (네이버 브랜드 검색 실측): 한국어 서명의 브랜드 표기를
+         "PAP MAGAZINE" → "PAP 매거진(팝매거진)" 으로 바꾼다. 근거 —
+         네이버 웹문서 '팝매거진' 상위 15건 중 14건이 sbskpop.kr('스브스케이팝매거진',
+         "케이팝매거진"의 부분문자열)이고 우리는 홈 1건(7위)뿐이었다. 홈·about 등
+         약 20개 정적 페이지에만 '팝매거진' 문자열이 있었고, SSR 기사·화보 수천 개에는
+         없었다. 이 서명은 desc 155자 컷보다 앞에 오므로 잘리지 않는다.
+         타이틀은 건드리지 않는다(브랜드 접미사 60자 한계 · 기존 스니펫 규격 유지).
+         ※ 검색량 자체는 미미하다(데이터랩: '팝매거진' 표시 하한 미만) — 이 조치는
+           브랜드 별칭 방어용이지 트래픽 견인책이 아니다. 기록: 볼트
+           45_Business/PAP_GEO_수동리그레션_2026-08-28.md */
       // kind 별 정확한 서명 — 아티클(뉴스)에 "패션 에디토리얼"을 붙이면 부정확.
       if (kind === 'article') {
         parts.push(isKo
-          ? `${titleKo} — PAP MAGAZINE 뉴스. 서울과 밀라노 기반 아트 중심 패션·뷰티·컬처 매거진 PAP이 전하는 패션·셀럽·컬처 소식입니다.`
+          ? `${titleKo} — PAP 매거진(팝매거진) 뉴스. 서울과 밀라노 기반 아트 중심 패션·뷰티·컬처 매거진 PAP이 전하는 패션·셀럽·컬처 소식입니다.`
           : `${titleMain} — news from PAP Magazine, the Korean art-driven fashion, beauty and culture magazine published from Seoul, with a Milan desk.`);
       } else if (kind === 'film') {
         parts.push(isKo
-          ? `${titleKo} — PAP MAGAZINE 패션 필름. 서울과 밀라노 기반 아트 중심 매거진 PAP이 전 세계 크리에이티브 팀과 만든 영상입니다.`
+          ? `${titleKo} — PAP 매거진(팝매거진) 패션 필름. 서울과 밀라노 기반 아트 중심 매거진 PAP이 전 세계 크리에이티브 팀과 만든 영상입니다.`
           : `${titleMain} — a fashion film by PAP Magazine, the Korean art-driven fashion, beauty and culture magazine published from Seoul, with a Milan desk.`);
       } else {
         parts.push(isKo
-          ? `${titleKo} — PAP MAGAZINE 독점 패션 에디토리얼. 서울과 밀라노를 기반으로 활동하는 아트 중심 매거진 PAP이 전 세계 포토그래퍼·스타일리스트와 함께 선보이는 패션·뷰티·컬처 화보와 크리에이티브 스토리를 만나보세요.`
+          ? `${titleKo} — PAP 매거진(팝매거진) 독점 패션 에디토리얼. 서울과 밀라노를 기반으로 활동하는 아트 중심 매거진 PAP이 전 세계 포토그래퍼·스타일리스트와 함께 선보이는 패션·뷰티·컬처 화보와 크리에이티브 스토리를 만나보세요.`
           : `${titleMain} — an exclusive fashion editorial by PAP Magazine, the Korean art-driven fashion, beauty and culture magazine published from Seoul with a Milan desk, created with photographers and stylists worldwide.`);
       }
     }
