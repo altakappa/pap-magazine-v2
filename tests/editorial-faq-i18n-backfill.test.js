@@ -50,7 +50,18 @@ t('callClaude 반환은 객체다 — .text 를 꺼내 쓴다',
   /String\(\(raw && raw\.text\) \|\| ''\)/.test(lib));
 t('String(raw) 로 되돌아가지 않는다 (무생산 재발 방지)',
   !/String\(raw \|\| ''\)/.test(lib));
-t('시간 예산 — 콜 여유 없으면 접는다', /deadline - 20000/.test(lib));
+/* 20초 문턱으로는 콜을 시작만 하고 타임아웃으로 죽었다 (07:04 'es' 실측).
+   끝낼 수 없는 콜은 시작하지 않는다 — 돈만 쓰고 데이터가 0이 된다. */
+t('시간 예산 — 한 콜을 끝낼 여유(35초)가 없으면 접는다', /deadline - 35000/.test(lib));
+/* 파서가 두 벌이면 한쪽만 고쳐진다 (교훈 2). 2026-08-25 의 jsonRepair 넷째 칸이
+   parseJsonArray 에만 들어가고 이 파일의 자체 정규식은 옛날 그대로였다. */
+t('JSON 파싱은 공용 계단(parseJsonArray)을 쓴다',
+  /parseJsonArray\(text\)/.test(lib));
+t('자체 JSON 파서를 다시 만들지 않는다',
+  !/text\.match\(\/\\\[\[/.test(lib) && !/JSON\.parse\(text\)/.test(lib));
+/* 실패 경로가 조용하면 왜 0인지 영영 모른다 — 실제로 그래서 한 회차를 날렸다. */
+t('파싱 실패 시 stop_reason 과 응답 머리를 남긴다',
+  /stop_reason=/.test(lib) && /head=/.test(lib));
 t('한 언어 실패가 나머지를 막지 않는다', /catch \(err\)[\s\S]{0,120}per\.push\(lang \+ ':실패'\)/.test(lib));
 
 console.log('\n=== 크론 배선 (별도 크론 아님 — 호출 예산) ===');

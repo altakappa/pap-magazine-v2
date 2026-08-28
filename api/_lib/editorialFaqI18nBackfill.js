@@ -23,13 +23,17 @@
 'use strict';
 
 const { supabaseAdmin } = require('./supabase');
-const { normalizeFaq, callClaude, LANG_NAMES } = require('./seoTranslateBackfill');
+const { normalizeFaq, callClaude, LANG_NAMES, parseJsonArray } = require('./seoTranslateBackfill');
 
 /* ko 는 원본, en 은 faq_en 칼럼(마이그레이션 139 · faqEnBackfill.js)이 담당한다.
    2026-08-28 까지 이 목록에 'en' 이 있었지만 죽은 항목이었다 — 이 백필은
    **기존 번역행 UPDATE 만** 하는데 seo_translations 에 en 행은 0개다.
    매 회차 조회 0건으로 조용히 넘어가느라 죽은 줄도 안 보였다. */
 const TARGET_LANGS = ['it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
+
+/* 한 배치의 출력 토큰. 배치를 키우는 것보다 회차를 늘리는 쪽이 안전하다 —
+   잘린 응답은 그 배치 전멸이고, 작은 배치는 그냥 다음 회차로 넘어갈 뿐이다. */
+const MAX_TOKENS = 8000;
 
 function recentLimit() {
   const n = parseInt(process.env.EDITORIAL_FAQ_I18N_RECENT || '300', 10);
@@ -90,16 +94,33 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
      매 회차 조용히 processed:0. cron_runs 에 '화보FAQ 언어판 0 · it:0 fr:0'
      이 24시간 찍히는 동안 Claude 호출만 나가고 저장은 0건이었다.
      (GROWTH-LEDGER 교훈 1 "돌았다 ≠ 했다" 의 네 번째 재발) */
-  const raw = await callClaude(prompt, 8000, model, timeoutMs);
-  const text = String((raw && raw.text) || '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  const raw = await callClaude(prompt, MAX_TOKENS, model, timeoutMs);
+  const text = String((raw && raw.text) || '');
+
+  /* 파싱은 **공용 계단**(parseJsonArray)을 쓴다. 2026-08-28 까지 이 자리에는
+     JSON.parse + /\[[\s\S]*\]/ 정규식이라는 **두 번째 파서**가 따로 있었다.
+     2026-08-25 에 jsonRepair 에 넷째 칸(균형 잡힌 덩어리 고르기)을 붙였는데
+     그 수리는 parseJsonArray 에만 들어갔고 여기는 옛 정규식 그대로였다 —
+     교훈 2("규칙이 두 벌이면 한쪽만 고쳐진다")가 그대로 재현됐다.
+
+     그리고 실패 경로가 **아무것도 안 찍고** 조용히 0을 반환했다. 그래서
+     callClaude 오용을 고친 뒤에도 'it:0 fr:0' 이 왜 계속 0인지 로그로 알 수
+     없었다. 이제 stop_reason 과 응답 머리를 남긴다 — '잘렸다' 와 '이상한 걸
+     뱉었다' 는 고치는 방법이 다르다(fd95059 에서 이미 배운 구분). */
   let arr;
-  try { arr = JSON.parse(text); }
-  catch (_) {
-    const m = text.match(/\[[\s\S]*\]/);
-    if (!m) return { processed: 0, remaining: pending.length, lang };
-    try { arr = JSON.parse(m[0]); } catch (_) { return { processed: 0, remaining: pending.length, lang }; }
+  try {
+    arr = parseJsonArray(text);
+  } catch (err) {
+    console.error('[faq-i18n]', lang, 'batch=' + take.length,
+      'stop_reason=' + ((raw && raw.stopReason) || '?'),
+      (err && err.message) || err, '| head=' + text.slice(0, 200));
+    return { processed: 0, remaining: pending.length, lang };
   }
-  if (!Array.isArray(arr)) return { processed: 0, remaining: pending.length, lang };
+  if (!Array.isArray(arr)) {
+    console.error('[faq-i18n]', lang, '배열이 아님',
+      'stop_reason=' + ((raw && raw.stopReason) || '?'), '| head=' + text.slice(0, 200));
+    return { processed: 0, remaining: pending.length, lang };
+  }
 
   let processed = 0;
   for (const item of arr) {
@@ -134,7 +155,11 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model } 
   let remaining = 0;
   const per = [];
   for (const lang of TARGET_LANGS) {
-    if (Date.now() > deadline - 20000) break; // 한 콜 여유가 없으면 접는다
+    /* 문턱을 20초에서 35초로 올렸다 (2026-08-28). 20초로는 콜을 **시작만 하고**
+       타임아웃으로 죽는 일이 실제로 났다 — 07:04 실행의 'es The operation was
+       aborted due to timeout'. 돈은 나가고 데이터는 0이다. 끝낼 수 없는 콜은
+       시작하지 않는다. 이 회차에 못 돈 언어는 다음 회차가 맡는다(10분 뒤). */
+    if (Date.now() > deadline - 35000) break;
     try {
       const r = await runOneLang(lang, srcMap, batch, useModel,
         Math.max(20000, deadline - Date.now() - 5000));
