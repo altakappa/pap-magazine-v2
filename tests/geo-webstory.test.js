@@ -49,6 +49,11 @@ console.log('\n=== AMP CSP (2026-08-27 라이브 실측으로 발견) ===');
   t('script-src 에 cdn.ampproject.org', seg('script-src').includes('cdn.ampproject.org'));
   t('style-src·img-src 에도 허용',
     seg('style-src').includes('cdn.ampproject.org') && seg('img-src').includes('cdn.ampproject.org'));
+  /* 2026-08-27 2차 실측 — script-src 만 열었더니 런타임은 떴는데 이미지가 0장이었다.
+     콘솔: "Bundle not found for language ko: XHR Failed fetching(cdn.ampproject.org)".
+     AMP 런타임은 언어 번들 등을 **XHR** 로 가져온다 → connect-src 가 필수다. */
+  t('connect-src 에 cdn.ampproject.org (AMP 언어 번들 XHR)',
+    seg('connect-src').includes('cdn.ampproject.org'));
   t('스토리 CSP 가 전역보다 뒤에 온다 (같은 키는 뒤가 이긴다)',
     (vercel.headers || []).map(h => h.source).lastIndexOf('/stories/(.*)')
       > (vercel.headers || []).map(h => h.source).indexOf('/(.*)'));
