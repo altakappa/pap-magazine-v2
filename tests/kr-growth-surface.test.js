@@ -884,7 +884,18 @@ console.log('\n[19] 카테고리 페이지(/digital-magazine)가 고아가 아�
   t("홈 제목 3종(title·og·twitter)이 확정안과 일치한다",
     (ix.match(/PAP Magazine \(팝매거진\) — Art Fashion, Beauty & Culture Magazine/g) || []).length >= 3
     && !/— Korean Art Fashion/.test(ix));
-  t("어바웃 제목에 '팝매거진' 이 있다", /<title>About · 소개 \| PAP MAGAZINE 팝매거진<\/title>/.test(ab));
+  /* 2026-08-28 (GSC 미국 3개월 실측): 어바웃은 평균 2.78위인데 CTR 5.68%
+     (노출 176 · 클릭 10). 같은 기간 홈은 6.56위에 CTR 18.45%, /submission 은
+     1.05위에 40.9% 였다. 차이는 순위가 아니라 제목 언어다 — 영어권 브랜드
+     검색('pap magazine', 해외 월 ~280 vs 한국 10)에서 한국어 제목이 클릭으로
+     바뀌지 않는다. 제목을 영어 선두로 바꾸되 별칭 '팝매거진'은 남긴다.
+     그래서 가드는 '정확한 문자열'이 아니라 '의도' 두 가지를 지킨다. */
+  t("어바웃 제목: 영어가 앞에 오고 '팝매거진' 별칭이 남아 있다", (() => {
+    const m = ab.match(/<title>([^<]*)<\/title>/);
+    if (!m) return false;
+    const title = m[1];
+    return /^About PAP Magazine/.test(title) && title.includes('팝매거진');
+  })());
   t('llms.txt 가 표기 변형을 한 줄로 선언한다',
     /Also searched \/ written as: 팝매거진, PAP매거진/.test(lt));
   t('SSR 스키마 alternateName 에 팝매거진·팹매거진이 있다',

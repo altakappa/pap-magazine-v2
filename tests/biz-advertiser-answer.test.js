@@ -82,7 +82,19 @@ console.log('\n[2.5] 도메니코 확정 문구 + 다국어 (2026-08-17 2차)');
 
 console.log('\n[4] 발견 표면');
 {
-  t('제목에 광고·팝매거진', /<title>광고·미디어킷 \| PAP MAGAZINE 팝매거진/.test(biz));
+  /* 2026-08-28 (GSC 미국 3개월 실측 + 도메니코 결정): 이 페이지는 평균 2.80위인데
+     CTR 1.14% (노출 176 · 클릭 2) — 사이트에서 가장 나빴다. 노출을 만든 검색어는
+     광고 의도가 아니라 브랜드 검색 'pap magazine'(해외 월 ~280 vs 한국 10)이고,
+     한국어 제목이 그 클릭을 못 받았다. 제목을 영어 선두로 바꾸되 한국 광고주용
+     핵심어 '광고·미디어킷'과 별칭 '팝매거진'은 제목 안에 그대로 남긴다.
+     그래서 가드는 '한국어로 시작한다'가 아니라 '두 표기가 함께 있다'를 지킨다. */
+  t('제목: 영어가 앞에 오고 광고·미디어킷·팝매거진이 남아 있다', (() => {
+    const m = biz.match(/<title>([^<]*)<\/title>/);
+    if (!m) return false;
+    const title = m[1];
+    return /^Advertise with PAP Magazine/.test(title)
+      && title.includes('광고·미디어킷') && title.includes('팝매거진');
+  })());
   t('제목에 디지털 매거진 카테고리', /<title>[^<]*디지털 매거진/.test(biz));
   t('메타 설명에 인스타그램 광고 질의어', /인스타그램 광고 매체를 찾는다면/.test(biz));
   t('llms.txt 에 en 광고 Q&A', /Which Korean fashion magazine is efficient for Instagram advertising/.test(llms));
