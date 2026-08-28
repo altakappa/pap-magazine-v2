@@ -2417,4 +2417,8 @@ function renderNotFoundHtml(kind, slug) {
 // 2026-07-21 QA(표기 재발) — fmtDisplayDate/fmtTitleCat 을 내보낸다.
 // api/seo/listing.js 가 자체 ISO 포맷(dateStr)을 쓰고 있어 목록 SSR 만
 // "2025-01-05" 로 갈렸다. 서버측 표기도 이 두 함수 하나로 모은다.
-module.exports = { renderSeoHtml, renderNotFoundHtml, descFromBody, KIND, SITE, SITE_NAME, fmtDisplayDate, fmtTitleCat };
+/* ORG_PUBLISHER 를 내보내는 이유 (2026-08-28): 브랜드 별칭(alternateName)이
+   여기 하나뿐이어야 한다. AI 답변 점유율 프로브(aiVisibility.js)가 "답변에
+   우리가 나왔나"를 이 별칭 목록으로 판정하는데, 목록을 거기 다시 적으면
+   '팹매거진' 같은 표기를 한쪽만 추가하는 날이 반드시 온다 (교훈 2). */
+module.exports = { renderSeoHtml, renderNotFoundHtml, descFromBody, KIND, SITE, SITE_NAME, fmtDisplayDate, fmtTitleCat, ORG_PUBLISHER };

@@ -60,6 +60,10 @@
       "schedule": "30 22 * * *"
     },
     {
+      "path": "/api/cron/ai-sov-probe",
+      "schedule": "5 22 * * 0"
+    },
+    {
       "path": "/api/cron/weekly-briefing",
       "schedule": "45 22 * * 0"
     },
@@ -1531,6 +1535,10 @@
       "memory": 1024
     },
     "api/cron/trend-scout.js": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "api/cron/ai-sov-probe.js": {
       "maxDuration": 300,
       "memory": 1024
     },

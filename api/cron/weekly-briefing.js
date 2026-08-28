@@ -29,6 +29,10 @@ const { buildChannelScorecard, renderScorecardMd } = require('../_lib/channelSco
 // (릴스는 인스타가 per-media 지표를 안 줌 — 확정), 그 사각지대를 하루 단위
 // 잔차로 재는 유일한 계기다. 성적표와 같은 원칙: 결정론 집계라 AI 가 죽어도 나간다.
 const { buildIgLedger, renderIgLedgerMd } = require('../_lib/igLedger');
+/* 2026-08-28 — AI 답변 점유율. 교재 8장("클릭이 아니라 점유율")이 비어 있었다.
+   **읽기만 한다** — 수집은 별도 주간 크론(ai-sov-probe)이 40분 먼저 끝낸다.
+   프로브는 32콜(웹검색 포함)이라 브리핑 함수 안에서 돌리면 브리핑이 인질이 된다. */
+const { buildSovReport, renderSovMd } = require('../_lib/aiVisibility');
 
 const SYSTEM = [
   '너는 PAP 매거진(아트 기반 패션·뷰티·컬쳐 디지털 매거진, IG @pap_magazine 38만, 웹 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만 — 두 매체 지표는 절대 합산 금지)의 주간 경영 브리핑을 쓰는 전략 컨설턴트다.',
@@ -100,6 +104,11 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     try { igLedger = await buildIgLedger(28); }
     catch (e) { console.warn('[weekly-briefing] igLedger failed:', e && e.message); }
 
+    // AI 답변 점유율 — best-effort. DB 읽기뿐이라 싸다. 기록이 없으면 null.
+    let sov = null;
+    try { sov = await buildSovReport({ days: 60 }); }
+    catch (e) { console.warn('[weekly-briefing] sov failed:', e && e.message); }
+
     const rows = reports.data || [];
     const thisWeek = rows.filter((r) => r.report_date >= d7).map((r) => ({ d: r.report_date, s: r.audit && r.audit.summary }));
     const lastWeek = rows.filter((r) => r.report_date < d7).map((r) => ({ d: r.report_date, s: r.audit && r.audit.summary }));
@@ -117,6 +126,9 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       '채널 성적표(7일 vs 전 7일 — 두 도달점 유입):', JSON.stringify(scorecard || {}),
       'IG 일별 장부 요약(28일 — 팔로워 증가 출처, 잔차=릴스·스토리·프로필):',
       JSON.stringify((igLedger && igLedger.summary) || {}),
+      // SoV 도 서사의 근거로 넘긴다 (표 자체는 아래에서 결정론으로 붙는다).
+      'AI 답변 점유율(학습 레이어=웹검색 끔 / 답변 레이어=웹검색 켬 — 절대 합산 금지):',
+      JSON.stringify(sov || {}),
     ].join('\n');
 
     const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
@@ -147,6 +159,10 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     if (igLedger) {
       const lgMd = renderIgLedgerMd(igLedger);
       if (lgMd) briefing = briefing ? (briefing + '\n\n---\n\n' + lgMd) : lgMd;
+    }
+    if (sov) {
+      const sovMd = renderSovMd(sov);
+      if (sovMd) briefing = briefing ? (briefing + '\n\n---\n\n' + sovMd) : sovMd;
     }
 
     const metrics = {

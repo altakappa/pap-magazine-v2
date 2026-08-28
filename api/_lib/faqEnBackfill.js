@@ -47,11 +47,21 @@ const {
   normalizeFaq, callClaude, parseJsonArray,
 } = require('./seoTranslateBackfill');
 
-/* 대상 표. kind 이름은 크론 note 에 그대로 찍힌다. */
+/* 대상 표. label 은 크론 note 에 그대로 찍힌다.
+   batch 를 표마다 다르게 두는 이유 (2026-08-28 라이브 실측):
+   기사 FAQ 는 최대 5항목, 화보는 3항목이다. 같은 8건 배치로 돌렸더니
+   화보는 8/8 성공하고 기사는 응답이 max_tokens 에서 잘려 전멸했다
+   ('[faq-en] articles 번역 응답 JSON 파싱 실패[형태불명]' + 잘린 JSON).
+   화보 FAQ 도 2026-08-27 에 같은 사고를 겪었다(fd95059: 10x4000 → 6x8000).
+   출력 길이는 건수가 아니라 **항목 수 x 건수**로 정해진다. */
 const TARGETS = [
-  { table: 'articles', label: '기사' },
-  { table: 'editorials', label: '화보' },
+  { table: 'articles', label: '기사', batch: 4 },
+  { table: 'editorials', label: '화보', batch: 8 },
 ];
+
+/* 한 배치가 쓸 수 있는 출력 토큰. 여기를 올리는 것보다 batch 를 줄이는 쪽이
+   안전하다 — 잘린 응답은 전멸이고, 작은 배치는 그냥 회차가 늘 뿐이다. */
+const MAX_TOKENS = 8000;
 
 /** FAQ_EN_RECENT: 최근 N편으로 자르기. 0/미설정이면 무제한. */
 function recentLimit() {
@@ -139,8 +149,10 @@ function buildPrompt(payload) {
 /** 한 표를 batch 만큼 처리. */
 async function runOneTable(target, batch, model, timeoutMs) {
   const { table, label } = target;
+  // 표별 상한을 넘지 않는다 — 호출부가 큰 값을 줘도 잘린 응답으로 전멸하지 않게.
+  const useBatch = Math.max(1, Math.min(batch, target.batch || batch));
   const cutoff = await cutoffDate(table);
-  const rows = await fetchPending(table, batch, cutoff);
+  const rows = await fetchPending(table, useBatch, cutoff);
   if (!rows.length) {
     return { table, label, processed: 0, remaining: await countRemainingSafe(table, cutoff) };
   }
@@ -148,15 +160,25 @@ async function runOneTable(target, batch, model, timeoutMs) {
   const payload = rows.map((r, i) => ({ i, faq: r.faq }));
 
   let arr = null;
+  let stopReason = null;
   try {
-    const raw = await callClaude(buildPrompt(payload), 8000, model, timeoutMs);
+    const raw = await callClaude(buildPrompt(payload), MAX_TOKENS, model, timeoutMs);
     /* callClaude 는 {text, stopReason} 객체다. String(raw) 로 받으면
        "[object Object]" 가 되어 조용히 0건이 된다 — 화보 언어판 백필이
        2026-08-27~28 에 정확히 그 상태로 24시간 헛돌았다. */
+    stopReason = raw && raw.stopReason;
     arr = parseJsonArray((raw && raw.text) || '');
   } catch (err) {
-    console.error('[faq-en]', table, (err && err.message) || err);
-    return { table, label, processed: 0, remaining: await countRemainingSafe(table, cutoff), failed: true };
+    /* stop_reason 을 반드시 함께 남긴다. 'JSON 파싱 실패' 만 적으면 원인이
+       '모델이 이상한 걸 뱉었다' 인지 '길어서 잘렸다' 인지 못 가른다 —
+       실제로 이 구분이 없어 배치 크기 문제를 한 회차 늦게 알았다. */
+    console.error('[faq-en]', table, 'batch=' + useBatch,
+      'stop_reason=' + (stopReason || '?'), (err && err.message) || err);
+    return {
+      table, label, processed: 0, failed: true,
+      truncated: stopReason === 'max_tokens',
+      remaining: await countRemainingSafe(table, cutoff),
+    };
   }
   if (!Array.isArray(arr)) {
     return { table, label, processed: 0, remaining: await countRemainingSafe(table, cutoff), failed: true };
@@ -207,7 +229,9 @@ async function runFaqEnBatch({ batch = 8, timeoutMs = 90000, model } = {}) {
       processed += r.processed;
       if (typeof r.remaining === 'number') { remaining += r.remaining; remainingKnown = true; }
       if (r.processed || r.remaining || r.failed) {
-        per.push(r.label + ':' + (r.failed ? '실패' : r.processed));
+        /* '잘림' 과 '실패' 를 가른다 — 고치는 방법이 다르다.
+           잘림이면 batch 를 줄이고, 실패면 원인을 로그에서 찾아야 한다. */
+        per.push(r.label + ':' + (r.failed ? (r.truncated ? '잘림' : '실패') : r.processed));
       }
     } catch (err) {
       console.error('[faq-en]', target.table, (err && err.message) || err);
