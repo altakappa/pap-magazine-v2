@@ -140,6 +140,10 @@
       "schedule": "7 */2 * * *"
     },
     {
+      "path": "/api/cron/celeb-watch",
+      "schedule": "*/20 * * * *"
+    },
+    {
       "path": "/api/cron/algo-coach",
       "schedule": "10 * * * *"
     },

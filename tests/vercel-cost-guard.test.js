@@ -85,9 +85,7 @@ console.log('\n[2] 2026-08-22 절감분이 되돌아가지 않았다');
 const CAPS = {
   '/api/cron/backfill-translations': 100,
   '/api/cron/competitor-watch': 24,
-  /* celeb-watch 는 2026-08-24 크론 자체를 제거했다 (도메니코 지시:
-     '텔레그램 기사 전송 모두 중지, 내가 요청한 링크만 celeb-brief 로').
-     핸들러는 남아 있으므로 재가동은 vercel.json 크론 복원만 하면 된다. */
+  '/api/cron/celeb-watch': 80,
   '/api/cron/release-due-scheduled': 150,
   '/api/cron/backfill-embeddings': 60,
   '/api/cron/backfill-faq': 60,
