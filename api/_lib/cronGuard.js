@@ -217,6 +217,88 @@ function _bodyCause(body) {
   return out.join(' \u00b7 ').slice(0, 300);
 }
 
+/* 2026-09-01 — 성공 경로의 백지를 없앤다. ('돌았다 ≠ 했다' 의 나머지 절반)
+ *
+ * 2026-08-18 에 고친 건 **실패** 경로였다. 성공 경로는 그대로 백지로 남았다.
+ * 실측(7일): 크론 실행 17,839회 중 4,741회(26.6%)가 ok=true 인데 note 빈칸.
+ * 크론 50개 중 15개는 100% 백지 — 한 번도 뭘 했는지 안 남겼다. 백지의 99%가
+ * 상위 8개(sync-pepperit 1,006 · release-due-scheduled 1,008 · threads-post
+ * 1,008 · celeb-watch 503 · celeb-account-watch 503 · pipeline-watch 336 ·
+ * ig-snapshot 168 · send-due-campaigns 168)에 몰려 있다.
+ *
+ * 실제로 뭔가 숨어 있었다 — sync-pepperit 은 1,007회 중 1회 죽었는데 사유가
+ * 'business_discovery 실패 (500): Please reduce the amount of data...' 였다.
+ * 나머지 1,006회가 백지라 아무도 그 1회를 못 봤다.
+ *
+ * 고치는 방법은 5xx 때와 같다: **새로 수집하지 않고, 이미 손에 쥔 것을 안
+ * 버린다.** 크론들은 이미 res.json({ imported: 0, message: '게시물 없음' })
+ * 처럼 결과를 적어 보내고 있다. 가드는 그걸 heldBody 로 붙잡고도 버렸다.
+ *
+ * 크론 8개를 각각 고치는 대신 공용 부품 한 곳만 고친다 (교훈 2번: 규칙이 두
+ * 벌이면 한쪽만 고쳐진다). 핸들러가 res.locals.cronNote 를 직접 쓰면 그쪽이
+ * 언제나 우선이다 — 이건 어디까지나 **빈칸일 때의 대타**다.
+ *
+ * 앞에 '자동요약 · ' 을 붙인다. 나중에 cron_runs 에서 이 표식을 세면 대타가
+ * 실제로 일했는지, 아니면 핸들러가 제 note 를 갖게 됐는지 구분할 수 있다. */
+const SUMMARY_MARK = '자동요약 \u00b7 ';
+// 값이 뻔해서 적어봐야 정보가 0 인 키 (ok:true 는 어차피 성공 기록에 이미 있다)
+const _NOISE_KEYS = new Set(['ok', 'success', 'status', 'statusCode', 'cached']);
+/* 비밀이 로그로 새지 않게 — 본문에 토큰·키가 섞여 나오는 크론이 언젠가 생긴다.
+   cron_runs 는 관리자만 보지만, 로그는 한번 새면 되돌릴 수 없다. 미리 막는다. */
+const _SECRET_RE = /(token|secret|password|passwd|credential|api[_-]?key|authorization|cookie|session|signature)/i;
+// 이 키의 문자열은 길어도 사람이 읽을 문장이라 살린다
+const _PROSE_KEYS = new Set(['note', 'message', 'summary', 'reason', 'detail', 'skipped']);
+
+function _bodySummary(body) {
+  if (body == null) return null;
+
+  // 본문이 통째로 배열인 크론 (sync-pepperit 의 results 등)
+  if (Array.isArray(body)) return body.length + '건';
+
+  if (typeof body === 'string') {
+    const s = body.trim();
+    return s ? s.slice(0, 200) : null;
+  }
+  if (typeof body !== 'object') return null;
+
+  /* 핸들러가 본문에 note 를 적어 보내는 경우가 이미 있다 (threads-post).
+     그건 사람이 쓴 문장이니 가공하지 말고 그대로 쓴다. */
+  if (typeof body.note === 'string' && body.note.trim()) {
+    return body.note.trim().slice(0, 300);
+  }
+
+  const parts = [];
+  for (const [k, v] of Object.entries(body)) {
+    if (parts.length >= 8) break;
+    if (_NOISE_KEYS.has(k)) continue;
+    if (_SECRET_RE.test(k)) continue;
+    if (v == null) continue;
+
+    if (typeof v === 'number') {
+      parts.push(k + ' ' + v);
+    } else if (typeof v === 'string') {
+      const s = v.trim();
+      if (!s) continue;
+      // 긴 문자열은 산문 키에서만 — 그 외는 id·url 류라 길면 소음이다
+      if (_PROSE_KEYS.has(k)) parts.push(s.slice(0, 120));
+      else if (s.length <= 60) parts.push(k + ' ' + s);
+    } else if (Array.isArray(v)) {
+      parts.push(k + ' ' + v.length + '건');
+    } else if (typeof v === 'boolean') {
+      // true 만 적는다 — false 는 '안 했다' 라서 굳이 자리를 안 준다
+      if (v) parts.push(k);
+    }
+    /* 중첩 객체는 통째로 적으면 JSON 덩어리가 되어 오히려 안 읽힌다 — 건너뛴다.
+       (본문이 온통 중첩 객체면 parts 가 비고, 그때는 null 을 돌려 빈칸을 유지한다 —
+        없는 정보를 지어내는 것보다 비우는 편이 정직하다.) */
+  }
+  if (!parts.length) return null;
+
+  const out = [];
+  for (const p of parts) if (!out.includes(p)) out.push(p);
+  return out.join(' \u00b7 ').slice(0, 300);
+}
+
 /**
  * 크론 핸들러를 감싸서 로깅·알림을 추가.
  * @param {string} cronName - 로그·이메일에 표시할 크론 이름
@@ -300,6 +382,14 @@ function withCronGuard(cronName, handler, opts) {
         const cause4 = _bodyCause(heldBody);
         noteOut = 'HTTP ' + res.statusCode + ' — 아무 일도 안 하고 끝남 (인증 거부일 가능성)'
                 + (cause4 ? ' — ' + cause4 : '');
+      }
+
+      /* 2026-09-01 — 2xx 인데 note 가 비면 응답 본문에서 요약을 만들어 채운다.
+         (위 _bodySummary 주석: 성공 경로의 백지 26.6% 를 없애는 대타) */
+      if (ok && !noteOut && heldBody != null
+          && (!res || typeof res.statusCode !== 'number' || res.statusCode < 400)) {
+        const summary = _bodySummary(heldBody);
+        if (summary) noteOut = SUMMARY_MARK + summary;
       }
 
       /* 로그는 항상 남긴다 (일시성 실패도 진단용).
