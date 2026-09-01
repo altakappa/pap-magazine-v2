@@ -28,6 +28,24 @@ t('페이월 정합 — editorialAccess.PREVIEW_IMAGES 상수 사용 (하드코�
   && !/slice\(0, 2\)/.test(story));
 t('발행 화보만 (status published + maybeSingle)',
   /eq\('status', 'published'\)/.test(story) && /maybeSingle/.test(story));
+/* 2026-09-01 — publisher-logo 는 amp.dev 스펙상 정사각형(1:1) 최소 96x96 이다.
+   pap-logo.png(715x443)을 쓰고 있어 스펙 위반이었다. 파일 자체의 픽셀도 검사한다 —
+   경로만 보면 나중에 누가 비정사각 파일로 갈아끼워도 못 잡는다. */
+{
+  const m = story.match(/publisher-logo-src="\$\{SITE\}\/([^"]+)"/);
+  t('publisher-logo 경로 추출', !!m, story.slice(story.indexOf('publisher-logo-src'), story.indexOf('publisher-logo-src') + 80));
+  if (m) {
+    const lp = path.join(root, 'frontend', m[1]);
+    t('publisher-logo 파일 존재 (' + m[1] + ')', fs.existsSync(lp));
+    if (fs.existsSync(lp)) {
+      const buf = fs.readFileSync(lp);
+      const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
+      t('publisher-logo 가 정사각형 (amp-story 스펙 1:1)', w === h, w + 'x' + h);
+      t('publisher-logo 가 96px 이상 (amp-story 스펙 최소 96x96)', w >= 96 && h >= 96, w + 'x' + h);
+    }
+  }
+}
+
 t('amp-story 필수 요소 (standalone·publisher·poster·boilerplate)',
   /<amp-story standalone/.test(story) && /publisher-logo-src/.test(story)
   && /poster-portrait-src/.test(story) && /amp-boilerplate/.test(story));

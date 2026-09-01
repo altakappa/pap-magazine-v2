@@ -121,7 +121,12 @@ module.exports = async function handler(req, res) {
 <amp-story standalone
   title="${esc(title)}"
   publisher="PAP MAGAZINE"
-  publisher-logo-src="${SITE}/pap-logo.png"
+  <!-- 2026-09-01 — publisher-logo 는 amp-story 스펙상 **정사각형(1:1) 최소 96x96** 이다
+       (https://amp.dev/documentation/components/amp-story). pap-logo.png 은 715x443 이라
+       스펙 위반이었다. GSC AMP 리포트는 이걸 잡아주지 않지만(그쪽은 이미지 크기 경고만
+       낸다) 웹스토리의 Discover 노출 자격에 걸린다. android-chrome-512x512.png 은
+       이미 배포돼 있는 512x512 정사각 PNG 라 그대로 쓴다. -->
+  publisher-logo-src="${SITE}/android-chrome-512x512.png"
   poster-portrait-src="${esc(cover || gallery[0])}">
 
   <amp-story-page id="cover">
