@@ -72,8 +72,34 @@ t('normalizeFaq 재사용 — 형태 규칙을 복제하지 않는다',
   /require\('\.\/seoTranslateBackfill'\)/.test(lib) && /normalizeFaq/.test(lib));
 /* 2026-08-25 에 넷째 칸까지 붙인 jsonRepair 계단. 여기서 정규식을 새로 쓰면
    그 수리가 또 복제되고, 다음 고장 때 한쪽만 고쳐진다 (교훈 2). */
-t('JSON 파싱은 공용 계단(parseJsonArray)을 쓴다',
-  /parseJsonArray/.test(lib) && !/text\.match\(\/\\\[\[/.test(lib));
+/* 파서가 세 벌이었다: jsonRepair(네 칸) · seoTranslateBackfill(세 칸, 번역 배치
+   전용) · 이 파일들의 자체 정규식. 처음 통일할 때 하필 세 칸짜리를 골랐고,
+   라이브에서 [형태불명] 으로 죽었다. 정본은 jsonRepair 다. */
+t('JSON 파싱은 네 칸짜리 계단(jsonRepair)을 쓴다',
+  /require\('\.\/jsonRepair'\)/.test(lib) && /parseJsonArray\(rawText, table\)/.test(lib));
+t('세 칸짜리(seoTranslateBackfill.parseJsonArray)로 되돌아가지 않는다',
+  !/parseJsonArray[^;]*require\('\.\/seoTranslateBackfill'\)/.test(lib)
+  && !/normalizeFaq, callClaude, parseJsonArray/.test(lib));
+t('자체 JSON 파서를 만들지 않는다', !/text\.match\(\/\\\[\[/.test(lib));
+
+/* 실제로 죽었던 응답 모양을 **돌려서** 검사한다. 정규식으로 코드를 훑는 것보다
+   강하다 — 라이브 로그(stop_reason=end_turn, [형태불명])에서 채집한 모양이다. */
+{
+  const JR = require('../api/_lib/jsonRepair.js');
+  const body = '{"i":0,"faq":[{"q":"Q1","a":"A1"}]}';
+  const shapes = [
+    ['펜스만', '```json\n[' + body + ']\n```'],
+    ['배열 두 개 (모델이 두 번 답함)',
+      '```json\n[' + body + ']\n```\n```json\n[' + body + ']\n```'],
+    ['뒤 산문에 대괄호 (lastIndexOf 가 헛짚는 모양)',
+      '```json\n[' + body + ']\n```\nNote: items [1] and [2] kept brand names.'],
+  ];
+  for (const [name, raw] of shapes) {
+    let ok = false;
+    try { ok = Array.isArray(JR.parseJsonArray(raw, 't').value); } catch (_) { ok = false; }
+    t('파싱 성공: ' + name, ok);
+  }
+}
 t('callClaude 반환 객체에서 .text 를 꺼낸다',
   /callClaude\(/.test(lib) && /\(raw && raw\.text\)/.test(lib));
 t('String(raw) 오용을 하지 않는다', !/String\(raw \|\| ''\)/.test(lib));
@@ -100,6 +126,13 @@ t('영문판 실패가 원본 결과를 덮지 않는다',
 /* note 가 없으면 '돌았다 ≠ 했다' 를 또 못 본다 (교훈 1 · 2026-08-04). */
 t('cron_runs.note 에 영문판 생산량이 남는다',
   /en && en\.note/.test(cron) && /'영문FAQ '/.test(lib));
+/* 계단이 실제로 일했는지 보이게 한다 — 'block' 이 찍히면 넷째 칸이 살린 것이다.
+   안 보이면 계단이 놀고 있는지 죽어 있는지 구분이 안 된다. */
+t('note 가 어느 칸으로 살렸는지 남긴다', /r\.repaired !== 'none'/.test(lib));
+/* 머리는 언제나 '```json\n[{"i":0,' 이라 종류를 못 가른다 —
+   parseJsonArray 주석이 적어 둔 교훈(87% 실패를 보고도 원인을 못 갈랐다). */
+t('파싱 실패 로그는 머리가 아니라 꼬리를 남긴다',
+  /tail=/.test(lib) && !/\| head=/.test(lib));
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail > 0) process.exit(1);

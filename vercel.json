@@ -140,10 +140,6 @@
       "schedule": "7 */2 * * *"
     },
     {
-      "path": "/api/cron/celeb-watch",
-      "schedule": "*/20 * * * *"
-    },
-    {
       "path": "/api/cron/algo-coach",
       "schedule": "10 * * * *"
     },
@@ -521,15 +517,42 @@
       "source": "/business",
       "destination": "/business.html"
     },
-    { "source": "/glossary", "destination": "/glossary.html" },
-    { "source": "/stories/:slug", "destination": "/api/seo/story-editorial/:slug" },
-    { "source": "/sitemap-stories.xml", "destination": "/api/sitemap-stories" },
-    { "source": "/contributors", "destination": "/api/seo/contributors" },
-    { "source": "/contributor/:handle", "destination": "/api/seo/contributor/:handle" },
-    { "source": "/llms-full.txt", "destination": "/api/llms-full" },
-    { "source": "/api/public/content.json", "destination": "/api/public-content" },
-    { "source": "/content.json", "destination": "/api/public-content" },
-    { "source": "/editorial-policy", "destination": "/editorial-policy.html" },
+    {
+      "source": "/glossary",
+      "destination": "/glossary.html"
+    },
+    {
+      "source": "/stories/:slug",
+      "destination": "/api/seo/story-editorial/:slug"
+    },
+    {
+      "source": "/sitemap-stories.xml",
+      "destination": "/api/sitemap-stories"
+    },
+    {
+      "source": "/contributors",
+      "destination": "/api/seo/contributors"
+    },
+    {
+      "source": "/contributor/:handle",
+      "destination": "/api/seo/contributor/:handle"
+    },
+    {
+      "source": "/llms-full.txt",
+      "destination": "/api/llms-full"
+    },
+    {
+      "source": "/api/public/content.json",
+      "destination": "/api/public-content"
+    },
+    {
+      "source": "/content.json",
+      "destination": "/api/public-content"
+    },
+    {
+      "source": "/editorial-policy",
+      "destination": "/editorial-policy.html"
+    },
     {
       "source": "/studio",
       "destination": "/studio.html"

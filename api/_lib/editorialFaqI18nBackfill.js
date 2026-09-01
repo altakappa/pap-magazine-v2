@@ -23,7 +23,10 @@
 'use strict';
 
 const { supabaseAdmin } = require('./supabase');
-const { normalizeFaq, callClaude, LANG_NAMES, parseJsonArray } = require('./seoTranslateBackfill');
+const { normalizeFaq, callClaude, LANG_NAMES } = require('./seoTranslateBackfill');
+/* 네 칸짜리 계단(jsonRepair). seoTranslateBackfill 의 동명 함수는 세 칸이고
+   번역 배치 전용이다 — 파서가 세 벌이었고 나는 처음에 세 칸짜리를 골랐다. */
+const { parseJsonArray } = require('./jsonRepair');
 
 /* ko 는 원본, en 은 faq_en 칼럼(마이그레이션 139 · faqEnBackfill.js)이 담당한다.
    2026-08-28 까지 이 목록에 'en' 이 있었지만 죽은 항목이었다 — 이 백필은
@@ -108,17 +111,24 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
      없었다. 이제 stop_reason 과 응답 머리를 남긴다 — '잘렸다' 와 '이상한 걸
      뱉었다' 는 고치는 방법이 다르다(fd95059 에서 이미 배운 구분). */
   let arr;
+  let repaired = 'none';
   try {
-    arr = parseJsonArray(text);
+    const parsed = parseJsonArray(text, 'faq-i18n/' + lang);
+    arr = parsed.value;
+    repaired = parsed.repaired;
   } catch (err) {
+    /* 머리가 아니라 **꼬리**를 찍는다 — 머리는 언제나 '```json\n[{"i":0,' 이라
+       종류를 못 가른다. trailing comma·두 번째 배열·뒤에 붙은 산문은 끝에만 있다. */
     console.error('[faq-i18n]', lang, 'batch=' + take.length,
-      'stop_reason=' + ((raw && raw.stopReason) || '?'),
-      (err && err.message) || err, '| head=' + text.slice(0, 200));
+      'stop_reason=' + ((raw && raw.stopReason) || '?'), 'len=' + text.length,
+      '| tail=' + JSON.stringify(text.slice(-300)),
+      (err && err.message) || err);
     return { processed: 0, remaining: pending.length, lang };
   }
   if (!Array.isArray(arr)) {
     console.error('[faq-i18n]', lang, '배열이 아님',
-      'stop_reason=' + ((raw && raw.stopReason) || '?'), '| head=' + text.slice(0, 200));
+      'stop_reason=' + ((raw && raw.stopReason) || '?'), 'len=' + text.length,
+      '| tail=' + JSON.stringify(text.slice(-300)));
     return { processed: 0, remaining: pending.length, lang };
   }
 
@@ -136,7 +146,7 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
     if (upErr) { console.error('[faq-i18n]', lang, id, upErr.message); continue; }
     processed++;
   }
-  return { processed, remaining: Math.max(0, pending.length - processed), lang };
+  return { processed, remaining: Math.max(0, pending.length - processed), lang, repaired };
 }
 
 /** 한 회차: 언어를 순회하며 예산 안에서 처리. */
@@ -165,7 +175,10 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model } 
         Math.max(20000, deadline - Date.now() - 5000));
       processed += r.processed;
       remaining += (r.remaining || 0);
-      if (r.processed || r.remaining) per.push(lang + ':' + r.processed);
+      if (r.processed || r.remaining) {
+        per.push(lang + ':' + r.processed
+          + (r.repaired && r.repaired !== 'none' ? '(' + r.repaired + ')' : ''));
+      }
     } catch (err) {
       console.error('[faq-i18n]', lang, (err && err.message) || err);
       per.push(lang + ':실패');

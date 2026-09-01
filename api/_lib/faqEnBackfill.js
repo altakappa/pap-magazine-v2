@@ -43,9 +43,15 @@
 'use strict';
 
 const { supabaseAdmin } = require('./supabase');
-const {
-  normalizeFaq, callClaude, parseJsonArray,
-} = require('./seoTranslateBackfill');
+const { normalizeFaq, callClaude } = require('./seoTranslateBackfill');
+/* JSON 파싱은 jsonRepair 의 **네 칸짜리** 계단을 쓴다.
+   seoTranslateBackfill 에도 같은 이름의 parseJsonArray 가 있지만 그건 세 칸이고
+   (넷째 칸 '덩어리 고르기' 가 없다), 그 파일 주석이 "번역 배치 전용 계약이
+   얽혀 있어 건드리지 않는다" 고 못박아 둔 별개 함수다. 파서가 세 벌인 셈인데,
+   내가 처음에 통일한 대상이 하필 세 칸짜리였다.
+   로컬 재현: '```json [...] ``` 뒤에 대괄호 섞인 산문' 과 '배열 두 개' 가
+   세 칸에서는 [형태불명] 으로 죽고 네 칸에서는 살아난다. */
+const { parseJsonArray } = require('./jsonRepair');
 
 /* 대상 표. label 은 크론 note 에 그대로 찍힌다.
    batch 를 표마다 다르게 두는 이유 (2026-08-28 라이브 실측):
@@ -161,19 +167,30 @@ async function runOneTable(target, batch, model, timeoutMs) {
 
   let arr = null;
   let stopReason = null;
+  let rawText = '';
+  let repaired = 'none';   // 계단 몇 칸째로 살렸나 — note 에 남긴다
   try {
     const raw = await callClaude(buildPrompt(payload), MAX_TOKENS, model, timeoutMs);
     /* callClaude 는 {text, stopReason} 객체다. String(raw) 로 받으면
        "[object Object]" 가 되어 조용히 0건이 된다 — 화보 언어판 백필이
        2026-08-27~28 에 정확히 그 상태로 24시간 헛돌았다. */
     stopReason = raw && raw.stopReason;
-    arr = parseJsonArray((raw && raw.text) || '');
+    rawText = (raw && raw.text) || '';
+    const parsed = parseJsonArray(rawText, table);
+    arr = parsed.value;
+    repaired = parsed.repaired;
   } catch (err) {
     /* stop_reason 을 반드시 함께 남긴다. 'JSON 파싱 실패' 만 적으면 원인이
        '모델이 이상한 걸 뱉었다' 인지 '길어서 잘렸다' 인지 못 가른다 —
        실제로 이 구분이 없어 배치 크기 문제를 한 회차 늦게 알았다. */
+    /* **꼬리를 찍는다.** 머리는 언제나 '```json\n[{"i":0,' 이라 아무 정보가 없다 —
+       parseJsonArray 주석이 그 교훈을 적어 뒀는데(2026-08-08, 87% 실패를 보고도
+       원인을 못 갈랐다) 나는 head 만 찍어서 같은 실수를 반복했다.
+       trailing comma·두 번째 배열·뒤에 붙은 산문은 전부 끝에서만 보인다. */
     console.error('[faq-en]', table, 'batch=' + useBatch,
-      'stop_reason=' + (stopReason || '?'), (err && err.message) || err);
+      'stop_reason=' + (stopReason || '?'), 'len=' + rawText.length,
+      '| tail=' + JSON.stringify(rawText.slice(-300)),
+      (err && err.message) || err);
     return {
       table, label, processed: 0, failed: true,
       truncated: stopReason === 'max_tokens',
@@ -198,7 +215,10 @@ async function runOneTable(target, batch, model, timeoutMs) {
     processed++;
   }
 
-  return { table, label, processed, remaining: await countRemainingSafe(table, cutoff) };
+  return {
+    table, label, processed, repaired,
+    remaining: await countRemainingSafe(table, cutoff),
+  };
 }
 
 /**
@@ -220,8 +240,10 @@ async function runFaqEnBatch({ batch = 8, timeoutMs = 90000, model } = {}) {
   const per = [];
 
   for (const target of TARGETS) {
-    // 한 콜 여유가 없으면 접는다. 남은 표는 다음 회차가 맡는다.
-    if (Date.now() > deadline - 20000) break;
+    /* 끝낼 수 없는 콜은 시작하지 않는다. 20초로는 콜을 시작만 하고 타임아웃으로
+       죽는 일이 실제로 났다(editorialFaqI18nBackfill 의 'es' 건과 같은 형태).
+       남은 표는 다음 회차가 맡는다. */
+    if (Date.now() > deadline - 35000) break;
     try {
       const r = await runOneTable(
         target, batch, useModel,
@@ -231,7 +253,11 @@ async function runFaqEnBatch({ batch = 8, timeoutMs = 90000, model } = {}) {
       if (r.processed || r.remaining || r.failed) {
         /* '잘림' 과 '실패' 를 가른다 — 고치는 방법이 다르다.
            잘림이면 batch 를 줄이고, 실패면 원인을 로그에서 찾아야 한다. */
-        per.push(r.label + ':' + (r.failed ? (r.truncated ? '잘림' : '실패') : r.processed));
+        /* 계단이 실제로 일했으면 그 사실을 남긴다 — 'block' 이 찍히면 넷째 칸
+           (덩어리 고르기)이 응답을 살렸다는 증거다. 안 찍히면 계단이 놀고 있다. */
+        const tag = r.failed ? (r.truncated ? '잘림' : '실패')
+          : String(r.processed) + (r.repaired && r.repaired !== 'none' ? '(' + r.repaired + ')' : '');
+        per.push(r.label + ':' + tag);
       }
     } catch (err) {
       console.error('[faq-en]', target.table, (err && err.message) || err);

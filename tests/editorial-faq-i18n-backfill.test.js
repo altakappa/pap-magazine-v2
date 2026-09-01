@@ -55,13 +55,19 @@ t('String(raw) 로 되돌아가지 않는다 (무생산 재발 방지)',
 t('시간 예산 — 한 콜을 끝낼 여유(35초)가 없으면 접는다', /deadline - 35000/.test(lib));
 /* 파서가 두 벌이면 한쪽만 고쳐진다 (교훈 2). 2026-08-25 의 jsonRepair 넷째 칸이
    parseJsonArray 에만 들어가고 이 파일의 자체 정규식은 옛날 그대로였다. */
-t('JSON 파싱은 공용 계단(parseJsonArray)을 쓴다',
-  /parseJsonArray\(text\)/.test(lib));
+/* 파서가 세 벌이었다. 8/25 의 넷째 칸(덩어리 고르기)은 jsonRepair 에만 있고,
+   seoTranslateBackfill 의 동명 함수는 세 칸짜리 번역 배치 전용이다.
+   처음 통일할 때 세 칸짜리를 골랐고 라이브에서 [형태불명] 으로 죽었다. */
+t('JSON 파싱은 네 칸짜리 계단(jsonRepair)을 쓴다',
+  /require\('\.\/jsonRepair'\)/.test(lib) && /parseJsonArray\(text, 'faq-i18n\/'/.test(lib));
+t('세 칸짜리로 되돌아가지 않는다',
+  !/normalizeFaq, callClaude, LANG_NAMES, parseJsonArray/.test(lib));
 t('자체 JSON 파서를 다시 만들지 않는다',
   !/text\.match\(\/\\\[\[/.test(lib) && !/JSON\.parse\(text\)/.test(lib));
 /* 실패 경로가 조용하면 왜 0인지 영영 모른다 — 실제로 그래서 한 회차를 날렸다. */
-t('파싱 실패 시 stop_reason 과 응답 머리를 남긴다',
-  /stop_reason=/.test(lib) && /head=/.test(lib));
+/* 머리는 언제나 '```json\n[{"i":0,' 이라 종류를 못 가른다. 꼬리에만 정보가 있다. */
+t('파싱 실패 시 stop_reason 과 응답 **꼬리**를 남긴다',
+  /stop_reason=/.test(lib) && /tail=/.test(lib) && !/\| head=/.test(lib));
 t('한 언어 실패가 나머지를 막지 않는다', /catch \(err\)[\s\S]{0,120}per\.push\(lang \+ ':실패'\)/.test(lib));
 
 console.log('\n=== 크론 배선 (별도 크론 아님 — 호출 예산) ===');
