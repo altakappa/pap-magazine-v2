@@ -36,7 +36,7 @@ const { uploadVideo } = require('../_lib/youtube');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { buildTitle, buildHashtags, buildTagList } = require('../_lib/youtubeMeta');
 const drive = require('../_lib/driveVideos');
-const { matchArticle } = require('../_lib/koMatch');
+const { matchArticle, groupUnmatched } = require('../_lib/koMatch');
 const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim');
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
@@ -156,11 +156,15 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
            나머지 12건이 뭔지 알 길이 없어 사람이 확인을 못 했다. 전부 남긴다.
            note 는 cron_runs.note(text) 로 들어가므로 길이는 문제되지 않지만,
            폴더가 폭주했을 때를 대비해 40개 / 1500자에서만 자른다. */
+        /* 2026-09-02 ② — 이름만 찍으면 사람이 **무엇을 해야 할지** 모른다.
+           14건이 다 같은 '실패' 로 보이지만 실제로는 성격이 다르다:
+             '사람이 골라야' = 기사가 여럿이라 기계가 못 정한다 → 사람이 정해야 한다
+             '기사 없음'     = 붙일 기사가 아예 없다             → 기다리거나 빼면 된다
+           사유별로 묶어 찍고, 빼는 방법도 한 줄 붙인다. 12일째 같은 이름이
+           반복되던 이유는 그걸 아무도 몰라서였다. */
         note: note(res, '매칭 실패 ' + unmatched.length + '건 — '
-          + (unmatched.length > 40
-              ? unmatched.slice(0, 40).map((u) => u.name).join(', ') + ' 외 ' + (unmatched.length - 40) + '건'
-              : unmatched.map((u) => u.name).join(', ')
-            ).slice(0, 1500)),
+          + groupUnmatched(unmatched).slice(0, 1500)
+          + ' · 목록에서 빼려면 파일명 앞에 _ 를 붙이거나 이름에 완료 를 넣으세요 (지우지 않아도 됩니다)'),
       });
     }
 

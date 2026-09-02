@@ -133,5 +133,48 @@ t('제목 맨 앞도 시작으로 본다',
 t('영문·숫자 뒤는 한글 덩어리가 아니므로 시작으로 본다',
   km.tokenHit('마틴', { title: 'YSL 마틴의 밤', tags: [] }) === 1);
 
+console.log('\n[실패 목록] 이름만 찍으면 사람이 무엇을 할지 모른다 (2026-09-02)');
+/* 0821_몬스타엑스 가 12일째 매 10분마다 이름만 찍히고 있었다.
+   14건이 전부 같은 '매칭 실패' 로 보였지만 성격이 셋이고 할 일이 다 다르다.
+   도메니코 2026-09-02: "몬스타엑스는 이미 올려서 삭제해도 된다" →
+   지우는 대신 목록에서 빼는 쪽을 골랐다. 원본을 지우는 건 되돌릴 수 없다. */
+const U = [
+  { name: 'a.mp4', reason: '같은 사건 기사가 여럿 (1.00 vs 1.00) — 사람이 골라야 한다: A / B' },
+  { name: 'b.mp4', reason: '같은 사건 기사가 여럿 (1.00 vs 1.00) — 사람이 골라야 한다: C / D' },
+  { name: 'c.mp4', reason: '파일명 낱말이 어느 기사에도 안 걸림 (베를린·쇼룸)' },
+  { name: 'd.mp4', reason: '가장 닮은 기사도 0.50 (기준 0.6) — 닮은 게 없음' },
+];
+const g = km.groupUnmatched(U);
+t('사유별로 묶는다 (셋이 한 덩어리로 보이면 아무도 안 건드린다)',
+  /사람이 골라야 2/.test(g) && /기사 없음 1/.test(g) && /닮은 기사 없음 1/.test(g), g);
+t('파일 이름을 잃지 않는다', /a\.mp4/.test(g) && /c\.mp4/.test(g), g);
+t('빈 목록에도 안 죽는다', km.groupUnmatched([]) === '' && km.groupUnmatched(null) === '');
+t('사유가 없어도 안 죽는다 (판단 못 하면 기타로 둔다)',
+  /기타/.test(km.groupUnmatched([{ name: 'x.mp4' }])));
+
+console.log('\n[목록에서 빼기] 지우지 않고 표시로 뺀다');
+/* ⚠️ driveVideos 는 supabase 를 끌고 온다. 테스트에서 그대로 require 하면
+   env 없는 CI 에서 'supabaseUrl is required' 로 죽는다 —
+   2026-07-30 에 이미 겪은 사고이고 faqHealth.js 머리말에 적혀 있다.
+   내가 그걸 그대로 반복했다. 클라이언트를 만들지 않도록 먼저 막는다. */
+const Module = require('module');
+(() => {
+  const sp = path.join(__dirname, '..', 'api', '_lib', 'supabase.js');
+  const m = new Module(sp, null);
+  m.filename = sp; m.loaded = true; m.exports = { supabaseAdmin: {}, supabase: {} };
+  require.cache[sp] = m;
+})();
+const drive = require(path.join(__dirname, '..', 'api', '_lib', 'driveVideos.js'));
+t("'_' 로 시작하면 뺀다 (종전부터 있던 규칙)", !!drive.shouldSkip('_0821_몬스타엑스', null, 'youtube'));
+t("이름에 '완료' 가 있으면 뺀다  ← 이번에 추가", !!drive.shouldSkip('0821_몬스타엑스 완료', null, 'youtube'));
+t("'done' 도 받는다", !!drive.shouldSkip('monstax done.mp4', null, 'youtube'));
+t("'보류' 는 그대로 받는다 (뜻이 다르지만 종전 표기를 깨지 않는다)",
+  !!drive.shouldSkip('보류_a.mp4', null, 'youtube'));
+t('표시가 없으면 그대로 처리한다 (아무거나 빼면 안 된다)',
+  drive.shouldSkip('0821_몬스타엑스', null, 'youtube') === null);
+/* 2026-08-21 실사고 — 압축 중 임시 파일이 그대로 업로드됐다. 이건 절대 안 깨져야 한다. */
+t("'.' 로 시작하는 작업 중 파일은 계속 막는다",
+  !!drive.shouldSkip('.압축중_123_x.mp4', null, 'youtube'));
+
 console.log('\n' + (fail ? '✗' : '✓') + ' ko-match-dead-tokens: ' + pass + ' passed / ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

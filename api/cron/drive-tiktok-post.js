@@ -33,7 +33,7 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const { buildHashtags } = require('../_lib/youtubeMeta');
 const drive = require('../_lib/driveVideos');
 const buffer = require('../_lib/buffer');
-const { matchArticle } = require('../_lib/koMatch');
+const { matchArticle, groupUnmatched } = require('../_lib/koMatch');
 const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim');
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
@@ -155,8 +155,11 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
     if (!pick) {
       return res.status(200).json({
         ok: true, matched: 0, unmatched, skipped,
+        /* 유튜브 크론과 같은 모양으로 (2026-09-02). 여기는 이름을 3개만 찍고 있어서
+           나머지가 뭔지 알 수 없었다 — 유튜브 쪽에서 이미 겪은 문제다. */
         note: note(res, '매칭 실패 ' + unmatched.length + '건 — '
-          + unmatched.slice(0, 3).map((u) => u.name).join(', ')),
+          + groupUnmatched(unmatched).slice(0, 1500)
+          + ' · 목록에서 빼려면 파일명 앞에 _ 를 붙이거나 이름에 완료 를 넣으세요 (지우지 않아도 됩니다)'),
       });
     }
 

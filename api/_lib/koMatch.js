@@ -286,7 +286,43 @@ function matchArticle(filename, articles, opts) {
     reason: `확신 (${best.score.toFixed(2)} vs 2등 ${second.toFixed(2)})` };
 }
 
+/* 매칭 실패 목록을 **사유별로 묶어** 한 줄로 (2026-09-02)
+
+   종전 로그는 이름만 나열했다. 그래서 14건이 전부 같은 '실패' 로 보였는데
+   실제로는 성격이 셋이다:
+
+     사람이 골라야  기사가 여럿이라 기계가 못 정한다 → 사람이 정해 줘야 한다
+     기사 없음      붙일 기사가 아예 없다             → 기다리거나 목록에서 빼면 된다
+     닮은 게 없음   문턱 미달                         → 파일명이나 기사 제목 문제
+
+   무엇을 해야 하는지가 셋 다 다른데 한 덩어리로 보이면 아무도 손대지 않는다.
+   실제로 0821_몬스타엑스 가 12일째 매 10분마다 이름만 찍히고 있었다. */
+function groupUnmatched(unmatched) {
+  const list = Array.isArray(unmatched) ? unmatched : [];
+  const buckets = new Map();
+  for (const u of list) {
+    const r = String((u && u.reason) || '');
+    let kind = '기타';
+    if (/사람이 골라야/.test(r)) kind = '사람이 골라야';
+    else if (/안 걸림|관련 없어 보임/.test(r)) kind = '기사 없음';
+    else if (/닮은 게 없음/.test(r)) kind = '닮은 기사 없음';
+    if (!buckets.has(kind)) buckets.set(kind, []);
+    buckets.get(kind).push((u && u.name) || '?');
+  }
+  const parts = [];
+  for (const [kind, names] of buckets) {
+    /* 묶음당 40개까지. 앞 커밋(2026-09-02)이 "3건만 찍어서 나머지를 알 수 없었다" 는
+       실측으로 40개 상한을 세웠다. 묶는다고 그 기준을 낮추면 같은 문제가 돌아온다.
+       진짜 상한은 호출부의 1500자다. */
+    const shown = names.slice(0, 40);
+    parts.push('[' + kind + ' ' + names.length + '] ' + shown.join(' · ')
+      + (names.length > shown.length ? ' 외 ' + (names.length - shown.length) + '건' : ''));
+  }
+  return parts.join(' ');
+}
+
 module.exports = {
+  groupUnmatched,
   romanize, phon, dice, fileTokens, squash,
   tokenHit, tokenIsLive, scoreArticle, matchArticle, hitAtWordStart, squashMap,
   THRESHOLD, MARGIN,

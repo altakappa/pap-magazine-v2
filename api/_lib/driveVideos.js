@@ -89,7 +89,15 @@ function shouldSkip(name, skipListRaw, platform) {
   if (n.indexOf('압축중') !== -1) return '압축 진행 중인 임시 파일';
   if (n.startsWith('_')) return "이름이 '_' 로 시작 (보류 표시)";
   const low = n.toLowerCase();
-  if (low.indexOf('보류') !== -1 || low.indexOf('skip') !== -1) return '이름에 보류 표시';
+  /* '완료'·'done' 을 함께 받는다 (2026-09-02).
+     '보류' 는 "아직 못 정했다" 는 뜻인데, 실제로 자주 쓰이는 상황은
+     "이미 올렸으니 목록에서 빼라" 다. 뜻이 다른 낱말 하나로 두 상태를 표시하면
+     나중에 이 파일이 왜 빠졌는지 아무도 모른다.
+     (도메니코 2026-09-02: "몬스타엑스는 이미 올려서 삭제해도 된다" —
+      지우지 않고 표시로 빼는 쪽을 골랐다. 원본을 지우는 건 되돌릴 수 없다.) */
+  for (const w of ['보류', '완료', 'skip', 'done']) {
+    if (low.indexOf(w) !== -1) return "이름에 '" + w + "' 표시";
+  }
 
   const parse = (raw) => String(raw || '').split(',').map((x) => x.trim()).filter(Boolean);
   const global = parse(skipListRaw == null ? process.env.DRIVE_VIDEO_SKIP : skipListRaw);

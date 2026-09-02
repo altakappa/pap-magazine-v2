@@ -315,8 +315,21 @@ console.log('\n[압축 중 임시 파일 차단]');
   t('일일 상한 기본값이 성수기 실수요(20건) 이상이다', Number(dflt) >= 20, '현재 ' + dflt);
 
   t('매칭 실패 로그가 3건만 찍지 않는다', !/unmatched\.slice\(0,\s*3\)/.test(dy));
-  t('매칭 실패 로그가 전체 목록을 남긴다 (상한선만 둔다)',
-    /unmatched\.map\(\(u\) => u\.name\)\.join/.test(dy) && /unmatched\.length > 40/.test(dy));
+  /* 종전에는 크론 소스에 특정 코드 모양이 있는지 봤다. 2026-09-02 에 그 로직이
+     koMatch.groupUnmatched 로 옮겨가면서 동작은 그대로인데 단정만 깨졌다.
+     봐야 할 것은 '3건만 찍지 않고, 넘치면 몇 건인지 밝힌다' 는 **동작**이다. */
+  {
+    const { groupUnmatched } = require(path.join(__dirname, '..', 'api', '_lib', 'koMatch.js'));
+    const many = Array.from({ length: 50 }, (_, i) => ({
+      name: 'f' + i + '.mp4',
+      reason: '같은 사건 기사가 여럿 (1.00 vs 1.00) — 사람이 골라야 한다: A / B',
+    }));
+    const line = groupUnmatched(many);
+    const shown = (line.match(/f\d+\.mp4/g) || []).length;
+    t('매칭 실패 로그가 전체 목록을 남긴다 (상한선만 둔다)',
+      shown >= 40 && /외 \d+건/.test(line), '표시 ' + shown + '개');
+    t('사유별로 묶어 무엇을 해야 할지 드러낸다', /사람이 골라야 50/.test(line), line.slice(0, 80));
+  }
 }
 
 console.log('\n' + (fail ? '❌' : '✅') + ` ${pass} passed, ${fail} failed\n`);
