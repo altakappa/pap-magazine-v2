@@ -295,7 +295,19 @@ const START_FLOOR_MS = 35000;
    처리량만 3배다. 크론 호출도, 함수 시간도, 토큰도 늘지 않는다.
    3 으로 둔 이유: 예산 100초에 콜 하나가 30~60초라 파도가 1~2번이다.
    더 키우면 한 파도가 예산을 넘겨 통째로 버려진다. */
-const CONCURRENCY = 3;
+const CONCURRENCY = 2;
+
+/* 한 콜에 줄 수 있는 시간의 **상한**. 종전에는 남은 예산을 통째로 줬다
+   (95초). 그러면 콜 하나가 안 끝날 때 그 회차 전체가 그 콜을 기다리다 끝난다.
+
+   실측 (2026-09-02 14시대, 배포 50d5ab2 · 런타임 로그):
+     [faq-i18n] es The operation was aborted due to timeout   x16
+     429·rate_limit 은 0건 — 한도가 아니라 시간이 문제였다.
+     duration_ms 95,4xx 가 매 회차 반복 = 예산을 다 쓰고 1회전으로 끝났다.
+
+   batch 6 은 약 30초에 끝났다. 18 로 키우자 95초 안에도 못 끝냈다.
+   상한을 두면 못 끝낸 콜은 그 콜만 버려지고, 남은 예산으로 다음 파도가 돈다. */
+const CALL_TIMEOUT_MS = 55000;
 
 /* 한 회차의 파도 상한 (무한 반복 안전핀). */
 const MAX_WAVES = 4;
@@ -339,7 +351,8 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, n
   while (queue.length && waves < MAX_WAVES && Date.now() <= deadline - START_FLOOR_MS) {
     waves++;
     const group = queue.splice(0, CONCURRENCY);
-    const budget = Math.max(20000, deadline - Date.now() - 5000);
+    const budget = Math.min(CALL_TIMEOUT_MS,
+      Math.max(20000, deadline - Date.now() - 5000));
 
     /* 각자 catch 한다 — 한 언어가 던져도 같은 파도의 나머지를 죽이지 않는다. */
     const results = await Promise.all(group.map((lang) =>
@@ -353,10 +366,16 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, n
 
   let processed = 0;
   let remaining = 0;
+  /* 잔여를 **한 언어도 못 잰 경우**와 **정말 0인 경우**를 가른다.
+     2026-09-02 14시대에 세 언어가 전부 타임아웃하자 노트가 '잔여 0' 을 찍었다.
+     실제 빈칸은 16,365 였다. 못 잰 것을 0 으로 적으면 그게 곧 '완주' 로 읽힌다 —
+     오늘 오전에 범위 문제로 지적한 바로 그 거짓 완주를, 이번엔 내가 만들었다.
+     못 쟀으면 '?' 라고 적는다. 모른다고 적는 게 0 이라고 적는 것보다 낫다. */
+  let remainingKnown = false;
   const per = [];
   for (const [lang, cur] of acc) {
     processed += cur.processed;
-    remaining += (cur.remaining || 0);
+    if (typeof cur.remaining === 'number') { remaining += cur.remaining; remainingKnown = true; }
     if (!cur.processed && !cur.remaining && !cur.tag) continue;
     /* '실패' 와 '일부만 저장' 을 가른다. 종전에는 둘 다 'it:0' 으로 보여
        파싱이 죽은 것과 대상이 없는 것을 구분할 수 없었다. */
@@ -369,18 +388,20 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, n
 
   const visited = acc.size;
   return {
-    processed, remaining,
+    processed,
+    remaining: remainingKnown ? remaining : null,
     visited, waves,
     order,
     /* 잔여 뒤에 '(N개 언어)' 를 붙인다. 이 값은 전체가 아니라 **이번에 확인한
        언어들의 합**이다. 안 적으면 215↔478 진동이 원인 불명으로 보인다.
        회전 수도 찍는다 — 늘 1이면 반복이 안 도는 것이고, 노트를 안 보면 모른다. */
     note: '화보FAQ 언어판 ' + processed
-      + ' · 잔여 ' + remaining + '(' + visited + '/' + TARGET_LANGS.length + '개 언어, ' + order[0] + '부터)'
+      + ' · 잔여 ' + (remainingKnown ? remaining : '?')
+      + '(' + visited + '/' + TARGET_LANGS.length + '개 언어, ' + order[0] + '부터)'
       + ' · ' + waves + '회전'
       + (per.length ? ' · ' + per.join(' ') : ''),
     scope: srcMap.size,
   };
 }
 
-module.exports = { runEditorialFaqI18nBatch, runOneLang, pickPending, countPendingSafe, ID_CHUNK, rotatedLangs, ROTATE_SLOT_MS, recentWithFaq, recentLimit, TARGET_LANGS, CONCURRENCY };
+module.exports = { runEditorialFaqI18nBatch, runOneLang, pickPending, countPendingSafe, ID_CHUNK, CALL_TIMEOUT_MS, rotatedLangs, ROTATE_SLOT_MS, recentWithFaq, recentLimit, TARGET_LANGS, CONCURRENCY };

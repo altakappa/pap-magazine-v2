@@ -40,7 +40,11 @@ module.exports = withCronGuard('backfill-editorial-faq', async function handler(
         /* 6 → 18 (2026-09-02). 6 은 "응답이 잘리면 배치 전멸" 이라는 전제로 고른
            값인데, JSONL 로 바꾼 뒤로는 잘려도 완성된 줄이 다 살아남는다.
            MAX_TOKENS 도 16,000 으로 올려 상한이 배치를 묶지 않는다. */
-        i18n = await runEditorialFaqI18nBatch({ batch: 18, timeoutMs: left });
+        /* 18 → 8 (2026-09-02, 라이브 실측 후 되돌림). 18 로 키운 콜이 95초 안에
+           안 끝났다 — 런타임 로그 'aborted due to timeout' 16건, 429 는 0건.
+           batch 6 이 약 30초였으니 8 은 40초 안쪽이고 콜 상한 55초에 든다.
+           처리량은 배치가 아니라 파도(회전)로 올린다. */
+        i18n = await runEditorialFaqI18nBatch({ batch: 8, timeoutMs: left });
       } catch (e2) {
         console.error('[backfill-editorial-faq] i18n:', (e2 && e2.message) || e2);
         i18n = { processed: 0, note: '언어판 실패' };

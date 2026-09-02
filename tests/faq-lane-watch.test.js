@@ -119,6 +119,25 @@ t('느림은 알리지 않는다', jSlow.status === 'slow' && jSlow.healthy === 
 t('회전이 1에 머물면 그 사실을 사유에 적는다 (예산을 버리고 있다)',
   /회전이 1회에 머문다/.test(jSlow.reason), jSlow.reason);
 
+console.log('\n[7] 라이브 회귀 — 2026-09-02 14시대에 실제로 온 줄');
+/* 화보FAQ 언어판 0 · 잔여 0(3/7개 언어, es부터) · 1회전 · es:실패 ja:실패 de:실패
+   노트가 '잔여 0' 이라고 말했지만 실제 빈칸은 16,365 였다(콜 타임아웃으로 못 잰 값을
+   0 으로 합산). 감시가 노트의 잔여를 믿었다면 '완주, 정상' 이라고 답했을 것이다.
+   그래서 감시는 **잔여를 DB 에서 직접 센다.** 노트는 생산량만 읽는다. */
+const LIVE_LIE = '화보FAQ 0 · 완주 | 화보FAQ 언어판 0 · 잔여 0(3/7개 언어, es부터) · 1회전 · es:실패 ja:실패 de:실패';
+const sumLie = h.summarizeLaneRuns(new Array(9).fill(LIVE_LIE), '화보FAQ 언어판');
+const jLie = h.judgeLaneHealth({
+  label: '화보FAQ 언어판',
+  remaining: 16365,                 // DB 실측 — 노트의 0 이 아니다
+  produced: sumLie.produced, windowHours: 3,
+  runs: sumLie.total, parsed: sumLie.parsed, fails: sumLie.fails, partRuns: sumLie.partRuns,
+  wavesMax: sumLie.wavesMax,
+});
+t('노트가 잔여 0 이라 해도 완주로 속지 않는다', jLie.status !== 'done', jLie.status);
+t('정체로 잡는다 (이 줄이 9번 반복되면 울려야 한다)', jLie.healthy === false, jLie);
+t('회전이 1에 머문 것도 집계된다', sumLie.wavesMax === 1, sumLie.wavesMax);
+t('실패 파트를 센다', sumLie.fails === 27, sumLie.fails);
+
 console.log('\n[6] pipeline-watch 배선');
 t('영문FAQ 차선을 본다', /checkFaqEn\(/.test(WATCH));
 t('언어판 차선을 본다', /checkFaqI18n\(/.test(WATCH));

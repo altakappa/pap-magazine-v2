@@ -75,7 +75,13 @@ let reply = '';
 const REAL = require(path.join(ROOT, 'api', '_lib', 'seoTranslateBackfill.js'));
 inject(path.join(ROOT, 'api', '_lib', 'seoTranslateBackfill.js'), {
   normalizeFaq: REAL.normalizeFaq,          // 진짜 — 개수 검사가 진짜여야 의미가 있다
-  callClaude: async () => ({ text: reply, stopReason: 'end_turn' }),
+  /* '__ABORT__' 이면 콜 자체가 던진다 — 라이브의 'aborted due to timeout' 재현.
+     응답이 이상한 것(파싱 실패)과 **콜이 아예 안 돌아온 것**은 다른 사고다.
+     앞은 잔여를 잰 뒤라 숫자를 알고, 뒤는 아무것도 못 잰다. */
+  callClaude: async () => {
+    if (reply === '__ABORT__') throw new Error('The operation was aborted due to timeout');
+    return { text: reply, stopReason: 'end_turn' };
+  },
   LANG_NAMES: REAL.LANG_NAMES,
 });
 
@@ -229,6 +235,36 @@ const srcMap = new Map([['e1', KO], ['e2', KO]]);
   t('.in() 한 번에 넣는 id 수가 상한 이하다 (URL 폭발 방지)',
     inCalls.length > 1 && Math.max.apply(null, inCalls) <= i18n.ID_CHUNK,
     { 호출: inCalls.length, 최대: Math.max.apply(null, inCalls), 상한: i18n.ID_CHUNK });
+  trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
+
+  console.log('\n[8] 라이브에서 터진 것 두 개 (2026-09-02 14시대 실측)');
+  /* ■ 무엇이 터졌나
+       화보FAQ 언어판 0 · 잔여 0(3/7개 언어, es부터) · 1회전 · es:실패 ja:실패 de:실패
+     이 한 줄에 사고가 둘 들어 있다.
+
+     ① 콜이 안 끝났다. 런타임 로그 'The operation was aborted due to timeout' 16건,
+        429·rate_limit 0건 — 한도가 아니라 시간이었다. batch 18 이 95초 안에 못 끝났고,
+        남은 예산을 통째로 그 콜에 줬기 때문에 회차가 통째로 날아갔다(duration 95,4xx · 1회전).
+     ② **'잔여 0' 이 거짓말이었다.** 실제 빈칸은 16,365 다. 못 잰 값을 0 으로 합산했다.
+        오늘 오전에 "범위 밖은 영영 안 채워지는데 잔여 0 이 찍힌다" 고 지적한 그 모양을,
+        이번엔 내가 만들었다. */
+  reply = '__ABORT__';                                 // 콜이 아예 안 돌아온다 (라이브 모양)
+  const allFail = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 120000, model: 'm', now: 0 });
+  t('전부 실패하면 잔여를 0 이라고 적지 않는다  ← ②',
+    !/잔여 0\b/.test(allFail.note), allFail.note);
+  t('못 쟀으면 물음표로 적는다 (모른다고 적는 게 낫다)',
+    /잔여 \?/.test(allFail.note), allFail.note);
+  t('반환값의 remaining 도 0 이 아니라 null 이다',
+    allFail.remaining === null, allFail.remaining);
+
+  t('콜 하나에 남은 예산을 통째로 주지 않는다  ← ①',
+    /Math\.min\(CALL_TIMEOUT_MS,/.test(SRC));
+  t('콜 상한이 함수 예산보다 넉넉히 작다', i18n.CALL_TIMEOUT_MS <= 60000, i18n.CALL_TIMEOUT_MS);
+  t('동시 호출 수를 실측에 맞춰 줄였다', i18n.CONCURRENCY <= 2, i18n.CONCURRENCY);
+  t('타임아웃 실측을 코드에 남긴다 (다음 사람이 배치를 또 키우지 않게)',
+    /aborted due to timeout/.test(SRC));
+
+  reply = el(0) + '\n' + el(1);                        // 원상복구
   trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
 
   console.log('\n[6] 프롬프트와 배선');
