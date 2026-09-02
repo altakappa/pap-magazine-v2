@@ -88,6 +88,20 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
     // 업로드당 1,600 units, 기본 쿼터 10,000/일 ≈ 6회 → 기본 상한 4로 여유 확보.
     // 관리자 수동 트리거는 상한을 우회한다 (cronOk 일 때만 적용).
     if (cronOk) {
+      /* 기본값 4 의 근거가 낡았다 — 2026-09-02 확인.
+         2026-07-16 에 4 를 정한 근거는 "쿼터 10,000/일 · 업로드당 1,600" 이었다(1fe4c37).
+         지금 구글 문서는 다르다(developers.google.com/youtube/v3/determine_quota_cost):
+           videos.insert = "100 quota per day. Each call costs 1 quota."
+           "…a default quota allocation of 100 search.list calls, 100 videos.insert calls,
+            and 10,000 units per day combined for all other endpoints."
+         → 업로드는 하루 100건까지다. 쿼터는 더 이상 병목이 아니고,
+            우리 youtube_posts 이력에도 quota 오류가 0건이다.
+
+         그래서 이 상한에 남은 목적은 절약이 아니라 **사고 피해 한도**다.
+         2026-08-17 에 같은 기사가 두 번 올라간 사고가 있었다(youtube_posts.status='orphan').
+         매칭이 틀어지면 공개 채널에 잘못된 영상이 이 숫자만큼 올라간다.
+         실측 최대치는 하루 6건(2026-08-31)이고 21일 평균은 1.5건이다.
+         숫자는 env(YOUTUBE_DAILY_LIMIT)로만 바꾼다 — 도메니코가 Vercel 에서 직접. */
       const DAILY_LIMIT = parseInt(process.env.YOUTUBE_DAILY_LIMIT || '4', 10) || 4;
       // 기준일은 KST(UTC+9) 자정. UTC 자정으로 잡으면 상한 리셋이 09:00 KST가 되어,
       // 상한이 걸린 날은 한국 새벽~오전(00~09시)이 통째로 죽는다.
