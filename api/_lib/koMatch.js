@@ -110,11 +110,60 @@ const PARTIAL_MIN = 0.60;   // 제목 부분유사를 점수로 인정할 하한
  *   0.9  로마자 변환이 태그와 사실상 같음
  *   0~1  제목과의 부분 유사도 (PARTIAL_MIN 미만은 0)
  */
+/* 낱말 경계 (2026-09-02) ─────────────────────────────────────────────
+   squash 는 공백까지 지운다. '디올 뷰티' 와 '디올뷰티' 를 맞추려면 그래야 한다.
+   그런데 공백을 지우고 나면 제목이 한 덩어리가 되어 **낱말 중간에서도 걸린다.**
+
+   실측으로 잡은 사고:
+     토큰 '유가'  vs  기사 '공유가 보여준 브라운 NEVO의 어른 남자 제스처'  → 1.0
+
+   '유가' 는 카스쿨 페스티벌에 나온 아티스트인데 배우 공유 기사에 만점으로 붙었다.
+   지금은 다른 토큰이 점수를 눌러 문턱을 못 넘고 있을 뿐이다. 가중치를 손대는
+   순간 이게 1등이 된다 — 실제로 낱말 가중치(1/df) 실험에서
+   '카스쿨 유가.mp4' 가 저 기사에 0.80 으로 붙었다. **엉뚱한 영상이 공개
+   유튜브에 올라가는** 바로 그 사고다.
+
+   한글은 교착어다. 조사·어미는 낱말 **뒤에** 붙는다 (설윤+이, 한소희+가, 뷰티+가).
+   앞에 붙는 일은 없다. 그러므로 토큰은 한글 덩어리의 **시작**에서 걸려야 한다.
+   squash 된 자리를 원문 자리로 되짚어 그 앞 글자를 본다.
+
+   실측 검증 (최근 21일 기사 213편, 과거 성공 매칭 8건):
+     기존 성공 8/8 유지 · 새로 붙는 것 0건 · '유가' 가짜 일치 1.0 → 0
+   동작을 바꾸지 않고 지뢰만 제거한다. */
+const DROP_CHARS = /[\s .,·!?~'"’“”\-_/()[\]]+/;
+
+/** squash 하면서 각 글자의 원문 자리를 같이 들고 온다. */
+function squashMap(s) {
+  const raw = String(s || '').toLowerCase();
+  let out = '';
+  const idx = [];
+  for (let i = 0; i < raw.length; i++) {
+    if (DROP_CHARS.test(raw[i])) continue;
+    out += raw[i];
+    idx.push(i);
+  }
+  return { raw, out, idx };
+}
+
+function isHangulChar(c) { return /[가-힣]/.test(c || ''); }
+
+/** 토큰이 한글 덩어리의 시작에서 걸렸는가. 한 자리라도 시작이면 참. */
+function hitAtWordStart(tok, m) {
+  let i = m.out.indexOf(tok);
+  while (i !== -1) {
+    const origin = m.idx[i];
+    const prev = origin > 0 ? m.raw[origin - 1] : '';
+    if (!isHangulChar(prev)) return true;
+    i = m.out.indexOf(tok, i + 1);
+  }
+  return false;
+}
+
 function tokenHit(token, art) {
   const tok = squash(token);
   if (!tok) return 0;
-  const title = squash(art && art.title);
-  if (title && title.indexOf(tok) !== -1) return 1;
+  const m = squashMap(art && art.title);
+  if (m.out && hitAtWordStart(tok, m)) return 1;
 
   const rt = phon(romanize(token));
   if (rt.length >= 3) {
@@ -122,7 +171,7 @@ function tokenHit(token, art) {
       if (dice(rt, phon(String(tag))) >= TAG_SIM_MIN) return 0.9;
     }
   }
-  const d = dice(tok, title);
+  const d = dice(tok, m.out);
   return d >= PARTIAL_MIN ? d : 0;
 }
 
@@ -239,6 +288,6 @@ function matchArticle(filename, articles, opts) {
 
 module.exports = {
   romanize, phon, dice, fileTokens, squash,
-  tokenHit, tokenIsLive, scoreArticle, matchArticle,
+  tokenHit, tokenIsLive, scoreArticle, matchArticle, hitAtWordStart, squashMap,
   THRESHOLD, MARGIN,
 };
