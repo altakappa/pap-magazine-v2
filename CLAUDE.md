@@ -72,6 +72,12 @@
 ## 코드 체크리스트
 - `api/` 최상위 파일: `require('./_lib/...')` — `../_lib` 아님 (node --check는 이 오류를 못 잡는다)
 - `pap-*.js` 등 프론트 JS 수정 시: 참조하는 HTML(10개)의 `?v=` 버전 올리기 (캐시버스트)
+- **HTML 을 만드는 템플릿 문자열 안에 HTML 주석(`<!--`)을 쓰지 않는다.** 설명은 템플릿 밖 JS 주석으로.
+  → 2026-09-01 사고: `<amp-story …>` 태그 속성 목록 한가운데에 설명 주석을 넣었더니, 파서가 주석 조각을
+  불법 속성으로 읽고 `-->` 의 `>` 가 태그를 조기 종료시켜 `publisher-logo-src`·`poster-portrait-src` 가
+  본문 텍스트로 새어 나갔다. GSC AMP 오류 WNC-10030322. `node --check` 도 `npm test` 도 통과했다 —
+  **JS 문법 검사는 결과물 HTML 의 문법을 보지 않는다.** 존재 여부만 보는 테스트는 위치를 보장하지 않는다.
+  기록: 볼트 `45_Business/사고-웹스토리-태그안-주석-2026-09-02.md`
 - 수정 후 `npm test` — 하네스 **전부** 통과해야 커밋 (개수는 계속 늘어난다. 2026-08-03 기준 96개)
 - OAuth 성공 랜딩은 `api/_lib/oauthSuccess.js`의 `sendOAuthSuccessHtml()` 공용 헬퍼 사용 (Safari ITP 대응)
 - 회원 등급 게이트 변경 시 3종(Free/Standard/Premium) + subscribe 9개 언어 문구 정합 확인
