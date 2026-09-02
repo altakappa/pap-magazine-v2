@@ -26,7 +26,7 @@ const { supabaseAdmin } = require('./supabase');
 const { normalizeFaq, callClaude, LANG_NAMES } = require('./seoTranslateBackfill');
 /* 네 칸짜리 계단(jsonRepair). seoTranslateBackfill 의 동명 함수는 세 칸이고
    번역 배치 전용이다 — 파서가 세 벌이었고 나는 처음에 세 칸짜리를 골랐다. */
-const { parseJsonArray } = require('./jsonRepair');
+const { parseJsonArray, parseJsonLines } = require('./jsonRepair');
 
 /* ko 는 원본, en 은 faq_en 칼럼(마이그레이션 139 · faqEnBackfill.js)이 담당한다.
    2026-08-28 까지 이 목록에 'en' 이 있었지만 죽은 항목이었다 — 이 백필은
@@ -88,7 +88,22 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
     '- Translate every "q" and "a" into ' + LANG_NAMES[lang] + '. Same length, same order, no new items.\n' +
     '- Keep person names, brand names, agency names and @handles in their original spelling.\n' +
     '- Natural fashion-magazine register, not literal machine translation.\n' +
-    '- Return ONLY a JSON array, one object per input: {"i":<index>,"faq":[{"q":"...","a":"..."}]}. No prose, no code fences.\n' +
+    /* JSONL 로 바꾼다 (2026-09-02). 종전 "배열 하나로 달라" 계약에서 모델이
+       **바깥 배열의 닫는 ] 를 빼먹는다.** 실측(런타임 로그 5회 x it·fr·es):
+         it 08:24 end_turn len=3599 tail=..."}]}      ← 바깥 ] 없음
+         it 08:44 end_turn len=3657 tail=..."}]}}     ← ] 자리에 }
+         fr 전부        len=4176~4458 tail=..."}]     ← } 와 ] 둘 다 없음
+       전부 end_turn 이고 길이는 상한(8000)의 절반이다 — 잘린 게 아니다.
+       기사·화보 영문판(faqEnBackfill)에서 똑같은 모양을 먼저 확인했다.
+       근거 전문은 jsonRepair.parseJsonLines 머리말.
+
+       줄 단위면 닫을 바깥 괄호가 없어 놓칠 것이 없고, 한 줄이 깨져도 그 한 건만
+       잃는다. 실측에 {"i":6,"faq":[]} 처럼 모델이 한 항목을 포기한 경우도
+       있었는데, 배열 계약에서는 그것 때문에 6건이 통째로 죽었다. */
+    '- Output one JSON object per line (JSONL). Do NOT wrap them in an array.\n' +
+    '- Each line: {"i":<index>,"faq":[{"q":"...","a":"..."}]}\n' +
+    '- Exactly one line per input item, in the same order. No prose, no code fences,\n' +
+    '  no blank lines, no trailing commas.\n' +
     'Input JSON:\n' + JSON.stringify(payload);
 
   /* callClaude 는 문자열이 아니라 {text, stopReason} 객체를 돌려준다.
@@ -113,17 +128,29 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
   let arr;
   let repaired = 'none';
   try {
+    /* 줄 단위로 먼저 읽는다. 이 파서는 대괄호를 세지 않으므로 모델이 옛 계약대로
+       배열을 보내와도 그대로 읽힌다 — 계약을 바꾸는 동안 한쪽이 죽지 않는다.
+       게다가 지금 오는 **바깥 ] 없는 응답도 그대로 살린다**(원소 객체는 온전하다). */
+    const lines = parseJsonLines(text, 'faq-i18n/' + lang);
+    arr = lines.value;
+    repaired = lines.repaired + (lines.dropped ? '/버림' + lines.dropped : '');
+  } catch (lineErr) {
+  try {
     const parsed = parseJsonArray(text, 'faq-i18n/' + lang);
     arr = parsed.value;
-    repaired = parsed.repaired;
+    repaired = 'array:' + parsed.repaired;
   } catch (err) {
     /* 머리가 아니라 **꼬리**를 찍는다 — 머리는 언제나 '```json\n[{"i":0,' 이라
        종류를 못 가른다. trailing comma·두 번째 배열·뒤에 붙은 산문은 끝에만 있다. */
+    /* 머리도 남긴다 (2026-09-02) — 앞에 붙은 산문이나 감싼 객체는 꼬리로 못 본다.
+       2026-08-08 교훈은 "꼬리를 반드시 남겨라" 였지 "머리를 남기지 마라" 가 아니다. */
     console.error('[faq-i18n]', lang, 'batch=' + take.length,
       'stop_reason=' + ((raw && raw.stopReason) || '?'), 'len=' + text.length,
+      '| head=' + JSON.stringify(text.slice(0, 200)),
       '| tail=' + JSON.stringify(text.slice(-300)),
       (err && err.message) || err);
-    return { processed: 0, remaining: pending.length, lang };
+    return { processed: 0, remaining: pending.length, lang, failed: true };
+  }
   }
   if (!Array.isArray(arr)) {
     console.error('[faq-i18n]', lang, '배열이 아님',
@@ -146,7 +173,10 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
     if (upErr) { console.error('[faq-i18n]', lang, id, upErr.message); continue; }
     processed++;
   }
-  return { processed, remaining: Math.max(0, pending.length - processed), lang, repaired };
+  /* 요청 건수를 함께 돌려준다 — JSONL 은 일부만 살아 오는 게 장점인데
+     그 유실이 안 보이면 장점이 조용한 손실이 된다. */
+  return { processed, remaining: Math.max(0, pending.length - processed),
+    lang, repaired, asked: take.length };
 }
 
 /** 한 회차: 언어를 순회하며 예산 안에서 처리. */
@@ -163,6 +193,10 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model } 
   const deadline = Date.now() + timeoutMs;
   let processed = 0;
   let remaining = 0;
+  /* 이 회차에 실제로 본 언어 수. 시간 예산 때문에 매번 다르다 —
+     그래서 remaining 도 매번 다르다(2026-09-02 실측: 2개 언어 215, 3개 언어 478).
+     그 숫자를 '전체 잔여'인 것처럼 적어 두면 노트가 거짓말을 한다. */
+  let visited = 0;
   const per = [];
   for (const lang of TARGET_LANGS) {
     /* 문턱을 20초에서 35초로 올렸다 (2026-08-28). 20초로는 콜을 **시작만 하고**
@@ -173,10 +207,16 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model } 
     try {
       const r = await runOneLang(lang, srcMap, batch, useModel,
         Math.max(20000, deadline - Date.now() - 5000));
+      visited++;
       processed += r.processed;
       remaining += (r.remaining || 0);
       if (r.processed || r.remaining) {
-        per.push(lang + ':' + r.processed
+        /* '실패' 와 '일부만 저장' 을 가른다. 종전에는 둘 다 'it:0' 으로 보여
+           파싱이 죽은 것과 대상이 없는 것을 구분할 수 없었다. */
+        const short = r.failed ? '실패'
+          : (r.asked && r.processed < r.asked
+            ? String(r.processed) + '/' + r.asked : String(r.processed));
+        per.push(lang + ':' + short
           + (r.repaired && r.repaired !== 'none' ? '(' + r.repaired + ')' : ''));
       }
     } catch (err) {
@@ -186,10 +226,14 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model } 
   }
   return {
     processed, remaining,
-    note: '화보FAQ 언어판 ' + processed + ' · 잔여 ' + remaining
+    visited,
+    /* 잔여 뒤에 '(N개 언어)' 를 붙인다. 이 값은 전체가 아니라 **이번에 확인한
+       언어들의 합**이다. 안 적으면 215↔478 진동이 원인 불명으로 보인다. */
+    note: '화보FAQ 언어판 ' + processed
+      + ' · 잔여 ' + remaining + '(' + visited + '/' + TARGET_LANGS.length + '개 언어)'
       + (per.length ? ' · ' + per.join(' ') : ''),
     scope: srcMap.size,
   };
 }
 
-module.exports = { runEditorialFaqI18nBatch, recentWithFaq, recentLimit, TARGET_LANGS };
+module.exports = { runEditorialFaqI18nBatch, runOneLang, recentWithFaq, recentLimit, TARGET_LANGS };

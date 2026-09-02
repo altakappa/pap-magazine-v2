@@ -58,16 +58,29 @@ t('시간 예산 — 한 콜을 끝낼 여유(35초)가 없으면 접는다', /d
 /* 파서가 세 벌이었다. 8/25 의 넷째 칸(덩어리 고르기)은 jsonRepair 에만 있고,
    seoTranslateBackfill 의 동명 함수는 세 칸짜리 번역 배치 전용이다.
    처음 통일할 때 세 칸짜리를 골랐고 라이브에서 [형태불명] 으로 죽었다. */
-t('JSON 파싱은 네 칸짜리 계단(jsonRepair)을 쓴다',
-  /require\('\.\/jsonRepair'\)/.test(lib) && /parseJsonArray\(text, 'faq-i18n\/'/.test(lib));
+t('JSON 파싱은 공용 jsonRepair 를 쓴다 (파서를 두 벌로 만들지 않는다)',
+  /require\('\.\/jsonRepair'\)/.test(lib));
+/* 2026-09-02 — 줄 단위가 1순위, 배열은 폴백. 모델이 바깥 ] 를 빼먹는 것이
+   실측으로 확인돼 계약을 JSONL 로 바꿨다(faq-i18n-jsonl.test.js 머리말). */
+t('줄 단위 파서를 먼저 쓴다', /parseJsonLines\(text, 'faq-i18n\/'/.test(lib));
+t('배열 파서를 폴백으로 남긴다', /parseJsonArray\(text, 'faq-i18n\/'/.test(lib));
 t('세 칸짜리로 되돌아가지 않는다',
   !/normalizeFaq, callClaude, LANG_NAMES, parseJsonArray/.test(lib));
 t('자체 JSON 파서를 다시 만들지 않는다',
   !/text\.match\(\/\\\[\[/.test(lib) && !/JSON\.parse\(text\)/.test(lib));
 /* 실패 경로가 조용하면 왜 0인지 영영 모른다 — 실제로 그래서 한 회차를 날렸다. */
-/* 머리는 언제나 '```json\n[{"i":0,' 이라 종류를 못 가른다. 꼬리에만 정보가 있다. */
-t('파싱 실패 시 stop_reason 과 응답 **꼬리**를 남긴다',
-  /stop_reason=/.test(lib) && /tail=/.test(lib) && !/\| head=/.test(lib));
+/* 원래 교훈(2026-08-08): **머리만** 찍으면 종류를 못 가른다. trailing comma·
+   두 번째 배열·뒤에 붙은 산문은 끝에서만 보인다.
+
+   2026-09-02 갱신 — 교훈은 "꼬리를 반드시 남겨라" 이지 "머리를 남기지 마라" 가
+   아니었는데, 테스트가 후자로 굳혀 두고 있었다. 이번 진단에서 걸린 게 그 차이다:
+   바깥 `]` 가 없다는 것까지는 꼬리로 알았지만 모델이 앞에 무엇을 붙였는지는
+   꼬리로 못 본다. 머리를 더하고, **꼬리를 빼는 것**만 계속 막는다. */
+t('파싱 실패 시 stop_reason 을 남긴다 (잘림과 실패를 가르는 값)', /stop_reason=/.test(lib));
+t('꼬리를 반드시 남긴다', /\| tail=/.test(lib));
+t('머리도 함께 남긴다 (앞에 붙은 산문은 머리로만 보인다)', /\| head=/.test(lib));
+t('머리만 남기고 꼬리를 빼지 않았다  ← 2026-08-08 교훈의 본체',
+  !(/\| head=/.test(lib) && !/\| tail=/.test(lib)));
 t('한 언어 실패가 나머지를 막지 않는다', /catch \(err\)[\s\S]{0,120}per\.push\(lang \+ ':실패'\)/.test(lib));
 
 console.log('\n=== 크론 배선 (별도 크론 아님 — 호출 예산) ===');
