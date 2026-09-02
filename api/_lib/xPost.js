@@ -70,6 +70,35 @@ function oauthHeader(method, url, opts) {
  * @param {{token:string, tokenSecret:string, mediaIds?:string[]}} [creds] — 생략 시 PAP 계정
  *   creds.mediaIds — uploadMedia() 로 받은 media_id 배열(최대 4). 있으면 미디어 트윗.
  */
+/* 게시 기록 (2026-09-02, 마이그레이션 141) ───────────────────────────────
+   X 는 매 기사 발행마다 나가는데(크론 노트 'X 1/1건') **본문이 어디에도 남지
+   않았다.** 도메니코가 "X 말투를 인스타처럼 입혀줄 수 있냐" 고 물었을 때,
+   입히는 건 이미 하고 있는데(papVoice.X_VOICE) **고쳤는지 확인할 눈금이 없어서**
+   대답을 못 했다. 개수만 세는 기록은 '돌았다 ≠ 잘 나갔다' 를 못 가른다.
+
+   여기 하나에만 붙인다. postTweet 은 모든 경로가 지나는 유일한 목이다
+   (기사·다이제스트·답글·페퍼릿·어드민). 호출부마다 붙이면 한쪽만 고쳐진다.
+
+   ■ 기록이 트윗을 되돌리지 않는다
+   insert 가 실패해도 트윗은 이미 나갔다. 삼키고 로그만 남긴다.
+   반대로 하면 DB 사고가 게시 사고로 번진다.
+
+   ■ supabase 를 위에서 require 하지 않는다
+   xPost 를 require 하는 테스트가 여덟 개인데 대부분 supabase 를 스텁하지 않는다.
+   최상단에서 부르면 env 없는 실행에서 클라이언트 생성으로 죽는다 —
+   오늘(2026-09-02) 내가 ko-match 테스트에서 똑같이 저질렀고, 그 사고는
+   2026-07-30 에 이미 겪어 faqHealth.js 머리말에 적혀 있던 것이다.
+   지연 로딩 + env 가드로 두 겹 막는다. */
+async function recordTweet(row) {
+  if (!process.env.SUPABASE_URL) return;      // 테스트·로컬에서는 조용히 넘어간다
+  try {
+    const { supabaseAdmin } = require('./supabase');   // 지연 로딩
+    await supabaseAdmin.from('x_posts').insert(row);
+  } catch (e) {
+    console.error('[x-post] 기록 실패 (트윗은 나갔다):', String((e && e.message) || e).slice(0, 200));
+  }
+}
+
 async function postTweet(text, creds) {
   const c = creds || {};
   const configured = c.token ? !!(process.env.X_API_KEY && process.env.X_API_SECRET) : isConfigured();
@@ -95,10 +124,37 @@ async function postTweet(text, creds) {
       signal: AbortSignal.timeout(15000),
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) return { ok: false, status: r.status, detail: JSON.stringify(j).slice(0, 200) };
-    return { ok: true, id: j.data && j.data.id };
+    /* 성공·실패 **둘 다** 남긴다. 실패만 남기면 무엇이 잘 나갔는지 모르고,
+       성공만 남기면 왜 안 나갔는지 모른다. 말투를 보려면 성공한 본문이 필요하다. */
+    const base = {
+      account: c.label || (c.token ? 'pepperit' : 'magazine'),
+      kind: c.kind || null,
+      reply_to_id: c.replyToId ? String(c.replyToId) : null,
+      article_id: c.articleId || null,
+      text: String(text || ''),
+      media_count: mediaIds.length,
+    };
+    if (!r.ok) {
+      const detail = JSON.stringify(j).slice(0, 200);
+      await recordTweet({ ...base, ok: false, error: 'HTTP ' + r.status + ' ' + detail });
+      return { ok: false, status: r.status, detail };
+    }
+    const id = j.data && j.data.id;
+    await recordTweet({ ...base, ok: true, tweet_id: id ? String(id) : null });
+    return { ok: true, id };
   } catch (e) {
-    return { ok: false, detail: String(e && e.message || e).slice(0, 150) };
+    const detail = String(e && e.message || e).slice(0, 150);
+    await recordTweet({
+      account: c.label || (c.token ? 'pepperit' : 'magazine'),
+      kind: c.kind || null,
+      reply_to_id: c.replyToId ? String(c.replyToId) : null,
+      article_id: c.articleId || null,
+      text: String(text || ''),
+      media_count: Array.isArray(c.mediaIds) ? c.mediaIds.filter(Boolean).slice(0, 4).length : 0,
+      ok: false,
+      error: detail,
+    });
+    return { ok: false, detail };
   }
 }
 
@@ -108,6 +164,7 @@ async function postPepperitTweet(text) {
   return postTweet(text, {
     token: process.env.X_PEPPERIT_ACCESS_TOKEN,
     tokenSecret: process.env.X_PEPPERIT_ACCESS_TOKEN_SECRET,
+    label: 'pepperit',
   });
 }
 
@@ -528,7 +585,7 @@ function _withLinkInBody(main, tagLine, url, art) {
 }
 
 module.exports = {
-  weightedLen, URL_PLACEHOLDER,
+  weightedLen, URL_PLACEHOLDER, recordTweet,
   buildConversationalTweet, buildThreadsParityTweet,
   postTweet, postPepperitTweet, buildArticleTweet, buildPepperitTweet,
   isConfigured, isPepperitConfigured, requestToken, accessToken,
