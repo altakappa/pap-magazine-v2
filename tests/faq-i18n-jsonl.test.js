@@ -124,11 +124,44 @@ const srcMap = new Map([['e1', KO], ['e2', KO]]);
   reply = el(0) + '\n{"i":1,"faq":[{"q":"Q1",';                // 2건 요청 · 1건 저장
   const out = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 200000, model: 'm' });
   t('요청 대비 저장이 보인다 (1/2)', /1\/2/.test(out.note), out.note);
+  /* 괄호 안 내용이 늘어날 수 있으므로 닫는 괄호를 강제하지 않는다 —
+     '잔여 191(2/7개 언어, it부터)' 처럼. 검사할 것은 **언어 수가 붙는가** 다. */
   t('잔여 옆에 확인한 언어 수가 붙는다  ← 215↔478 진동의 정체',
-    /잔여 \d+\(\d+\/\d+개 언어\)/.test(out.note), out.note);
+    /잔여 \d+\(\d+\/\d+개 언어/.test(out.note), out.note);
   t('확인한 언어 수를 값으로도 돌려준다', typeof out.visited === 'number' && out.visited > 0, out.visited);
   t('전체 언어 수가 7개다', i18n.TARGET_LANGS.length === 7, i18n.TARGET_LANGS);
   t('en 은 대상이 아니다 (faq_en 칼럼이 담당)', !i18n.TARGET_LANGS.includes('en'));
+
+  console.log('\n[5-2] 언어 회전 — 앞 두 개만 채워지던 것을 고친다 (2026-09-02)');
+  /* 실측: JSONL 전환 직후 언어판이 살아났는데 채워지는 언어가 앞 둘뿐이었다.
+       fr 277 · it 132 · es 37 · de 1 · ja 1 · ru 1 · zh 1
+     한 회차 시간 예산으로 언어 2~3개가 한계인데 **항상 처음부터** 돌아서
+     매번 it·fr 에서 끝났다. it·fr 가 각 2,300건을 끝내는 데 약 27일이고,
+     es 이후는 그 27일이 지나야 시작한다 = 뒤 네 언어는 영원히 차례가 없다. */
+  const SLOT = i18n.ROTATE_SLOT_MS;
+  const base = 1788339600000;
+  const cycle = [];
+  for (let k = 0; k < i18n.TARGET_LANGS.length; k++) cycle.push(i18n.rotatedLangs(base + k * SLOT)[0]);
+  t('회차마다 시작 언어가 바뀐다', new Set(cycle).size === i18n.TARGET_LANGS.length, cycle);
+  t('한 바퀴에 7개 언어가 모두 한 번씩 선두가 된다',
+    cycle.slice().sort().join(',') === i18n.TARGET_LANGS.slice().sort().join(','), cycle);
+  t('한 바퀴 뒤 처음으로 돌아온다',
+    i18n.rotatedLangs(base + i18n.TARGET_LANGS.length * SLOT)[0] === i18n.rotatedLangs(base)[0]);
+  t('회전해도 언어를 잃지 않는다 (7개 그대로)',
+    i18n.rotatedLangs(base + 3 * SLOT).slice().sort().join(',')
+      === i18n.TARGET_LANGS.slice().sort().join(','));
+  t('같은 슬롯 안에서는 같은 순서 (한 회차가 두 번 돌아도 안전)',
+    i18n.rotatedLangs(base + 100)[0] === i18n.rotatedLangs(base + 200)[0]);
+  t('시각을 안 주면 현재 시각을 쓴다 (던지지 않는다)',
+    Array.isArray(i18n.rotatedLangs()) && i18n.rotatedLangs().length === 7);
+  t('슬롯이 크론 주기(10분)와 같다', SLOT === 10 * 60 * 1000, SLOT);
+
+  /* 회전이 실제 실행 경로에 걸려 있는지 — 상수만 있고 안 쓰면 의미가 없다. */
+  reply = el(0) + '\n' + el(1);
+  trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
+  const rot = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 200000, model: 'm', now: base + 2 * SLOT });
+  t('배치가 회전된 순서를 쓴다', rot.order && rot.order[0] === i18n.rotatedLangs(base + 2 * SLOT)[0], rot.order);
+  t('노트에 이번 회차 시작 언어가 찍힌다', /부터\)/.test(rot.note), rot.note);
 
   /* '실패' 와 '0건' 은 고치는 방법이 다르다. 종전에는 둘 다 'it:0' 으로 보여
      파싱이 죽은 것과 대상이 없는 것을 노트만으로 구분할 수 없었다. */

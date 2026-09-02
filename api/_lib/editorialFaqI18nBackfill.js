@@ -34,6 +34,45 @@ const { parseJsonArray, parseJsonLines } = require('./jsonRepair');
    매 회차 조회 0건으로 조용히 넘어가느라 죽은 줄도 안 보였다. */
 const TARGET_LANGS = ['it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
 
+/* 언어 회전 (2026-09-02) ────────────────────────────────────────────────
+   실측 — JSONL 전환 직후 언어판이 살아났는데(0 → 12건/회) 채워지는 언어가
+   앞 두 개뿐이었다:
+
+     lang  채움   빈칸
+     fr     277   2234
+     it     132   2382
+     es      37   2474
+     de       1   2295     ← 사실상 시작도 못 함
+     ja       1   2509
+     ru       1   2295
+     zh       1   2295
+
+   원인: 목록을 **항상 처음부터** 돌았다. 한 회차의 시간 예산(100초에서 원본
+   생성분을 뺀 나머지)으로는 언어 2~3개가 한계라, 매번 it·fr 에서 끝났다.
+   it·fr 가 각 2,300건을 끝내려면 이 속도로 약 27일이고, **es 이후는 그 27일이
+   지나야 시작한다.** 뒤쪽 네 언어는 영원히 차례가 안 온다.
+
+   고침: 회차마다 시작 위치를 한 칸씩 민다. 크론이 10분 주기이므로 10분 슬롯을
+   세어 인덱스로 쓴다 — 서버리스라 회차 간 기억이 없으므로 **시계가 유일한
+   무상태 커서**다. DB 에 커서를 두는 방법도 있지만 조회·갱신·경합 처리가 늘고,
+   이 문제엔 그만한 정밀도가 필요 없다.
+
+   결과: 7개 언어가 7회차(약 70분)에 한 바퀴 돈다. 회차당 2~3개를 도므로
+   실제로는 그보다 촘촘하다. 한 회차를 걸러도 다음 회차가 다음 칸을 잡는다. */
+const ROTATE_SLOT_MS = 10 * 60 * 1000;   // vercel.json: 4,14,24,34,44,54 * * * *
+
+/**
+ * 이번 회차에 어느 언어부터 돌 것인가.
+ * @param {number} [now] 시각(ms). 테스트에서 고정한다.
+ * @returns {string[]} TARGET_LANGS 를 회전시킨 목록
+ */
+function rotatedLangs(now) {
+  const t = Number.isFinite(now) ? now : Date.now();
+  const n = TARGET_LANGS.length;
+  const i = ((Math.floor(t / ROTATE_SLOT_MS) % n) + n) % n;   // 음수 시각도 안전
+  return TARGET_LANGS.slice(i).concat(TARGET_LANGS.slice(0, i));
+}
+
 /* 한 배치의 출력 토큰. 배치를 키우는 것보다 회차를 늘리는 쪽이 안전하다 —
    잘린 응답은 그 배치 전멸이고, 작은 배치는 그냥 다음 회차로 넘어갈 뿐이다. */
 const MAX_TOKENS = 8000;
@@ -180,7 +219,7 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
 }
 
 /** 한 회차: 언어를 순회하며 예산 안에서 처리. */
-async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model } = {}) {
+async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, now: opts_now } = {}) {
   if (!process.env.ANTHROPIC_API_KEY) {
     const e = new Error('ANTHROPIC_API_KEY 환경변수 미설정.');
     e.statusCode = 503;
@@ -191,6 +230,8 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model } 
   if (!srcMap.size) return { processed: 0, remaining: 0, note: '화보FAQ 언어판 0 · 원본 FAQ 없음' };
 
   const deadline = Date.now() + timeoutMs;
+  /* 이번 회차의 언어 순서. 항상 처음부터 돌면 앞 두 개만 채워진다(위 주석). */
+  const order = rotatedLangs(opts_now);
   let processed = 0;
   let remaining = 0;
   /* 이 회차에 실제로 본 언어 수. 시간 예산 때문에 매번 다르다 —
@@ -198,7 +239,7 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model } 
      그 숫자를 '전체 잔여'인 것처럼 적어 두면 노트가 거짓말을 한다. */
   let visited = 0;
   const per = [];
-  for (const lang of TARGET_LANGS) {
+  for (const lang of order) {
     /* 문턱을 20초에서 35초로 올렸다 (2026-08-28). 20초로는 콜을 **시작만 하고**
        타임아웃으로 죽는 일이 실제로 났다 — 07:04 실행의 'es The operation was
        aborted due to timeout'. 돈은 나가고 데이터는 0이다. 끝낼 수 없는 콜은
@@ -229,11 +270,12 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model } 
     visited,
     /* 잔여 뒤에 '(N개 언어)' 를 붙인다. 이 값은 전체가 아니라 **이번에 확인한
        언어들의 합**이다. 안 적으면 215↔478 진동이 원인 불명으로 보인다. */
+    order,
     note: '화보FAQ 언어판 ' + processed
-      + ' · 잔여 ' + remaining + '(' + visited + '/' + TARGET_LANGS.length + '개 언어)'
+      + ' · 잔여 ' + remaining + '(' + visited + '/' + TARGET_LANGS.length + '개 언어, ' + order[0] + '부터)'
       + (per.length ? ' · ' + per.join(' ') : ''),
     scope: srcMap.size,
   };
 }
 
-module.exports = { runEditorialFaqI18nBatch, runOneLang, recentWithFaq, recentLimit, TARGET_LANGS };
+module.exports = { runEditorialFaqI18nBatch, runOneLang, rotatedLangs, ROTATE_SLOT_MS, recentWithFaq, recentLimit, TARGET_LANGS };
