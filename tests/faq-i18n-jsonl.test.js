@@ -49,12 +49,19 @@ function inject(p, exports) {
 const KO = [{ q: '질문1', a: '답1' }, { q: '질문2', a: '답2' }];
 const updates = [];
 let trRows = [];          // seo_translations 조회 결과
+const inCalls = [];       // .in() 에 한 번에 넣은 id 개수 (URL 길이 감시)
 
+const EDI = [{ id: 'e1', faq: KO }, { id: 'e2', faq: KO }];
 function stub() {
   const q = {
     select() { return q; }, eq() { return q; }, not() { return q; }, order() { return q; },
-    in() { return Promise.resolve({ data: trRows, error: null }); },
-    limit() { return Promise.resolve({ data: [{ id: 'e1', faq: KO }, { id: 'e2', faq: KO }], error: null }); },
+    is() { return q; },
+    /* 대상 화보를 페이지로 받는다 (범위가 전량이 되면서 .limit 하나로는 못 받는다) */
+    range() { return Promise.resolve({ data: EDI, error: null }); },
+    in(_c, list) { inCalls.push((list || []).length); return Promise.resolve({ data: trRows, error: null }); },
+    limit() { return Promise.resolve({ data: EDI, error: null }); },
+    /* head:true 개수 질의 — 체인 끝에서 바로 await 된다 */
+    then(res, rej) { return Promise.resolve({ count: trRows.length, data: null, error: null }).then(res, rej); },
     update(v) {
       const chain = { eq() { return chain; }, then(res) { updates.push(v); return Promise.resolve({ error: null }).then(res); } };
       return chain;
@@ -172,6 +179,57 @@ const srcMap = new Map([['e1', KO], ['e2', KO]]);
   t('그때 저장은 0 이다', failOut.processed === 0, failOut.processed);
   t('잔여는 그대로 남는다 (실패를 완주로 위장하지 않는다)',
     failOut.remaining > 0, failOut.remaining);
+
+  console.log('\n[7] 처리량과 범위 (2026-09-02)');
+  /* ■ 왜 이 칸이 생겼나
+     회전(rotatedLangs)은 **분배**를 고쳤을 뿐 총량은 그대로였다. 실측:
+     함수 예산 100초 중 45~76초만 쓰고, 언어를 하나씩 순서대로 기다렸다.
+     크론을 더 자주 돌리는 길은 막혀 있다 — 호출 예산이 2,598/2,600 이다.
+     그래서 (a) 언어를 동시에 부르고 (b) 예산이 남으면 다음 묶음으로 넘어간다.
+
+     ■ 범위가 더 큰 문제였다
+     기본값이 최근 300편이었다. 범위 안 빈칸은 1,626칸이라 하루면 다 채우고
+     '잔여 0' 을 찍는데, 발행 화보 전량은 2,291편 x 7언어 = 16,037칸이다.
+     약 14,400칸이 영영 안 채워진 채 **완주처럼 보이게** 된다. */
+  trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
+  reply = el(0) + '\n' + el(1);
+  const many = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 120000, model: 'm', now: 0 });
+  t('한 회차에 7개 언어를 모두 본다 (종전 2~3개)', many.visited === 7, many.visited);
+  t('한 파도에 여러 언어를 동시에 부른다', i18n.CONCURRENCY >= 2, i18n.CONCURRENCY);
+  t('언어를 동시에 부르는 배선이 실제로 있다', /Promise\.all\(group\.map\(/.test(SRC));
+  t('한 언어가 던져도 같은 파도의 나머지를 죽이지 않는다',
+    /\.catch\(\(err\) => \{[\s\S]{0,200}failed: true/.test(SRC));
+  t('회전 수가 노트에 찍힌다 (반복이 실제로 도는지 노트만 보고 알아야 한다)',
+    /회전/.test(many.note), many.note);
+  t('무한 반복 안전핀이 있다', /MAX_WAVES/.test(SRC));
+
+  t('기본 범위가 최근 N편이 아니라 전량이다', i18n.recentLimit() === 0, i18n.recentLimit());
+  t('EDITORIAL_FAQ_I18N_RECENT 로 다시 좁힐 수 있다 (되돌릴 길)', (() => {
+    process.env.EDITORIAL_FAQ_I18N_RECENT = '50';
+    const v = i18n.recentLimit();
+    delete process.env.EDITORIAL_FAQ_I18N_RECENT;
+    return v === 50;
+  })());
+  t('대상 목록을 페이지로 받는다 (한 번에 받으면 조용히 1,000에서 잘린다)',
+    /\.range\(from, to\)/.test(SRC));
+  t('id 를 통째로 .in() 에 넣지 않는다 (2,291개면 URL 이 8만 자다)',
+    /ID_CHUNK/.test(SRC) && !/\.in\('content_id', ids\)/.test(SRC));
+  const picked = await i18n.pickPending('it', srcMap, 1);
+  t('필요한 만큼만 고른다', picked.length === 1, picked);
+
+  /* 여기는 **행동**으로 본다. 'ID_CHUNK 라는 글자가 파일에 있는가' 는 상수만 남기고
+     쓰지 않아도 통과한다 — 실제로 그 변이가 안 잡혔다. 한 번에 몇 개를 넣었는지 센다.
+     id 하나가 UUID 36자 + 구분자라 150개면 약 5.5KB, 2,291개면 약 85KB 다.
+     URL 이 그만큼 길면 요청이 통째로 죽는다. */
+  const big = new Map();
+  for (let i = 0; i < 400; i++) big.set('id-' + i, KO);
+  trRows = [];                       // 아무것도 안 걸리게 해서 전 구간을 훑게 한다
+  inCalls.length = 0;
+  await i18n.pickPending('it', big, 5);
+  t('.in() 한 번에 넣는 id 수가 상한 이하다 (URL 폭발 방지)',
+    inCalls.length > 1 && Math.max.apply(null, inCalls) <= i18n.ID_CHUNK,
+    { 호출: inCalls.length, 최대: Math.max.apply(null, inCalls), 상한: i18n.ID_CHUNK });
+  trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
 
   console.log('\n[6] 프롬프트와 배선');
   t('JSONL 을 요구한다', /one JSON object per line \(JSONL\)/.test(SRC));

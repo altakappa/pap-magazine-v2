@@ -110,8 +110,11 @@ t('무제한이면 컷오프 질의를 아예 하지 않는다',
   /if \(!n\) return null;/.test(lib));
 t('API 키 없으면 503 으로 멈춘다 (조용한 0건 금지)',
   /ANTHROPIC_API_KEY/.test(lib) && /statusCode = 503/.test(lib));
+/* 종전에는 catch 블록의 **생김새**를 봤다. 2026-09-02 에 두 표를 동시에 부르게
+   되면서 그 catch 가 Promise.all 안쪽으로 옮겨갔다 — 동작은 그대로인데 단정만 깨졌다.
+   봐야 할 것은 '한 표가 던져도 실패로 표시하고 나머지를 계속 돌린다' 는 사실이다. */
 t('한 표 실패가 나머지를 막지 않는다',
-  /catch \(err\)[\s\S]{0,200}per\.push\(target\.label \+ ':실패'\)/.test(lib));
+  /\.catch\(\(err\) => \{[\s\S]{0,200}failed: true/.test(lib));
 
 console.log('\n=== 크론 배선 (별도 크론 아님 — 호출 예산) ===');
 /* 별도 크론을 등록하면 vercel-cost-guard 의 하루 총 호출 상한을 넘긴다.

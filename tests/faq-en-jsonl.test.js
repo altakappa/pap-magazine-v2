@@ -166,9 +166,37 @@ function el(i) { return '{"i":' + i + ',"faq":[{"q":"Q1","a":"A1"},{"q":"Q2","a"
   reply = el(0) + '\n{"i":1,"faq":[{"q":"Q1",';        // 2건 요청, 1건만 온전
   process.env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || 'test-key';
   const batchOut = await fe.runFaqEnBatch({ batch: 4, timeoutMs: 120000, model: 'm' });
-  t('note 에 요청 대비 저장 건수가 찍힌다 (1/2)', /1\/2/.test(batchOut.note), batchOut.note);
+  /* 종전에는 이 줄이 /1\/2/ 였다. 오늘 회전(파도)을 넣자 누계가 2/4 가 되면서
+     **내가 오늘 쓴 이 단정이 나를 막았다.** 숫자를 박으면 안 된다. 봐야 할 것은
+     '요청보다 적게 저장됐다는 사실이 노트에 드러나는가' 뿐이다. (§G 원문 정규식 함정) */
+  const ratio = /(\d+)\/(\d+)/.exec(batchOut.note);
+  t('note 에 요청 대비 저장 건수가 드러난다 (저장 < 요청)',
+    !!ratio && Number(ratio[1]) < Number(ratio[2]), batchOut.note);
   t('note 에 잔여가 함께 찍힌다', /잔여 \d/.test(batchOut.note), batchOut.note);
   t('두 표를 다 돌고 라벨을 남긴다', /기사/.test(batchOut.note) && /화보/.test(batchOut.note), batchOut.note);
+
+  console.log('\n[7] 처리량 — 한 회차에 한 번만 부르고 끝내지 않는다 (2026-09-02)');
+  /* 실측: 함수 예산 100초인데 실행이 45~68초였다. 표마다 한 번씩 부르고 끝나서
+     30~50초를 매 회차 버렸다. 크론을 더 자주 돌릴 수는 없다 — 호출 예산이
+     2,598/2,600 이다. 그래서 남는 시간과 동시성으로 처리량을 올린다. */
+  t('예산이 남으면 같은 회차에서 다시 돈다', batchOut.waves >= 2, batchOut.waves);
+  t('회전 수가 노트에 찍힌다 (안 찍으면 반복이 도는지 알 수 없다)',
+    /회전/.test(batchOut.note), batchOut.note);
+  t('표를 동시에 부른다 (순서대로 기다리지 않는다)',
+    /Promise\.all\(live\.map\(/.test(SRC));
+  t('한 콜이 던져도 나머지를 죽이지 않는다', /\.catch\(\(err\) => \{[\s\S]{0,200}failed: true/.test(SRC));
+  t('무한 반복 안전핀이 있다', /MAX_WAVES/.test(SRC));
+  t('잔여가 안 줄면 그 표를 이 회차에서 뺀다 (원인 모른 채 반복 금지)',
+    /잔여가 안 줄었다/.test(SRC));
+
+  /* 배치 상한 — 4·8 은 "max_tokens 에서 잘렸다" 는 **오늘 뒤집힌 진단**의 잔재였다. */
+  const arts = fe.TARGETS.find((x) => x.table === 'articles');
+  const edis = fe.TARGETS.find((x) => x.table === 'editorials');
+  t('기사 배치가 종전 4보다 크다', arts.batch > 4, arts.batch);
+  t('화보 배치가 종전 8보다 크다', edis.batch > 8, edis.batch);
+  t('출력 토큰 상한이 배치를 다시 묶지 않는다',
+    /MAX_TOKENS = (\d+)/.test(SRC) && Number(/MAX_TOKENS = (\d+)/.exec(SRC)[1]) >= 16000,
+    /MAX_TOKENS = (\d+)/.exec(SRC)[1]);
 
   console.log('\n' + (fail ? '✗' : '✓') + ' faq-en-jsonl: ' + pass + ' passed / ' + fail + ' failed');
   process.exit(fail ? 1 : 0);

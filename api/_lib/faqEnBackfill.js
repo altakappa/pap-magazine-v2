@@ -60,14 +60,28 @@ const { parseJsonArray, parseJsonLines } = require('./jsonRepair');
    ('[faq-en] articles 번역 응답 JSON 파싱 실패[형태불명]' + 잘린 JSON).
    화보 FAQ 도 2026-08-27 에 같은 사고를 겪었다(fd95059: 10x4000 → 6x8000).
    출력 길이는 건수가 아니라 **항목 수 x 건수**로 정해진다. */
+/* 2026-09-02 상향 (4·8 → 12·20). 위 주석의 "batch 8 은 max_tokens 에서 잘려
+   전멸했다" 는 진단이 **오늘 뒤집혔다.** 같은 실패를 런타임 로그로 다시 재니
+   stop_reason 이 전부 end_turn 이었고 길이도 상한의 절반이었다 — 잘린 게 아니라
+   모델이 바깥 배열의 ] 를 빼먹은 것이었다. 즉 배치를 4 로 줄인 조치는 틀린
+   원인에 대한 처방이었고, 그 처방이 처리량 상한으로 1주일째 남아 있었다.
+   게다가 이제는 JSONL 이라 정말 잘려도 완성된 줄은 다 살아남는다.
+
+   실측 응답 길이 — 기사 batch=4 → 3,285자, 화보 batch=8 → 5,922자.
+   건당 약 820자·740자다. 12건·20건이면 약 9,800자·14,800자 ≈ 2,500·3,700 토큰,
+   아래 MAX_TOKENS(16,000)의 4분의 1 이하다. */
 const TARGETS = [
-  { table: 'articles', label: '기사', batch: 4 },
-  { table: 'editorials', label: '화보', batch: 8 },
+  { table: 'articles', label: '기사', batch: 12 },
+  { table: 'editorials', label: '화보', batch: 20 },
 ];
 
-/* 한 배치가 쓸 수 있는 출력 토큰. 여기를 올리는 것보다 batch 를 줄이는 쪽이
-   안전하다 — 잘린 응답은 전멸이고, 작은 배치는 그냥 회차가 늘 뿐이다. */
-const MAX_TOKENS = 8000;
+/* 한 배치가 쓸 수 있는 출력 토큰.
+   종전 주석은 "여기를 올리는 것보다 batch 를 줄이는 쪽이 안전하다 — 잘린 응답은
+   전멸" 이었다. 두 전제가 다 바뀌었다: (a) 실측에서 잘린 적이 없었고(stop_reason
+   전부 end_turn), (b) JSONL 이라 잘려도 전멸하지 않는다.
+   토큰은 **쓴 만큼** 과금된다. 상한을 올려도 짧은 응답의 비용은 그대로다.
+   상한이 낮은 것만이 배치 크기를 묶고 있었다. */
+const MAX_TOKENS = 16000;
 
 /** FAQ_EN_RECENT: 최근 N편으로 자르기. 0/미설정이면 무제한. */
 function recentLimit() {
@@ -247,9 +261,37 @@ async function runOneTable(target, batch, model, timeoutMs) {
   };
 }
 
+/* 한 콜을 시작하려면 최소 이만큼은 남아 있어야 한다. 20초로는 콜을 **시작만
+   하고** 타임아웃으로 죽는 일이 실제로 났다(editorialFaqI18nBackfill 의 'es' 건).
+   돈은 나가고 데이터는 0이다. */
+const START_FLOOR_MS = 35000;
+
+/* 한 회차에 같은 표를 몇 번까지 다시 돌 것인가.
+   무한 루프 방지용 안전핀이다 — 잔여가 안 줄어드는 경우는 아래에서 따로 끊지만,
+   그 판정 자체가 틀릴 수 있으므로 회수 상한을 겹쳐 둔다. */
+const MAX_WAVES = 6;
+
 /**
- * 한 회차. 표를 순회하며 예산 안에서 처리한다.
- * @returns {{processed:number, remaining:number|null, note:string}}
+ * 한 회차. 표를 **동시에** 부르고, 예산이 남으면 다시 돈다.
+ *
+ * ■ 왜 이렇게 바꿨나 (2026-09-02)
+ * 종전에는 표마다 한 번씩만 부르고 끝냈다. 실측 실행 시간이 45~68초인데 함수
+ * 예산은 100초다 — 30~50초를 매 회차 그냥 버렸다. 게다가 두 콜을 순서대로
+ * 기다렸다: 기사 30초 + 화보 30초 = 60초인데, 둘은 서로 아무 상관이 없다.
+ *
+ * 크론 주기를 당기는 길은 막혀 있다 — vercel-cost-guard 실측이 2,598 / 2,600 이다.
+ * 함수 시간을 늘리는 길(maxDuration 120 → 300)은 Vercel 이 **초 단위로도**
+ * 과금하므로 비용이 는다. 동시 호출은 크론 호출도, 함수 시간도, 토큰도 늘지
+ * 않는다 — 같은 벽시계 안에서 하는 일만 는다. 그래서 이쪽을 먼저 쓴다.
+ *
+ * 한 표를 이 회차에서 빼는 조건 (셋 다 "더 해봐야 소용없다" 는 뜻):
+ *   · 실패했다        — 같은 원인으로 다음 파도도 실패한다. 예산만 태운다.
+ *   · 0건 저장했다    — 대상이 없거나 응답이 못 쓸 것이다.
+ *   · 잔여가 0이다    — 완주.
+ *   · 잔여가 안 줄었다 — 저장은 됐다는데 잔여가 그대로면 둘 중 하나가 거짓말이다.
+ *                        원인을 모른 채 반복하지 않는다.
+ *
+ * @returns {{processed:number, remaining:number|null, waves:number, note:string}}
  */
 async function runFaqEnBatch({ batch = 8, timeoutMs = 90000, model } = {}) {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -260,43 +302,79 @@ async function runFaqEnBatch({ batch = 8, timeoutMs = 90000, model } = {}) {
   const useModel = model || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
   const deadline = Date.now() + timeoutMs;
 
+  /* 표별 누계. 파도마다 한 줄씩 찍으면 노트가 같은 라벨로 도배된다 —
+     '기사:12 기사:12 기사:8' 이 아니라 '기사:32' 로 합쳐서 남긴다. */
+  const acc = new Map();   // table -> { label, processed, asked, remaining, tag }
+  const bump = (r) => {
+    const cur = acc.get(r.table) || { label: r.label, processed: 0, asked: 0, remaining: null, tag: null };
+    cur.processed += (r.processed || 0);
+    cur.asked += (r.asked || 0);
+    if (typeof r.remaining === 'number') cur.remaining = r.remaining;   // 늘 마지막 값
+    if (r.failed && !cur.processed) cur.tag = r.truncated ? '잘림' : '실패';
+    if (r.repaired && r.repaired !== 'none') cur.tag = r.repaired;
+    acc.set(r.table, cur);
+  };
+
+  let live = TARGETS.slice();
+  let waves = 0;
+
+  while (live.length && waves < MAX_WAVES && Date.now() <= deadline - START_FLOOR_MS) {
+    waves++;
+    const budget = Math.max(20000, deadline - Date.now() - 5000);
+    const before = new Map(live.map((t) => [t.table, (acc.get(t.table) || {}).remaining]));
+
+    /* 표들을 **동시에** 부른다. 하나가 던져도 나머지를 죽이지 않으므로
+       Promise.all 앞에서 각자 catch 한다 (allSettled 를 쓰면 결과 모양이
+       한 겹 더 싸여서 아래 집계가 그만큼 복잡해진다). */
+    const results = await Promise.all(live.map((t) =>
+      runOneTable(t, batch, useModel, budget).catch((err) => {
+        console.error('[faq-en]', t.table, (err && err.message) || err);
+        return { table: t.table, label: t.label, processed: 0, failed: true, remaining: null };
+      })));
+
+    const next = [];
+    for (const r of results) {
+      bump(r);
+      if (r.failed) continue;
+      if (!r.processed) continue;
+      if (r.remaining === 0) continue;
+      const prev = before.get(r.table);
+      if (typeof prev === 'number' && typeof r.remaining === 'number' && r.remaining >= prev) {
+        console.error('[faq-en]', r.table, '잔여가 안 줄었다 — 이 회차에서 뺀다',
+          'before=' + prev, 'after=' + r.remaining, 'processed=' + r.processed);
+        continue;
+      }
+      const t = TARGETS.find((x) => x.table === r.table);
+      if (t) next.push(t);
+    }
+    live = next;
+  }
+
   let processed = 0;
   let remaining = 0;
   let remainingKnown = false;
   const per = [];
-
-  for (const target of TARGETS) {
-    /* 끝낼 수 없는 콜은 시작하지 않는다. 20초로는 콜을 시작만 하고 타임아웃으로
-       죽는 일이 실제로 났다(editorialFaqI18nBackfill 의 'es' 건과 같은 형태).
-       남은 표는 다음 회차가 맡는다. */
-    if (Date.now() > deadline - 35000) break;
-    try {
-      const r = await runOneTable(
-        target, batch, useModel,
-        Math.max(20000, deadline - Date.now() - 5000));
-      processed += r.processed;
-      if (typeof r.remaining === 'number') { remaining += r.remaining; remainingKnown = true; }
-      if (r.processed || r.remaining || r.failed) {
-        /* '잘림' 과 '실패' 를 가른다 — 고치는 방법이 다르다.
-           잘림이면 batch 를 줄이고, 실패면 원인을 로그에서 찾아야 한다. */
-        /* 계단이 실제로 일했으면 그 사실을 남긴다 — 'block' 이 찍히면 넷째 칸
-           (덩어리 고르기)이 응답을 살렸다는 증거다. 안 찍히면 계단이 놀고 있다. */
-        const short = r.asked && r.processed < r.asked
-          ? String(r.processed) + '/' + r.asked : String(r.processed);
-        const tag = r.failed ? (r.truncated ? '잘림' : '실패')
-          : short + (r.repaired && r.repaired !== 'none' ? '(' + r.repaired + ')' : '');
-        per.push(r.label + ':' + tag);
-      }
-    } catch (err) {
-      console.error('[faq-en]', target.table, (err && err.message) || err);
-      per.push(target.label + ':실패');
-    }
+  for (const cur of acc.values()) {
+    processed += cur.processed;
+    if (typeof cur.remaining === 'number') { remaining += cur.remaining; remainingKnown = true; }
+    if (!cur.processed && !cur.remaining && !cur.tag) continue;
+    /* 요청 건수와 저장 건수가 다르면 그 사실을 남긴다. JSONL 은 한 줄이 깨져도
+       나머지가 살아 오는 게 장점인데, 그 '일부 유실' 이 안 보이면 조용한 손실이 된다. */
+    const short = cur.asked && cur.processed < cur.asked
+      ? String(cur.processed) + '/' + cur.asked : String(cur.processed);
+    const tag = (cur.tag === '실패' || cur.tag === '잘림') ? cur.tag
+      : short + (cur.tag ? '(' + cur.tag + ')' : '');
+    per.push(cur.label + ':' + tag);
   }
 
   return {
     processed,
     remaining: remainingKnown ? remaining : null,
+    waves,
+    /* 파도 수를 찍는다. 이 값이 늘 1이면 반복이 실제로는 안 도는 것이고,
+       그건 노트를 안 보면 알 수 없다 — 종전에 시간을 버리던 것도 그래서 몰랐다. */
     note: '영문FAQ ' + processed + ' · 잔여 ' + (remainingKnown ? remaining : '?')
+      + ' · ' + waves + '회전'
       + (per.length ? ' · ' + per.join(' ') : ''),
   };
 }

@@ -37,7 +37,10 @@ module.exports = withCronGuard('backfill-editorial-faq', async function handler(
     const left = 100000 - (Date.now() - started);
     if (left > 25000) {
       try {
-        i18n = await runEditorialFaqI18nBatch({ batch: 6, timeoutMs: left });
+        /* 6 → 18 (2026-09-02). 6 은 "응답이 잘리면 배치 전멸" 이라는 전제로 고른
+           값인데, JSONL 로 바꾼 뒤로는 잘려도 완성된 줄이 다 살아남는다.
+           MAX_TOKENS 도 16,000 으로 올려 상한이 배치를 묶지 않는다. */
+        i18n = await runEditorialFaqI18nBatch({ batch: 18, timeoutMs: left });
       } catch (e2) {
         console.error('[backfill-editorial-faq] i18n:', (e2 && e2.message) || e2);
         i18n = { processed: 0, note: '언어판 실패' };

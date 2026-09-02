@@ -75,50 +75,118 @@ function rotatedLangs(now) {
 
 /* 한 배치의 출력 토큰. 배치를 키우는 것보다 회차를 늘리는 쪽이 안전하다 —
    잘린 응답은 그 배치 전멸이고, 작은 배치는 그냥 다음 회차로 넘어갈 뿐이다. */
-const MAX_TOKENS = 8000;
+const MAX_TOKENS = 16000;   /* 8000 → 16000 (2026-09-02). 상한이 배치를 묶고 있었다.
+   토큰은 쓴 만큼 과금되므로 상한을 올려도 짧은 응답의 비용은 그대로다.
+   실측 응답 길이는 3,570~4,458자(≈1,200토큰)로 종전 상한의 15%였다. */
 
+/* 범위 (2026-09-02 도메니코 판정: 전량) ─────────────────────────────────
+   종전 기본값은 300 이었다(2026-08-27 "최근분만"). 그 상태로는 이렇게 된다:
+
+     범위 안 빈칸        1,626  →  하루면 다 채우고 '잔여 0' 을 찍는다
+     발행 화보 전량      2,291편 x 7언어 = 16,037칸
+     영영 안 채워질 칸   약 14,400
+
+   즉 내일이면 노트가 '잔여 0' 이라고 말하는데 실제로는 9%만 채운 상태다.
+   느린 것보다 **완주처럼 보이는 것**이 위험하다 — 아무도 다시 안 본다.
+   ("돌았다 ≠ 했다" 의 또 다른 얼굴: 이번엔 '끝났다 ≠ 다 했다'.)
+
+   기본값을 0(무제한)으로 바꾼다. EDITORIAL_FAQ_I18N_RECENT 로 다시 좁힐 수
+   있다 — 되돌릴 길은 남긴다. */
 function recentLimit() {
-  const n = parseInt(process.env.EDITORIAL_FAQ_I18N_RECENT || '300', 10);
-  return Number.isFinite(n) && n > 0 ? Math.min(n, 3000) : 300;
+  const n = parseInt(process.env.EDITORIAL_FAQ_I18N_RECENT || '0', 10);
+  return Number.isFinite(n) && n > 0 ? Math.min(n, 20000) : 0;
 }
 
-/** 최근 N편 중 원본 faq 보유 화보 → Map(id, faq[]) */
+/* PostgREST 한 번에 받을 수 있는 행 수. 전량(2,291편)은 한 번에 안 온다 —
+   .limit(3000) 을 걸어도 서버 쪽 max-rows 에 걸리면 조용히 1,000 에서 잘린다.
+   '조용히 잘림' 은 이 저장소가 오늘만 세 번 데인 모양이라 페이지로 나눠 받는다. */
+const PAGE = 1000;
+
+/** 대상 화보 → Map(id, faq[]). recentLimit()==0 이면 발행 전량. */
 async function recentWithFaq() {
-  const { data, error } = await supabaseAdmin
-    .from('editorials')
-    .select('id, faq')
-    .eq('status', 'published')
-    .not('faq', 'is', null)
-    .order('published_date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(recentLimit());
-  if (error) throw error;
+  const cap = recentLimit();
   const out = new Map();
-  for (const r of (data || [])) {
-    const f = normalizeFaq(r.faq);
-    if (f) out.set(r.id, f);
+  for (let from = 0; ; from += PAGE) {
+    const to = cap ? Math.min(from + PAGE, cap) - 1 : from + PAGE - 1;
+    if (to < from) break;
+    const { data, error } = await supabaseAdmin
+      .from('editorials')
+      .select('id, faq')
+      .eq('status', 'published')
+      .not('faq', 'is', null)
+      .order('published_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+    if (error) throw error;
+    const rows = data || [];
+    for (const r of rows) {
+      const f = normalizeFaq(r.faq);
+      if (f) out.set(r.id, f);
+    }
+    if (rows.length < (to - from + 1)) break;   // 마지막 페이지
+    if (cap && out.size >= cap) break;
   }
   return out;
 }
 
+/* 한 번의 .in() 에 넣을 id 수. 범위가 전량(2,291편)이 되면서 종전처럼 id 를
+   통째로 넣으면 URL 이 8만 자를 넘어 요청 자체가 죽는다. 150개면 약 5.5KB 다. */
+const ID_CHUNK = 150;
+
+/**
+ * 이 언어에서 아직 FAQ 가 안 채워진 화보를 need 개만큼 고른다.
+ * srcMap 은 최신순이므로 앞에서부터 훑는다 — 인용 가능성이 높은 쪽을 먼저 채운다.
+ */
+async function pickPending(lang, srcMap, need) {
+  const ids = Array.from(srcMap.keys());
+  const take = [];
+  for (let i = 0; i < ids.length && take.length < need; i += ID_CHUNK) {
+    const chunk = ids.slice(i, i + ID_CHUNK);
+    /* 번역행이 이미 있고 faq 만 비어 있는 것 — 행 자체가 없으면 본 백필의 몫이 아니다.
+       faq 를 서버에서 걸러 받는다(.is null). 종전에는 faq 값을 다 받아 와서
+       normalizeFaq 로 걸렀는데, 전량 범위에서는 그게 매 회차 수천 행이 된다.
+       실측(2026-09-02): seo_translations kind='editorial' 16,934행 중
+       faq 가 null 인 것 16,460 · 빈 배열 0 · 배열 아닌 것 0 — 서버 필터와
+       normalizeFaq 의 결과가 지금은 정확히 같다. */
+    const { data, error } = await supabaseAdmin
+      .from('seo_translations')
+      .select('content_id')
+      .eq('kind', 'editorial')
+      .eq('lang', lang)
+      .is('faq', null)
+      .in('content_id', chunk);
+    if (error) throw error;
+    for (const r of (data || [])) {
+      take.push(r.content_id);
+      if (take.length >= need) break;
+    }
+  }
+  return take;
+}
+
+/** 이 언어의 잔여. 표시용이라 실패해도 백필을 막지 않는다. */
+async function countPendingSafe(lang) {
+  try {
+    const { count, error } = await supabaseAdmin
+      .from('seo_translations')
+      .select('content_id', { count: 'exact', head: true })
+      .eq('kind', 'editorial')
+      .eq('lang', lang)
+      .is('faq', null);
+    if (error) return null;
+    return typeof count === 'number' ? count : null;
+  } catch (_) { return null; }
+}
+
 /** 한 언어의 미처리 조합을 batch 만큼 처리. */
 async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
-  const ids = Array.from(srcMap.keys());
-  if (!ids.length) return { processed: 0, remaining: 0, lang };
+  if (!srcMap.size) return { processed: 0, remaining: 0, lang };
 
-  /* 번역행이 이미 있고 faq 만 비어 있는 것 — 행 자체가 없으면 본 백필의 몫이다. */
-  const { data: rows, error } = await supabaseAdmin
-    .from('seo_translations')
-    .select('content_id, faq')
-    .eq('kind', 'editorial')
-    .eq('lang', lang)
-    .in('content_id', ids);
-  if (error) throw error;
-
-  const pending = (rows || []).filter(r => !normalizeFaq(r.faq)).map(r => r.content_id);
-  if (!pending.length) return { processed: 0, remaining: 0, lang };
-
-  const take = pending.slice(0, batch);
+  const take = await pickPending(lang, srcMap, batch);
+  if (!take.length) return { processed: 0, remaining: 0, lang };
+  /* 이 값은 **이 언어의 번역행 중 faq 가 빈 것 전부**다. 대상(srcMap)보다 조금
+     크다 — 원본 faq 가 아직 없는 화보의 행도 세기 때문이다. 상한값으로 읽어야 한다. */
+  const pendingTotal = (await countPendingSafe(lang)) || take.length;
   const payload = take.map((id, i) => ({ i, faq: srcMap.get(id) }));
 
   const prompt =
@@ -188,14 +256,14 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
       '| head=' + JSON.stringify(text.slice(0, 200)),
       '| tail=' + JSON.stringify(text.slice(-300)),
       (err && err.message) || err);
-    return { processed: 0, remaining: pending.length, lang, failed: true };
+    return { processed: 0, remaining: pendingTotal, lang, failed: true };
   }
   }
   if (!Array.isArray(arr)) {
     console.error('[faq-i18n]', lang, '배열이 아님',
       'stop_reason=' + ((raw && raw.stopReason) || '?'), 'len=' + text.length,
       '| tail=' + JSON.stringify(text.slice(-300)));
-    return { processed: 0, remaining: pending.length, lang };
+    return { processed: 0, remaining: pendingTotal, lang };
   }
 
   let processed = 0;
@@ -214,11 +282,31 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
   }
   /* 요청 건수를 함께 돌려준다 — JSONL 은 일부만 살아 오는 게 장점인데
      그 유실이 안 보이면 장점이 조용한 손실이 된다. */
-  return { processed, remaining: Math.max(0, pending.length - processed),
+  return { processed, remaining: Math.max(0, pendingTotal - processed),
     lang, repaired, asked: take.length };
 }
 
-/** 한 회차: 언어를 순회하며 예산 안에서 처리. */
+/* 한 콜을 시작하려면 최소 이만큼 남아 있어야 한다. 20초로는 콜을 **시작만 하고**
+   타임아웃으로 죽는 일이 실제로 났다(2026-08-28 07:04 'es'). 돈은 나가고 데이터는 0. */
+const START_FLOOR_MS = 35000;
+
+/* 한 파도에 동시에 부를 언어 수. 언어끼리는 서로 아무 상관이 없는데 종전에는
+   순서대로 기다렸다 — it 30초 끝나고 fr 30초. 3개를 같이 부르면 벽시계는 그대로고
+   처리량만 3배다. 크론 호출도, 함수 시간도, 토큰도 늘지 않는다.
+   3 으로 둔 이유: 예산 100초에 콜 하나가 30~60초라 파도가 1~2번이다.
+   더 키우면 한 파도가 예산을 넘겨 통째로 버려진다. */
+const CONCURRENCY = 3;
+
+/* 한 회차의 파도 상한 (무한 반복 안전핀). */
+const MAX_WAVES = 4;
+
+/**
+ * 한 회차: 언어를 **동시에** 부르고, 예산이 남으면 다음 묶음으로 넘어간다.
+ *
+ * 종전에는 언어를 하나씩 순서대로 돌았고, 예산이 2~3개에서 끊겨 뒤쪽 네 언어가
+ * 차례를 못 받았다. 회전(rotatedLangs)으로 시작 위치를 밀어 그 굶주림은 없앴지만
+ * **총 처리량은 그대로**였다 — 회전은 분배를 고쳤을 뿐이다. 이 커밋이 총량을 고친다.
+ */
 async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, now: opts_now } = {}) {
   if (!process.env.ANTHROPIC_API_KEY) {
     const e = new Error('ANTHROPIC_API_KEY 환경변수 미설정.');
@@ -230,52 +318,69 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, n
   if (!srcMap.size) return { processed: 0, remaining: 0, note: '화보FAQ 언어판 0 · 원본 FAQ 없음' };
 
   const deadline = Date.now() + timeoutMs;
-  /* 이번 회차의 언어 순서. 항상 처음부터 돌면 앞 두 개만 채워진다(위 주석). */
+  /* 이번 회차의 언어 순서. 항상 처음부터 돌면 앞쪽만 채워진다(위 주석). */
   const order = rotatedLangs(opts_now);
+
+  /* 언어별 누계. 파도마다 한 줄씩 찍으면 노트가 같은 라벨로 도배된다. */
+  const acc = new Map();   // lang -> { processed, asked, remaining, tag }
+  const bump = (r) => {
+    const cur = acc.get(r.lang) || { processed: 0, asked: 0, remaining: null, tag: null };
+    cur.processed += (r.processed || 0);
+    cur.asked += (r.asked || 0);
+    if (typeof r.remaining === 'number') cur.remaining = r.remaining;
+    if (r.failed && !cur.processed) cur.tag = '실패';
+    if (r.repaired && r.repaired !== 'none') cur.tag = r.repaired;
+    acc.set(r.lang, cur);
+  };
+
+  let queue = order.slice();
+  let waves = 0;
+
+  while (queue.length && waves < MAX_WAVES && Date.now() <= deadline - START_FLOOR_MS) {
+    waves++;
+    const group = queue.splice(0, CONCURRENCY);
+    const budget = Math.max(20000, deadline - Date.now() - 5000);
+
+    /* 각자 catch 한다 — 한 언어가 던져도 같은 파도의 나머지를 죽이지 않는다. */
+    const results = await Promise.all(group.map((lang) =>
+      runOneLang(lang, srcMap, batch, useModel, budget).catch((err) => {
+        console.error('[faq-i18n]', lang, (err && err.message) || err);
+        return { lang, processed: 0, remaining: null, failed: true };
+      })));
+
+    for (const r of results) bump(r);
+  }
+
   let processed = 0;
   let remaining = 0;
-  /* 이 회차에 실제로 본 언어 수. 시간 예산 때문에 매번 다르다 —
-     그래서 remaining 도 매번 다르다(2026-09-02 실측: 2개 언어 215, 3개 언어 478).
-     그 숫자를 '전체 잔여'인 것처럼 적어 두면 노트가 거짓말을 한다. */
-  let visited = 0;
   const per = [];
-  for (const lang of order) {
-    /* 문턱을 20초에서 35초로 올렸다 (2026-08-28). 20초로는 콜을 **시작만 하고**
-       타임아웃으로 죽는 일이 실제로 났다 — 07:04 실행의 'es The operation was
-       aborted due to timeout'. 돈은 나가고 데이터는 0이다. 끝낼 수 없는 콜은
-       시작하지 않는다. 이 회차에 못 돈 언어는 다음 회차가 맡는다(10분 뒤). */
-    if (Date.now() > deadline - 35000) break;
-    try {
-      const r = await runOneLang(lang, srcMap, batch, useModel,
-        Math.max(20000, deadline - Date.now() - 5000));
-      visited++;
-      processed += r.processed;
-      remaining += (r.remaining || 0);
-      if (r.processed || r.remaining) {
-        /* '실패' 와 '일부만 저장' 을 가른다. 종전에는 둘 다 'it:0' 으로 보여
-           파싱이 죽은 것과 대상이 없는 것을 구분할 수 없었다. */
-        const short = r.failed ? '실패'
-          : (r.asked && r.processed < r.asked
-            ? String(r.processed) + '/' + r.asked : String(r.processed));
-        per.push(lang + ':' + short
-          + (r.repaired && r.repaired !== 'none' ? '(' + r.repaired + ')' : ''));
-      }
-    } catch (err) {
-      console.error('[faq-i18n]', lang, (err && err.message) || err);
-      per.push(lang + ':실패');
-    }
+  for (const [lang, cur] of acc) {
+    processed += cur.processed;
+    remaining += (cur.remaining || 0);
+    if (!cur.processed && !cur.remaining && !cur.tag) continue;
+    /* '실패' 와 '일부만 저장' 을 가른다. 종전에는 둘 다 'it:0' 으로 보여
+       파싱이 죽은 것과 대상이 없는 것을 구분할 수 없었다. */
+    const short = cur.tag === '실패' ? '실패'
+      : (cur.asked && cur.processed < cur.asked
+        ? String(cur.processed) + '/' + cur.asked : String(cur.processed));
+    per.push(lang + ':' + short
+      + (cur.tag && cur.tag !== '실패' ? '(' + cur.tag + ')' : ''));
   }
+
+  const visited = acc.size;
   return {
     processed, remaining,
-    visited,
-    /* 잔여 뒤에 '(N개 언어)' 를 붙인다. 이 값은 전체가 아니라 **이번에 확인한
-       언어들의 합**이다. 안 적으면 215↔478 진동이 원인 불명으로 보인다. */
+    visited, waves,
     order,
+    /* 잔여 뒤에 '(N개 언어)' 를 붙인다. 이 값은 전체가 아니라 **이번에 확인한
+       언어들의 합**이다. 안 적으면 215↔478 진동이 원인 불명으로 보인다.
+       회전 수도 찍는다 — 늘 1이면 반복이 안 도는 것이고, 노트를 안 보면 모른다. */
     note: '화보FAQ 언어판 ' + processed
       + ' · 잔여 ' + remaining + '(' + visited + '/' + TARGET_LANGS.length + '개 언어, ' + order[0] + '부터)'
+      + ' · ' + waves + '회전'
       + (per.length ? ' · ' + per.join(' ') : ''),
     scope: srcMap.size,
   };
 }
 
-module.exports = { runEditorialFaqI18nBatch, runOneLang, rotatedLangs, ROTATE_SLOT_MS, recentWithFaq, recentLimit, TARGET_LANGS };
+module.exports = { runEditorialFaqI18nBatch, runOneLang, pickPending, countPendingSafe, ID_CHUNK, rotatedLangs, ROTATE_SLOT_MS, recentWithFaq, recentLimit, TARGET_LANGS, CONCURRENCY };
