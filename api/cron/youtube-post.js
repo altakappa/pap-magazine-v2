@@ -100,9 +100,21 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
          그래서 이 상한에 남은 목적은 절약이 아니라 **사고 피해 한도**다.
          2026-08-17 에 같은 기사가 두 번 올라간 사고가 있었다(youtube_posts.status='orphan').
          매칭이 틀어지면 공개 채널에 잘못된 영상이 이 숫자만큼 올라간다.
-         실측 최대치는 하루 6건(2026-08-31)이고 21일 평균은 1.5건이다.
-         숫자는 env(YOUTUBE_DAILY_LIMIT)로만 바꾼다 — 도메니코가 Vercel 에서 직접. */
-      const DAILY_LIMIT = parseInt(process.env.YOUTUBE_DAILY_LIMIT || '4', 10) || 4;
+
+         ■ 기본값 4 → 30 (2026-09-02 도메니코)
+         평상시 실측은 하루 평균 1.5건 / 최대 6건이라 4 로도 대개 돌아갔다. 그런데
+         **패션위크처럼 행사가 몰리는 날은 하루 20건까지 나온다**(도메니코). 4 는 그런 날
+         파이프라인을 통째로 막는다 — 실제로 08-21·08-31·09-02 에 드라이브가 4칸을 다
+         쓰고 릴스가 0건이었다. 20 을 넘길 여유로 30 을 둔다.
+
+         env(YOUTUBE_DAILY_LIMIT)로 덮어쓸 수 있지만, 기본값으로 두는 이유가 있다:
+         Vercel env 는 빌드 시점에 함수로 구워지므로 '설정만 바꾸고 재배포를 잊는' 사고가
+         난다(2026-08-04 SEO_TRANSLATE_KINDS 1시간 유실). 코드 기본값은 그 함정이 없다.
+
+         ※ 남은 미확인 항목: 유튜브 **채널 자체**의 하루 업로드 한도는 API 쿼터와 별개이고
+            미인증 채널은 더 낮다. 여기서는 확인할 수 없다 — YouTube Studio 에서 확인할 것.
+            지금까지 최대 6건이라 걸린 적은 없다. */
+      const DAILY_LIMIT = parseInt(process.env.YOUTUBE_DAILY_LIMIT || '30', 10) || 30;
       // 기준일은 KST(UTC+9) 자정. UTC 자정으로 잡으면 상한 리셋이 09:00 KST가 되어,
       // 상한이 걸린 날은 한국 새벽~오전(00~09시)이 통째로 죽는다.
       const KST_OFFSET_MS = 9 * 60 * 60 * 1000;

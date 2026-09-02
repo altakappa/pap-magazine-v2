@@ -308,6 +308,12 @@ console.log('\n[압축 중 임시 파일 차단]');
   t("상한 카운트에 neq('status','failed') 가 남아 있지 않다",
     !/\.neq\('status',\s*'failed'\)/.test(limitBlock));
 
+  /* 2026-09-02 도메니코 — "패션위크나 오늘같이 행사가 많은 날은 최대 20개도 올라갈 수 있다."
+     기본값 4 는 그런 날 파이프라인을 통째로 막는다. 30 으로 올렸다.
+     숫자를 다시 내리려면 이 테스트를 먼저 봐야 한다 — 그 20건이 근거다. */
+  const dflt = (yp.match(/YOUTUBE_DAILY_LIMIT \|\| '(\d+)'/) || [])[1];
+  t('일일 상한 기본값이 성수기 실수요(20건) 이상이다', Number(dflt) >= 20, '현재 ' + dflt);
+
   t('매칭 실패 로그가 3건만 찍지 않는다', !/unmatched\.slice\(0,\s*3\)/.test(dy));
   t('매칭 실패 로그가 전체 목록을 남긴다 (상한선만 둔다)',
     /unmatched\.map\(\(u\) => u\.name\)\.join/.test(dy) && /unmatched\.length > 40/.test(dy));
