@@ -26,7 +26,8 @@ const { pushAlert } = require('../_lib/pushAlert');
 const { listRecentMedia, isLikelyEditorialCaption, _extractShortcode } = require('../_lib/instagramImport');
 const { diagnoseBackfill, buildBackfillAlert } = require('../_lib/backfillHealth');
 const { judgeTranslateHealth, buildTranslateAlert } = require('../_lib/translateHealth');
-const { judgeFaqHealth, buildFaqAlert, summarizeFaqRuns } = require('../_lib/faqHealth');
+const { judgeFaqHealth, buildFaqAlert, summarizeFaqRuns,
+  summarizeLaneRuns, judgeLaneHealth, findSilentParts, buildLaneAlert } = require('../_lib/faqHealth');
 const { summarizeDurations, judgeCronDuration, buildCronDurationAlert } = require('../_lib/cronDurationHealth');
 
 const ALERT_KEY = 'ig-to-site-pipeline';
@@ -39,6 +40,12 @@ const TRANSLATE_ALERT_KEY = 'translate-backfill-health';
 const REEL_ALERT_KEY = 'reel-video-health';
 /* FAQ 백필도 같은 이유로 키를 분리한다 (2026-08-04). */
 const FAQ_ALERT_KEY = 'faq-backfill-health';
+/* 같은 크론이 이어서 도는 두 차선. 2026-09-02 까지 감시가 없어서 두 차선이
+   닷새 동안 0건이어도 아무도 몰랐다 — 원본 FAQ 가 완주라 기존 감시는 계속
+   '정상' 이라고 답했다. 차선마다 상태를 따로 들고 있어야 한쪽 회복이
+   다른 쪽 고장을 덮지 않는다. */
+const FAQ_EN_ALERT_KEY = 'faq-en-backfill-health';
+const FAQ_I18N_ALERT_KEY = 'faq-i18n-backfill-health';
 /* 크론 실행시간 — 함수 상한에 잘려 죽는 실행을 찾는다 (2026-08-04). */
 const DURATION_ALERT_KEY = 'cron-duration-health';
 /* 네이버 초안 — 상한·정지로 생성이 멎었는지 본다 (2026-08-07). */
@@ -208,6 +215,15 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 크론은 그걸 '완주' 라고 보고했다. 이제 잔여와 실제 생산량을 대조한다. */
   const faq = await checkFaq({ dry });
 
+  /* ── 영문·다국어 FAQ 백필 감시 (2026-09-02 추가) ──
+   * 위 checkFaq 는 **기사 ko 원본** 하나만 본다. 같은 크론이 이어서 도는
+   * 영문판(faq_en)과 화보 언어판(seo_translations.faq)에는 감시가 없었다.
+   * 그 둘이 8/28~9/2 닷새 동안 생산 0건이었는데 크론은 매번 ok 였고
+   * 이 감시도 조용했다 — 원본이 완주라 '정상' 으로 답했기 때문이다.
+   * 드러난 계기가 도메니코의 질문이었다. 사람이 물어야 아는 건 감시가 아니다. */
+  const faqEn = await checkFaqEn({ dry });
+  const faqI18n = await checkFaqI18n({ dry });
+
   /* ── 크론 실행시간 감시 (2026-08-04 추가) ──
    * 앞의 네 감시는 모두 '생산량' 을 본다. 그런데 번역 백필은 6시간 동안
    * 22번을 Vercel 120초 상한에 잘려 죽었는데, cron_runs 의 실패는 0건이었다 —
@@ -262,7 +278,7 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 이건 크론 이름을 가리지 않고 '연속으로 실패하는 것' 만 본다. */
   const failingCrons = await checkFailingCrons({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons });
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -607,6 +623,113 @@ async function checkFaq(opts) {
     console.error('[pipeline-watch] faq health 실패', e && e.message);
     return { error: (e && e.message) || 'unknown' };
   }
+}
+
+/* 두 차선(영문판·언어판)의 감시. 몸통이 같아서 한 함수로 쓴다 —
+   규칙을 두 벌로 만들면 한쪽만 고쳐진다(교훈 2). */
+async function checkLane(opts, cfg) {
+  const WINDOW_H = Number(process.env.FAQ_WINDOW_HOURS || 3);
+  try {
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+    const remaining = await cfg.countRemaining();
+
+    const { data: runRows } = await supabaseAdmin
+      .from('cron_runs').select('note')
+      .eq('cron_name', cfg.cronName).gte('ran_at', since)
+      .order('ran_at', { ascending: false }).limit(200);
+
+    const notes = (runRows || []).map((r) => r && r.note);
+    const sum = summarizeLaneRuns(notes, cfg.label);
+    /* 어떤 파트가 굶고 있는지는 '기대 목록' 이 있어야 안다. 목록이 없으면
+       실제로 등장한 파트만 본다 — 한 번도 안 나온 파트는 판단 근거가 없다. */
+    const silent = findSilentParts(sum.byPart, cfg.expectedParts);
+
+    const d = judgeLaneHealth({
+      label: cfg.label,
+      remaining: typeof remaining === 'number' ? remaining : 0,
+      produced: sum.produced,
+      windowHours: WINDOW_H,
+      runs: sum.total,
+      parsed: sum.parsed,
+      fails: sum.fails,
+      partRuns: sum.partRuns,
+      wavesMax: sum.wavesMax,
+      silentParts: silent,
+    });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', cfg.alertKey).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.FAQ_ALERT_COOLDOWN_H || 6);
+    const broken = !d.healthy;
+
+    let alerted = false;
+    if (broken && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildLaneAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (!broken && wasBroken) {
+      await pushAlert({
+        personalOnly: true,
+        title: d.status === 'done' ? '✅ ' + cfg.label + ' 완주' : '✅ ' + cfg.label + ' 재개',
+        lines: [d.reason],
+        url: SITE + '/admin', urlLabel: '어드민',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== broken) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: cfg.alertKey,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken, status: d.status, cause: d.cause, remaining: d.remaining, perHour: d.perHour },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] ' + cfg.label + ' health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+/** 영문 FAQ(faq_en) — 기사·화보 두 표의 합. */
+async function checkFaqEn(opts) {
+  return checkLane(opts, {
+    label: '영문FAQ',
+    cronName: 'backfill-faq',
+    alertKey: FAQ_EN_ALERT_KEY,
+    expectedParts: ['기사', '화보'],
+    countRemaining: async () => {
+      let total = 0;
+      for (const table of ['articles', 'editorials']) {
+        const { count } = await supabaseAdmin
+          .from(table).select('id', { count: 'exact', head: true })
+          .eq('status', 'published').not('faq', 'is', null).is('faq_en', null);
+        total += (typeof count === 'number' ? count : 0);
+      }
+      return total;
+    },
+  });
+}
+
+/** 화보 FAQ 언어판 — seo_translations 의 faq 빈칸. */
+async function checkFaqI18n(opts) {
+  return checkLane(opts, {
+    label: '화보FAQ 언어판',
+    cronName: 'backfill-editorial-faq',
+    alertKey: FAQ_I18N_ALERT_KEY,
+    /* 7개 언어를 기대 목록으로 준다. 한 언어가 창 내내 안 나오면 그게 신호다 —
+       '나오지 않은 것' 은 실제로 나온 파트만 봐서는 절대 안 보인다.
+       2026-09-02 에 de·ja·zh·ru 가 정확히 그 상태였다(각 1건, 사실상 0). */
+    expectedParts: ['it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'],
+    countRemaining: async () => {
+      const { count } = await supabaseAdmin
+        .from('seo_translations').select('content_id', { count: 'exact', head: true })
+        .eq('kind', 'editorial').is('faq', null);
+      return typeof count === 'number' ? count : 0;
+    },
+  });
 }
 
 /**

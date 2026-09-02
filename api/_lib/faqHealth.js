@@ -173,6 +173,227 @@ function buildFaqAlert(d, site) {
   };
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   백필 '차선' 감시 (2026-09-02 신설)
+
+   ■ 왜 필요했나 — 위 감시에 구멍이 있었다
+
+   judgeFaqHealth 는 **기사 ko 원본(articles.faq)** 하나만 본다. 그래서
+   같은 크론이 이어서 도는 두 차선에는 감시가 아예 없었다:
+
+     영문FAQ (faq_en)                 잔여 4,381
+     화보FAQ 언어판 (seo_translations) 잔여 16,000+
+
+   그 둘이 8월 28일부터 9월 2일까지 **생산 0건**이었다. 크론은 매번
+   ok=true 를 남겼고 pipeline-watch 도 조용했다. 원본 FAQ 는 완주 상태라
+   기존 감시가 계속 '정상' 이라고 답했기 때문이다.
+   드러난 계기는 도메니코의 "너무 느리지 않나" 한마디였다. 사람이 물어봐야
+   알 수 있는 상태는 감시가 아니다.
+
+   "돌았다 ≠ 했다" 를 이 파일 머리말이 이미 적어 뒀는데, 정작 **한 크론이
+   여러 일을 하면 그중 하나만 감시된다**는 건 못 적어 뒀다. 이번에 적는다.
+
+   ■ 무엇을 새로 보나 (전부 cron_runs.note 한 줄에서 읽는다)
+
+     · 생산 0건이 이어지는가        ← 종전과 같은 판정
+     · 회전(파도) 수가 1에 붙어 있는가  ← 예산을 버리고 있다는 신호
+     · 특정 언어만 계속 0 인가        ← 회전이 죽었다 (2026-09-02 에 겪은 그 모양)
+     · ':실패' 가 절반을 넘는가       ← 동시 호출의 429 를 의심할 자리
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* 한 파트(표·언어)가 이만큼 실패하면 '망가지는 중' 으로 본다.
+   절반을 넘으면 우연이 아니다. */
+const FAIL_RATIO_ALERT = 0.5;
+
+/** 'FAQ 0 · 완주 | 영문FAQ 12 · 잔여 4381 · 2회전 · 기사:4 화보:8' 한 줄 읽기 */
+function parseFaqEnNote(note) {
+  return parseLane(note, '영문FAQ');
+}
+
+/** '화보FAQ 0 · 완주 | 화보FAQ 언어판 17 · 잔여 550(3/7개 언어, fr부터) · 2회전 · fr:5 es:6' */
+function parseFaqI18nNote(note) {
+  return parseLane(note, '화보FAQ 언어판');
+}
+
+/* 두 차선의 문장 구조가 같아서 한 함수로 읽는다.
+   라벨 뒤부터 잘라서 보므로 앞쪽 원본 FAQ 요약과 섞이지 않는다 —
+   'FAQ 0 · 완주' 의 0 을 생산량으로 읽는 사고를 막는다. */
+function parseLane(note, label) {
+  const empty = { parsed: false, produced: 0, remaining: null, waves: null, parts: {}, fails: 0 };
+  const s = String(note == null ? '' : note);
+  const i = s.indexOf(label);
+  if (i < 0) return empty;
+  const seg = s.slice(i + label.length);
+
+  const mProd = seg.match(/^\s*(\d+)/);
+  if (!mProd) return empty;
+
+  const mRem = seg.match(/잔여 (\d+)/);
+  const mWav = seg.match(/(\d+)회전/);
+
+  /* 파트별 결과: '기사:4' '화보:8/20' 'it:6(block)' 'fr:실패'
+     콜론 앞은 표 이름(한글)이거나 언어 코드다. */
+  const parts = {};
+  let fails = 0;
+  const re = /([가-힣A-Za-z]{2,6}):(실패|잘림|\d+)/g;
+  let m;
+  while ((m = re.exec(seg))) {
+    const key = m[1];
+    if (key === '잔여' || key === '회전') continue;
+    if (m[2] === '실패' || m[2] === '잘림') { parts[key] = null; fails++; }
+    else parts[key] = Number(m[2]);
+  }
+
+  return {
+    parsed: true,
+    produced: Number(mProd[1]),
+    remaining: mRem ? Number(mRem[1]) : null,
+    waves: mWav ? Number(mWav[1]) : null,
+    parts, fails,
+  };
+}
+
+/** 창 안의 note 배열 → 차선 요약. */
+function summarizeLaneRuns(notes, label) {
+  const list = notes || [];
+  const out = {
+    total: list.length, parsed: 0, produced: 0, fails: 0, partRuns: 0,
+    wavesMax: null, byPart: new Map(),
+  };
+  for (const n of list) {
+    const p = parseLane(n, label);
+    if (!p.parsed) continue;
+    out.parsed++;
+    out.produced += p.produced;
+    out.fails += p.fails;
+    if (p.waves != null) out.wavesMax = Math.max(out.wavesMax == null ? 0 : out.wavesMax, p.waves);
+    for (const [k, v] of Object.entries(p.parts)) {
+      out.partRuns++;
+      const cur = out.byPart.get(k) || 0;
+      out.byPart.set(k, cur + (v || 0));
+    }
+  }
+  return out;
+}
+
+/**
+ * 차선 하나의 건강 판정. judgeFaqHealth 와 같은 어휘를 쓴다
+ * (status/healthy/cause/reason) — 알림 배선이 둘을 똑같이 다룰 수 있게.
+ *
+ * @param {object} o
+ * @param {string} o.label            사람이 읽을 이름 ('영문FAQ' 등)
+ * @param {number} o.remaining        아직 안 채운 칸 수
+ * @param {number} o.produced         창 안 생산량
+ * @param {number} o.windowHours      창 길이
+ * @param {number} [o.runs]           창 안 실행 수
+ * @param {number} [o.parsed]         그중 요약을 읽어낸 수
+ * @param {number} [o.fails]          ':실패' 로 끝난 파트 수
+ * @param {number} [o.partRuns]       파트 결과가 찍힌 총 횟수 (실패 비율의 분모)
+ * @param {number} [o.wavesMax]       창 안 최대 회전 수 (null 이면 모름)
+ * @param {string[]} [o.silentParts]  창 내내 0 이었던 파트 (다른 파트는 생산함)
+ */
+function judgeLaneHealth(o) {
+  const label = (o && o.label) || '백필';
+  const remaining = Math.max(0, Number(o && o.remaining) || 0);
+  const produced = Math.max(0, Number(o && o.produced) || 0);
+  const hours = Math.max(0.25, Number(o && o.windowHours) || 3);
+  const runs = (o && o.runs == null) ? null : Number(o.runs);
+  const parsed = (o && o.parsed == null) ? null : Number(o.parsed);
+  const fails = Math.max(0, Number(o && o.fails) || 0);
+  const partRuns = Math.max(0, Number(o && o.partRuns) || 0);
+  const wavesMax = (o && o.wavesMax == null) ? null : Number(o.wavesMax);
+  const silent = (o && o.silentParts) || [];
+
+  const perHour = Math.round((produced / hours) * 10) / 10;
+  const etaHours = perHour > 0 ? Math.ceil(remaining / perHour) : null;
+  const base = {
+    label, remaining, produced, perHour, etaHours, windowHours: hours,
+    runsInWindow: runs, parsedRuns: parsed, fails, partRuns, wavesMax,
+    silentParts: silent, cause: null,
+  };
+
+  // 할 일이 없으면 정상. 완주 후 30분마다 울리면 재앙이다.
+  if (remaining === 0) {
+    return { ...base, status: 'done', healthy: true, reason: label + ' 완주 — 남은 칸 없음.' };
+  }
+  if (runs === 0) {
+    return { ...base, status: 'stalled', healthy: false, cause: 'no-runs',
+      reason: '최근 ' + hours + '시간 ' + label + ' 크론 실행 기록이 없다. 크론 등록·배포를 먼저 본다.' };
+  }
+  /* 요약을 한 줄도 못 읽었다 = 아직 새 note 형식이 배포되기 전이다.
+     여기서 울리면 배포 직후마다 헛알림이 된다. */
+  if (parsed != null && parsed === 0) {
+    return { ...base, status: 'unknown', healthy: true,
+      reason: '최근 ' + hours + '시간 ' + runs + '회 실행했으나 ' + label + ' 요약이 없어 판정 보류.' };
+  }
+  if (produced === 0) {
+    if (runs != null && runs < MIN_RUNS_TO_JUDGE) {
+      return { ...base, status: 'ok', healthy: true, reason: '표본 부족(' + runs + '회) — 판정 보류.' };
+    }
+    return { ...base, status: 'stalled', healthy: false, cause: 'no-output',
+      reason: '최근 ' + hours + '시간 ' + runs + '회 실행에 ' + label + ' 저장 0건. 잔량 ' + remaining + '칸.' };
+  }
+  /* 다른 파트는 생산하는데 어떤 파트만 창 내내 0 이다.
+     2026-09-02 에 겪은 모양 그대로다 — 회전이 죽으면 뒤쪽 언어가 굶는다.
+     전체 생산량만 보면 정상으로 보이기 때문에 따로 잡아야 한다. */
+  if (silent.length) {
+    return { ...base, status: 'stalled', healthy: false, cause: 'part-starved',
+      reason: label + ' 생산은 있으나 ' + silent.join('·') + ' 이(가) ' + hours + '시간 내내 0건 — 차례가 안 돌아온다.' };
+  }
+  if (partRuns > 0 && fails / partRuns >= FAIL_RATIO_ALERT) {
+    return { ...base, status: 'degraded', healthy: false, cause: 'many-fails',
+      reason: label + ' 파트 ' + partRuns + '회 중 ' + fails + '회가 실패로 끝났다 — 동시 호출의 429 를 의심한다.' };
+  }
+  /* 회전이 1 에 붙어 있으면 예산을 남기고 끝낸다는 뜻이다. 장애는 아니라서
+     알리지 않지만, 완주까지 오래 걸리는 이유가 대개 여기다. */
+  if (etaHours != null && etaHours > 24 * 7) {
+    return { ...base, status: 'slow', healthy: true,
+      reason: label + ' 시간당 ' + perHour + '칸 · 잔량 ' + remaining
+        + ' → 완주까지 약 ' + Math.ceil(etaHours / 24) + '일'
+        + (wavesMax != null && wavesMax <= 1 ? ' (회전이 1회에 머문다 — 예산을 남기고 끝낸다)' : '') + '.' };
+  }
+  return { ...base, status: 'ok', healthy: true,
+    reason: label + ' 시간당 ' + perHour + '칸 · 잔량 ' + remaining
+      + (etaHours != null ? ' → 약 ' + Math.ceil(etaHours / 24) + '일' : '') + '.' };
+}
+
+/** 창 내내 0 이었던 파트 고르기. 다른 파트가 생산했을 때만 의미가 있다. */
+function findSilentParts(byPart, expected) {
+  const map = byPart instanceof Map ? byPart : new Map(Object.entries(byPart || {}));
+  let anyProduced = false;
+  for (const v of map.values()) if (v > 0) { anyProduced = true; break; }
+  if (!anyProduced) return [];            // 전부 0 이면 그건 no-output 이 잡는다
+  const out = [];
+  for (const k of (expected || Array.from(map.keys()))) {
+    if (!(map.get(k) > 0)) out.push(k);
+  }
+  return out;
+}
+
+function buildLaneAlert(d, site) {
+  const S = site || 'https://www.pap-magazine.com';
+  const lines = [d.reason, ''];
+  if (d.cause === 'no-runs') {
+    lines.push('볼 곳: vercel.json 의 crons 등록 · 최신 배포 · CRON_SECRET');
+  } else if (d.cause === 'part-starved') {
+    lines.push('볼 곳: 회전(rotatedLangs)이 실제로 도는지 — cron_runs.note 의 "N개 언어, X부터".');
+    lines.push('  같은 언어가 계속 선두면 회전이 죽은 것이다.');
+  } else if (d.cause === 'many-fails') {
+    lines.push('볼 곳: Vercel 런타임 로그의 [faq-en] / [faq-i18n] — 429 면 동시 호출을 줄이거나 백오프를 붙인다.');
+  } else {
+    lines.push('먼저 볼 것: Anthropic 크레딧 잔액 · ANTHROPIC_API_KEY');
+    lines.push('그다음: cron_runs.note 의 실패 수 · Vercel 로그');
+  }
+  lines.push('');
+  lines.push('영문·다국어 FAQ 는 AI 검색이 인용하는 표면입니다. 멈추면 그 언어권 노출을 잃습니다.');
+  return {
+    title: (d.cause === 'part-starved' ? '🔁 ' : '🚨 ') + d.label + ' 백필 이상 — ' + d.status,
+    lines, url: S + '/admin', urlLabel: '어드민',
+  };
+}
+
 module.exports = {
   judgeFaqHealth, buildFaqAlert, parseFaqNote, summarizeFaqRuns, MIN_RUNS_TO_JUDGE,
+  parseLane, parseFaqEnNote, parseFaqI18nNote, summarizeLaneRuns,
+  judgeLaneHealth, findSilentParts, buildLaneAlert, FAIL_RATIO_ALERT,
 };
