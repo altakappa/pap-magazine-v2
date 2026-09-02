@@ -1030,6 +1030,16 @@
       "permanent": false
     },
     {
+      "source": "/fisher-s-daughters",
+      "destination": "/editorial/fishers-daughters",
+      "statusCode": 301
+    },
+    {
+      "source": "/en/fisher-s-daughters",
+      "destination": "/en/editorial/fishers-daughters",
+      "statusCode": 301
+    },
+    {
       "source": "/:path*",
       "has": [
         {
