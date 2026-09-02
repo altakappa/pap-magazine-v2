@@ -93,6 +93,15 @@ module.exports = async function handler(req, res) {
       },
     };
 
+    /* publisher-logo (2026-09-01): amp-story 스펙상 정사각형(1:1) 최소 96x96.
+       pap-logo.png(715x443)은 스펙 위반이라 배포돼 있는 512x512 정사각
+       android-chrome-512x512.png 을 publisher-logo-src 로 쓴다.
+       2026-09-02: 이 설명이 원래 HTML 주석으로 amp-story "태그 안"에 있었다.
+       태그 안 주석은 HTML 문법 위반이라 파서가 주석 조각을 불법 속성으로 읽고,
+       주석 닫는 기호의 > 가 태그를 조기 종료시켜 publisher-logo-src와
+       poster-portrait-src 가 본문 텍스트로 새어 나갔다. GSC AMP 오류
+       (WNC-10030322, "허용되지 않는 속성")의 원인. 주석은 템플릿 문자열 밖,
+       JS 주석으로만 둘 것. */
     const html = `<!doctype html>
 <html amp lang="ko">
 <head>
@@ -121,11 +130,6 @@ module.exports = async function handler(req, res) {
 <amp-story standalone
   title="${esc(title)}"
   publisher="PAP MAGAZINE"
-  <!-- 2026-09-01 — publisher-logo 는 amp-story 스펙상 **정사각형(1:1) 최소 96x96** 이다
-       (https://amp.dev/documentation/components/amp-story). pap-logo.png 은 715x443 이라
-       스펙 위반이었다. GSC AMP 리포트는 이걸 잡아주지 않지만(그쪽은 이미지 크기 경고만
-       낸다) 웹스토리의 Discover 노출 자격에 걸린다. android-chrome-512x512.png 은
-       이미 배포돼 있는 512x512 정사각 PNG 라 그대로 쓴다. -->
   publisher-logo-src="${SITE}/android-chrome-512x512.png"
   poster-portrait-src="${esc(cover || gallery[0])}">
 

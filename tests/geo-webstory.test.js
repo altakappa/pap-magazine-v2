@@ -50,6 +50,20 @@ t('amp-story 필수 요소 (standalone·publisher·poster·boilerplate)',
   /<amp-story standalone/.test(story) && /publisher-logo-src/.test(story)
   && /poster-portrait-src/.test(story) && /amp-boilerplate/.test(story));
 t('CTA 아웃링크가 전체 화보로 + utm', /amp-story-page-outlink/.test(story) && /utm_source=webstory/.test(story));
+/* 2026-09-02 — GSC AMP 오류(WNC-10030322) 재발 방지. amp-story 태그 "안"에
+   HTML 주석이 들어가 있었다: 파서가 주석 조각을 불법 속성으로 읽고, 주석 닫는
+   기호의 > 가 태그를 조기 종료시켜 publisher-logo-src / poster-portrait-src 가
+   본문 텍스트로 새어 나갔다. 설명은 JS 주석으로만 쓴다 — 템플릿 안 HTML 주석 금지. */
+{
+  const tmplStart = story.indexOf('const html = `');
+  const tmpl = tmplStart >= 0 ? story.slice(tmplStart) : '';
+  t('HTML 템플릿 안에 HTML 주석 없음 (태그 안 주석 = GSC AMP 오류 원인)',
+    tmplStart >= 0 && !tmpl.includes('<' + '!--'));
+  const tagStart = story.indexOf('<amp-story standalone');
+  const tag = tagStart >= 0 ? story.slice(tagStart, story.indexOf('>', tagStart) + 1) : '';
+  t('amp-story 여는 태그가 깨끗하다 (필수 속성이 태그 조기 종료 전에 있다)',
+    /publisher-logo-src/.test(tag) && /poster-portrait-src/.test(tag) && !tag.includes('<' + '!--'));
+}
 t('출력 이스케이프 (esc 사용)', /esc\(title\)/.test(story) && /esc\(u\)/.test(story));
 t('스토리 라우트 (/stories/:slug)',
   (vercel.rewrites || []).some(r => r.source === '/stories/:slug'
