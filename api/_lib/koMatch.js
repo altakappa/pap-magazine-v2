@@ -143,6 +143,49 @@ const MARGIN = 0.20;      // 2등과 이만큼 벌어져야 확신
  * @param {object} [opts] {threshold, margin}
  * @returns {{matched:object|null, score:number, runnerUp:number, reason:string, ranked:Array}}
  */
+/* 판별력 없는 낱말은 분모에서 뺀다 (2026-09-02) ─────────────────────────
+   실측 — 드라이브 '유튜브' 폴더가 매 실행 '매칭 실패 15건' 을 뱉고 있었다.
+   최근 21일 기사 206편으로 재현한 결과:
+
+     0902_산드로 설윤 댓글 DM.mp4  → 0.50 (기준 0.60) 거부
+       토큰 4개 중 '댓글'·'DM' 이 **어느 기사에도** 안 걸린다. 영상 내용을
+       적은 작업용 낱말이지 기사를 가리키는 말이 아니다. 그런데 점수를
+       전체 토큰 수로 나누니 이 둘이 점수를 절반으로 깎았다.
+       '산드로 설윤' 만이면 1.00 이었다.
+
+     0902_휠라 한소희.mp4          → 0.50 거부
+       한소희 1.00, 휠라 0.00. 외래어 브랜드는 한글 표기가 원음의 음차라
+       로마자 규칙이 안 맞는다:
+         휠라  → hwilra vs fila  → dice 0.250
+         오트리 → oduri  vs audry → dice 0.000   (아예 0)
+       태그 사전을 손으로 채우는 방식은 브랜드가 늘 때마다 같은 사고가 난다.
+
+   두 건의 공통점: **어느 기사에도 안 걸리는 토큰이 분모에 남아 있다.**
+   그런 토큰은 기사를 가려낼 힘이 0 이다. 분모에서 빼는 것이 옳다.
+
+   ■ 이게 왜 안전한가
+   판별력 0 인 토큰을 빼도 '어느 기사가 더 닮았나' 의 순위는 바뀌지 않는다.
+   임계값(0.60)과 마진(0.20) 두 문은 **그대로 둔다** — 그건 엉뚱한 영상이
+   공개 유튜브에 올라가는 걸 막는 장치다. 이 변경은 문턱을 낮추는 게 아니라
+   점수를 왜곡하던 잡음을 없애는 것이다.
+
+   ■ 그래도 남는 위험과 그 상한
+   살아남은 토큰이 너무 적으면 파일명이 사실상 기사와 무관하다는 뜻이다.
+   그래서 **절반 미만이 살아남으면 거부한다.** 위 두 건은 각각 2/4, 1/2 로
+   절반을 채운다.
+
+   ■ 고치지 않는 것
+   0901_오트리 창빈.mp4 은 1.00 대 1.00 으로 마진에서 거부됐다. 같은 사건으로
+   기사가 2편 나갔기 때문이다("창빈의 시그니처가 오트리 위에 올라탔다" /
+   "스트레이 키즈 창빈, 오트리와 협업 런칭 파티 호스트로 나서다").
+   **이건 설계대로 옳은 거부다.** 어느 기사에 붙일지는 사람이 정해야 한다. */
+
+/** 이 토큰이 후보 기사 중 하나라도 건드리나. 아니면 판별력이 0 이다. */
+function tokenIsLive(token, articles) {
+  for (const a of articles || []) { if (tokenHit(token, a) > 0) return true; }
+  return false;
+}
+
 function matchArticle(filename, articles, opts) {
   const o = opts || {};
   const threshold = o.threshold != null ? o.threshold : THRESHOLD;
@@ -153,33 +196,49 @@ function matchArticle(filename, articles, opts) {
     return { matched: null, score: 0, runnerUp: 0, ranked: [],
       reason: '파일명에서 쓸 만한 낱말을 못 뽑음' };
   }
-  const ranked = (articles || [])
-    .map((a) => ({ art: a, score: scoreArticle(tokens, a) }))
+
+  const arts = articles || [];
+  const live = tokens.filter((t) => tokenIsLive(t, arts));
+  const dead = tokens.filter((t) => !live.includes(t));
+
+  if (!live.length) {
+    return { matched: null, score: 0, runnerUp: 0, ranked: [], tokens, live, dead,
+      reason: '파일명 낱말이 어느 기사에도 안 걸림 (' + tokens.join('·') + ')' };
+  }
+  /* 절반도 안 남으면 파일명이 기사와 사실상 무관하다. 남은 몇 개로 억지로
+     붙이면 그게 바로 '엉뚱한 영상이 올라가는' 사고다. */
+  if (live.length * 2 < tokens.length) {
+    return { matched: null, score: 0, runnerUp: 0, ranked: [], tokens, live, dead,
+      reason: '낱말 ' + tokens.length + '개 중 ' + live.length + '개만 기사에 걸림 — 관련 없어 보임 (버림: ' + dead.join('·') + ')' };
+  }
+
+  const ranked = arts
+    .map((a) => ({ art: a, score: scoreArticle(live, a) }))
     .sort((x, y) => y.score - x.score);
 
   if (!ranked.length) {
-    return { matched: null, score: 0, runnerUp: 0, ranked, tokens,
+    return { matched: null, score: 0, runnerUp: 0, ranked, tokens, live, dead,
       reason: '비교할 기사가 없음' };
   }
   const best = ranked[0];
   const second = ranked[1] ? ranked[1].score : 0;
 
   if (best.score < threshold) {
-    return { matched: null, score: best.score, runnerUp: second, ranked, tokens,
+    return { matched: null, score: best.score, runnerUp: second, ranked, tokens, live, dead,
       reason: `가장 닮은 기사도 ${best.score.toFixed(2)} (기준 ${threshold}) — 닮은 게 없음` };
   }
   if (best.score - second < margin) {
     const tiedTitles = ranked.filter((r) => best.score - r.score < margin)
       .slice(0, 3).map((r) => r.art && r.art.title).join(' / ');
-    return { matched: null, score: best.score, runnerUp: second, ranked, tokens,
-      reason: `비슷한 기사가 여럿 (${best.score.toFixed(2)} vs ${second.toFixed(2)}) — 애매해서 보류: ${tiedTitles}` };
+    return { matched: null, score: best.score, runnerUp: second, ranked, tokens, live, dead,
+      reason: `같은 사건 기사가 여럿 (${best.score.toFixed(2)} vs ${second.toFixed(2)}) — 사람이 골라야 한다: ${tiedTitles}` };
   }
-  return { matched: best.art, score: best.score, runnerUp: second, ranked, tokens,
+  return { matched: best.art, score: best.score, runnerUp: second, ranked, tokens, live, dead,
     reason: `확신 (${best.score.toFixed(2)} vs 2등 ${second.toFixed(2)})` };
 }
 
 module.exports = {
   romanize, phon, dice, fileTokens, squash,
-  tokenHit, scoreArticle, matchArticle,
+  tokenHit, tokenIsLive, scoreArticle, matchArticle,
   THRESHOLD, MARGIN,
 };
