@@ -364,9 +364,31 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, n
 
   let queue = order.slice();
   let waves = 0;
+  /* 직전 파도가 실제로 걸린 시간. 다음 파도를 시작할지 **재서** 정한다.
 
-  while (queue.length && waves < MAX_WAVES && Date.now() <= deadline - START_FLOOR_MS) {
+     ■ 왜 (2026-09-02 실측)
+     고정 문턱(35초)만 보고 파도를 시작하면, 파도가 그보다 오래 걸릴 때
+     끝낼 수 없는 파도를 시작한다. 돈은 나가고 데이터는 0이다.
+
+       14:44  파도당 44.8초 · 남은 50초 → 2파도 성공 · 32건 · 실패 0
+       15:34  파도당 48초   · 남은 47초 → 2파도째 통째로 죽음 · 16건 · 실패 2
+
+     같은 설정(동시 2 · batch 8)인데 결과가 갈렸다. 차이는 **파도가 몇 초
+     걸렸느냐** 하나뿐이다. 그건 미리 정할 수 없다 — 재야 안다.
+
+     그래서 상수를 또 만지지 않는다. 직전 파도 시간에 15% 여유를 붙여
+     그만큼 안 남으면 시작하지 않는다. 첫 파도는 잴 게 없으니 종전 문턱을 쓴다.
+
+     이게 오늘 세 번 틀린 "얼마면 될까" 를 "얼마 걸렸나" 로 바꾸는 것이다. */
+  let lastWaveMs = 0;
+
+  while (queue.length && waves < MAX_WAVES) {
+    const left = deadline - Date.now();
+    const need = lastWaveMs ? Math.round(lastWaveMs * 1.15) : START_FLOOR_MS;
+    if (left <= need) break;
+
     waves++;
+    const waveStart = Date.now();
     const group = queue.splice(0, CONCURRENCY);
     const budget = Math.min(CALL_TIMEOUT_MS,
       Math.max(20000, deadline - Date.now() - 5000));
@@ -379,6 +401,7 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, n
       })));
 
     for (const r of results) bump(r);
+    lastWaveMs = Date.now() - waveStart;
   }
 
   let processed = 0;

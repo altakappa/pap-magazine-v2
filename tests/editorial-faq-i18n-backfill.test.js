@@ -60,10 +60,19 @@ t('String(raw) 로 되돌아가지 않는다 (무생산 재발 방지)',
   !/String\(raw \|\| ''\)/.test(lib));
 /* 20초 문턱으로는 콜을 시작만 하고 타임아웃으로 죽었다 (07:04 'es' 실측).
    끝낼 수 없는 콜은 시작하지 않는다 — 돈만 쓰고 데이터가 0이 된다. */
-t('시간 예산 — 한 콜을 끝낼 여유가 없으면 접는다', (() => {
+/* 이 줄을 오늘만 두 번 고쳤다. 처음엔 `deadline - 35000` 이라는 원문을 봤고,
+   상수로 뽑자 깨졌다. 다음엔 `deadline - START_FLOOR_MS` 를 봤고, 파도 시작
+   판단을 실측 기반으로 바꾸자 또 깨졌다. **두 번 다 동작은 그대로였다.**
+   지켜야 할 것은 코드 모양이 아니라 '끝낼 수 없는 것은 시작하지 않는다' 다. */
+t('시간 예산 — 끝낼 수 없는 파도는 시작하지 않는다', (() => {
   const m = /START_FLOOR_MS = (\d+)/.exec(lib);
-  return !!m && Number(m[1]) >= 35000 && /deadline - START_FLOOR_MS/.test(lib);
+  const hasFloor = !!m && Number(m[1]) >= 35000;
+  // 남은 시간을 재서 부족하면 파도를 시작하지 않는다 (고정값이든 실측이든)
+  const guards = /left <= need|deadline - START_FLOOR_MS|deadline - Date\.now\(\) <=/.test(lib);
+  return hasFloor && guards;
 })());
+/* 2026-09-02 — 얼마면 되는지는 미리 못 정한다. 직전 파도가 몇 초 걸렸는지로 정한다. */
+t('직전 파도 시간을 재서 다음 파도를 정한다', /lastWaveMs/.test(lib));
 /* 파서가 두 벌이면 한쪽만 고쳐진다 (교훈 2). 2026-08-25 의 jsonRepair 넷째 칸이
    parseJsonArray 에만 들어가고 이 파일의 자체 정규식은 옛날 그대로였다. */
 /* 파서가 세 벌이었다. 8/25 의 넷째 칸(덩어리 고르기)은 jsonRepair 에만 있고,

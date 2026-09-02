@@ -273,6 +273,23 @@ const srcMap = new Map([['e1', KO], ['e2', KO]]);
   reply = el(0) + '\n' + el(1);                        // 원상복구
   trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
 
+  console.log('\n[9] 끝낼 수 없는 파도는 시작하지 않는다 (2026-09-02 실측)');
+  /* 같은 설정(동시 2 · batch 8)인데 결과가 갈렸다:
+       14:44  파도당 44.8초 · 남은 50초 → 2파도 성공 · 32건 · 실패 0
+       15:34  파도당 48초   · 남은 47초 → 2파도째 통째로 죽음 · 16건 · 실패 2
+     차이는 파도가 몇 초 걸렸느냐 하나뿐이다. 미리 정할 수 없고 재야 안다.
+     고정 문턱(35초)은 그걸 못 본다. 직전 파도 시간으로 판단한다. */
+  t('직전 파도 시간을 잰다', /lastWaveMs = Date\.now\(\) - waveStart/.test(SRC));
+  t('그 시간에 여유를 붙여 다음 파도를 결정한다',
+    /lastWaveMs \* 1\.15/.test(SRC) && /if \(left <= need\) break/.test(SRC));
+  t('첫 파도는 잴 게 없으므로 종전 문턱을 쓴다',
+    /lastWaveMs \? Math\.round\(lastWaveMs \* 1\.15\) : START_FLOOR_MS/.test(SRC));
+  /* 시간이 넉넉하면 종전대로 여러 파도를 돈다 — 보수적으로 굳어버리면 안 된다. */
+  reply = el(0) + '\n' + el(1);
+  trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
+  const fast = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 120000, model: 'm', now: 0 });
+  t('예산이 넉넉하면 여전히 여러 파도를 돈다', fast.waves >= 2, fast.waves);
+
   console.log('\n[6] 프롬프트와 배선');
   t('JSONL 을 요구한다', /one JSON object per line \(JSONL\)/.test(SRC));
   t('배열로 감싸지 말라고 못박는다', /Do NOT wrap them in an array/.test(SRC));
