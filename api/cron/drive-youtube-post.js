@@ -152,8 +152,15 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
       // 테스트가 200 반환문마다 note(res,…) 를 강제해 침묵 재발을 막는다.
       return res.status(200).json({
         ok: true, matched: 0, unmatched, skipped,
+        /* 2026-09-02 — 이름을 3개만 찍고 있었다. 매 회차 "매칭 실패 15건" 이 뜨는데
+           나머지 12건이 뭔지 알 길이 없어 사람이 확인을 못 했다. 전부 남긴다.
+           note 는 cron_runs.note(text) 로 들어가므로 길이는 문제되지 않지만,
+           폴더가 폭주했을 때를 대비해 40개 / 1500자에서만 자른다. */
         note: note(res, '매칭 실패 ' + unmatched.length + '건 — '
-          + unmatched.slice(0, 3).map((u) => u.name).join(', ')),
+          + (unmatched.length > 40
+              ? unmatched.slice(0, 40).map((u) => u.name).join(', ') + ' 외 ' + (unmatched.length - 40) + '건'
+              : unmatched.map((u) => u.name).join(', ')
+            ).slice(0, 1500)),
       });
     }
 

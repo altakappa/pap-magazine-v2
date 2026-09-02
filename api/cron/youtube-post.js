@@ -95,9 +95,20 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
       const kstMidnight = new Date(Date.now() + KST_OFFSET_MS);
       kstMidnight.setUTCHours(0, 0, 0, 0);
       const dayStart = new Date(kstMidnight.getTime() - KST_OFFSET_MS);
+      /* 2026-09-02 — 상한은 '실제로 올린 것' 만 센다.
+         예전에는 failed 만 뺐다(.neq('status','failed')). 그러면 아무것도 올리지 않은 행이
+         하루치를 갉아먹는다:
+           · skipped  — 같은 기사가 이미 유튜브에 있어 건너뛴 것. 업로드 0.
+           · removed  — 도메니코가 저작권으로 지운 것. 지금 올린 게 아니다.
+           · orphan   — 중복 업로드 사고 기록.
+         게다가 drive-youtube-post·drive-story-shorts 는 이 상한을 확인하지 않으면서
+         같은 표에 행을 쓴다. 그래서 드라이브 업로드가 릴스 몫을 먹었다.
+         실측(최근 21일, 상한 4): 08-17 은 4칸 중 3칸이 헛칸이라 릴스가 하루에 1건만
+         올라가고 나머지 시간이 통째로 막혔다. 08-25 는 2칸, 09-02 는 2칸이 헛칸이었다.
+         → submitted 만 센다. 드라이브 경로에도 상한을 걸지는 별도 판단(2026-09-02 미결). */
       const { count: todayCount } = await supabaseAdmin.from('youtube_posts')
         .select('id', { count: 'exact', head: true })
-        .neq('status', 'failed')
+        .eq('status', 'submitted')
         .gte('created_at', dayStart.toISOString());
       if ((todayCount || 0) >= DAILY_LIMIT) {
         res.locals.cronNote = '일일 업로드 상한 도달 (' + todayCount + '/' + DAILY_LIMIT + ', KST 기준) — 익일 00:00 KST 재개';

@@ -288,5 +288,30 @@ console.log('\n[압축 중 임시 파일 차단]');
     !drive.shouldSkip('0821 팔라스 vol.2.mp4', '', 'youtube'));
 }
 
+/* ⑧ 2026-09-02 실측 — 상한과 로그가 거짓말하고 있었다.
+   (a) youtube-post 의 일일 상한이 failed 만 뺐다. skipped(중복이라 아무것도 안 올림)·
+       removed(도메니코가 저작권으로 지운 것)·orphan 이 전부 하루치를 갉아먹었다.
+       08-17 은 4칸 중 3칸이 헛칸이라 릴스가 1건만 올라가고 하루가 막혔다.
+   (b) drive-youtube-post 가 매칭 실패 이름을 3개만 찍어, "15건" 중 12건이 뭔지
+       알 수 없었다. 사람이 확인하라고 남기는 로그인데 확인이 불가능했다. */
+{
+  console.log('\n=== ⑧ 상한 카운트 · 매칭실패 로그 (2026-09-02) ===');
+  const yp = fs.readFileSync(path.join(ROOT, 'api', 'cron', 'youtube-post.js'), 'utf8');
+  const dy = fs.readFileSync(path.join(ROOT, 'api', 'cron', 'drive-youtube-post.js'), 'utf8');
+
+  /* 주석에 옛 코드를 인용해 두었으므로(왜 바꿨는지 남기려고) 주석을 걷어낸 뒤 검사한다.
+     안 그러면 "설명을 잘 써서 테스트가 빨개지는" 우스운 일이 생긴다. */
+  const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const limitBlock = stripComments(
+    yp.slice(yp.indexOf('DAILY_LIMIT'), yp.indexOf('일일 업로드 상한 도달')));
+  t('일일 상한은 submitted 만 센다', /\.eq\('status',\s*'submitted'\)/.test(limitBlock));
+  t("상한 카운트에 neq('status','failed') 가 남아 있지 않다",
+    !/\.neq\('status',\s*'failed'\)/.test(limitBlock));
+
+  t('매칭 실패 로그가 3건만 찍지 않는다', !/unmatched\.slice\(0,\s*3\)/.test(dy));
+  t('매칭 실패 로그가 전체 목록을 남긴다 (상한선만 둔다)',
+    /unmatched\.map\(\(u\) => u\.name\)\.join/.test(dy) && /unmatched\.length > 40/.test(dy));
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ` ${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
