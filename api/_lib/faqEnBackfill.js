@@ -177,8 +177,17 @@ function buildPrompt(payload) {
 /** 한 표를 batch 만큼 처리. */
 async function runOneTable(target, batch, model, timeoutMs) {
   const { table, label } = target;
-  // 표별 상한을 넘지 않는다 — 호출부가 큰 값을 줘도 잘린 응답으로 전멸하지 않게.
-  const useBatch = Math.max(1, Math.min(batch, target.batch || batch));
+  /* 표별 크기는 **표가 정한다.** 호출부의 batch 는 표에 값이 없을 때 쓰는 기본값일 뿐이다.
+
+     2026-09-02 실측에서 이 한 줄이 처리량을 40%로 묶고 있었다.
+     크론이 batch:8 을 넘기는데 Math.min(8, 12) = 8 이 되어, 오늘 올린 기사 12·화보 20
+     설정이 **한 번도 적용된 적이 없다.** 노트가 그걸 그대로 말하고 있었는데
+     (`2회전 · 기사:8 화보:16` = 회당 8·8) 내가 못 읽었다.
+
+     min 을 쓴 원래 의도는 "호출부가 큰 값을 줘도 잘린 응답으로 전멸하지 않게" 였다.
+     표 값을 그대로 쓰면 그 의도는 더 확실히 지켜진다 — 호출부가 무엇을 주든
+     표가 정한 크기를 넘지 않는다. */
+  const useBatch = Math.max(1, target.batch || batch);
   const cutoff = await cutoffDate(table);
   const rows = await fetchPending(table, useBatch, cutoff);
   if (!rows.length) {

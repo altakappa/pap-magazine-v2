@@ -56,7 +56,10 @@ function tableStub() {
     _t: null,
     select() { return q; }, eq() { return q; }, not() { return q; }, is() { return q; },
     gte() { return q; }, order() { return q; },
-    limit() { return Promise.resolve({ data: pending, error: null }); },
+    /* limit 을 **실제로 지킨다.** 종전에는 인자를 무시하고 pending 전체를 돌려줬는데,
+       그러면 batch 계산이 틀려도 테스트가 통과한다 — 실제로 그 변이가 안 잡혔다.
+       DB 를 흉내 내는 스텁이 DB 의 제약을 안 지키면 그 자리는 검사되지 않는 셈이다. */
+    limit(n) { return Promise.resolve({ data: pending.slice(0, n), error: null }); },
     range() { return Promise.resolve({ data: [], error: null }); },
     update(v) { return { eq: (c, id) => { updates.push({ id, v }); return Promise.resolve({ error: null }); } }; },
     then(res) { return Promise.resolve({ count: 7, error: null }).then(res); },
@@ -194,6 +197,21 @@ function el(i) { return '{"i":' + i + ',"faq":[{"q":"Q1","a":"A1"},{"q":"Q2","a"
   const edis = fe.TARGETS.find((x) => x.table === 'editorials');
   t('기사 배치가 종전 4보다 크다', arts.batch > 4, arts.batch);
   t('화보 배치가 종전 8보다 크다', edis.batch > 8, edis.batch);
+  /* 2026-09-02 실측: 크론이 batch:8 을 넘기는데 Math.min(8, 12) 로 깎여
+     표별 설정(기사 12·화보 20)이 **한 번도 적용된 적이 없었다.**
+     노트 `2회전 · 기사:8 화보:16` 이 그 증거였다(회당 8·8).
+     여기는 값이 아니라 **행동**으로 본다 — 호출부가 작은 값을 줘도 표 크기가 이긴다. */
+  updates.length = 0;
+  pending = new Array(12).fill(0).map((_, i) => ({ id: 'x' + i, faq: KO }));
+  reply = new Array(12).fill(0).map((_, i) => el(i).replace('"i":0', '"i":' + i)).join('\n');
+  const bigTarget = { table: 'articles', label: '기사', batch: 12 };
+  const rBig = await fe.runOneTable(bigTarget, 4, 'm', 60000);   // 호출부가 4 를 줘도
+  t('호출부의 작은 batch 가 표별 크기를 깎지 않는다  ← 처리량을 40%로 묶던 줄',
+    rBig.asked === 12, rBig.asked);
+
+  pending = [{ id: 'a1', faq: KO }, { id: 'a2', faq: KO }];      // 원상복구
+  reply = el(0) + '\n{"i":1,"faq":[{"q":"Q1",';
+
   t('출력 토큰 상한이 배치를 다시 묶지 않는다',
     /MAX_TOKENS = (\d+)/.test(SRC) && Number(/MAX_TOKENS = (\d+)/.exec(SRC)[1]) >= 16000,
     /MAX_TOKENS = (\d+)/.exec(SRC)[1]);

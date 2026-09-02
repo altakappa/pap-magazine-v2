@@ -260,7 +260,13 @@ const srcMap = new Map([['e1', KO], ['e2', KO]]);
   t('콜 하나에 남은 예산을 통째로 주지 않는다  ← ①',
     /Math\.min\(CALL_TIMEOUT_MS,/.test(SRC));
   t('콜 상한이 함수 예산보다 넉넉히 작다', i18n.CALL_TIMEOUT_MS <= 60000, i18n.CALL_TIMEOUT_MS);
-  t('동시 호출 수를 실측에 맞춰 줄였다', i18n.CONCURRENCY <= 2, i18n.CONCURRENCY);
+  /* 종전에는 `<= 2` 였다. 실측이 바뀌어 3 으로 올리자 **오늘 내가 40분 전에 쓴 이 줄이
+     나를 막았다.** 튜닝 값을 단정에 박으면 튜닝할 때마다 테스트를 고쳐야 한다.
+     지켜야 할 것은 특정 숫자가 아니라 '한 파도가 무제한으로 벌어지지 않는다' 는 사실이다.
+     콜 하나가 예산을 통째로 먹지 않는 것은 위 CALL_TIMEOUT_MS 단정이 따로 지킨다. */
+  t('한 파도가 무제한으로 벌어지지 않는다',
+    i18n.CONCURRENCY >= 1 && i18n.CONCURRENCY <= i18n.TARGET_LANGS.length,
+    i18n.CONCURRENCY);
   t('타임아웃 실측을 코드에 남긴다 (다음 사람이 배치를 또 키우지 않게)',
     /aborted due to timeout/.test(SRC));
 
