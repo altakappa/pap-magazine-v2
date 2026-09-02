@@ -233,4 +233,74 @@ function parseJsonArray(text, label) {
   throw new Error(what + ' 배열 파싱 실패 (제어문자·따옴표 복구도 실패): ' + detail);
 }
 
-module.exports = { escapeRawControls, escapeInnerQuotes, tryRepairedParse, findBalancedChunks, pickBalancedChunk, parseJsonObject, parseJsonArray };
+/**
+ * 줄 단위(JSONL) 파싱 — 온전한 최상위 객체만 골라낸다 (2026-09-02 신설)
+ *
+ * ■ 왜 만들었나 — 실측 (backfill-faq, 2026-09-02 08:33 런타임 로그)
+ *
+ *   [faq-en] articles   batch=4 stop_reason=end_turn len=3285
+ *     tail=...since 2022."}]}}```
+ *   [faq-en] editorials batch=8 stop_reason=end_turn len=5922
+ *     tail=...beyond the clouds."}]```
+ *
+ * 세 가지가 동시에 참이었다.
+ *   ① stop_reason=end_turn — **잘린 게 아니다.** 길이도 상한의 절반이 안 된다.
+ *      "배치가 커서 잘렸다" 는 종전 진단이 여기서는 틀렸다.
+ *   ② 응답에 **바깥 배열의 닫는 `]` 가 없다.** 기사는 그 자리에 `}` 가 왔고,
+ *      화보는 원소 닫는 `}` 와 바깥 `]` 가 둘 다 없다.
+ *   ③ 그게 확실한 이유: findBalancedChunks 는 대괄호 깊이가 0 으로 돌아오는
+ *      구간만 모은다. 바깥 `]` 가 있었다면 전체 배열이 균형 덩어리로 잡혀
+ *      **넷째 칸이 살렸을 것이다.** 넷째 칸도 실패했다 = 균형 잡힌 최상위
+ *      배열이 응답에 아예 없다.
+ *
+ * 게다가 parseJsonArray 는 indexOf('[') ~ lastIndexOf(']') 로 자른다.
+ * 바깥 `]` 가 없으면 마지막 `]` 는 **원소 안쪽 faq 배열**의 것이라, 자른 조각이
+ * 반드시 깨진다. 파싱 실패 위치가 매번 끝에서 12~14자인 것도 이걸로 설명된다.
+ *
+ * ■ 무엇을 하나
+ * 대괄호를 아예 세지 않고 **중괄호만** 센다. 최상위에서 균형 잡힌 `{...}` 를
+ * 순서대로 모아 각각 계단 세 칸으로 파싱한다.
+ *
+ *   · 바깥 배열이 있든 없든 상관없다 — `[` 를 안 세니까.
+ *   · 한 줄이 깨져도 **그 한 건만** 잃는다. 지금은 8건 중 하나만 어긋나도 전멸이다.
+ *   · 구조를 지어내지 않는다. 닫는 괄호를 상상해서 채우지 않고, **온전한 것만**
+ *     가져간다. 이 파일 머리말의 원칙("잘린 응답은 복구가 아니라 창작이다")을
+ *     그대로 지킨다.
+ *
+ * ■ 삼키지 않는다
+ * 하나도 못 건지면 빈 배열이 아니라 **던진다.** 0건을 조용히 성공으로 보고하면
+ * 2026-08-04 에 FAQ 백필이 2주간 성실히 0건을 만들던 상태로 되돌아간다.
+ *
+ * @param {string} text   모델 응답 원문 (코드펜스·산문이 섞여 있어도 된다)
+ * @param {string} label  오류 메시지에 찍을 이름
+ * @returns {{value:object[], repaired:string, dropped:number}}
+ *          dropped = 균형은 잡혔지만 파싱에 실패한 덩어리 수 (있으면 note 에 남길 것)
+ * @throws  건진 게 하나도 없으면 던진다
+ */
+function parseJsonLines(text, label) {
+  const s = String(text || '');
+  const what = label || 'JSON';
+  const chunks = findBalancedChunks(s, '{', '}');
+  if (!chunks.length) {
+    throw new Error(what + ' 응답에서 객체를 하나도 찾지 못함: ' + s.slice(0, 150));
+  }
+  const value = [];
+  const kinds = new Set();
+  let dropped = 0;
+  for (const c of chunks) {
+    const r = ladderParse(c, false);
+    if (r) { value.push(r.value); if (r.repaired !== 'none') kinds.add(r.repaired); }
+    else dropped++;
+  }
+  if (!value.length) {
+    throw new Error(what + ' 객체 ' + chunks.length + '개를 찾았으나 전부 파싱 실패: '
+      + s.slice(0, 150));
+  }
+  return {
+    value,
+    repaired: kinds.size ? Array.from(kinds).join('+') : 'none',
+    dropped,
+  };
+}
+
+module.exports = { parseJsonLines, escapeRawControls, escapeInnerQuotes, tryRepairedParse, findBalancedChunks, pickBalancedChunk, parseJsonObject, parseJsonArray };

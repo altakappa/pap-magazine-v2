@@ -51,7 +51,7 @@ const { normalizeFaq, callClaude } = require('./seoTranslateBackfill');
    내가 처음에 통일한 대상이 하필 세 칸짜리였다.
    로컬 재현: '```json [...] ``` 뒤에 대괄호 섞인 산문' 과 '배열 두 개' 가
    세 칸에서는 [형태불명] 으로 죽고 네 칸에서는 살아난다. */
-const { parseJsonArray } = require('./jsonRepair');
+const { parseJsonArray, parseJsonLines } = require('./jsonRepair');
 
 /* 대상 표. label 은 크론 note 에 그대로 찍힌다.
    batch 를 표마다 다르게 두는 이유 (2026-08-28 라이브 실측):
@@ -145,8 +145,16 @@ function buildPrompt(payload) {
     '- Natural fashion-magazine English, not literal machine translation.',
     '- Each answer must stay self-contained and quotable on its own (20-60 words).',
     '- Do not add facts that are not in the Korean source.',
-    '- Return ONLY a JSON array, one object per input: {"i":<index>,"faq":[{"q":"...","a":"..."}]}.',
-    '  No prose, no code fences.',
+    /* JSONL 로 바꾼다 (2026-09-02). 종전 계약은 "배열 하나로 달라" 였는데
+       실측에서 모델이 **바깥 배열의 닫는 ] 를 빼먹었다** (stop_reason=end_turn,
+       길이는 상한의 절반 — 잘린 게 아니다). 자세한 근거는 jsonRepair.parseJsonLines
+       머리말에 적었다.
+       줄 단위면 닫을 바깥 괄호가 없어 놓칠 것이 없고, 한 줄이 깨져도 그 한 건만
+       잃는다. 종전에는 8건 중 하나만 어긋나도 전멸이었다. */
+    '- Output one JSON object per line (JSONL). Do NOT wrap them in an array.',
+    '- Each line: {"i":<index>,"faq":[{"q":"...","a":"..."}]}',
+    '- Exactly one line per input item, in the same order. No prose, no code fences,',
+    '  no blank lines, no trailing commas.',
     'Input JSON:',
     JSON.stringify(payload),
   ].join('\n');
@@ -176,9 +184,18 @@ async function runOneTable(target, batch, model, timeoutMs) {
        2026-08-27~28 에 정확히 그 상태로 24시간 헛돌았다. */
     stopReason = raw && raw.stopReason;
     rawText = (raw && raw.text) || '';
-    const parsed = parseJsonArray(rawText, table);
-    arr = parsed.value;
-    repaired = parsed.repaired;
+    /* 줄 단위로 먼저 읽는다. 이 파서는 대괄호를 세지 않으므로 모델이 옛 계약대로
+       배열을 보내와도 그대로 읽힌다 — 계약을 바꾸는 동안 한쪽이 죽지 않는다.
+       못 읽으면 종전 배열 파서로 한 번 더 간다(양쪽 실패해야 실패다). */
+    try {
+      const lines = parseJsonLines(rawText, table);
+      arr = lines.value;
+      repaired = lines.repaired + (lines.dropped ? '/버림' + lines.dropped : '');
+    } catch (lineErr) {
+      const parsed = parseJsonArray(rawText, table);
+      arr = parsed.value;
+      repaired = 'array:' + parsed.repaired;
+    }
   } catch (err) {
     /* stop_reason 을 반드시 함께 남긴다. 'JSON 파싱 실패' 만 적으면 원인이
        '모델이 이상한 걸 뱉었다' 인지 '길어서 잘렸다' 인지 못 가른다 —
@@ -187,8 +204,13 @@ async function runOneTable(target, batch, model, timeoutMs) {
        parseJsonArray 주석이 그 교훈을 적어 뒀는데(2026-08-08, 87% 실패를 보고도
        원인을 못 갈랐다) 나는 head 만 찍어서 같은 실수를 반복했다.
        trailing comma·두 번째 배열·뒤에 붙은 산문은 전부 끝에서만 보인다. */
+    /* 머리도 남긴다 (2026-09-02). 종전 주석은 "머리는 언제나 ```json\n[{\"i\":0,
+       이라 아무 정보가 없다" 고 단정했는데, 이번 진단에서 **그 단정 자체가
+       확인된 적 없다**는 게 문제였다. 모델이 산문을 앞에 붙였는지, 객체로
+       감쌌는지는 머리를 봐야 안다. 꼬리만으로는 못 가른다. */
     console.error('[faq-en]', table, 'batch=' + useBatch,
       'stop_reason=' + (stopReason || '?'), 'len=' + rawText.length,
+      '| head=' + JSON.stringify(rawText.slice(0, 200)),
       '| tail=' + JSON.stringify(rawText.slice(-300)),
       (err && err.message) || err);
     return {
@@ -215,8 +237,12 @@ async function runOneTable(target, batch, model, timeoutMs) {
     processed++;
   }
 
+  /* 요청 건수와 저장 건수가 다르면 그 사실을 남긴다. JSONL 은 한 줄이 깨져도
+     나머지가 살아서 오는 게 장점인데, 그 '일부 유실' 이 안 보이면 장점이
+     조용한 손실로 바뀐다. */
   return {
     table, label, processed, repaired,
+    asked: rows.length,
     remaining: await countRemainingSafe(table, cutoff),
   };
 }
@@ -255,8 +281,10 @@ async function runFaqEnBatch({ batch = 8, timeoutMs = 90000, model } = {}) {
            잘림이면 batch 를 줄이고, 실패면 원인을 로그에서 찾아야 한다. */
         /* 계단이 실제로 일했으면 그 사실을 남긴다 — 'block' 이 찍히면 넷째 칸
            (덩어리 고르기)이 응답을 살렸다는 증거다. 안 찍히면 계단이 놀고 있다. */
+        const short = r.asked && r.processed < r.asked
+          ? String(r.processed) + '/' + r.asked : String(r.processed);
         const tag = r.failed ? (r.truncated ? '잘림' : '실패')
-          : String(r.processed) + (r.repaired && r.repaired !== 'none' ? '(' + r.repaired + ')' : '');
+          : short + (r.repaired && r.repaired !== 'none' ? '(' + r.repaired + ')' : '');
         per.push(r.label + ':' + tag);
       }
     } catch (err) {
