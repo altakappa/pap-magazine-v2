@@ -290,6 +290,20 @@ const srcMap = new Map([['e1', KO], ['e2', KO]]);
   const fast = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 120000, model: 'm', now: 0 });
   t('예산이 넉넉하면 여전히 여러 파도를 돈다', fast.waves >= 2, fast.waves);
 
+  console.log('\n[10] 왜 느린지 잴 수 있어야 한다 (2026-09-03)');
+  /* 네 언어(ja·de·it·ru)만 55초 상한을 넘고 세 언어(zh·fr·es)는 한 번도 안 넘는다.
+     429 도 아니고 멀티바이트도 아니다(zh 가 실패 0). **원인을 모른다.**
+     모르는 채로 상수를 또 찍는 대신, 다음 데이터가 답을 주도록 계측을 남긴다.
+     성공한 콜도 찍어야 '느린 것' 과 '빠른 것' 을 비교할 수 있다. */
+  t('콜에 걸린 시간을 남긴다', /'콜=' \+ callMs \+ 'ms'/.test(SRC));
+  t('DB 고르기 시간을 따로 남긴다 (콜이 느린지 훑기가 느린지 갈라야 한다)',
+    /'고르기=' \+ pickMs \+ 'ms'/.test(SRC));
+  t('성공한 콜도 남긴다 (실패만 보면 차이를 못 잰다)',
+    /callMs \+ 'ms', 'len=' \+ text\.length/.test(SRC));
+  t('타임아웃으로 죽은 콜도 시간과 함께 남긴다',
+    /catch \(callErr\)[\s\S]{0,300}상한=/.test(SRC));
+  t('계측이 실패를 삼키지 않는다 (다시 던진다)', /throw callErr/.test(SRC));
+
   console.log('\n[6] 프롬프트와 배선');
   t('JSONL 을 요구한다', /one JSON object per line \(JSONL\)/.test(SRC));
   t('배열로 감싸지 말라고 못박는다', /Do NOT wrap them in an array/.test(SRC));

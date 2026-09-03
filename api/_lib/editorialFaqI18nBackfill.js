@@ -182,7 +182,9 @@ async function countPendingSafe(lang) {
 async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
   if (!srcMap.size) return { processed: 0, remaining: 0, lang };
 
+  const pickStart = Date.now();
   const take = await pickPending(lang, srcMap, batch);
+  const pickMs = Date.now() - pickStart;
   if (!take.length) return { processed: 0, remaining: 0, lang };
   /* 이 값은 **이 언어의 번역행 중 faq 가 빈 것 전부**다. 대상(srcMap)보다 조금
      크다 — 원본 faq 가 아직 없는 화보의 행도 세기 때문이다. 상한값으로 읽어야 한다. */
@@ -219,8 +221,32 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
      매 회차 조용히 processed:0. cron_runs 에 '화보FAQ 언어판 0 · it:0 fr:0'
      이 24시간 찍히는 동안 Claude 호출만 나가고 저장은 0건이었다.
      (GROWTH-LEDGER 교훈 1 "돌았다 ≠ 했다" 의 네 번째 재발) */
-  const raw = await callClaude(prompt, MAX_TOKENS, model, timeoutMs);
+  /* 콜에 걸린 시간을 잰다 (2026-09-03).
+
+     실측에서 네 언어(ja·de·it·ru)만 계속 55초 상한을 넘고 세 언어(zh·fr·es)는
+     한 번도 안 넘는다. 우연이 아니라 성질인데 **왜 그런지 모른다.**
+     429 도 아니고(로그 확인) 멀티바이트 탓도 아니다(zh 가 실패 0).
+
+     모르는 채로 상수를 찍는 대신 잴 수 있게 만든다. 재는 값 셋:
+       고르기(pickPending) 몇 초  ·  콜 몇 초  ·  응답 몇 자
+     느린 게 콜인지 DB 훑기인지부터 갈라야 다음 손을 정할 수 있다.
+     (오늘 세 번 추측으로 움직였고 두 번 틀렸다. 이번엔 재고 나서 움직인다.) */
+  const callStart = Date.now();
+  let raw;
+  try {
+    raw = await callClaude(prompt, MAX_TOKENS, model, timeoutMs);
+  } catch (callErr) {
+    console.error('[faq-i18n]', lang, 'batch=' + take.length,
+      '고르기=' + pickMs + 'ms', '콜=' + (Date.now() - callStart) + 'ms',
+      '상한=' + timeoutMs + 'ms', '실패:', String((callErr && callErr.message) || callErr).slice(0, 120));
+    throw callErr;
+  }
+  const callMs = Date.now() - callStart;
   const text = String((raw && raw.text) || '');
+  /* 성공한 콜도 남긴다. 실패한 것만 보면 '느린 것' 과 '빠른 것' 의 차이를 못 잰다. */
+  console.error('[faq-i18n]', lang, 'batch=' + take.length,
+    '고르기=' + pickMs + 'ms', '콜=' + callMs + 'ms', 'len=' + text.length,
+    'stop=' + ((raw && raw.stopReason) || '?'));
 
   /* 파싱은 **공용 계단**(parseJsonArray)을 쓴다. 2026-08-28 까지 이 자리에는
      JSON.parse + /\[[\s\S]*\]/ 정규식이라는 **두 번째 파서**가 따로 있었다.
