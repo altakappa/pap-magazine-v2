@@ -1040,6 +1040,17 @@
       "statusCode": 301
     },
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.papkorea.com"
+        }
+      ],
+      "destination": "https://www.pap-magazine.com/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [
         {
@@ -1051,6 +1062,17 @@
       "permanent": true
     },
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "papkorea.com"
+        }
+      ],
+      "destination": "https://www.pap-magazine.com/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [
         {
@@ -1059,6 +1081,17 @@
         }
       ],
       "destination": "https://www.pap-magazine.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "m.papkorea.com"
+        }
+      ],
+      "destination": "https://www.pap-magazine.com/",
       "permanent": true
     },
     {
