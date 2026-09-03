@@ -42,6 +42,9 @@
 'use strict';
 
 const { ORG_PUBLISHER } = require('./seoRenderer');
+/* 콜 예산은 손으로 계산하지 않는다 — 같은 산술을 세 곳이 각자 쓰다가
+   하루에 세 번 같은 타임아웃 버그를 밟았다 (callBudget.js 헤더 참조). */
+const { canStart, budgetFor } = require('./callBudget');
 
 /* supabase 는 **지연 로드**한다. 모듈 최상단에서 require 하면 클라이언트가
    즉시 만들어지고, env 없는 환경(CI·순수 규칙 테스트)에서 require 만으로
@@ -378,16 +381,14 @@ async function runSovProbe({ timeoutMs = 240000, probes = PROBES, engines = ENGI
       const base = { question_key: p.key, question: p.q, lang: p.lang, engine, mode };
 
       /* 남은 시간이 한 콜에 못 미치면 **부르지 않고 건너뛴다.**
-         호출해 놓고 타임아웃으로 죽이면 돈은 나가고 데이터는 없다. */
-      if (Date.now() > deadline - 15000) { skipped.push(p.key + '/' + engine + '/' + mode); continue; }
+         호출해 놓고 타임아웃으로 죽이면 돈은 나가고 데이터는 없다.
+         검색 모드는 훨씬 오래 걸리므로 문턱도 다르다 — canStart 가 그걸 안다. */
+      const kind = mode === 'search' ? 'ai-search' : 'ai';
+      if (!canStart(deadline, kind)) { skipped.push(p.key + '/' + engine + '/' + mode); continue; }
 
       try {
         const { text, urls, searched } = await ask(engine, p.q, mode,
-          /* 웹검색 콜은 느리다 — 상한을 60초로 잡았더니 claude/search 4칸이
-             전부 'aborted due to timeout' 이었다. 검색 모드만 100초를 준다.
-             남은 예산을 넘지는 않는다(끝낼 수 없는 콜은 시작하지 않는다). */
-          Math.max(15000, Math.min(mode === 'search' ? 100000 : 45000,
-            deadline - Date.now() - 5000)));
+          budgetFor(deadline, kind));
 
         /* 검색 모드인데 검색이 실제로 안 돌았으면 그 답은 학습 레이어 답이다.
            그걸 답변 레이어 칸에 넣으면 두 레이어를 나눈 의미가 사라지고,

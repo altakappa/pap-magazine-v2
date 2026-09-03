@@ -113,8 +113,10 @@ t('실패 조합도 행으로 남긴다 (present=null)',
   /present: null[\s\S]{0,200}error: String/.test(lib));
 t('집계 분모에서 present=null 을 뺀다 (실패를 미등장으로 세지 않는다)',
   /r\.present !== null/.test(lib));
+/* 2026-09-03 — 손계산을 공용 헬퍼로 옮겼다. 같은 타임아웃 버그를 하루에 세 번
+   밟은 뒤 문턱·상한을 callBudget 한 벌로 모았다(tests/no-duplicate-rules). */
 t('시간이 부족하면 부르지 않고 건너뛴다 (돈만 쓰고 데이터 없는 콜 금지)',
-  /deadline - 15000/.test(lib) && /skipped\.push/.test(lib));
+  /!canStart\(deadline, kind\)/.test(lib) && /skipped\.push/.test(lib));
 t('키 없는 엔진은 호출하지 않는다', /engines\.filter\(engineReady\)/.test(lib));
 t('쓸 엔진이 하나도 없으면 503 (조용한 0건 금지)', /statusCode = 503/.test(lib));
 /* 웹검색 도구 이름이 모델·시점마다 갈리는데 로컬에 OpenAI 키가 없어 확인을
@@ -125,8 +127,11 @@ t('400 이 아니면 재시도하지 않는다 (401·429·5xx 를 헛되이 두 
   /res\.status !== 400\) break/.test(lib));
 /* 2026-08-30 실측: claude/search 8칸 중 4칸이 'aborted due to timeout'.
    웹검색 콜은 느리다 — 상한이 60초면 못 끝낸다. */
-t('검색 모드에 더 긴 콜 상한을 준다',
-  /mode === 'search' \? 100000 : 45000/.test(lib));
+t('검색 모드를 별도 종류로 다룬다 (문턱·상한이 ai 와 다르다)',
+  /mode === 'search' \? 'ai-search' : 'ai'/.test(lib)
+  && /budgetFor\(deadline, kind\)/.test(lib));
+t('예산 산술을 이 파일에서 손으로 쓰지 않는다',
+  !/deadline - Date\.now\(\)/.test(lib));
 t('검색 횟수를 줄여 한 콜을 짧게 한다 (max_uses 3)',
   /max_uses: 3/.test(lib) && !/max_uses: 5/.test(lib));
 t('웨이브를 줄인다 (동시 10 — 제공사별 5)', /concurrency = 10/.test(lib));
