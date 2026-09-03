@@ -101,6 +101,32 @@ console.log('\n=== 4. 통합 피드(/rss.xml)와 헷갈리지 않게 ===');
   t('/rss.xml 은 통합 피드로 따로 간다', mainRoute.length === 1);
 }
 
+/* ── 2026-09-03: 핀 목적지는 인스타그램 ────────────────────────────────
+   도메니코: "모든 사이트에서의 주 도달은 웹사이트가 아닌 인스타그램이고
+   서브 도달은 웹사이트입니다."
+
+   sync-pinterest 가 자동 발행을 담당하는 유일한 크론이다(pinterest-pin 은
+   이중 게시 때문에 자동 스케줄에서 빠져 있다). 그래서 여기가 새 핀의
+   목적지를 정하는 실질적 한 곳이다.
+
+   실측 배경(2026-09-03): 내 핀 504개 중 366개는 인스타를 가리키고
+   136개는 웹을 가리켰다. 그 136개가 바로 이 크론이 만든 핀이다.
+   크론을 안 고치면 기존 핀을 손으로 고쳐도 웹 링크 핀이 계속 늘어난다. */
+console.log('\n=== 핀 목적지 = 인스타 원본 (2026-09-03) ===');
+{
+  const sp = fs.readFileSync(path.join(ROOT, 'api/cron/sync-pinterest.js'), 'utf8');
+  t('단일 링크 규칙 모듈을 쓴다', sp.includes('singleLinkDestination'));
+  t('규칙을 자기 파일에 복제하지 않는다',
+    !/const link = SITE \+ '\/editorial\//.test(sp));
+  t('인스타 원본 컬럼을 실제로 조회한다', /select\([^)]*source_instagram_url/.test(sp));
+
+  const lib = fs.readFileSync(path.join(ROOT, 'api/_lib/igFirstLink.js'), 'utf8');
+  t('원본이 없으면 웹으로 폴백한다 (프로필로 뭉개지 않는다)',
+    /return \{ url: SITE \+ path, isIg: false \}/.test(lib));
+  t('인스타 URL 만 인스타로 판정한다', /instagram\\\.com/.test(lib));
+  t('추적 쿼리(?igsh=…)를 떼고 보낸다', /raw\.split\('\?'\)\[0\]/.test(lib));
+}
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ pinterest-editorial-only tests FAILED'); process.exit(1); }
 console.log('✅ pinterest-editorial-only tests passed');

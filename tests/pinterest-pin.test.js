@@ -21,6 +21,13 @@ ok('공식 v5 API 사용', src.includes('api.pinterest.com/v5/pins'));
 // 2026-07-31: '/slug' 는 '/editorial/slug' 로 301 된다. 핀 링크는 리디렉션 없는
 // 최종 URL 이어야 한다 (sync-pinterest 와 동일 규칙).
 ok('원문 링크 부착 (리디렉션 없는 최종 URL)', src.includes("SITE + '/editorial/' + encodeURIComponent(e.slug)"));
+/* 2026-09-03 도메니코 확정: "모든 사이트에서의 주 도달은 웹사이트가 아닌
+   인스타그램이고 서브 도달은 웹사이트입니다."
+   핀은 목적지 링크가 하나뿐이라 "IG 먼저 · 웹 다음" 순서를 쓸 수 없다.
+   → 목적지 = 인스타 원본. 규칙은 igFirstLink 한 곳에만 둔다. */
+ok('핀 목적지가 인스타 원본 (단일 링크 규칙)', src.includes('singleLinkDestination'));
+ok('규칙을 자기 파일에 복제하지 않음', !/link\s*=\s*SITE \+ '\/editorial\//.test(src));
+ok('인스타 원본 컬럼을 실제로 조회', src.includes('source_instagram_url'));
 ok('토큰 401 시 리프레시로 자동 갱신 후 1회 재시도', src.includes('refreshAccessToken') && src.includes("grant_type: 'refresh_token'"));
 // 2026-07-31: pinterest-pin 크론 은퇴 — sync-pinterest 와 서로 다른 추적 테이블을
 // 봐서 같은 에디토리얼을 이중 게시하는 충돌 때문. 핸들러는 수동 트리거용으로 남기되

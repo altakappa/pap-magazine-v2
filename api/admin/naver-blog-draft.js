@@ -352,10 +352,17 @@ async function generateDraft(art, brand) {
   });
   body = body.replace(/\[IMG\d+\]/g, '');
   // QA #351 — 체크리스트 + CTA는 프롬프트가 body_html 안에 직접 넣도록 지시했음.
-  // 시스템은 원문 링크 + 인스타 CTA 블록만 뒤에 붙인다.
-  body += '<p>&nbsp;</p><p>전체 기사와 더 많은 이미지는 <a href="' + artUrl + '">' + brandLabel(brand, b.name) +
-    ' 원문</a>에서 보실 수 있어요.</p>' +
-    igCtaBlock(art.source_instagram_url, b.ig, '소식');
+  // 시스템은 인스타 CTA + 원문 링크만 뒤에 붙인다.
+  /* 2026-09-03 — 인스타 CTA 를 원문 링크보다 **앞으로** 옮겼다.
+     도메니코: "모든 사이트에서의 주 도달은 웹사이트가 아닌 인스타그램이고
+     서브 도달은 웹사이트입니다."
+     블로그 글은 사람이 직접 게시하므로 이 초안이 곧 최종 문안이다.
+     웹 원문 링크는 지우지 않았다 — 유료 사다리·성장 헌법 8항.
+     링크 개수도 그대로다(네이버는 외부링크가 많으면 저품질로 본다). */
+  body += '<p>&nbsp;</p>' +
+    igCtaBlock(art.source_instagram_url, b.ig, '소식') +
+    '<p>전체 기사와 더 많은 이미지는 <a href="' + artUrl + '">' + brandLabel(brand, b.name) +
+    ' 원문</a>에서 보실 수 있어요.</p>';
 
   return Object.assign({
     title: draft.title || art.title,
@@ -465,10 +472,13 @@ async function generateEditorialDraft(ed, brand) {
   });
   body = body.replace(/\[IMG\d+\]/g, '');
   // QA #351 — 체크리스트 + CTA는 프롬프트가 body_html 안에 직접 포함하도록 지시.
-  // 시스템은 원문 링크 + 인스타 CTA + 저작권 라인만 뒤에 붙인다.
-  body += '<p>&nbsp;</p><p>전체 화보와 더 많은 컷은 <a href="' + url + '">' + brandLabel('pap', b.name) +
-    ' 웹사이트</a>에서 만나보실 수 있어요.</p>' +
+  // 시스템은 인스타 CTA + 원문 링크 + 저작권 라인만 뒤에 붙인다.
+  /* 2026-09-03 — 인스타 CTA 가 웹 링크보다 먼저 (도메니코: 주 도달은 인스타).
+     웹 링크와 링크 개수는 그대로 둔다. */
+  body += '<p>&nbsp;</p>' +
     igCtaBlock(ed.source_instagram_url, b.ig, '화보') +
+    '<p>전체 화보와 더 많은 컷은 <a href="' + url + '">' + brandLabel('pap', b.name) +
+    ' 웹사이트</a>에서 만나보실 수 있어요.</p>' +
     '<p style="color:#888;font-size:12px">ⓒ PAP MAGAZINE (PAP매거진) — 무단 전재 및 재배포 금지</p>';
 
   return Object.assign({

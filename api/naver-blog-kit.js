@@ -154,8 +154,11 @@ module.exports = async function handler(req, res) {
       gallery.filter(g => g !== cover).map((g, i) =>
         `<img src="${esc(g)}" alt="${esc(e.title)} 화보 컷 ${i + 2} — PAP매거진">`).join('') +
       (creditLines.length ? `<p class="credit"><b>CREDITS</b><br>${creditLines.map(esc).join('<br>')}</p>` : '') +
-      `<p>전체 화보와 더 많은 에디토리얼은 <a href="${esc(url)}">PAP매거진 웹사이트</a>에서,` +
-      ` 매일 업데이트되는 화보와 셀럽 뉴스는 <a href="${esc(IG)}">인스타그램 @pap_magazine</a>에서 만나보세요.</p>` +
+      /* 2026-09-03 — 인스타를 문장 앞으로 (도메니코: 주 도달은 인스타, 서브가 웹).
+         복사해서 블로그에 붙이는 문안이라 **먼저 나오는 링크가 곧 우선순위**다.
+         웹 링크는 그대로 둔다(유료 사다리·성장 헌법 8항). */
+      `<p>매일 업데이트되는 화보와 셀럽 뉴스는 <a href="${esc(IG)}">인스타그램 @pap_magazine</a>에서,` +
+      ` 전체 화보와 더 많은 에디토리얼은 <a href="${esc(url)}">PAP매거진 웹사이트</a>에서 만나보세요.</p>` +
       `<p class="credit">ⓒ PAP MAGAZINE (PAP매거진) — 무단 전재 및 재배포 금지</p>`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

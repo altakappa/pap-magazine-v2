@@ -64,8 +64,11 @@ function buildDescription(art, url) {
   lines.push('');
   const fs = firstSentence(art.content);
   if (fs && fs.length <= 300) { lines.push(fs); lines.push(''); }
-  lines.push('▶ 기사 전문 : ' + url);
+  /* 2026-09-03 — 인스타가 웹보다 먼저. 도메니코: "모든 사이트에서의 주 도달은
+     웹사이트가 아닌 인스타그램이고 서브 도달은 웹사이트입니다."
+     웹을 끊지 않고 순서로 우선순위를 표현한다(스레드·X 와 같은 원칙). */
   lines.push('▶ 인스타그램 : ' + SITE + '/ig/youtube');
+  lines.push('▶ 기사 전문 : ' + url);
   lines.push('▶ pap-magazine.com — 아트 기반 패션·뷰티·컬쳐 매거진');
   lines.push('');
   lines.push(buildHashtags(art).join(' '));

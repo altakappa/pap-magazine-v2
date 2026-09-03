@@ -16,6 +16,7 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
+const { singleLinkDestination } = require('../_lib/igFirstLink');
 
 const SITE = 'https://www.pap-magazine.com';
 
@@ -101,7 +102,7 @@ module.exports = withCronGuard('pinterest-pin', async function handler(req, res)
   try {
     /* 후보: 발행된 에디토리얼 최신순. 이미 핀한 slug 는 제외. */
     const { data: eds, error } = await supabaseAdmin.from('editorials')
-      .select('slug,title,cover_image,thumbnail,issue,published_date')
+      .select('slug,title,cover_image,thumbnail,issue,published_date,source_instagram_url')
       .eq('status', 'published').not('cover_image', 'is', null)
       .order('published_date', { ascending: false }).limit(120);
     if (error) throw error;
@@ -120,10 +121,16 @@ module.exports = withCronGuard('pinterest-pin', async function handler(req, res)
 
     const results = [];
     for (const e of todo) {
-      /* 2026-07-31: '/slug' 는 '/editorial/slug' 로 301 된다 — 핀 링크는 최종 URL 로. */
-      const link = SITE + '/editorial/' + encodeURIComponent(e.slug);
+      /* 2026-09-03: 핀 목적지는 인스타그램 원본. 도메니코 확정
+         ("모든 사이트에서의 주 도달은 웹사이트가 아닌 인스타그램").
+         핀은 링크를 하나만 받으므로 순서로 우선순위를 표현할 수 없다.
+         원본이 없는 화보만 웹으로 폴백한다 — 규칙은 igFirstLink 한 곳에.
+         2026-07-31: 폴백 시 '/slug' 는 '/editorial/slug' 로 301 되므로 최종 URL 로. */
+      const dest = singleLinkDestination(e, '/editorial/' + encodeURIComponent(e.slug));
+      const link = dest.url;
+      const webUrl = SITE + '/editorial/' + encodeURIComponent(e.slug);
       const desc = [e.title, e.issue ? 'PAP MAGAZINE · ' + e.issue : 'PAP MAGAZINE',
-        'Fashion editorial — full story:', link].filter(Boolean).join('\n');
+        'Fashion editorial — full story:', webUrl].filter(Boolean).join('\n');
       try {
         const pinId = await createPin({
           token, boardId, title: e.title, description: desc, link, imageUrl: e.cover_image,

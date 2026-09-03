@@ -41,6 +41,7 @@ const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실�
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { toOwnedImageUrl } = require('../_lib/tiktok');
+const { IG_HANDLE_URL } = require('../_lib/igFirstLink');
 const buffer = require('../_lib/buffer');
 
 // TikTok 캡션 상한. TikTok API 자체는 4000자지만 Buffer 를 거치면 2200자다.
@@ -120,6 +121,11 @@ function buildCaption(ed) {
     creditLines.forEach((l) => lines.push(l));
     lines.push('');
   }
+  /* 2026-09-03 — 인스타가 먼저. 도메니코: "모든 사이트에서의 주 도달은
+     웹사이트가 아닌 인스타그램이고 서브 도달은 웹사이트입니다."
+     틱톡 캡션의 URL 은 클릭이 안 된다 — 계측도 불가능하다. 남는 수단이
+     "눈으로 읽고 찾아가게 하는 것"뿐이라 **먼저 오는 줄이 곧 우선순위**다. */
+  lines.push('▶ 인스타그램 : ' + IG_HANDLE_URL);
   // 직접 URL — 클릭은 안 되지만 복사·검색 가능한 명시적 출처 (표기는 짧게)
   lines.push('▶ 전체 화보 : pap-magazine.com/editorial/' + (ed.slug || ''));
   lines.push('');
@@ -225,6 +231,8 @@ module.exports = withCronGuard('tiktok-post', async function handler(req, res) {
         .split(/(?<=[.!?다요])\s/)[0] || '';
       const capLines = [art.title + ' — PAP MAGAZINE', ''];
       if (firstSentence && firstSentence.length <= 200) { capLines.push(firstSentence); capLines.push(''); }
+      /* 2026-09-03 — 인스타가 먼저 (도메니코: 주 도달은 인스타). */
+      capLines.push('▶ 인스타그램 : ' + IG_HANDLE_URL);
       capLines.push('▶ 기사 전문 : ' + artUrl);
       capLines.push('');
       capLines.push(['#PAPMAGAZINE', '#패션뉴스', art.category ? '#' + String(art.category).replace(/[^A-Za-z0-9가-힣]/g, '').toUpperCase() : null].filter(Boolean).join(' '));

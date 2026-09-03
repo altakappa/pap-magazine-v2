@@ -1077,7 +1077,14 @@ const templates = {
           <p style="color:#999;font-size:13px;line-height:1.7;margin:0 0 24px;">${escapeHtml(campaign.hero_body || '')}</p>
           <div style="font-size:12px;color:#aaa;margin-bottom:24px;">${L.greeting.replace('{name}', `<strong style="color:#fff;">${escapeHtml(greeting)}</strong>`)}</div>
           <table width="100%" cellpadding="0" cellspacing="0">${cards}</table>
-          <a href="${withMailUtm(FRONTEND_URL + '/')}" style="display:inline-block;background:#fff;color:#000;padding:14px 36px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;margin-top:8px;">VIEW MORE ON PAP</a>
+          <!-- 2026-09-03 — 웹을 큰 흰 버튼에서 텍스트 링크로 낮췄다.
+               도메니코: "모든 사이트에서의 주 도달은 웹사이트가 아닌
+               인스타그램이고 서브 도달은 웹사이트입니다."
+               이 메일의 껍데기(wrapMarketing)에는 이미 IG 팔로우 흰 버튼이
+               본문 바로 아래 붙는다. 본문에도 같은 크기의 흰 버튼이 있으면
+               둘이 맞먹어 우선순위가 안 보인다. **버튼은 IG 하나만** 남기고
+               웹은 링크로 둔다 — 지우지는 않는다(유료 사다리·헌법 8항). -->
+          <a href="${withMailUtm(FRONTEND_URL + '/')}" style="display:inline-block;color:#aaa;font-size:11px;font-weight:600;letter-spacing:2px;text-decoration:underline;margin-top:8px;">VIEW MORE ON PAP</a>
         `,
         unsubUrl: `${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}`,
         lang,
@@ -1149,12 +1156,19 @@ const templates = {
     <!-- 2026-08-08 — 도달점 CTA. 이 다이제스트에는 그동안 PAP 로 가는 링크가
          하나도 없었다(뉴스 카드는 텍스트, 링크는 수신거부·언어선택뿐).
          '재방문 엔진'이 아무 데도 안 보내고 있었던 것 — 성장 헌법 1·3조 위반.
-         웹은 utm=newsletter, IG 는 ig-out?src=newsletter 로 둘 다 계측된다. -->
+         웹은 utm=newsletter, IG 는 ig-out?src=newsletter 로 둘 다 계측된다.
+
+         2026-09-03 — 순서와 비중을 뒤집었다. 도메니코: "모든 사이트에서의
+         주 도달은 웹사이트가 아닌 인스타그램이고 서브 도달은 웹사이트입니다."
+         전에는 웹이 큰 버튼이고 IG 가 작은 밑줄 링크였다. 이제 IG 가 버튼,
+         웹이 보조 링크다. **웹을 지우지는 않았다** — 유료 구독 사다리가 웹에
+         있고 성장 헌법 8항이 한쪽 방향 제거를 금한다. 스레드·X·유튜브와 같은
+         원칙이다: "우선시"는 "독점"이 아니다. -->
     <tr><td align="center" style="padding:28px 28px 4px;">
-      <a href="${withMailUtm(FRONTEND_URL + '/')}" style="display:inline-block;background:#6b1a1a;color:#ffffff;padding:13px 32px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">VIEW PAP MAGAZINE</a>
+      <a href="${IG_FOLLOW_MAIL}" style="display:inline-block;background:#6b1a1a;color:#ffffff;padding:13px 32px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">FOLLOW @PAP_MAGAZINE</a>
     </td></tr>
     <tr><td align="center" style="padding:6px 28px 2px;font-size:11px;">
-      <a href="${IG_FOLLOW_MAIL}" style="color:#6b1a1a;text-decoration:underline;font-weight:600;letter-spacing:1px;">FOLLOW @PAP_MAGAZINE</a>
+      <a href="${withMailUtm(FRONTEND_URL + '/')}" style="color:#6b1a1a;text-decoration:underline;font-weight:600;letter-spacing:1px;">VIEW PAP MAGAZINE</a>
     </td></tr>
     <tr><td style="padding:18px 28px 0;"><hr style="border:none;border-top:1px solid #eee;"></td></tr>
     <!-- Language selector: lets the recipient re-pick their newsletter

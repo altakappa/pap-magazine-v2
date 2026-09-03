@@ -50,6 +50,7 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { verdictForMedia } = require('../_lib/igCredit');
+const { IG_HANDLE_URL } = require('../_lib/igFirstLink');
 const buffer = require('../_lib/buffer');
 
 const CAPTION_MAX = 2200;          // Buffer 경유 상한 (TikTok 자체는 4000)
@@ -75,6 +76,9 @@ function buildCaption(art) {
   const lines = [String(art.title || '') + ' — PAP MAGAZINE', ''];
   const s = firstSentence(art.content);
   if (s && s.length <= 200) { lines.push(s); lines.push(''); }
+  /* 2026-09-03 — 인스타가 먼저 (도메니코: 주 도달은 인스타, 서브가 웹).
+     틱톡 캡션은 클릭이 안 돼 계측 불가 — 순서가 유일한 우선순위 표현이다. */
+  lines.push('▶ 인스타그램 : ' + IG_HANDLE_URL);
   lines.push('▶ 기사 전문 : ' + url);
   lines.push('');
   lines.push([

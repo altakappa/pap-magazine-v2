@@ -115,11 +115,12 @@ function buildDescription(title, tagLine) {
   const lines = [];
   lines.push(title);
   lines.push('');
+  /* 웹→IG 는 계측 경로만 (성장 헌법 3항). /ig/:src 는 경로형이라 외부 앱이
+     쿼리를 지워도 귀속이 살아남는다 (2026-07-30 미디어킷 교훈).
+     2026-09-03 — 인스타가 웹보다 먼저 (도메니코: 주 도달은 인스타). */
+  lines.push('▶ Instagram : ' + SITE + '/ig/youtube');
   /* 성장 헌법 3항 — 외부 발신 링크는 전부 utm. */
   lines.push('▶ PAP MAGAZINE : ' + SITE + '/?utm_source=youtube&utm_medium=social&utm_campaign=pap_story');
-  /* 웹→IG 는 계측 경로만 (성장 헌법 3항). /ig/:src 는 경로형이라 외부 앱이
-     쿼리를 지워도 귀속이 살아남는다 (2026-07-30 미디어킷 교훈). */
-  lines.push('▶ Instagram : ' + SITE + '/ig/youtube');
   if (tagLine) { lines.push(''); lines.push(tagLine); }
   return lines.join('\n');
 }

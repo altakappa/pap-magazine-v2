@@ -31,6 +31,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { buildHashtags } = require('../_lib/youtubeMeta');
+const { IG_HANDLE_URL } = require('../_lib/igFirstLink');
 const drive = require('../_lib/driveVideos');
 const buffer = require('../_lib/buffer');
 const { matchArticle, groupUnmatched } = require('../_lib/koMatch');
@@ -65,6 +66,9 @@ function buildCaption(art) {
   const lines = [String(art.title || '') + ' — PAP MAGAZINE', ''];
   const fs = firstSentence(art.content);
   if (fs && fs.length <= 200) { lines.push(fs); lines.push(''); }
+  /* 2026-09-03 — 인스타가 먼저 (도메니코: 주 도달은 인스타, 서브가 웹).
+     틱톡 캡션은 클릭이 안 돼 계측 불가 — 순서가 유일한 우선순위 표현이다. */
+  lines.push('▶ 인스타그램 : ' + IG_HANDLE_URL);
   lines.push('▶ 기사 전문 : ' + url);
   lines.push('');
   lines.push(buildHashtags(art, 5).join(' '));

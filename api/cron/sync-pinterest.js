@@ -38,6 +38,8 @@ function note(res, msg) {
   return msg;
 }
 
+const { singleLinkDestination } = require('../_lib/igFirstLink');
+
 const SITE = 'https://www.pap-magazine.com';
 const PIN_API = 'https://api.pinterest.com/v5/pins';
 
@@ -106,7 +108,7 @@ module.exports = withCronGuard('sync-pinterest', async function handler(req, res
     // 미처리 에디토리얼 (최신 우선)
     const { data: eds, error } = await supabaseAdmin
       .from('editorials')
-      .select('id, title, title_en, slug, description, description_en, cover_image, og_image, thumbnail, issue')
+      .select('id, title, title_en, slug, description, description_en, cover_image, og_image, thumbnail, issue, source_instagram_url')
       .eq('status', 'published')
       .eq('legacy', false)
       .is('pinterest_synced_at', null)
@@ -136,7 +138,10 @@ module.exports = withCronGuard('sync-pinterest', async function handler(req, res
         continue;
       }
 
-      const link = SITE + '/editorial/' + encodeURIComponent(handle);
+      /* 2026-09-03: 핀 목적지는 인스타그램 원본 (도메니코 확정).
+         핀은 링크가 하나뿐이라 "IG 먼저 · 웹 다음" 순서를 쓸 수 없다.
+         원본이 없는 화보만 웹으로 폴백. 규칙은 igFirstLink 한 곳에 둔다. */
+      const link = singleLinkDestination(e, '/editorial/' + encodeURIComponent(handle)).url;
       const kw = e.title + ' — PAP Magazine editorial'
         + (e.issue ? ' · ' + e.issue : '');
       const baseDesc = String(e.description || e.description_en || '').replace(/<[^>]*>/g, ' ');

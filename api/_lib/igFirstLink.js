@@ -89,4 +89,53 @@ function igFirstLinkBlock(art, channel, webUrl, opts) {
   return lines.join('\n');
 }
 
-module.exports = { igOutUrl, igFirstLinkBlock, CHANNELS, SITE, IG_PROFILE };
+/**
+ * 링크를 딱 하나만 넣을 수 있는 채널의 목적지 (2026-09-03)
+ * ────────────────────────────────────────────────────────────────────
+ * 도메니코 2026-09-03: "모든 사이트에서의 주 도달은 웹사이트가 아닌
+ * 인스타그램이고 서브 도달은 웹사이트입니다."
+ *
+ * 스레드·X 는 한 게시물에 두 링크를 넣을 수 있어서 igFirstLinkBlock 으로
+ * "IG 먼저, 웹 다음"을 표현했다. 그런데 **핀터레스트 핀은 목적지 링크가
+ * 딱 하나**다. 순서로 우선순위를 표현할 수 없으므로 IG 하나만 남긴다.
+ * (도메니코 확정: "인스타 하나만")
+ *
+ * ig-out 을 경유하지 않는다 — 핀터레스트가 리다이렉트 링크를 스팸으로
+ * 판정할 위험이 있고, 실제 기존 핀 366개도 인스타 원본 URL 을 직접 쓴다.
+ * 계측은 핀터레스트 자체 아웃바운드 클릭 지표로 한다.
+ *
+ * 원본 인스타 주소가 없으면 웹으로 폴백한다. 발행 화보의 94.9% 는 원본이
+ * 있지만(2026-09-03 실측 2,179/2,295), 없는 건을 프로필로 보내면 어느
+ * 화보인지 알 수 없는 곳에 떨어뜨리는 셈이라 웹 화보 페이지가 낫다.
+ *
+ * @param {{source_instagram_url?:string, ig?:string, permalink?:string, slug?:string}} row
+ * @param {string} [webPath]  폴백 경로. 기본 '/editorial/<slug>'
+ * @returns {{url:string, isIg:boolean}}
+ */
+function singleLinkDestination(row, webPath) {
+  const raw = String((row && (row.source_instagram_url || row.ig || row.permalink)) || '');
+  if (/^https?:\/\/(www\.)?instagram\.com\//i.test(raw)) {
+    // 추적 쿼리(?igsh=…)는 떼고 보낸다.
+    return { url: raw.split('?')[0], isIg: true };
+  }
+  const path = webPath || ('/editorial/' + encodeURIComponent(String((row && row.slug) || '')));
+  return { url: SITE + path, isIg: false };
+}
+
+/**
+ * 링크가 클릭조차 안 되는 채널의 표기 (2026-09-03)
+ * ────────────────────────────────────────────────────────────────────
+ * 틱톡 캡션의 URL 은 클릭되지 않는다. 계측도 불가능하다.
+ * 남는 수단은 "눈으로 읽고 손으로 찾아가게 하는 것" 하나뿐이라
+ * **읽기 쉬운 표기**가 곧 성능이다. 그래서 ig-out 도 utm 도 붙이지 않는다
+ * (붙이면 길어지기만 하고 아무 이득이 없다).
+ *
+ * 여기 상수를 두는 이유는 계정 핸들이 채널마다 흩어지지 않게 하기 위해서다.
+ */
+const IG_HANDLE = '@pap_magazine';
+const IG_HANDLE_URL = 'instagram.com/pap_magazine';
+
+module.exports = {
+  igOutUrl, igFirstLinkBlock, singleLinkDestination,
+  CHANNELS, SITE, IG_PROFILE, IG_HANDLE, IG_HANDLE_URL,
+};

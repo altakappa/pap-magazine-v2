@@ -48,19 +48,24 @@ function buildDescription(art, url) {
   lines.push('');
   const fs = firstSentence(art.content);
   if (fs && fs.length <= 300) { lines.push(fs); lines.push(''); }
-  /* 2026-08-08 — 성장 헌법 3조: 유튜브 설명란 링크는 클릭 가능하므로 계측한다.
-     (유튜브는 링크의 쿼리 파라미터를 보존한다 — 미디어킷의 '외부 앱이 쿼리를
-     지운다' 교훈은 IG 프로필 링크(/ig/youtube 경로형) 쪽에만 해당.) */
-  lines.push('▶ 기사 전문 : ' + url + (url.indexOf('?') >= 0 ? '&' : '?')
-    + 'utm_source=youtube&utm_medium=social&utm_campaign=pap_auto');
   /* 인스타 유입 링크 (2026-07-30 도메니코 요청).
    * 유튜브는 설명란 외부 링크를 감점하지 않는다 — 정책상 제재 대상은
    * 가이드라인 위반 사이트·멀웨어·스팸이다. 다만 첫 줄부터 링크로 도배하면
    * 스팸 신호가 되므로 본문(제목·첫 문장) 뒤에만 둔다.
    * 계측: 직링크 대신 /ig/youtube 를 태워 ig_outclicks 에 남긴다. 그래야
    * "유튜브가 실제로 인스타 팔로워를 만들어 주는가" 를 숫자로 답할 수 있다.
-   * 경로형인 이유는 미디어킷 실측 교훈(외부 앱이 쿼리 파라미터를 지운다). */
+   * 경로형인 이유는 미디어킷 실측 교훈(외부 앱이 쿼리 파라미터를 지운다).
+   *
+   * 2026-09-03 — 인스타를 웹보다 **먼저** 둔다. 도메니코: "모든 사이트에서의
+   * 주 도달은 웹사이트가 아닌 인스타그램이고 서브 도달은 웹사이트입니다."
+   * 스레드·X(igFirstLinkBlock)와 같은 원칙이다. 웹을 끊지 않고 순서로
+   * 우선순위를 표현한다 — "우선시"는 "독점"이 아니다. */
   lines.push('▶ 인스타그램 : ' + SITE + '/ig/youtube');
+  /* 2026-08-08 — 성장 헌법 3조: 유튜브 설명란 링크는 클릭 가능하므로 계측한다.
+     (유튜브는 링크의 쿼리 파라미터를 보존한다 — 미디어킷의 '외부 앱이 쿼리를
+     지운다' 교훈은 IG 프로필 링크(/ig/youtube 경로형) 쪽에만 해당.) */
+  lines.push('▶ 기사 전문 : ' + url + (url.indexOf('?') >= 0 ? '&' : '?')
+    + 'utm_source=youtube&utm_medium=social&utm_campaign=pap_auto');
   lines.push('▶ pap-magazine.com — 아트 기반 패션·뷰티·컬쳐 매거진');
   lines.push('');
   /* 2026-08-04 도메니코 — 해시태그를 '기사에 관련있는 셀럽이나 내용의 단어'로.
