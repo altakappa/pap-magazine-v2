@@ -12,7 +12,7 @@
  */
 
 const { requireAdmin } = require('../_lib/auth');
-const { withCronGuard } = require('../_lib/cronGuard');
+const { withCronGuard, reportProduction } = require('../_lib/cronGuard');
 const { runFaqBackfillBatch, normalizeBatch } = require('../_lib/faqBackfill');
 const { runFaqEnBatch } = require('../_lib/faqEnBackfill');
 
@@ -54,7 +54,21 @@ module.exports = withCronGuard('backfill-faq', async function handler(req, res) 
        돌면서 실제로는 0건만 만든 걸 2주 가까이 못 봤다. (2026-08-04) */
     const base = out.note || ('FAQ ' + (out.processed || 0) + ' · 잔여 '
       + (out.remaining == null ? '?' : out.remaining));
-    res.locals.cronNote = base + (en && en.note ? ' | ' + en.note : '');
+
+    /* 생산량 계약 (2026-09-03) — note 는 사람용, 숫자는 기계용이다.
+       이 크론은 ko 원본과 영문판 **두 가지**를 만드므로 합쳐서 신고한다.
+       감시자(productionHealth)가 묻는 건 하나다: "돌았는데 아무것도 안 만들었나."
+       잔여도 둘을 합친다 — 한쪽이 완주해도 다른 쪽이 남았으면 아직 할 일이 있다. */
+    const producedTotal = (out.processed || 0) + ((en && en.processed) || 0);
+    const remainingTotal = (typeof out.remaining === 'number' ? out.remaining : 0)
+      + (en && typeof en.remaining === 'number' ? en.remaining : 0);
+    reportProduction(res, {
+      produced: producedTotal,
+      // 둘 다 숫자를 못 준 경우에만 잔여를 생략한다 — 모르면 아는 척하지 않는다.
+      remaining: (typeof out.remaining === 'number' || (en && typeof en.remaining === 'number'))
+        ? remainingTotal : undefined,
+      note: base + (en && en.note ? ' | ' + en.note : ''),
+    });
     return res.status(200).json({ ok: true, ...out, en });
   } catch (err) {
     const code = err && err.statusCode ? err.statusCode : 500;

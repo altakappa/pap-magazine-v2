@@ -149,13 +149,14 @@ async function _logStart(cronName) {
   }
 }
 
-async function _logFinish(rowId, ok, durationMs, note, error) {
+async function _logFinish(rowId, ok, durationMs, note, error, prod) {
   try {
     const { error: upErr } = await supabaseAdmin.from('cron_runs').update({
       ok,
       duration_ms: durationMs,
       note: note ? String(note).slice(0, 500) : null,
       error: error ? String(error).slice(0, 800) : null,
+      ...(prod || {}),
     }).eq('id', rowId);
     if (upErr) throw upErr;
     return true;
@@ -165,7 +166,7 @@ async function _logFinish(rowId, ok, durationMs, note, error) {
   }
 }
 
-async function _logRun(cronName, ok, durationMs, note, error) {
+async function _logRun(cronName, ok, durationMs, note, error, prod) {
   try {
     await supabaseAdmin.from('cron_runs').insert({
       cron_name: cronName,
@@ -173,6 +174,7 @@ async function _logRun(cronName, ok, durationMs, note, error) {
       duration_ms: durationMs,
       note: note ? String(note).slice(0, 500) : null,
       error: error ? String(error).slice(0, 800) : null,
+      ...(prod || {}),
     });
   } catch (e) {
     console.error('[cronGuard] cron_runs INSERT 실패:', e && e.message);
@@ -394,9 +396,15 @@ function withCronGuard(cronName, handler, opts) {
 
       /* 로그는 항상 남긴다 (일시성 실패도 진단용).
          시작 행이 있으면 그 줄을 갱신하고, 없으면(시작 기록 실패) 예전처럼 새로 넣는다. */
+      /* 생산량 계약 (2026-09-03) — 사람이 읽는 note 와 **별개로** 기계가 읽는
+         숫자를 남긴다. note 를 정규식으로 파싱하는 방식(faqHealth 등)은 문구를
+         바꾸는 순간 감시가 조용히 눈이 먼다. 신고하지 않는 크론은 null 이라
+         종전과 완전히 같다 — 이 배선만으로는 아무 동작도 안 바뀐다. */
+      const prod = _productionOf(res);
+
       let logged = false;
-      if (startId) logged = await _logFinish(startId, ok, duration, noteOut, error);
-      if (!logged) await _logRun(cronName, ok, duration, noteOut, error);
+      if (startId) logged = await _logFinish(startId, ok, duration, noteOut, error, prod);
+      if (!logged) await _logRun(cronName, ok, duration, noteOut, error, prod);
 
       /* 기록이 끝난 뒤에 응답을 내보낸다 — 이 순서가 핵심이다.
          반대로 하면 긴 실행에서 인스턴스가 얼어 기록이 통째로 사라진다. */
@@ -419,4 +427,38 @@ function withCronGuard(cronName, handler, opts) {
   };
 }
 
-module.exports = { withCronGuard, RUNNING_MARK };
+/* res.locals 에서 생산량을 꺼낸다. 숫자가 아니면 아예 안 적는다 —
+   '0 인지 신고를 안 한 건지' 를 뒤에서 가를 수 있어야 한다. */
+function _num(v) {
+  return (typeof v === 'number' && Number.isFinite(v)) ? Math.trunc(v) : null;
+}
+function _productionOf(res) {
+  const L = (res && res.locals) || {};
+  const out = {};
+  const p = _num(L.produced);
+  const r = _num(L.remaining);
+  if (p !== null) out.produced = p;
+  if (r !== null) out.remaining = r;
+  return Object.keys(out).length ? out : null;
+}
+
+/**
+ * 크론이 "이번에 몇 건 만들었고 몇 건 남았나" 를 신고한다.
+ *
+ *   reportProduction(res, { produced: 12, remaining: 3474, note: '영문FAQ 12 · 잔여 3474' });
+ *
+ * note 는 사람용, 숫자는 기계용이다. **둘 다 남긴다** — 사람이 읽을 한 줄이
+ * 없으면 진단이 느려지고, 기계가 읽을 숫자가 없으면 감시가 note 문구에 묶인다.
+ *
+ * remaining 을 모르면 생략한다(null). 그러면 감시자가 "완주인지 막힌 건지"
+ * 판단하지 않는다 — 모르는 걸 아는 척하지 않는 게 이 저장소의 방침이다.
+ */
+function reportProduction(res, { produced, remaining, note } = {}) {
+  if (!res) return;
+  res.locals = res.locals || {};
+  if (typeof produced === 'number') res.locals.produced = produced;
+  if (typeof remaining === 'number') res.locals.remaining = remaining;
+  if (note) res.locals.cronNote = note;
+}
+
+module.exports = { withCronGuard, RUNNING_MARK, reportProduction, _productionOf };

@@ -26,6 +26,11 @@ const { pushAlert } = require('../_lib/pushAlert');
 const { listRecentMedia, isLikelyEditorialCaption, _extractShortcode } = require('../_lib/instagramImport');
 const { diagnoseBackfill, buildBackfillAlert } = require('../_lib/backfillHealth');
 const { judgeTranslateHealth, buildTranslateAlert } = require('../_lib/translateHealth');
+/* 2026-09-03 — 크론 종류를 가리지 않는 생산량 감시. 위 세 검사(backfill·
+   translate·faq)는 전부 **그 크론 전용**이고 note 문자열을 정규식으로 판다.
+   이건 크론이 신고한 숫자(cron_runs.produced/remaining)만 보므로 전 크론에
+   같은 질문을 한다 — 새 크론도 신고만 하면 자동으로 감시 대상이 된다. */
+const { findStalled, buildStalledAlert, MIN_ZERO_RUNS } = require('../_lib/productionHealth');
 const { judgeFaqHealth, buildFaqAlert, summarizeFaqRuns,
   summarizeLaneRuns, judgeLaneHealth, findSilentParts, buildLaneAlert } = require('../_lib/faqHealth');
 const { summarizeDurations, judgeCronDuration, buildCronDurationAlert } = require('../_lib/cronDurationHealth');
@@ -278,8 +283,99 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 이건 크론 이름을 가리지 않고 '연속으로 실패하는 것' 만 본다. */
   const failingCrons = await checkFailingCrons({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons });
+  /* ── 생산량 감시 (2026-09-03 추가) ──
+   * 위 감시들은 사고가 난 뒤 그 크론 전용으로 하나씩 만든 것들이다(다섯 개).
+   * 그래서 **새 크론은 언제나 무방비**다 — 8/28 에 새로 만든 faqEnBackfill 이
+   * 조용한 0건·잘린 응답·끝낼 수 없는 콜을 전부 밟았는데 아무 감시에도 안 걸렸다.
+   * 이건 크론 이름을 가리지 않고 "돌았는데 생산이 0" 만 본다. */
+  const production = await checkProduction({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons, production });
 });
+
+/**
+ * 생산량 계약 감시 — 크론 종류를 가리지 않는다 (2026-09-03).
+ *
+ * cron_runs.produced / remaining 만 본다(마이그레이션 142). note 문자열을
+ * 파싱하지 않으므로 문구를 바꿔도 눈이 멀지 않는다.
+ *
+ * 신고하지 않는 크론은 **판단하지 않는다.** 대신 부채로 세어 응답에 남긴다 —
+ * 줄어야 할 숫자이고, 지금은 그 목록이 곧 감시 사각지대다.
+ */
+const PRODUCTION_ALERT_KEY = 'production_stalled';
+
+async function checkProduction(opts) {
+  const WINDOW_H = Number(process.env.PRODUCTION_WINDOW_HOURS || 6);
+  try {
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+    const { data, error } = await supabaseAdmin
+      .from('cron_runs')
+      .select('cron_name, produced, remaining, ok, ran_at')
+      .gte('ran_at', since)
+      .order('ran_at', { ascending: false })
+      .limit(4000);
+    if (error) throw error;
+
+    /* 크론별 최신순 묶음. 위 order 가 최신순이라 순서가 그대로 유지된다. */
+    const byCron = {};
+    for (const r of (data || [])) {
+      if (!r || !r.cron_name) continue;
+      (byCron[r.cron_name] = byCron[r.cron_name] || []).push(r);
+    }
+
+    const { stalled, silent, unknown } = findStalled(byCron);
+    const summary = {
+      crons: Object.keys(byCron).length,
+      stalled: stalled.length,
+      silent: silent.length,      // 생산량을 아예 신고 안 함 (사각지대)
+      unknown: unknown.length,    // 생산은 신고하는데 잔여를 안 줌
+      windowHours: WINDOW_H,
+      minZeroRuns: MIN_ZERO_RUNS,
+      stalledList: stalled.map((x) => x.cron),
+      silentList: silent,
+    };
+    if (opts && opts.dry) return { dry: true, ...summary };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', PRODUCTION_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.PRODUCTION_ALERT_COOLDOWN_H || 6);
+    const broken = stalled.length > 0;
+
+    let alerted = false;
+    if (broken && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({
+        personalOnly: true,
+        title: '🔴 크론이 돌지만 생산이 0',
+        lines: [buildStalledAlert(stalled)],
+        url: `${SITE}/admin`, urlLabel: '어드민',
+      });
+      alerted = true;
+    } else if (!broken && wasBroken) {
+      // 복구 알림은 쿨다운과 무관하게 한 번 — '고쳐졌다'는 늦으면 의미가 없다.
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 크론 생산 재개',
+        lines: ['생산 0이 이어지던 크론이 다시 만들기 시작했습니다.'],
+        url: `${SITE}/admin`, urlLabel: '어드민',
+      });
+      alerted = true;
+    }
+
+    if (alerted) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: PRODUCTION_ALERT_KEY,
+        last_alert_at: new Date().toISOString(),
+        last_payload: { broken, stalled: summary.stalledList },
+      }, { onConflict: 'key' });
+    }
+    return { ...summary, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch/production]', e && e.message);
+    return { error: String((e && e.message) || e).slice(0, 200) };
+  }
+}
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
 async function checkBackfill(opts) {
