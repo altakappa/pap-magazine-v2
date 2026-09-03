@@ -44,7 +44,28 @@ module.exports = withCronGuard('backfill-editorial-faq', async function handler(
            안 끝났다 — 런타임 로그 'aborted due to timeout' 16건, 429 는 0건.
            batch 6 이 약 30초였으니 8 은 40초 안쪽이고 콜 상한 55초에 든다.
            처리량은 배치가 아니라 파도(회전)로 올린다. */
-        i18n = await runEditorialFaqI18nBatch({ batch: 8, timeoutMs: left });
+        /* 8 → 5 (2026-09-03 02:50, 라이브 10시간 실측).
+           콜 상한 55초를 못 맞추는 회차가 계속 나온다. 언어별로 갈린다:
+
+             언어  실패  성공        (최근 3시간, 회차당 콜 2개)
+             ja     6     1
+             de     6     0
+             it     5     1
+             ru     5     0
+             zh     0     4
+             fr     0     6
+             es     0     6
+
+           **왜 넷만 느린지는 아직 모른다.** 429 는 아니다(로그: aborted due to
+           timeout 만 나오고 rate_limit 은 0건). 멀티바이트 가설도 아니다 —
+           zh 가 실패 0 이다. 원인을 모르는 채로 상수를 또 찍지 않는다.
+
+           대신 원인과 무관하게 듣는 손잡이를 쓴다: 한 콜의 일감을 줄인다.
+           55초를 못 맞추던 콜이 맞출 확률이 올라가고, 맞추던 콜은 조금 빨라진다.
+
+           지금 실적: 회차당 평균 8건 (실패로 절반이 날아간다)
+           기대:     실패가 줄면 회차당 10건 (2 x 5) 이상 + 버리는 토큰 감소 */
+        i18n = await runEditorialFaqI18nBatch({ batch: 5, timeoutMs: left });
       } catch (e2) {
         console.error('[backfill-editorial-faq] i18n:', (e2 && e2.message) || e2);
         i18n = { processed: 0, note: '언어판 실패' };
