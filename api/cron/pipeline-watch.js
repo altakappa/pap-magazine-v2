@@ -31,6 +31,10 @@ const { judgeTranslateHealth, buildTranslateAlert } = require('../_lib/translate
    이건 크론이 신고한 숫자(cron_runs.produced/remaining)만 보므로 전 크론에
    같은 질문을 한다 — 새 크론도 신고만 하면 자동으로 감시 대상이 된다. */
 const { findStalled, buildStalledAlert, MIN_ZERO_RUNS } = require('../_lib/productionHealth');
+/* 2026-09-03 — 푸시가 배포에 도달했나. 위 생산량 감시가 '크론이 일을 했나' 라면
+   이건 '고친 코드가 라이브에 있나' 다. 오늘 한 시간 넘게 안 걸린 배포를 아무도
+   몰랐고, 그동안 "배포됐다" 고 믿은 것들이 전부 라이브에 없었다. */
+const { judgeDeployReach, buildDeployAlert } = require('../_lib/deployReach');
 const { judgeFaqHealth, buildFaqAlert, summarizeFaqRuns,
   summarizeLaneRuns, judgeLaneHealth, findSilentParts, buildLaneAlert } = require('../_lib/faqHealth');
 const { summarizeDurations, judgeCronDuration, buildCronDurationAlert } = require('../_lib/cronDurationHealth');
@@ -290,8 +294,106 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 이건 크론 이름을 가리지 않고 "돌았는데 생산이 0" 만 본다. */
   const production = await checkProduction({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons, production });
+  /* ── 배포 도달 확인 (2026-09-03 추가) ──
+   * 이 대화의 모든 실패가 같은 모양이었다: **일은 안 됐는데 아무도 모르는 상태.**
+   * 크론 쪽은 위 생산량 계약으로 막았고, 이건 그 마지막 구멍이다. */
+  const deploy = await checkDeployReach({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons, production, deploy });
 });
+
+/**
+ * 배포 도달 확인 (2026-09-03).
+ *
+ * 라이브가 서빙 중인 커밋(VERCEL_GIT_COMMIT_SHA, 빌드 시점에 구워진다)과
+ * 원격 main 의 HEAD 를 비교한다. 오래 어긋나면 푸시가 배포로 이어지지 않은 것이다.
+ *
+ * GitHub 는 **인증 없이** 읽는다 — 저장소가 공개라 가능하고, 30분 주기면
+ * 하루 48회로 비인증 한도(60/시간) 안에 넉넉히 들어간다. 토큰을 두지 않는
+ * 편이 낫다: 이 검사 하나 때문에 비밀값을 늘릴 이유가 없다.
+ *
+ * 어느 한쪽이라도 못 읽으면 '모름' 이고 **알리지 않는다.** 우리가 못 보는 것을
+ * 사고라고 부르면 헛알림이 되고, 헛알림은 진짜 경보를 죽인다.
+ */
+const DEPLOY_ALERT_KEY = 'deploy_not_reached';
+const GITHUB_REPO = process.env.DEPLOY_REACH_REPO || 'altakappa/pap-magazine-v2';
+
+async function checkDeployReach(opts) {
+  try {
+    const deployedSha = process.env.VERCEL_GIT_COMMIT_SHA || null;
+
+    let originSha = null;
+    try {
+      const r = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/commits/main', {
+        headers: { accept: 'application/vnd.github+json', 'user-agent': 'pap-pipeline-watch' },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        originSha = (j && j.sha) || null;
+      }
+    } catch (e) {
+      console.warn('[pipeline-watch/deploy] GitHub 조회 실패:', e && e.message);
+    }
+
+    /* 어긋남을 **언제 처음 봤는지** 기억해야 '몇 분째' 를 셀 수 있다.
+       한 번의 불일치는 정상이다(빌드 중). 지속이 사고다. */
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', DEPLOY_ALERT_KEY).maybeSingle();
+    const prev = (st && st.last_payload) || {};
+    /* 원격 HEAD 가 바뀌었으면 어긋남 시계를 새로 시작한다 —
+       이전 불일치와 지금 불일치는 다른 사건이다. */
+    const sameEpisode = prev.originSha && originSha
+      && String(prev.originSha).slice(0, 7) === String(originSha).slice(0, 7);
+    const mismatchSince = sameEpisode && typeof prev.since === 'number' ? prev.since : Date.now();
+
+    const d = judgeDeployReach({ deployedSha, originSha, mismatchSince });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const COOLDOWN_H = Number(process.env.DEPLOY_ALERT_COOLDOWN_H || 3);
+    const broken = d.status === '미도달';
+    const wasBroken = !!prev.broken;
+
+    let alerted = false;
+    if (broken && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({
+        personalOnly: true,
+        title: '🔴 푸시가 배포에 도달하지 않음',
+        lines: [buildDeployAlert(d)],
+        url: 'https://vercel.com/altakappas-projects/pap-magazine-v2',
+        urlLabel: 'Vercel',
+      });
+      alerted = true;
+    } else if (!broken && wasBroken && d.status === '일치') {
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 배포 도달',
+        lines: ['라이브가 원격 최신(' + d.originSha + ')과 같아졌습니다.'],
+        url: `${SITE}`, urlLabel: '사이트',
+      });
+      alerted = true;
+    }
+
+    /* 알림 여부와 무관하게 상태는 갱신한다 — '몇 분째' 를 세려면
+       어긋남 시작 시각이 계속 남아 있어야 한다. */
+    await supabaseAdmin.from('ops_alert_state').upsert({
+      key: DEPLOY_ALERT_KEY,
+      last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+      last_payload: {
+        broken,
+        originSha: originSha ? String(originSha).slice(0, 7) : null,
+        deployedSha: d.deployedSha,
+        since: d.status === '일치' ? null : mismatchSince,
+      },
+    }, { onConflict: 'key' });
+
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch/deploy]', e && e.message);
+    return { error: String((e && e.message) || e).slice(0, 200) };
+  }
+}
 
 /**
  * 생산량 계약 감시 — 크론 종류를 가리지 않는다 (2026-09-03).

@@ -124,6 +124,54 @@ t('복구되면 한 번 알린다', /크론 생산 재개/.test(watchSrc));
 t('감시 실패가 다른 검사를 막지 않는다',
   /\[pipeline-watch\/production\]/.test(watchSrc));
 
+console.log('\n=== 배포 도달 확인 (2026-09-03 사고) ===');
+/* 푸시는 됐는데 배포가 한 시간 넘게 안 걸렸고 아무도 몰랐다. 그동안
+   "배포됐다" 고 믿은 것들이 전부 라이브에 없었다. 이 대화의 모든 실패가
+   같은 모양이다 — 일은 안 됐는데 아무도 모르는 상태. */
+{
+  const D = require('../api/_lib/deployReach.js');
+  const now = 1_000_000_000;
+  const A = '96abc02e07e33f86ea079e5b6622f48917d1645c';
+  const B = '4df8d963e92b9768c45594b5d5c04543f85aab08';
+
+  t('같은 커밋이면 일치',
+    D.judgeDeployReach({ deployedSha: A, originSha: A, now }).status === '일치');
+  t('짧은 해시와 긴 해시를 같게 본다',
+    D.judgeDeployReach({ deployedSha: '96abc02', originSha: A, now }).status === '일치');
+  /* 한 번의 불일치는 정상이다 — 빌드가 도는 중이다. 지속이 사고다. */
+  t('방금 어긋난 것은 배포중 (헛알림 금지)',
+    D.judgeDeployReach({ deployedSha: B, originSha: A, now }).status === '배포중');
+  t('유예 안이면 배포중',
+    D.judgeDeployReach({ deployedSha: B, originSha: A, mismatchSince: now - 5 * 60000, now }).status === '배포중');
+  /* 오늘의 사고를 그대로 재현한다. */
+  t('60분째 어긋나 있으면 미도달',
+    D.judgeDeployReach({ deployedSha: B, originSha: A, mismatchSince: now - 60 * 60000, now }).status === '미도달');
+
+  /* 모르는 걸 사고라고 부르면 헛알림이 되고, 헛알림은 진짜 경보를 죽인다. */
+  t('배포 해시를 모르면 판단하지 않는다',
+    D.judgeDeployReach({ deployedSha: null, originSha: A, now }).status === '모름');
+  t('원격을 못 읽으면 판단하지 않는다',
+    D.judgeDeployReach({ deployedSha: A, originSha: null, now }).status === '모름');
+  t('7자 미만 해시는 비교로 인정하지 않는다', D.sameSha('96a', '96a') === false);
+
+  const alert = D.buildDeployAlert(
+    D.judgeDeployReach({ deployedSha: B, originSha: A, mismatchSince: now - 60 * 60000, now }));
+  t('알림에 다음 행동이 적혀 있다', /Redeploy/.test(alert) && /라이브: 4df8d96/.test(alert));
+  t('일치일 때는 알림을 만들지 않는다',
+    D.buildDeployAlert(D.judgeDeployReach({ deployedSha: A, originSha: A, now })) === null);
+
+  t('pipeline-watch 가 배포 도달을 본다', /checkDeployReach/.test(watchSrc));
+  t('라이브 커밋은 빌드 시점 env 에서 읽는다', /VERCEL_GIT_COMMIT_SHA/.test(watchSrc));
+  /* 이 검사 하나 때문에 비밀값을 늘리지 않는다 — 저장소가 공개라 비인증으로 읽는다. */
+  t('GitHub 토큰을 요구하지 않는다',
+    /api\.github\.com/.test(watchSrc) && !/GITHUB_TOKEN|authorization: 'Bearer/.test(watchSrc));
+  /* 원격이 바뀌면 다른 사건이다 — 시계를 새로 시작해야 '몇 분째' 가 맞는다. */
+  t('원격 HEAD 가 바뀌면 어긋남 시계를 다시 잰다', /sameEpisode/.test(watchSrc));
+  t('알림 여부와 무관하게 상태를 갱신한다 (분 계산이 이어지게)',
+    /알림 여부와 무관하게 상태는 갱신한다/.test(watchSrc));
+  t('새 크론을 만들지 않았다', !/cron\/deploy-reach/.test(watchSrc));
+}
+
 console.log('\n=== 첫 신고자 ===');
 t('backfill-faq 가 생산량을 신고한다', /reportProduction\(res, \{/.test(faqCron));
 t('ko 원본과 영문판을 합쳐 신고한다', /producedTotal/.test(faqCron) && /remainingTotal/.test(faqCron));
