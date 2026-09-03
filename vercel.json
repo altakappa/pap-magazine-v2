@@ -1040,6 +1040,16 @@
       "statusCode": 301
     },
     {
+      "source": "/pap-magazine-2",
+      "destination": "/",
+      "statusCode": 301
+    },
+    {
+      "source": "/en/pap-magazine-2",
+      "destination": "/en",
+      "statusCode": 301
+    },
+    {
       "source": "/",
       "has": [
         {
