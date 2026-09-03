@@ -53,8 +53,22 @@ if (subject.indexOf(SKIP) !== -1) {
   process.exit(0);
 }
 
+/* 2026-09-03 — 테스트 자식에게서 **모델 키를 뗀다.**
+   ■ 무슨 일이 있었나
+   148b1a1 은 로컬 npm test 초록으로 커밋됐는데 배포 관문에서 빨갛게 죽었다.
+   tests/x-threads-parity.test.js 가 "모델 없는 폴백"을 잰다고 적어 놓고 키를
+   지우지 않았기 때문이다. 내 맥에는 키가 없어 폴백이 돌고, Vercel 빌드에는
+   키가 있어 **테스트가 진짜 api.anthropic.com 을 불렀다.** 같은 커밋인데
+   로컬과 관문이 다른 코드를 재고 있었다.
+   ■ 왜 여기서 막나
+   개별 테스트마다 키를 지우는 건 또 빠뜨린다(규칙이 두 벌이면 한쪽만 고쳐진다).
+   관문이 한 번 떼면 모든 테스트가 같은 환경에서 돈다. 키가 필요한 테스트는
+   이미 스스로 'test-key' 를 넣고 fetch 를 스텁한다.
+   ■ 덤: 배포 한 번마다 나가던 실제 모델 호출과 그 비용이 사라진다. */
 console.log('[배포 관문] npm test 를 돌린다. 깨지면 이 배포는 나가지 않는다.');
-const r = spawnSync('npm', ['test'], { stdio: 'inherit' });
+const testEnv = Object.assign({}, process.env);
+delete testEnv.ANTHROPIC_API_KEY;
+const r = spawnSync('npm', ['test'], { stdio: 'inherit', env: testEnv });
 
 if (r.error) {
   console.error('[배포 관문] npm 을 실행하지 못했다: ' + r.error.message);

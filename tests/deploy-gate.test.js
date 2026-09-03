@@ -154,5 +154,24 @@ console.log('\n=== ⑦ CI 와 관문의 Node 가 어긋나지 않는다 ===');
     '숫자만 바꿔두면 다음 사람이 이유를 모르고 되돌린다');
 }
 
+console.log('\n=== ⑧ 테스트에 모델 키를 물려주지 않는다 ===');
+{
+  /* 2026-09-03 실제 사고 — 148b1a1 이 로컬 npm test 초록으로 커밋됐는데
+     배포 관문에서 죽었다. tests/x-threads-parity.test.js 가 "모델 없는
+     폴백"을 잰다면서 키를 지우지 않았고, 내 맥에는 키가 없고 Vercel 에는
+     있어서 **같은 커밋이 두 환경에서 다른 코드를 탔다.** 관문에서 한 번
+     떼면 어느 기계에서 돌리든 같은 경로를 잰다. 덤으로 배포마다 나가던
+     진짜 모델 호출이 사라진다. */
+  const probe = 'echo "KEY=[${ANTHROPIC_API_KEY:-없음}]"; exit 0';
+  const r = runGate(probe, { ANTHROPIC_API_KEY: 'sk-ant-절대-새면-안-되는-값' });
+  t('테스트 자식에게 키가 보이지 않는다', /KEY=\[없음\]/.test(r.out), r.out);
+  t('키 값이 빌드 로그에 찍히지 않는다', r.out.indexOf('sk-ant-절대') === -1);
+  t('키를 뗀 뒤에도 테스트는 정상적으로 돈다', r.code === 0, r.code);
+
+  /* 다른 환경변수까지 같이 날리면 테스트가 통째로 못 돈다. PATH 는 남아야 한다. */
+  const r2 = runGate('echo "PATH_OK=${PATH:+yes}"; exit 0', { ANTHROPIC_API_KEY: 'x' });
+  t('나머지 환경변수는 그대로 넘긴다', /PATH_OK=yes/.test(r2.out), r2.out);
+}
+
 console.log('\n' + (fail ? '✗' : '✓') + ' deploy-gate: ' + pass + ' passed / ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

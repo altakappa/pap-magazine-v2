@@ -9,6 +9,14 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+/* 2026-09-03 — 이 파일은 **모델이 없는 경로**(기계식 폴백)를 잰다.
+   그런데 키를 지우지 않고 있었다. 내 맥에는 ANTHROPIC_API_KEY 가 없어서
+   폴백이 돌았고, Vercel 빌드 환경에는 키가 있어서 **진짜 모델을 불렀다.**
+   그래서 로컬 npm test 는 초록, 같은 커밋의 배포 관문은 빨강이었다(148b1a1
+   배포 ERROR). 같은 파일이 환경에 따라 서로 다른 코드를 재고 있었던 것이다.
+   말투 경로는 tests/x-voice-fallback.test.js 가 스텁으로 따로 본다. */
+delete process.env.ANTHROPIC_API_KEY;
+
 const { buildThreadsParityTweet } = require('../api/_lib/xPost');
 
 let pass = 0, fail = 0;
@@ -27,7 +35,12 @@ function t(n, c, d){ if(c){pass++;console.log('  ✓',n);} else {fail++;console.
   t('본문에 #PAPMAGAZINE 이 있다', gen.body.includes('#PAPMAGAZINE'));
   t('url 은 별도로 반환되고 utm 이 붙어 있다',
     /utm_source=x&utm_medium=social&utm_campaign=officialhigedandism-seoul/.test(gen.url), gen.url);
-  t('폴백 본문 = 제목 + 첫 문장 + 태그', gen.body.startsWith(art.title) && gen.body.includes('첫 단독 내한'));
+  t('이 파일은 모델 없는 경로를 잰다 (키가 지워져 있다)', !process.env.ANTHROPIC_API_KEY);
+  /* 모델이 못 쓰면 트윗을 통째로 잃는 게 아니라 최소형이라도 나가야 한다.
+     '무엇이 0 이 되면 안 되는가': 제목·본문 한 줄·브랜드 태그. */
+  t('모델이 없어도 트윗을 잃지 않는다 (제목·첫 문장·태그가 남는다)',
+    gen.body.startsWith(art.title) && gen.body.includes('첫 단독 내한') &&
+    gen.body.includes('#PAPMAGAZINE'), gen.body);
 
   const xp = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'xPost.js'), 'utf8');
   t('postTweet 이 답글(in_reply_to_tweet_id)을 지원한다',
