@@ -181,15 +181,13 @@ function isPolite(platform) { return platform === 'x'; }
  * @param {'threads'|'x'} platform  스레드는 반말, X 는 존댓말 (2026-08-03)
  * @returns {Promise<{text:string, angle:string, score:number}|null>}
  */
-async function generateConversationalPost(art, platform, opts) {
-  const gate = hookScore(art);
-  const min = (opts && opts.min) || HOOK_MIN;
-  if (gate.blocked || gate.score < min) return null;
+/* 모델 호출 한 곳 (2026-09-03 분리).
+
+   말투 생성기가 둘이 되면서 fetch·파싱·호칭 정규화를 두 벌로 두지 않는다.
+   "규칙이 두 벌이면 한쪽만 고쳐진다" — 이 저장소가 올해 네 번 겪은 사고다
+   (jsonRepair 세 벌, 파서 두 벌, 감시 차선 누락). */
+async function _ask(system, payload, limit, platform) {
   if (!process.env.ANTHROPIC_API_KEY) return null;
-
-  // X 는 링크·태그를 뺀 본문 여유가 200자 남짓. 스레드는 넉넉하다(500).
-  const limit = platform === 'x' ? 180 : 420;
-
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -205,18 +203,8 @@ async function generateConversationalPost(art, platform, opts) {
         // 어느 쪽이든 본문과 마지막 문장의 어미가 갈리면 안 된다. 예전에
         // 본문은 반말인데 끝만 존댓말로 튀던 사고가 있었고, 원인은 프롬프트에
         // 박아둔 예시 문구였다. 그래서 예시는 지시와 같은 어미로만 적는다.
-        system: SYSTEM + '\n' + toneFor(platform),
-        messages: [{
-          role: 'user',
-          content: JSON.stringify({
-            platform,
-            max_chars: limit,
-            title: art.title || '',
-            body: String(art.body || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 1500),
-            tags: art.tags || [],
-            detected: gate.signals,
-          }),
-        }],
+        system: system + '\n' + toneFor(platform),
+        messages: [{ role: 'user', content: JSON.stringify(payload) }],
       }),
       signal: AbortSignal.timeout(25000),
     });
@@ -237,12 +225,97 @@ async function generateConversationalPost(art, platform, opts) {
     // 패퍼들은) 나중에 걸면 X 의 280자 판정이 어긋난다.
     const text = papVoice.normalizeSocialAddress(raw2, { polite: isPolite(platform) });
     if (!text || text.length > limit * 1.3) return null; // 길이 폭주 방어
-    return { text, angle: (g.angle || '').trim(), score: gate.score };
+    return { text, angle: (g.angle || '').trim() };
   } catch (_) {
     return null;
   }
 }
 
+function _limitFor(platform) {
+  // X 는 링크·태그를 뺀 본문 여유가 200자 남짓. 스레드는 넉넉하다(500).
+  return platform === 'x' ? 180 : 420;
+}
+
+function _payload(art, platform, limit, extra) {
+  return Object.assign({
+    platform,
+    max_chars: limit,
+    title: art.title || '',
+    body: String(art.body || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 1500),
+    tags: art.tags || [],
+  }, extra || {});
+}
+
+async function generateConversationalPost(art, platform, opts) {
+  const gate = hookScore(art);
+  const min = (opts && opts.min) || HOOK_MIN;
+  if (gate.blocked || gate.score < min) return null;
+  const limit = _limitFor(platform);
+  const r = await _ask(SYSTEM, _payload(art, platform, limit, { detected: gate.signals }), limit, platform);
+  return r ? { text: r.text, angle: r.angle, score: gate.score } : null;
+}
+
+/* 말투 폴백 (2026-09-03, 도메니코 "1번") ─────────────────────────────────
+   ■ 무엇이 문제였나 — 어제 붙인 x_posts 기록이 바로 답을 줬다
+
+     본문 트윗 12건 중 PAP 말투는 **1건**. 나머지는 이렇게 나갔다:
+
+       입생로랑 뷰티가 성수에 연 특별한 아지트
+       (빈 줄)
+       입생로랑 뷰티(YSL Beauty)가 성수동에 새로운 부띠크를 열었다.
+       (빈 줄)
+       #YSLBEAUTY #SEONGSU #PAPMAGAZINE
+
+     제목 + 기사 첫 문장 + 태그. SYSTEM 이 "매체 공지 어투를 쓰지 마라" 고
+     금지한 바로 그 문체이고, 종결도 존댓말이 아니다.
+
+   ■ 왜 그랬나
+     generateConversationalPost 는 hookScore 문턱을 못 넘으면 null 을 주고,
+     호출부는 기계식 폴백(제목+첫 문장)으로 간다. 대부분의 기사가 문턱을 못 넘는다.
+
+   ■ 판단 (도메니코)
+     문턱은 "말을 걸 만한 기사인가" 를 보는 것이지 "말투를 쓸 자격" 이 아니다.
+     대화거리가 없어도 PAP 말투로는 쓴다. 억지 질문을 만들지 않을 뿐이다.
+
+   그래서 이 생성기는 **묻지 않는다.** 소식을 PAP 목소리로 짧게 전한다.
+   실패하면 여전히 기계식 폴백이 받는다 — 트윗을 잃지 않는다. */
+const VOICE_SYSTEM = [
+  'PAP MAGAZINE(서울·밀라노 기반 패션·뷰티·컬쳐 매거진)의 소셜 담당자로서',
+  '스레드/X 에 올릴 짧은 글을 쓴다. 기사 하나를 우리 목소리로 전하는 글이다.',
+  '',
+  '어떻게 쓰나:',
+  '- **묻지 않는다.** 이 기사에는 말 붙일 거리가 마땅치 않아 이 자리에 왔다.',
+  '  억지 질문이나 "어떻게 생각하세요" 는 쓰지 않는다. 소식을 전하고 닫는다.',
+  '- 제목을 그대로 옮기지 않는다. 제목이 이미 있는 자리에 같은 문장을 또 쓰지 않는다.',
+  '- 매체 공지 어투를 쓰지 않는다. "~를 공개했다", "화제를 모으고 있다",',
+  '  "선보인다" 같은 보도자료 문장 대신 사람이 말하듯 쓴다.',
+  '- 기사에서 가장 구체적인 한 장면이나 사실 하나를 골라 앞에 둔다.',
+  '  날짜·장소·물건·행동처럼 손에 잡히는 것. 형용사로 분위기를 설명하지 않는다.',
+  '- 2~4문장. 이모지 최대 1개, 없어도 된다. 과장·감탄사·홍보 문구 금지.',
+  '- 마지막 문장은 요약이 아니라 여운이다. 정리하지 말고 남긴다.',
+  '',
+  '지켜야 할 선:',
+  '- 미확인 인물을 실명으로 지목하지 않는다.',
+  '- 기사 본문에 없는 사실을 지어내지 않는다.',
+  '- 사람의 외모·신체를 평가하지 않는다.',
+  '',
+  'JSON 객체만 출력: {"text":"본문(링크 제외)"}',
+].join('\n');
+
+/**
+ * 대화거리가 없어도 PAP 말투로 쓴다. 문턱 없음 — 차단 소재만 거른다.
+ * @returns {Promise<{text:string, angle:string, score:number}|null>}
+ */
+async function generateVoicePost(art, platform) {
+  /* 차단 소재(사망·사고·소송 등)는 여기서도 막는다. 가볍게 말할 자리가 아닌 건
+     대화형이든 전달형이든 마찬가지다 — 문턱만 없앴지 안전선까지 없앤 게 아니다. */
+  const gate = hookScore(art);
+  if (gate.blocked) return null;
+  const limit = _limitFor(platform);
+  const r = await _ask(VOICE_SYSTEM, _payload(art, platform, limit), limit, platform);
+  return r ? { text: r.text, angle: '말투', score: 0 } : null;
+}
+
 module.exports = {
   stripDashes, hookScore, generateConversationalPost, HOOK_MIN, SIGNALS, BLOCK,
-  toneFor, isPolite };
+  toneFor, isPolite, generateVoicePost, VOICE_SYSTEM };

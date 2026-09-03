@@ -551,17 +551,37 @@ async function uploadArticleMedia(article, creds) {
 async function buildThreadsParityTweet(art) {
   const url = withUtm(art.url, 'x', slugCampaign(art.url, 'pap_auto'));
   try {
-    const { generateConversationalPost, stripDashes } = require('./socialHook');
-    const hook = await generateConversationalPost(art, 'x');
-    if (hook) {
-      const audited = papVoice.auditKoreanBody(stripDashes(hook.text),
+    const { generateConversationalPost, generateVoicePost, stripDashes } = require('./socialHook');
+    /* 두 단계로 시도한다 (2026-09-03, 도메니코 "1번").
+
+       ① 대화형 — 말 붙일 거리가 있는 기사. 문턱(hookScore)을 넘어야 한다.
+       ② 말투형 — 문턱을 못 넘어도 **PAP 목소리로는 쓴다.** 묻지 않고 전한다.
+
+       ②가 없던 동안 실측: x_posts 본문 트윗 12건 중 PAP 말투는 1건이었다.
+       나머지는 기계식 '제목 + 기사 첫 문장 + 태그' 로 나갔고, 그건 프롬프트가
+       금지한 매체 공지 어투 그 자체다. 문턱은 '말을 걸 만한가' 를 보는 것이지
+       '말투를 쓸 자격' 이 아니다.
+
+       ③ 둘 다 실패하면 아래 기계식 폴백이 받는다 — 트윗을 잃지 않는다. */
+    const build = (got) => {
+      if (!got) return null;
+      // 2026-07-21 도메니코 — 줄표는 AI 티가 나니 게시 직전에 기계적으로 한 번 더 거른다.
+      // 길이 판정 **전에** 걸러야 한다. 나중에 걸면 제거로 줄어든 길이가 반영되지 않아
+      // 280자를 넘는다고 잘못 판단하고 멀쩡한 트윗을 버린다.
+      const audited = papVoice.auditKoreanBody(stripDashes(got.text),
         { style: 'polite', structure: false, where: 'x' });
       const body = audited + '\n\n#PAPMAGAZINE';
-      if (weightedLen(body) <= 280) {
-        return { body, url, bodyWithLink: _withLinkInBody(audited, '#PAPMAGAZINE', url, art),
-                 angle: hook.angle, score: hook.score };
-      }
-    }
+      if (weightedLen(body) > 280) return null;
+      return { body, url, bodyWithLink: _withLinkInBody(audited, '#PAPMAGAZINE', url, art),
+               angle: got.angle, score: got.score };
+    };
+
+    const conv = build(await generateConversationalPost(art, 'x'));
+    if (conv) return conv;
+    /* 말투형은 **필요할 때만** 부른다. 대화형이 성공하고 길이도 맞으면 위에서 돌아간다.
+       여기까지 왔다는 건 문턱을 못 넘었거나 280자를 넘겼다는 뜻이다. */
+    const voice = build(await generateVoicePost(art, 'x'));
+    if (voice) return voice;
   } catch (_) { /* 폴백으로 */ }
   const title = _clampTitle(art.title);
   const tags = _cleanTags(art.tags, 2);

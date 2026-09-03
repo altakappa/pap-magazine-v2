@@ -154,8 +154,14 @@ console.log('\n=== 5. 스레드=반말 / X=존댓말 로 갈리는가 ===');
 t('어투를 고르는 함수가 하나 있다',
   /function toneFor\(platform\) \{ return platform === 'x' \? X_TONE : SOCIAL_TONE; \}/.test(hook),
   '삼항을 호출부마다 흩뿌리면 한 곳이 빠졌을 때 그 경로만 어미가 달라진다');
+/* 2026-09-03 — 말투 생성기가 둘이 되면서(대화형·말투형) 모델 호출을 _ask 하나로
+   모았다. 종전 단정은 `system: SYSTEM + …` 이라는 **원문**을 봤는데, SYSTEM 이
+   인자로 바뀌자 깨졌다. 동작은 그대로이고 오히려 한 곳으로 더 모였다.
+   봐야 할 것은 '어투가 toneFor 를 거쳐서만 붙는가' 다. */
 t('프롬프트가 그 함수를 통해서만 어투를 붙인다',
-  /system: SYSTEM \+ '\\n' \+ toneFor\(platform\)/.test(hook));
+  /system: \w+ \+ '\\n' \+ toneFor\(platform\)/.test(hook)
+  && (hook.match(/\+ toneFor\(platform\)/g) || []).length === 1,   // 정의(function toneFor)는 빼고 **쓰는 자리**만 센다
+  '어투를 붙이는 자리가 둘이면 한쪽만 고쳐진다');
 /* 세는 것은 '어투' 분기뿐이다. 같은 파일의
    `const limit = platform === 'x' ? 180 : 420;` 은 X 의 글자수 제한이라
    어미와 무관한 별개의 관심사다. platform 삼항을 전부 세면 그 줄까지 걸려서,
@@ -163,8 +169,10 @@ t('프롬프트가 그 함수를 통해서만 어투를 붙인다',
 t('어투 분기가 socialHook 안에서 한 번만 나온다',
   (hook.match(/X_TONE : SOCIAL_TONE/g) || []).length === 1,
   '분기가 늘어나면 어느 경로가 어떤 어미인지 추적이 안 된다');
+/* 같은 이유로 이 줄도 원문을 보고 있었다. 값(180/420)이 지켜지는지가 뜻이지
+   그 값이 어느 줄에 적혀 있는지가 뜻이 아니다. */
 t('글자수 제한 분기는 어투와 별개로 남아 있다',
-  /const limit = platform === 'x' \? 180 : 420;/.test(hook),
+  /platform === 'x' \? 180 : 420/.test(hook),
   '어투를 가르면서 X 의 180자 제한을 건드리지 않았는지 같이 확인한다');
 t('두 어투 모두 papVoice 단일 소스에서 온다',
   /const SOCIAL_TONE = papVoice\.SOCIAL_VOICE;/.test(hook)
