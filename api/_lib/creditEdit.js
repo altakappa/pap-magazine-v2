@@ -12,6 +12,7 @@
  * isSpaBrand 를 재사용한다. 여기서 새로 세면 무료 게재 자격 판정과 어긋난다.
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 const { normBrand, isGenericCredit, isSpaBrand } = require('./submissionType');
 
 // 누적 수정 한도 (일일이 아니라 에디토리얼 1건당 누적). 도메니코 결정 0-3.
@@ -30,7 +31,7 @@ const LIMITS = { name: 120, role: 60, instagram: 80, website: 200 };
 /** HTML 태그와 제어문자 제거 + 공백 정리. 저장 전 모든 문자열에 적용한다. */
 function stripTags(v) {
   return String(v == null ? '' : v)
-    .replace(/<[^>]*>/g, '')
+    .replace(HTML_TAG_RE, dropKnownTags(''))
     .replace(/[\x00-\x1F\x7F]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

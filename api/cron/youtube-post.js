@@ -18,6 +18,7 @@
  * 수동 트리거: 관리자 토큰 GET/POST (?dry=1 로 선택 결과만 확인).
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('../_lib/stripHtml');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { uploadVideo } = require('../_lib/youtube');
@@ -36,7 +37,7 @@ const CREDIT_SCAN_MAX = 5;
 
 function firstSentence(html) {
   return String(html || '')
-    .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim()
     .split(/(?<=[.!?다요])\s/)[0] || '';
 }
 

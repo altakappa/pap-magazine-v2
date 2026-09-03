@@ -16,6 +16,7 @@
  * 소비자: frontend/naver-blog.html (관리자 도구 페이지)
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('../_lib/stripHtml');
 const { reportAiFailure } = require('../_lib/aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
@@ -26,7 +27,7 @@ const SITES = {
 };
 
 function stripHtml(s) {
-  return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return String(s || '').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim();
 }
 
 /* ─── 2026-08-05 — JSON 파싱 실패 수정 ────────────────────────────────

@@ -13,6 +13,7 @@ const SITE = 'https://www.pap-magazine.com';
 
 /* 2단계 상품매칭 — 품목 매핑의 단일 출처는 affiliateUrl.js 다. 여기서는
    "매핑 가능한 품목인가"의 판정에만 쓴다 (칩 표기·?item= 전달 게이트). */
+const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 const { ITEM_CATEGORY_PATHS, normalizeItemWord } = require('./affiliateUrl');
 
 /* 카카오 공유 JavaScript 키 (2026-08-07 신설).
@@ -116,7 +117,7 @@ function _plainBody(content) {
       .join(' ');
   } else if (typeof content === 'string') { raw = content; }
   // <br> 는 문장 경계라 공백으로 — 안 그러면 단어가 붙는다
-  return raw.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return raw.replace(/<br\s*\/?>/gi, ' ').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim();
 }
 
 /* ─── 2026-08-09 — 번역된 본문에서 요약을 만든다 ──────────────────────

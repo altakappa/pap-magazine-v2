@@ -27,6 +27,7 @@
  * 진단: ?dry=1 (매칭·캡션만) · ?list=1 (후보 목록만).
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('../_lib/stripHtml');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
@@ -52,7 +53,7 @@ function note(res, msg) {
 
 function firstSentence(html) {
   return String(html || '')
-    .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim()
     .split(/(?<=[.!?다요])\s/)[0] || '';
 }
 

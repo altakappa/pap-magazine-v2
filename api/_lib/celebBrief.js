@@ -16,6 +16,7 @@
  *   • api/cron/celeb-brief.js  — 큐 처리 → 기사·이미지 생성 → 텔레그램 회신
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 'use strict';
 
 /* 인스타 게시물 URL 을 텍스트에서 전부 뽑는다.
@@ -290,7 +291,7 @@ function htmlToPlain(html) {
   return String(html || '')
     .replace(/<\s*br\s*\/?\s*>/gi, '\n')
     .replace(/<\s*\/\s*(p|div|li)\s*>/gi, '\n')
-    .replace(/<[^>]*>/g, '')
+    .replace(HTML_TAG_RE, dropKnownTags(''))
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')

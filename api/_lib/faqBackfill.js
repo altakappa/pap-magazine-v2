@@ -23,6 +23,7 @@
 
 'use strict';
 
+const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 const { supabaseAdmin } = require('./supabase');
 
 /** 배치 크기 정규화 — 1~20. */
@@ -36,7 +37,7 @@ function normalizeBatch(v, fallback) {
 function toPlain(html, max) {
   const s = String(html == null ? '' : html)
     .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
+    .replace(HTML_TAG_RE, dropKnownTags(' '))
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')

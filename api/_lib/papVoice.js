@@ -1,3 +1,4 @@
+const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 'use strict';
 
 /**
@@ -573,7 +574,7 @@ function lintKoreanBody(text, opts) {
   const style = (opts && opts.style) || 'plain';
   const structure = !(opts && opts.structure === false);
   const s = String(text == null ? '' : text);
-  const plain = s.replace(/<[^>]+>/g, ' ');
+  const plain = s.replace(HTML_TAG_RE, dropKnownTags(' '));
 
   /* 어미 검사만 법정 고지를 뺀 텍스트로 본다. 아래 대시·번역투·불릿·길이는
      원문(plain) 그대로다 — 고지문은 그런 위반을 만들지 않는다. */

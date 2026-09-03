@@ -22,6 +22,7 @@
  *   - noindex: 이 킷 페이지 자체는 검색에 안 잡히게 (복제 콘텐츠 방지)
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('./_lib/stripHtml');
 const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
 
@@ -36,7 +37,7 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 function stripHtml(s) {
-  return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return String(s || '').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim();
 }
 
 function page(title, body) {

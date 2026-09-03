@@ -46,6 +46,7 @@
 
 'use strict';
 
+const { HTML_TAG_RE, dropKnownTags } = require('../_lib/stripHtml');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
@@ -67,7 +68,7 @@ function note(res, msg) {
 
 function firstSentence(html) {
   return String(html || '')
-    .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim()
     .split(/(?<=[.!?다요])\s/)[0] || '';
 }
 

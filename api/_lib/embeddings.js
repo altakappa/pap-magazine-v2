@@ -75,6 +75,7 @@ function toPgVectorString(vec) {
 // (POST /editorials, PUT /editorials/:id, /admin/backfill-embeddings) all
 // call this to keep the embedding text formatting identical.
 
+const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 const { supabaseAdmin } = require('./supabase');
 
 // Build the embedding-input string for one editorial row. Title + description
@@ -122,7 +123,7 @@ function articleEmbeddingText(a) {
      title · subtitle · category · tags · content 다. 본문은 통째로 넣지 않고
      앞 1,200자만 쓴다 — 주제는 도입부에서 거의 결정되고, 8k 자 상한에
      걸려 잘리는 사고도 막는다. */
-  const body = (a.content || '').toString().replace(/<[^>]*>/g, ' ')
+  const body = (a.content || '').toString().replace(HTML_TAG_RE, dropKnownTags(' '))
     .replace(/\s+/g, ' ').trim().slice(0, 1200);
   const parts = [
     (a.title || '').toString().trim(),

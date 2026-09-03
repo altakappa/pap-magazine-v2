@@ -24,6 +24,7 @@
  * 보안: Vercel cron secret 또는 관리자 토큰.
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('../_lib/stripHtml');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
@@ -220,7 +221,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
          모델은 이미 늘려 쓰고 있었다.
          결과만 재면 '왜' 를 못 본다. 재료(한국어 캡션)와 배율을 같이 남긴다. */
       {
-        const _len = String(generated.body_ko || '').replace(/<[^>]+>/g, '').length;
+        const _len = String(generated.body_ko || '').replace(HTML_TAG_RE, dropKnownTags('')).length;
         if (_len > 0){
           results.body_len = results.body_len || [];
           results.body_len.push(_len);

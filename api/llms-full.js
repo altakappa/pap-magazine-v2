@@ -13,6 +13,7 @@
 
 'use strict';
 
+const { HTML_TAG_RE, dropKnownTags } = require('./_lib/stripHtml');
 const { supabaseAdmin } = require('./_lib/supabase');
 
 const SITE = 'https://www.pap-magazine.com';
@@ -27,7 +28,7 @@ function plain(html, max) {
       s = arr.map(b => (b && (b.text || b.content || b.caption)) || (typeof b === 'string' ? b : '')).filter(Boolean).join('\n');
     } catch (_) { /* not JSON */ }
   }
-  s = s.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' ')
+  s = s.replace(/<br\s*\/?>/gi, '\n').replace(HTML_TAG_RE, dropKnownTags(' '))
     .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
     .replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
   return s.length > (max || 2000) ? s.slice(0, max || 2000) + '…' : s;

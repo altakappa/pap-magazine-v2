@@ -20,6 +20,7 @@
  *   PINTEREST_SYNC_BATCH    : (선택) 실행당 발행 수, 기본 12
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('../_lib/stripHtml');
 const { supabaseAdmin } = require('../_lib/supabase');
 // 2026-08-07 — 가드 추가. 그전까지 이 크론은 cron_runs 에 아무 기록도
 // 남기지 않아 '도는지 안 도는지 알 수 없는' 상태였다(7일 로그 0건).
@@ -144,7 +145,7 @@ module.exports = withCronGuard('sync-pinterest', async function handler(req, res
       const link = singleLinkDestination(e, '/editorial/' + encodeURIComponent(handle)).url;
       const kw = e.title + ' — PAP Magazine editorial'
         + (e.issue ? ' · ' + e.issue : '');
-      const baseDesc = String(e.description || e.description_en || '').replace(/<[^>]*>/g, ' ');
+      const baseDesc = String(e.description || e.description_en || '').replace(HTML_TAG_RE, dropKnownTags(' '));
       const description = truncate(baseDesc ? (kw + '. ' + baseDesc) : kw, 480);
 
       const body = {

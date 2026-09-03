@@ -15,6 +15,7 @@
  * 승인시켜 발급한다 → /api/admin/x-pepperit-auth (별도 개발자 계정·과금 불필요).
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 const crypto = require('crypto');
 // 어투 문자열은 socialHook 경유로 받는다. 여기서 papVoice 를 직접 부르는 건
 // 게시 직전 검수(auditKoreanBody) 하나뿐이다 — 단일 소스 원칙을 깨지 않는다.
@@ -224,7 +225,7 @@ function _cleanTags(tags, max) {
 function _firstSentence(html) {
   const text = String(html || '')
     .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
+    .replace(HTML_TAG_RE, dropKnownTags(' '))
     .replace(/&[a-z]+;/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();

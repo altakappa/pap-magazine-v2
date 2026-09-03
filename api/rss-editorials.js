@@ -14,6 +14,7 @@
  *   - 최신 에디토리얼 50건 (핀터레스트가 이미 핀된 항목은 자동 스킵).
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('./_lib/stripHtml');
 const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
 
@@ -31,7 +32,7 @@ function rfc822(d) {
   catch { return new Date().toUTCString(); }
 }
 function cleanDesc(s) {
-  return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
+  return String(s || '').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim().slice(0, 400);
 }
 
 /* 신디케이션 utm (2026-08-17) — 도메니코 결정: 핀터레스트·플립보드에는

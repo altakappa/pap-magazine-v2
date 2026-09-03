@@ -11,6 +11,7 @@
  * media:content 로 대표 이미지 포함 (이미지 검색·리치 피드 대응).
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('./_lib/stripHtml');
 const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
 
@@ -29,7 +30,7 @@ function rfc822(d) {
 }
 // 설명문 정리: HTML 태그 제거 + 300자 컷
 function cleanDesc(s) {
-  return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
+  return String(s || '').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim().slice(0, 300);
 }
 
 /* Ⅱ-23 (확장전략55, 2026-08-27) — RSS 풀텍스트.

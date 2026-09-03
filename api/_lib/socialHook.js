@@ -24,6 +24,7 @@
 
 'use strict';
 
+const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 const papVoice = require('./papVoice');
 
 /* 대화거리 신호 — 사람들이 이미 말하고 있거나, 말 붙일 여지가 있는 소재.
@@ -241,7 +242,7 @@ function _payload(art, platform, limit, extra) {
     platform,
     max_chars: limit,
     title: art.title || '',
-    body: String(art.body || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 1500),
+    body: String(art.body || '').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').slice(0, 1500),
     tags: art.tags || [],
   }, extra || {});
 }

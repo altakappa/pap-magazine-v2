@@ -37,6 +37,7 @@
  * 진단: ?dry=1 선택 결과만 · ?channels=1 Buffer 연결 채널 목록.
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('../_lib/stripHtml');
 const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
@@ -227,7 +228,7 @@ module.exports = withCronGuard('tiktok-post', async function handler(req, res) {
         .map((u) => toOwnedImageUrl(u));
       const artUrl = 'pap-magazine.com/article/' + (art.custom_url || art.slug || '');
       const firstSentence = String(art.content || '')
-        .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+        .replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim()
         .split(/(?<=[.!?다요])\s/)[0] || '';
       const capLines = [art.title + ' — PAP MAGAZINE', ''];
       if (firstSentence && firstSentence.length <= 200) { capLines.push(firstSentence); capLines.push(''); }

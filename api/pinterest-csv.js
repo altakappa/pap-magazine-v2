@@ -19,6 +19,7 @@
  * (Pinterest 템플릿의 정확한 헤더명은 다운로드본과 대조해 맞출 것.)
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('./_lib/stripHtml');
 const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
 
@@ -31,7 +32,7 @@ function csvCell(s) {
   return '"' + s.replace(/"/g, '""') + '"';
 }
 function clean(s, n) {
-  s = String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  s = String(s || '').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim();
   return n && s.length > n ? s.slice(0, n - 1) + '…' : s;
 }
 

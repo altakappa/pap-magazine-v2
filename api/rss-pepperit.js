@@ -6,6 +6,7 @@
  * (네이버는 RSS 기반 수집이 가장 확실) + 피드 리더 구독.
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('./_lib/stripHtml');
 const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
 
@@ -23,7 +24,7 @@ function rfc822(d) {
   catch { return new Date().toUTCString(); }
 }
 function cleanDesc(s) {
-  return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
+  return String(s || '').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim().slice(0, 300);
 }
 
 module.exports = async function handler(req, res) {

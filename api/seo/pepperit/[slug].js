@@ -4,6 +4,7 @@
  * canonical 은 항상 https://www.pepperitmag.com/article/<slug> (브랜드 도메인).
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('../../_lib/stripHtml');
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { logSocialInclick } = require('../../_lib/socialInclick');
 // 2026-08-19 — AI 크롤러가 어떤 글을 읽어 갔는지 기록. 사람 유입(위)과 다른 신호다.
@@ -17,7 +18,7 @@ function esc(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
-function stripHtml(s) { return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(); }
+function stripHtml(s) { return String(s || '').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim(); }
 // 웹→IG 아웃클릭 계측 경유 (ig-out.js, src=pepperit-article). 직링크면 계측이 안 잡힌다.
 function igOut(target, to) {
   return '/api/ig-out?src=pepperit-article&to=' + to + '&url=' + encodeURIComponent(target);

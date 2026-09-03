@@ -23,6 +23,7 @@
  *   ?revert=1&id=<article_id>    적용 취소, old_body 로 복원
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('../_lib/stripHtml');
 const { reportAiFailure } = require('../_lib/aiCreditWatch');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
@@ -31,7 +32,7 @@ const papVoice = require('../_lib/papVoice');
 const TABLE = 'article_body_backfill';
 
 function plain(s) {
-  return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return String(s || '').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim();
 }
 
 /* 갤러리 이미지를 비전 블록으로. 분량을 늘리려면 **실제 근거**가 있어야 한다.
@@ -216,7 +217,7 @@ module.exports = async function handler(req, res) {
 
       const esc = (t) => String(t == null ? '' : t)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      const plain = (h) => String(h || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const plain = (h) => String(h || '').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim();
       const n = (x) => Number(x || 0).toLocaleString('ko-KR');
 
       const done = list.filter((r) => r.status === 'applied').length;

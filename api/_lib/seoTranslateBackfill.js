@@ -23,6 +23,7 @@
  * 필요 환경변수: ANTHROPIC_API_KEY
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 const { supabaseAdmin } = require('./supabase');
 
 /* 2026-07-21 — 도메니코 결정으로 선택기의 9개 언어를 전부 지원한다.
@@ -563,7 +564,7 @@ function hasHangul(s) { return HANGUL_RE.test(String(s || '')); }
 /** HTML 태그·URL 을 뺀 '보이는 글자' 중 한글 비율(0~1). */
 function hangulRatio(s) {
   const text = String(s || '')
-    .replace(/<[^>]*>/g, ' ')            // 태그 제거 (alt/href 안의 한글은 세지 않는다)
+    .replace(HTML_TAG_RE, dropKnownTags(' '))            // 태그 제거 (alt/href 안의 한글은 세지 않는다)
     .replace(/https?:\/\/\S+/g, ' ')     // URL 제거
     .replace(/\s+/g, '');
   if (!text) return 0;

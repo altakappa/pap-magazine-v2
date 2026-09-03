@@ -26,6 +26,7 @@
  * env: ANTHROPIC_API_KEY, ANTHROPIC_MODEL(기본 claude-sonnet-4-5) — 선택.
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 const papVoice = require('./papVoice');
 
 const { reportAiResponse } = require('./aiCreditWatch');   // AI 장애 알림 (2026-07-30)
@@ -36,7 +37,7 @@ const { postText, postMedia, selectArticleMedia } = require('./threads');
 function htmlToText(html, cap) {
   let s = String(html || '');
   s = s.replace(/<\s*(br|\/p|\/div|\/h[1-6]|\/li)\s*>/gi, '\n');
-  s = s.replace(/<[^>]+>/g, ' ');
+  s = s.replace(HTML_TAG_RE, dropKnownTags(' '));
   s = s.replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&')
        .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"');
   s = s.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();

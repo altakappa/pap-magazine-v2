@@ -13,6 +13,7 @@
  * 키가 없거나 호출이 실패하면 원문 기반의 안전한 폴백을 돌려준다(빈 값 아님).
  */
 
+const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 const papVoice = require('./papVoice');
 
 const { reportAiResponse } = require('./aiCreditWatch');   // AI 장애 알림 (2026-07-30)
@@ -51,7 +52,7 @@ function extractImageUrls(gallery, limit) {
 function htmlToText(html, maxLen) {
   let s = String(html || '');
   s = s.replace(/<\s*(br|\/p|\/div|\/h[1-6]|\/li)\s*>/gi, '\n');
-  s = s.replace(/<[^>]+>/g, ' ');
+  s = s.replace(HTML_TAG_RE, dropKnownTags(' '));
   s = s.replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&')
        .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"');
   s = s.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
