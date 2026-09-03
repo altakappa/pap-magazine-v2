@@ -124,6 +124,37 @@ module.exports = async function handler(req, res) {
       data = r.data;
     }
 
+    /* 4b) redirect_from — 옛 슬러그 보존 301 (2026-09-03, articles 와 동일 lever).
+       화보 슬러그를 고치면 옛 /editorial/<old> 와 루트형 /<old> URL 이 404 →
+       순위 소실. 지금까지는 슬러그를 고칠 때마다 vercel.json 에 리다이렉트를
+       손으로 추가하고 배포해야 했다(2026-09-03 DR81 fisher-s-daughters 사례).
+       옛 슬러그를 editorials.redirect_from(text[])에 담아두면 여기서 해석되고,
+       배포 없이 정규 URL 로 301 넘어간다. redirect_from 매칭은 명백히 옛 주소라
+       200 으로 렌더하지 않고 곧장 301 — 옛 주소로 중복 색인되는 것을 막는다
+       (위 2b·2c·5·6 폴백과 동일 방침). 루트형(/<old>, root=1)도 이 핸들러를
+       타므로 함께 해결된다.
+       컬럼 미생성 환경에서도 안전: 쿼리 에러면 catch 로 흡수하고 404 로 진행. */
+    if (!data) {
+      try {
+        let rf = await supabaseAdmin.from('editorials').select('slug')
+          .contains('redirect_from', [slug]).eq('status', 'published').limit(1).maybeSingle();
+        let hit = rf && rf.data;
+        if (!hit && decoded !== slug) {
+          rf = await supabaseAdmin.from('editorials').select('slug')
+            .contains('redirect_from', [decoded]).eq('status', 'published').limit(1).maybeSingle();
+          hit = rf && rf.data;
+        }
+        if (hit && hit.slug) {
+          /* 언어 접두어 보존 (2c 블록과 동일 패턴). */
+          const rfLang = String((req.query && req.query.lang) || '');
+          const rfPrefix = /^(en|it|fr|es|ja|de|zh|ru)$/.test(rfLang) ? '/' + rfLang : '';
+          res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400');
+          res.setHeader('Location', rfPrefix + '/editorial/' + encodeURIComponent(hit.slug));
+          return res.status(301).end();
+        }
+      } catch (_) { /* redirect_from 컬럼 미생성 — 무시하고 폴백/404 로 진행 */ }
+    }
+
     /* Hide future-scheduled posts (filter in JS to keep SQL simple) */
     if (data && data.scheduled_publish_at) {
       const ms = Date.parse(data.scheduled_publish_at);
