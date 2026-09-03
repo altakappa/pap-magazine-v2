@@ -90,10 +90,27 @@ ok('4 looks, 공통 브랜드 + 의상 브랜드 3종뿐 → 여전히 branded',
    typeOf(looksFor([['Gucci', 'A'], ['Gucci', 'B'], ['Gucci', 'A'], ['Gucci', 'B']]), mapFor([1, 1, 1, 1])) === 'branded');
 
 console.log('\n=== priority: branded > paid_few_looks ===');
+/* ⏰ 2026-09-03 02:53 — 이 두 줄이 **시한폭탄이었다.**
+   어제까지 통과하다 오늘 새벽 0시(UTC)에 코드 변경 없이 빨개졌다.
+
+   원인: submissionType.js 의 SPA_RULE_EFFECTIVE_AT = '2026-09-03T00:00:00Z'.
+   그 시각부터 SPA 브랜드(자라·H&M·유니클로 등)는 브랜드 집계에서 빠진다
+   (도메니코 지시, 커밋 f6e0e2a·255f0d7, 8/27). typeOf 는 submittedAt 을
+   넘기지 않으므로 현재 시각으로 판정되고, 0시를 넘기자 규칙이 켜졌다.
+
+   이 두 단정의 **뜻은 SPA 와 무관하다** — 'branded 가 paid_few_looks 보다
+   우선한다' 는 우선순위 규칙이다. 예시 브랜드로 하필 SPA 를 골라서 다른 규칙에
+   얽혔을 뿐이다. 그래서 SPA 가 아닌 브랜드로 바꾼다.
+
+   SPA 규칙 자체(발효 전후·유예)는 tests/spa-brand-latin.test.js 가 submittedAt 을
+   PAST/FUTURE 로 고정해 22검사로 따로 지킨다. 여기서 중복해 볼 이유가 없다.
+
+   교훈: 날짜로 켜지는 규칙이 있으면, 그 규칙과 무관한 테스트는 그 규칙에 걸리는
+   예시값을 쓰면 안 된다. 시계는 커밋 없이도 코드를 바꾼다. */
 ok('2 shared-brand looks (< 4) → branded, NOT paid_few_looks',
-   typeOf(looksFor([['Zara'], ['Zara']]), mapFor([1, 1])) === 'branded');
+   typeOf(looksFor([['Prada'], ['Prada']]), mapFor([1, 1])) === 'branded');
 ok('3 shared-brand looks (< 4) → branded',
-   typeOf(looksFor([['H&M'], ['H&M'], ['H&M']]), mapFor([1, 1, 1])) === 'branded');
+   typeOf(looksFor([['Gucci'], ['Gucci'], ['Gucci']]), mapFor([1, 1, 1])) === 'branded');
 
 console.log('\n=== defensive inputs ===');
 ok('undefined/undefined → paid_few_looks without throwing',
