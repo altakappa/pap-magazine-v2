@@ -197,6 +197,22 @@ module.exports = async function handler(req, res) {
           res.setHeader('Location', path + encodeURIComponent(exact.data.slug));
           return res.status(301).end();
         }
+        /* 옛 슬러그(redirect_from) — 루트형(/<old>)도 해석한다. (2026-09-03)
+           구멍이었다: /article/<old> 는 article 핸들러가 redirect_from 을 봐서
+           301 이 됐는데, 루트 /<old> 는 이 핸들러로 오고 여기서는 slug 만 봤다.
+           실측 사례 — /berlin-music-video-awards-2022 (DR45, berlinmva.com)가
+           articles.redirect_from 에 들어 있는데도 루트에서 404 였다.
+           접두 일치(아래)보다 먼저 본다: 명시된 옛 슬러그가 추측보다 확실하다.
+           컬럼 미생성 테이블(films 등)은 catch 로 흘려보낸다. */
+        try {
+          const rf = await supabaseAdmin.from(table).select('slug')
+            .contains('redirect_from', [decoded]).eq('status', 'published').limit(1).maybeSingle();
+          if (rf && rf.data && rf.data.slug) {
+            res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
+            res.setHeader('Location', path + encodeURIComponent(rf.data.slug));
+            return res.status(301).end();
+          }
+        } catch (_) { /* redirect_from 컬럼 미생성 — 무시하고 접두 일치로 진행 */ }
         for (const base of [decoded, stem]) {
           if (!base) continue;
           const pr = await supabaseAdmin.from(table).select('slug')
