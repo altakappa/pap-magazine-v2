@@ -152,5 +152,50 @@ t('결과를 응답에 싣는다 (사람이 /api/cron/pipeline-watch 로 바로 
   /faqEn, faqI18n/.test(WATCH));
 t('감시가 죽어도 본 크론은 계속 돈다', /catch \(e\) \{[\s\S]{0,200}health 실패/.test(WATCH));
 
+
+console.log('\n=== 굶은 건가, 실패한 건가 (2026-09-03 de 사고) ===');
+{
+  /* 알림이 "차례가 안 돌아온다(회전이 죽었다)" 고 단정했는데 실제로는
+     회전이 멀쩡하고 de 만 매번 실패하고 있었다. 노트에 'de:실패' 라고
+     이미 적혀 있었는데 알림이 다른 이야기를 했다. 그 둘은 고칠 곳이 다르다. */
+  const 기대 = ['it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
+
+  // ㉮ 차례는 왔는데 매번 실패 (실제 사고 모양)
+  const 실패노트 = [
+    '화보FAQ 언어판 15 · 잔여 8011(4/7개 언어, de부터) · 2회전 · de:실패 zh:5 ru:5 it:5',
+    '화보FAQ 언어판 15 · 잔여 8195(4/7개 언어, ja부터) · 2회전 · ja:5 de:실패 zh:5 ru:5',
+    '화보FAQ 언어판 25 · 잔여 12009(6/7개 언어, fr부터) · 3회전 · fr:5 es:5 ja:5 de:실패 zh:5 ru:5',
+  ];
+  const s1 = h.summarizeLaneRuns(실패노트, '화보FAQ 언어판');
+  const d1 = h.judgeLaneHealth({ label: '화보FAQ 언어판', remaining: 8000, produced: s1.produced,
+    windowHours: 3, runs: s1.total, parsed: s1.parsed, fails: s1.fails, partRuns: s1.partRuns,
+    wavesMax: s1.wavesMax, silentParts: h.findSilentParts(s1.byPart, 기대),
+    partSeen: s1.partSeen, partFails: s1.partFails });
+  t("실패하는 파트는 'part-failing' 이다", d1.cause === 'part-failing', d1.cause);
+  t('몇 번 왔고 몇 번 실패했는지 숫자로 말한다', /3번 왔고 3번/.test(d1.reason), d1.reason);
+  t("회전 탓으로 단정하지 않는다", !/차례가 안 돌아온다/.test(d1.reason), d1.reason);
+  const a1 = h.buildLaneAlert(d1);
+  t('안내가 로그의 콜 시간과 파싱 실패를 가르라고 말한다',
+    a1.lines.join('\n').indexOf('파싱 실패') !== -1, a1.lines.join(' | '));
+
+  // ㉯ 진짜로 차례가 안 온 경우 — de 가 노트에 아예 없다
+  const 굶은노트 = [
+    '화보FAQ 언어판 20 · 잔여 8011(4/7개 언어, it부터) · 2회전 · it:5 fr:5 es:5 ja:5',
+    '화보FAQ 언어판 20 · 잔여 8195(4/7개 언어, it부터) · 2회전 · it:5 fr:5 es:5 ja:5',
+    '화보FAQ 언어판 20 · 잔여 8300(4/7개 언어, it부터) · 2회전 · it:5 fr:5 es:5 ja:5',
+  ];
+  const s2 = h.summarizeLaneRuns(굶은노트, '화보FAQ 언어판');
+  const d2 = h.judgeLaneHealth({ label: '화보FAQ 언어판', remaining: 8000, produced: s2.produced,
+    windowHours: 3, runs: s2.total, parsed: s2.parsed, fails: s2.fails, partRuns: s2.partRuns,
+    wavesMax: s2.wavesMax, silentParts: h.findSilentParts(s2.byPart, 기대),
+    partSeen: s2.partSeen, partFails: s2.partFails });
+  t("한 번도 안 나온 파트는 'part-starved' 다", d2.cause === 'part-starved', d2.cause);
+  t('회전 문제라고 말한다', /차례 자체가 안 왔다/.test(d2.reason), d2.reason);
+  t('굶은 언어를 이름으로 짚는다', d2.starvedParts.indexOf('de') !== -1, JSON.stringify(d2.starvedParts));
+
+  // 두 경우가 실제로 다르게 판정돼야 한다 — 같으면 가르는 의미가 없다
+  t('두 경우의 원인이 다르다', d1.cause !== d2.cause, d1.cause + ' vs ' + d2.cause);
+}
+
 console.log('\n' + (fail ? '✗' : '✓') + ' faq-lane-watch: ' + pass + ' passed / ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

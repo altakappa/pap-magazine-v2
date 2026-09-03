@@ -259,6 +259,11 @@ function summarizeLaneRuns(notes, label) {
   const out = {
     total: list.length, parsed: 0, produced: 0, fails: 0, partRuns: 0,
     wavesMax: null, byPart: new Map(),
+    /* 2026-09-03 — 생산량만 세면 '차례가 안 왔다' 와 '차례는 왔는데 실패했다'
+       를 못 가른다. 그 둘은 고치는 곳이 완전히 다르다(회전 로직 vs 파싱·모델).
+       de 알림이 앞의 것이라고 단정했는데 실제로는 뒤의 것이었다. 그래서
+       파트별로 **몇 번 나왔고 몇 번 실패했는지**를 따로 센다. */
+    partSeen: new Map(), partFails: new Map(),
   };
   for (const n of list) {
     const p = parseLane(n, label);
@@ -271,6 +276,8 @@ function summarizeLaneRuns(notes, label) {
       out.partRuns++;
       const cur = out.byPart.get(k) || 0;
       out.byPart.set(k, cur + (v || 0));
+      out.partSeen.set(k, (out.partSeen.get(k) || 0) + 1);
+      if (v == null) out.partFails.set(k, (out.partFails.get(k) || 0) + 1);
     }
   }
   return out;
@@ -337,8 +344,32 @@ function judgeLaneHealth(o) {
      2026-09-02 에 겪은 모양 그대로다 — 회전이 죽으면 뒤쪽 언어가 굶는다.
      전체 생산량만 보면 정상으로 보이기 때문에 따로 잡아야 한다. */
   if (silent.length) {
-    return { ...base, status: 'stalled', healthy: false, cause: 'part-starved',
-      reason: label + ' 생산은 있으나 ' + silent.join('·') + ' 이(가) ' + hours + '시간 내내 0건 — 차례가 안 돌아온다.' };
+    /* 2026-09-03 — 여기서 '차례가 안 돌아온다' 고 **단정**하고 있었다.
+       de 가 3시간 0건이었을 때 그렇게 알렸는데, 노트를 세어 보니 선두 언어는
+       매 회전 바뀌고 있었다. de 는 차례가 왔고 올 때마다 실패했다(독일어
+       따옴표 때문에 JSON 이 깨졌다). 노트에 'de:실패' 라고 이미 적혀 있었는데
+       알림이 다른 이야기를 했다. 가설을 결론으로 쓰면 사람을 엉뚱한 데로 보낸다.
+
+       이제 센 값으로 가른다.
+         나온 적 없음        → 회전 문제 (차례가 안 온다)
+         나왔는데 전부 실패  → 그 파트 자체의 문제 (모델·파싱)  */
+    const seen = (o && o.partSeen) || new Map();
+    const pf = (o && o.partFails) || new Map();
+    const get = (mp, k) => (mp instanceof Map ? mp.get(k) : mp[k]) || 0;
+    const 안옴 = silent.filter((k) => get(seen, k) === 0);
+    const 실패만 = silent.filter((k) => get(seen, k) > 0 && get(pf, k) >= get(seen, k));
+    const 그외 = silent.filter((k) => 안옴.indexOf(k) === -1 && 실패만.indexOf(k) === -1);
+
+    const 조각 = [];
+    if (안옴.length) 조각.push(안옴.join('·') + ' 은 차례 자체가 안 왔다(회전)');
+    for (const k of 실패만) 조각.push(k + ' 은 차례가 ' + get(seen, k) + '번 왔고 ' + get(pf, k) + '번 다 실패했다');
+    if (그외.length) 조각.push(그외.join('·') + ' 은 돌았는데 저장이 0이다');
+
+    return { ...base, status: 'stalled', healthy: false,
+      cause: 실패만.length && !안옴.length ? 'part-failing' : 'part-starved',
+      starvedParts: 안옴, failingParts: 실패만,
+      reason: label + ' 생산은 있으나 ' + silent.join('·') + ' 이(가) ' + hours + '시간 내내 0건. '
+        + (조각.length ? 조각.join(' · ') + '.' : '') };
   }
   if (partRuns > 0 && fails / partRuns >= FAIL_RATIO_ALERT) {
     return { ...base, status: 'degraded', healthy: false, cause: 'many-fails',
@@ -377,7 +408,12 @@ function buildLaneAlert(d, site) {
     lines.push('볼 곳: vercel.json 의 crons 등록 · 최신 배포 · CRON_SECRET');
   } else if (d.cause === 'part-starved') {
     lines.push('볼 곳: 회전(rotatedLangs)이 실제로 도는지 — cron_runs.note 의 "N개 언어, X부터".');
-    lines.push('  같은 언어가 계속 선두면 회전이 죽은 것이다.');
+    lines.push('  선두 언어가 매번 바뀌면 회전은 멀쩡한 것이다. 그때는 노트의 "X:실패" 를 본다.');
+  } else if (d.cause === 'part-failing') {
+    lines.push('회전은 돌고 있다. 차례가 왔는데 그 파트만 실패한다.');
+    lines.push('볼 곳: Vercel 런타임 로그 [faq-i18n] <언어> — 콜 시간(시간초과인가)과');
+    lines.push('  파싱 실패 메시지(응답 모양 문제인가)를 가른다.');
+    lines.push('  2026-09-03 사례: de 는 시간초과가 아니라 독일어 따옴표 „…" 로 JSON 이 깨졌다.');
   } else if (d.cause === 'many-fails') {
     lines.push('볼 곳: Vercel 런타임 로그의 [faq-en] / [faq-i18n] — 429 면 동시 호출을 줄이거나 백오프를 붙인다.');
   } else {
@@ -387,7 +423,7 @@ function buildLaneAlert(d, site) {
   lines.push('');
   lines.push('영문·다국어 FAQ 는 AI 검색이 인용하는 표면입니다. 멈추면 그 언어권 노출을 잃습니다.');
   return {
-    title: (d.cause === 'part-starved' ? '🔁 ' : '🚨 ') + d.label + ' 백필 이상 — ' + d.status,
+    title: (d.cause === 'part-starved' || d.cause === 'part-failing' ? '🔁 ' : '🚨 ') + d.label + ' 백필 이상 — ' + d.status,
     lines, url: S + '/admin', urlLabel: '어드민',
   };
 }

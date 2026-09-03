@@ -853,6 +853,9 @@ async function checkLane(opts, cfg) {
       partRuns: sum.partRuns,
       wavesMax: sum.wavesMax,
       silentParts: silent,
+      /* '차례가 안 왔다' 와 '차례는 왔는데 실패했다' 를 가르는 재료 (2026-09-03) */
+      partSeen: sum.partSeen,
+      partFails: sum.partFails,
     });
     if (opts && opts.dry) return { dry: true, ...d };
 
