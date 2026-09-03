@@ -197,6 +197,14 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
     '- Translate every "q" and "a" into ' + LANG_NAMES[lang] + '. Same length, same order, no new items.\n' +
     '- Keep person names, brand names, agency names and @handles in their original spelling.\n' +
     '- Natural fashion-magazine register, not literal machine translation.\n' +
+    /* 2026-09-03 — de 가 3시간 내내 0건이었다. 원인은 회전도 시간초과도 아니고
+       독일어 관용 따옴표였다: 모델이 „…" 처럼 **여는 건 활자 따옴표, 닫는 건
+       ASCII " ** 로 썼고 그 순간 JSON 문자열이 끝나 버렸다.
+       jsonRepair 의 다섯째 칸이 뒤에서 받아 주지만, 애초에 안 만들게 하는 게
+       먼저다. 프랑스어·러시아어 «…» 도 같은 위험이 있다. */
+    '- Never use the ASCII double quote (") inside a JSON string value. If you need\n' +
+    '  quotation marks, use the typographic pair of the target language\n' +
+    '  (German „…“, French «…», Russian «…», Japanese 「…」, Chinese 「…」).\n' +
     /* JSONL 로 바꾼다 (2026-09-02). 종전 "배열 하나로 달라" 계약에서 모델이
        **바깥 배열의 닫는 ] 를 빼먹는다.** 실측(런타임 로그 5회 x it·fr·es):
          it 08:24 end_turn len=3599 tail=..."}]}      ← 바깥 ] 없음

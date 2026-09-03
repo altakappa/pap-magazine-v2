@@ -137,6 +137,51 @@ function pickBalancedChunk(s, tried, wantArray) {
   return null;
 }
 
+
+/* ── 다섯째 칸: 활자 따옴표를 닫아 준다 (2026-09-03) ──────────────────────
+ *
+ * ■ 실측 — 독일어(de)가 3시간 내내 0건이었다
+ *
+ * 알림은 "차례가 안 돌아온다(회전이 죽었다)" 라고 했지만 cron_runs 노트를
+ * 세어 보니 선두 언어는 매 회전 바뀌고 있었다(ru→zh→de→ja→es→fr→it).
+ * **회전은 멀쩡했다. de 만 차례가 올 때마다 실패했다.**
+ *
+ * 런타임 로그의 응답 머리:
+ *
+ *     "a":"Ausgehend von Diego Riveras „Der Blumenträger" verbindet dieses …
+ *                                       ↑ 여는 건 활자 따옴표   ↑ 닫는 건 ASCII "
+ *
+ * 독일어 관용 따옴표는 „ … “ 인데 모델이 닫는 쪽만 ASCII " 로 쓴다. 그 순간
+ * JSON 문자열이 거기서 끝나 버린다. 프랑스어 «…», 러시아어 «…» 도 같은 위험.
+ *
+ * ■ 왜 기존 계단으로 못 살았나
+ *
+ * escapeInnerQuotes(셋째 칸)는 짧은 예제에서는 살린다. 그런데 한 응답에
+ * 이런 짝이 여러 번 나오면 inStr 추적이 어긋난다. findBalancedChunks 도
+ * 같은 이유로 덩어리 경계를 잘못 잡는다 — **따옴표가 깨지면 문자열을 세는
+ * 모든 장치가 같이 깨진다.**
+ *
+ * ■ 규칙
+ *
+ * 여는 활자 따옴표 뒤에 오는 ASCII " 만, 그 언어의 닫는 활자 따옴표로 바꾼다.
+ * 이스케이프된 \" 는 건드리지 않는다. 원문이 그대로 파싱될 때는 **아예 돌지
+ * 않는다** — 마지막 칸에서만 부른다. 고쳐 놓고 성공한 척하지 않는다. */
+const TYPO_CLOSER = {
+  '„': '“',   // „ 독일어  → “
+  '«': '»',   // « 프랑스어·러시아어 → »
+  '‚': '‘',   // ‚ → ‘
+  '‹': '›',   // ‹ → ›
+  '“': '”',   // “ → ”
+};
+const TYPO_OPEN_RE = new RegExp(
+  '([„«‚‹“])' +          // 여는 활자 따옴표
+  '([^"„«‚‹“”»‘›\\n]{1,300}?)' +
+  '(?<!\\\\)"', 'g');                              // 이스케이프 안 된 ASCII "
+function closeTypographicQuotes(s) {
+  return String(s).replace(TYPO_OPEN_RE,
+    (m, open, inner) => open + inner + (TYPO_CLOSER[open] || '”'));
+}
+
 /**
  * 객체 하나를 뽑는다 — 계단식. (2026-08-18 신설, weekly-news 용)
  *
@@ -150,7 +195,7 @@ function pickBalancedChunk(s, tried, wantArray) {
  * @returns {{value:object, repaired:('none'|'controls'|'quotes'|'block'|'block-controls'|'block-quotes')}}
  * @throws  세 칸 모두 실패하면 던진다. 삼키지 않는다.
  */
-function parseJsonObject(text, label) {
+function parseJsonObject(text, label, _retry) {
   const s = String(text || '');
   const start = s.indexOf('{');
   const end = s.lastIndexOf('}');
@@ -172,6 +217,17 @@ function parseJsonObject(text, label) {
      문법 수리로는 못 산다 — 균형 잡힌 덩어리를 다시 골라 본다. */
   const picked = pickBalancedChunk(s, chunk, false);
   if (picked) return picked;
+
+  /* 다섯째 칸 (2026-09-03) — 활자 따옴표를 닫고 계단을 통째로 한 번 더. */
+  if (!_retry) {
+    const fixed = closeTypographicQuotes(s);
+    if (fixed !== s) {
+      try {
+        const r = parseJsonObject(fixed, label, true);
+        return { value: r.value, repaired: (r.repaired === 'none' ? '' : r.repaired + '+') + 'typo-quotes' };
+      } catch (_) { /* 못 살렸으면 원래 오류를 낸다 */ }
+    }
+  }
 
   /* 여기까지 오면 진짜 못 고친다. 무엇이 문제였는지를 오류에 싣는다 —
      2026-08-08 에 같은 자리에서 앞머리 50자만 잘라 남겨 87% 의 실패를 보고도
@@ -197,7 +253,7 @@ function parseJsonObject(text, label) {
  * @returns {{value:Array, repaired:('none'|'controls'|'quotes'|'block'|'block-controls'|'block-quotes')}}
  * @throws  세 칸 모두 실패하면 던진다. 삼키지 않는다.
  */
-function parseJsonArray(text, label) {
+function parseJsonArray(text, label, _retry) {
   const s = String(text || '');
   const start = s.indexOf('[');
   const end = s.lastIndexOf(']');
@@ -222,6 +278,17 @@ function parseJsonArray(text, label) {
      competitor-watch 가 08-19·08-20 에 이걸로 3번 죽었다. */
   const picked = pickBalancedChunk(s, chunk, true);
   if (picked) return picked;
+
+  /* 다섯째 칸 (2026-09-03) — 활자 따옴표를 닫고 계단을 통째로 한 번 더. */
+  if (!_retry) {
+    const fixed = closeTypographicQuotes(s);
+    if (fixed !== s) {
+      try {
+        const r = parseJsonArray(fixed, label, true);
+        return { value: r.value, repaired: (r.repaired === 'none' ? '' : r.repaired + '+') + 'typo-quotes' };
+      } catch (_) { /* 못 살렸으면 원래 오류를 낸다 */ }
+    }
+  }
 
   let detail = '';
   try { JSON.parse(chunk); } catch (e) {
@@ -277,9 +344,7 @@ function parseJsonArray(text, label) {
  *          dropped = 균형은 잡혔지만 파싱에 실패한 덩어리 수 (있으면 note 에 남길 것)
  * @throws  건진 게 하나도 없으면 던진다
  */
-function parseJsonLines(text, label) {
-  const s = String(text || '');
-  const what = label || 'JSON';
+function _linesOnce(s, what) {
   const chunks = findBalancedChunks(s, '{', '}');
   if (!chunks.length) {
     throw new Error(what + ' 응답에서 객체를 하나도 찾지 못함: ' + s.slice(0, 150));
@@ -303,4 +368,41 @@ function parseJsonLines(text, label) {
   };
 }
 
-module.exports = { parseJsonLines, escapeRawControls, escapeInnerQuotes, tryRepairedParse, findBalancedChunks, pickBalancedChunk, parseJsonObject, parseJsonArray };
+function parseJsonLines(text, label) {
+  const s = String(text || '');
+  const what = label || 'JSON';
+
+  let first = null, firstErr = null;
+  try { first = _linesOnce(s, what); } catch (e) { firstErr = e; }
+
+  /* 활자 따옴표가 깨져 있으면 **덩어리 경계부터** 틀린다(머리말 참고).
+     그래서 한 줄이 통째로 죽는 게 아니라 여러 줄이 함께 죽는다.
+
+     ⚠️ 처음에는 `dropped > 0` 일 때만 다시 시도하게 짰다가 돌연변이 시험에서
+        걸렸다. 깨진 줄은 **버려지는 게 아니라 아예 안 보인다** — 문자열 추적이
+        어긋나면 findBalancedChunks 가 그 줄을 덩어리로 세지도 않는다.
+        그래서 2줄 중 1줄만 살아도 dropped 는 0 이었다. 세는 값으로 판단하면
+        '잃은 걸 못 셌다' 를 '잃은 게 없다' 로 읽는다(2026-09-02 '잔여 0' 과 같은 실수).
+        그래서 **고칠 거리가 있으면 항상 한 번 더 해 보고, 더 많이 살렸을 때만
+        채택한다.** 판단 기준을 셈이 아니라 결과로 바꾼다. */
+  {
+    const fixed = closeTypographicQuotes(s);
+    if (fixed !== s) {
+      let second = null;
+      try { second = _linesOnce(fixed, what); } catch (_) { /* 원본 결과로 간다 */ }
+      /* 더 많이 살렸을 때만 채택한다. 고친 쪽이 더 나쁘면 쓰지 않는다. */
+      if (second && (!first || second.value.length > first.value.length)) {
+        return {
+          value: second.value,
+          repaired: (second.repaired === 'none' ? '' : second.repaired + '+') + 'typo-quotes',
+          dropped: second.dropped,
+        };
+      }
+    }
+  }
+
+  if (first) return first;
+  throw firstErr;
+}
+
+module.exports = { parseJsonLines, closeTypographicQuotes, escapeRawControls, escapeInnerQuotes, tryRepairedParse, findBalancedChunks, pickBalancedChunk, parseJsonObject, parseJsonArray };

@@ -174,6 +174,65 @@ console.log('\n=== 7. 넷째 칸도 조용히 복구하지 않는다 ===');
   ok(r.repaired !== 'none', "덩어리를 골랐으면 repaired 가 'none' 이 아니다 — 호출부가 로그를 남길 수 있다");
 }
 
+
+console.log('\n=== 8. 다섯째 칸 — 활자 따옴표 (2026-09-03 de 실측) ===');
+{
+  const { parseJsonLines, parseJsonObject } = require('../api/_lib/jsonRepair');
+
+  /* 런타임 로그에서 그대로 옮긴 모양. „ 로 열고 ASCII " 로 닫는다. */
+  const de1 = '{"i":0,"faq":[{"q":"Welche Kunstwerke haben LIENZO Y SURCO inspiriert?",'
+    + '"a":"Ausgehend von Diego Riveras „Blumenträger" verbindet diese Editorial die leere Leinwand."},'
+    + '{"q":"Was ist das Konzept?","a":"Avantgarde-Beauty mit „milchigen" Cremetexturen und „rohen" Oberflächen."}]}';
+  const de2 = '{"i":1,"faq":[{"q":"Wer stand hinter der Produktion?","a":"Das Team um „Studio Nord" in Berlin."}]}';
+
+  const r = parseJsonLines(de1 + '\n' + de2, 'faq-i18n/de');
+  eq(r.value.length, 2, '두 줄 다 살린다 (종전에는 통째로 실패했다)');
+  eq(r.dropped, 0, '버린 줄이 없다');
+  ok(/typo-quotes/.test(r.repaired), "복구했으면 repaired 에 남긴다 — 조용히 고치지 않는다 (" + r.repaired + ")");
+  ok(r.value[0].faq[1].a.indexOf('„milchigen“') !== -1,
+    '독일어 닫는 따옴표를 제대로 넣는다 („…“)');
+  ok(r.value[1].faq[0].a.indexOf('Studio Nord') !== -1, '내용이 잘리지 않는다');
+
+  /* 프랑스어·러시아어 «…» 도 같은 위험. 짝이 하나뿐이면 셋째 칸(escapeInnerQuotes)이
+     먼저 살린다 — 어느 칸이 살리든 **내용이 남는 것**이 계약이다. */
+  const fr = parseJsonObject('{"a":"Le défilé «Printemps" était complet."}', 'x');
+  ok(fr.value.a.indexOf('Printemps') !== -1 && fr.value.a.indexOf('complet') !== -1,
+    '« 로 연 인용도 내용을 잃지 않는다', fr.value.a);
+
+  /* 닫는 짝을 넣는 규칙 자체는 따로 잰다 (어느 칸이 먼저 잡든 무관하게). */
+  const { closeTypographicQuotes } = require('../api/_lib/jsonRepair');
+  ok(closeTypographicQuotes('«Printemps" ').indexOf('«Printemps»') !== -1, '« 는 » 로 닫는다');
+  ok(closeTypographicQuotes('„Nord" ').indexOf('„Nord\u201C') !== -1, '„ 는 \u201C 로 닫는다');
+  eq(closeTypographicQuotes('그냥 "보통" 따옴표'), '그냥 "보통" 따옴표',
+    '활자 따옴표가 없으면 아무것도 안 바꾼다');
+
+  /* 이스케이프된 따옴표가 든 **멀쩡한** JSON 은 건드리지 않는다 */
+  const 정상 = '{"a":"Riveras „Blumenträger“ ist gut"}';
+  eq(parseJsonObject(정상, 'x').repaired, 'none', '멀쩡하면 다섯째 칸이 아예 안 돈다');
+  const 이스케이프 = '{"a":"er sagte \\"hallo\\" laut"}';
+  eq(parseJsonObject(이스케이프, 'x').value.a, 'er sagte "hallo" laut',
+    '이스케이프된 ASCII 따옴표는 그대로 둔다');
+
+  /* 깨진 줄은 '버려지는' 게 아니라 **아예 안 보인다**. 문자열 추적이 어긋나면
+     findBalancedChunks 가 그 줄을 덩어리로 세지도 않아 dropped 가 0 으로 남는다.
+     그래서 '얼마나 버렸나' 로 재시도를 결정하면 안 된다. 아래가 그 회귀 고정이다.
+     같은 줄에 이스케이프된 \" 가 있어도 그건 건드리면 안 된다. */
+  {
+    const 멀쩡 = '{"i":0,"faq":[{"q":"a","a":"Das Album „Nord\\" ist gut."}]}';
+    const 깨짐 = '{"i":1,"faq":[{"q":"b","a":"Team um „Studio Nord" in Berlin."}]}';
+    const r2 = parseJsonLines(멀쩡 + '\n' + 깨짐, 'faq-i18n/de');
+    eq(r2.value.length, 2, "안 보이는 줄도 되찾는다 (dropped 는 0 이어도 잃은 게 있다)");
+    eq(r2.value[0].faq[0].a, 'Das Album „Nord" ist gut.',
+      '이스케이프된 \\" 가 든 멀쩡한 줄을 망가뜨리지 않는다');
+    ok(r2.value[1] && r2.value[1].faq[0].a.indexOf('Studio Nord') !== -1, '깨진 줄의 내용도 살아난다');
+  }
+
+  /* 못 고치는 것은 여전히 던진다 — 고쳐 놓고 성공한 척하지 않는다 */
+  let threw = false;
+  try { parseJsonObject('{"a":„망가짐", "b":', 'x'); } catch (e) { threw = true; }
+  ok(threw, '구조가 잘린 응답은 다섯째 칸으로도 살리지 않는다');
+}
+
 console.log(`\npassed: ${pass} failed: ${fail}`);
 if (fail) process.exit(1);
 console.log('✅ ai-json-repair-shared tests passed');
