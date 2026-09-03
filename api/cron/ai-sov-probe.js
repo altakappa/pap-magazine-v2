@@ -33,8 +33,9 @@ module.exports = withCronGuard('ai-sov-probe', async function handler(req, res) 
   }
 
   try {
-    // maxDuration 300 (vercel.json 개별 키). 여유 60초를 남긴다.
-    const out = await runSovProbe({ timeoutMs: 240000 });
+    /* maxDuration 300 (vercel.json 개별 키). 240 → 270 (2026-08-30 실측):
+       웹검색 콜이 느려 마지막 웨이브가 예산에 걸렸다. 여유 30초는 남긴다. */
+    const out = await runSovProbe({ timeoutMs: 270000 });
     res.locals.cronNote = out.note;
     return res.status(200).json({ ok: true, ...out });
   } catch (err) {

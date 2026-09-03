@@ -59,6 +59,18 @@ t("단독 'PAP' 별칭이 패턴에 없다",
   !V.papPatterns().some(p => p.source === '(?<![a-z0-9])pap(?![a-z0-9])'));
 
 console.log('\n=== 서술 정확도 ===');
+/* 2026-08-30 첫 실측: described 5건이 전부 '**PAP MAGAZINE**' 같은 제목 줄뿐이라
+   desc_ok 가 전부 false 로 나왔다. AI 답변은 목록형이라 이름 한 줄 · 설명 다음 줄이다.
+   제목만 보면 "AI 가 우리를 잘못 서술한다" 가 아니라 **계측이 틀린 것**이 된다. */
+{
+  const listy = '추천:\n\n**PAP MAGAZINE**\n서울 기반의 한국 디지털 패션 매거진입니다.\n\n**Dazed Korea**';
+  const bullet = '• PAP MAGAZINE\n  A Korean digital fashion magazine based in Seoul.';
+  t('목록형 답변 — 제목 다음 줄의 설명까지 본다', V.analyze(listy).desc_ok === true,
+    JSON.stringify(V.analyze(listy).described));
+  t('불릿형 답변도 같다', V.analyze(bullet).desc_ok === true);
+  t('제목 줄만 담기지 않는다',
+    (V.analyze(listy).described || '').length > '**PAP MAGAZINE**'.length + 5);
+}
 t('올바른 범주 서술은 통과',
   V.analyze('PAP MAGAZINE is a Korean digital fashion magazine.').desc_ok === true);
 /* llms.txt 가 "영문 매거진으로 소개하지 말 것" 을 명시한다.
@@ -111,6 +123,13 @@ t('OpenAI 웹검색 도구 이름을 두 가지로 시도한다 (첫 회차부�
   /OPENAI_SEARCH_TOOLS = \['web_search', 'web_search_preview'\]/.test(lib));
 t('400 이 아니면 재시도하지 않는다 (401·429·5xx 를 헛되이 두 번 부르지 않는다)',
   /res\.status !== 400\) break/.test(lib));
+/* 2026-08-30 실측: claude/search 8칸 중 4칸이 'aborted due to timeout'.
+   웹검색 콜은 느리다 — 상한이 60초면 못 끝낸다. */
+t('검색 모드에 더 긴 콜 상한을 준다',
+  /mode === 'search' \? 100000 : 45000/.test(lib));
+t('검색 횟수를 줄여 한 콜을 짧게 한다 (max_uses 3)',
+  /max_uses: 3/.test(lib) && !/max_uses: 5/.test(lib));
+t('웨이브를 줄인다 (동시 10 — 제공사별 5)', /concurrency = 10/.test(lib));
 /* 서버 도구는 실패해도 예외를 안 던진다 — HTTP 200 에 에러 객체가 온다.
    검색이 안 돌았는데 search 로 세면 학습 레이어 답을 답변 레이어 칸에 넣는
    것이고, 그러면 두 레이어를 나눈 의미가 통째로 사라진다. */

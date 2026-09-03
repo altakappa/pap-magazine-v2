@@ -168,8 +168,19 @@ function analyze(text) {
   let described = null;
   let desc_ok = null;
   if (present) {
-    const line = sentences(raw).find(hit) || null;
-    described = line ? line.slice(0, 500) : null;
+    /* 우리를 언급한 조각부터 **뒤 두 조각까지** 붙여서 본다.
+       2026-08-30 첫 실측이 이 보정 없이는 못 쓴다는 걸 보여줬다 — 5건 전부
+       described 가 '**PAP MAGAZINE**' · '• PAP MAGAZINE' 같은 **제목 줄뿐**이었다.
+       AI 답변은 대개 목록형이라 이름은 한 줄, 설명은 그 다음 줄에 온다.
+       제목 줄만 보면 DESC_GOOD 이 하나도 안 걸려 desc_ok 가 전부 false 가 되고,
+       그건 "AI 가 우리를 잘못 서술한다" 가 아니라 **내 계측이 틀린 것**이다.
+       미노출보다 위험한 게 왜곡 서술인데(교재 8장), 그 지표가 거짓 0% 를
+       가리키면 있느니만 못하다. */
+    const parts = sentences(raw);
+    const i = parts.findIndex(hit);
+    if (i >= 0) {
+      described = parts.slice(i, i + 3).join(' ').slice(0, 500);
+    }
     if (described) {
       const low = described.toLowerCase();
       const bad = DESC_BAD.some((w) => low.includes(w.toLowerCase()));
@@ -225,7 +236,10 @@ async function askClaude(question, mode, timeoutMs) {
       max_tokens: 1500,
       messages: [{ role: 'user', content: question }],
     };
-    if (tool) body.tools = [{ type: tool, name: 'web_search', max_uses: 5 }];
+    /* max_uses 5 → 3 (2026-08-30 실측). 검색을 많이 돌수록 한 콜이 길어지는데,
+       claude/search 8칸 중 4칸이 타임아웃으로 날아갔다. 우리가 재는 건
+       "이 질문에 우리가 나오나" 이지 답변의 완성도가 아니라, 검색 3회면 충분하다. */
+    if (tool) body.tools = [{ type: tool, name: 'web_search', max_uses: 3 }];
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -329,7 +343,10 @@ async function ask(engine, question, mode, timeoutMs) {
  * 실패한 조합은 error 를 남기고 present=null 로 적는다. **빼지 않는다** —
  * 빠진 행과 "없다"는 행은 다르고, 빼면 분모가 조용히 줄어 점유율이 부풀려진다.
  */
-async function runSovProbe({ timeoutMs = 240000, probes = PROBES, engines = ENGINES, concurrency = 6 } = {}) {
+/* 동시 실행 6 → 10 (2026-08-30 실측). 32콜 중 웹검색 모드 16콜이 느리고,
+   6이면 웨이브가 6번이라 뒤 웨이브가 예산 끝에 몰려 타임아웃으로 죽었다.
+   10이면 4웨이브. 제공사별로는 5개씩이라 레이트리밋에 닿지 않는다. */
+async function runSovProbe({ timeoutMs = 240000, probes = PROBES, engines = ENGINES, concurrency = 10 } = {}) {
   const usable = engines.filter(engineReady);
   if (!usable.length) {
     const e = new Error('SoV 프로브: 쓸 수 있는 엔진 키가 없다.');
@@ -366,7 +383,11 @@ async function runSovProbe({ timeoutMs = 240000, probes = PROBES, engines = ENGI
 
       try {
         const { text, urls, searched } = await ask(engine, p.q, mode,
-          Math.max(15000, Math.min(60000, deadline - Date.now() - 5000)));
+          /* 웹검색 콜은 느리다 — 상한을 60초로 잡았더니 claude/search 4칸이
+             전부 'aborted due to timeout' 이었다. 검색 모드만 100초를 준다.
+             남은 예산을 넘지는 않는다(끝낼 수 없는 콜은 시작하지 않는다). */
+          Math.max(15000, Math.min(mode === 'search' ? 100000 : 45000,
+            deadline - Date.now() - 5000)));
 
         /* 검색 모드인데 검색이 실제로 안 돌았으면 그 답은 학습 레이어 답이다.
            그걸 답변 레이어 칸에 넣으면 두 레이어를 나눈 의미가 사라지고,
