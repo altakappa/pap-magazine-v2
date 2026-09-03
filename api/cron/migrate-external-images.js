@@ -17,6 +17,9 @@
  *    (죽은 링크 무한 재시도 방지 — 발견 보고는 image-link-check 크론 담당)
  *  - 시간 예산 90s: 초과 시 그 시점까지 저장하고 종료 (다음 실행이 이어감)
  *  - 이관된 행은 선별 조건에서 자연히 빠지므로 멱등
+ *  - (2026-09-03) 커버를 옮길 때 og_image 도 새 커버 URL 로 맞춘다. 이 컬럼은
+ *    원래 이관 대상에서 빠져 있어 커버만 Supabase 이고 og:image 는 드라이브인
+ *    행이 2,157건 쌓였다. 렌더 쪽에도 방어선을 뒀다(api/_lib/seoRenderer.js).
  */
 'use strict';
 const { supabaseAdmin } = require('../_lib/supabase');
@@ -280,6 +283,23 @@ module.exports = withCronGuard('migrate-external-images', async function handler
       const patch = {};
       if (urlMap[row.cover_image]) patch.cover_image = urlMap[row.cover_image];
       if (urlMap[row.thumbnail]) patch.thumbnail = urlMap[row.thumbnail];
+      /* og_image 도 같이 낫게 한다 (2026-09-03 신설, updated_by: 다인)
+       *
+       * 이 크론은 여태 og_image 를 **통째로 안 봤다** — 선별 함수도 JS 도
+       * cover_image · thumbnail · gallery 만 봤다. 그 결과 커버는 Supabase 인데
+       * og:image · twitter:image · 상단 커버 · Pinterest media 는 여전히
+       * 드라이브를 가리키는 행이 2,157건(발행분 94%) 쌓였다. LIMINAL BEING
+       * 복구 검증에서 발견. 커버만 옮기고 og 를 두면 이관의 절반이 무효다.
+       *
+       * og_image 는 커버의 복사본이므로(커버와 다른 값 0건) 새 커버 URL 로
+       * 맞춘다. 이미 쓸 수 있는 값(Supabase 등)이면 건드리지 않는다.
+       * data: URI 플레이스홀더도 여기서 함께 정리된다. */
+      if (patch.cover_image) {
+        const og = typeof row.og_image === 'string' ? row.og_image.trim() : '';
+        if (!og || og.startsWith('data:') || EXTERNAL_RE.test(og)) {
+          patch.og_image = patch.cover_image;
+        }
+      }
       const newGallery = (row.gallery || []).map(g => urlMap[g] || g);
       if (JSON.stringify(newGallery) !== JSON.stringify(row.gallery || [])) patch.gallery = newGallery;
       if (Object.keys(patch).length > 0) {

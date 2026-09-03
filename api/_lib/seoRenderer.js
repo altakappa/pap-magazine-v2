@@ -949,7 +949,23 @@ function renderSeoHtml(kind, record, opts) {
   const schemaDesc = _enrichMeta(descMain);
 
   /* Cover image: per-kind preferred fields */
-  const ogImage = record.og_image
+  /* 2026-09-03 — og_image 는 '쓸 수 있는 값' 일 때만 신뢰한다. (updated_by: 다인)
+   *
+   * 왜: og_image 는 커버의 복사본으로만 쓰인다(발행 2,292건 전수 실측 —
+   * 커버와 다른 값이 들어간 사례 0건). 그런데 이미지 이관 크론이 이 컬럼만
+   * 건너뛰는 바람에, 커버는 Supabase 로 옮겨졌는데 og_image 에는
+   * 드라이브·구 S3·wix 링크와 data: URI 플레이스홀더가 2,157건(발행분의 94%)
+   * 그대로 남아 있었다. 이 줄이 og_image 를 먼저 집으므로 og:image ·
+   * twitter:image · 상단 커버 · Pinterest media 가 전부 죽은 외부 호스트를
+   * 가리켰다. data: URI 는 SNS 가 og:image 로 아예 렌더하지 않는다.
+   *
+   * DB 는 일괄 정정했지만(2026-09-03), 앞으로 누가 또 낡은 값을 넣어도
+   * 화면이 깨지지 않도록 렌더 시점에서 한 번 더 막는다. 못 쓰는 값이면
+   * 아래 fallback 사슬(cover_image → ...)로 자연히 흘러간다. */
+  const OG_UNUSABLE_RE = /^data:|drive\.google\.com|pap-korea-bucket\.s3|static\.wixstatic\.com/;
+  const ogDeclared = typeof record.og_image === 'string' ? record.og_image.trim() : '';
+  const ogUsable = ogDeclared && !OG_UNUSABLE_RE.test(ogDeclared) ? ogDeclared : null;
+  const ogImage = ogUsable
     || record.cover_image
     || record.hero_image_url
     || record.thumbnail_url
