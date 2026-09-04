@@ -24,6 +24,7 @@
  * 보안: Vercel cron secret 또는 관리자 토큰.
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { HTML_TAG_RE, dropKnownTags } = require('../_lib/stripHtml');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
@@ -54,7 +55,7 @@ const {
 module.exports = withCronGuard('sync-instagram', async function handler(req, res){
   // Vercel cron 보호 — CRON_SECRET 일치 또는 관리자 토큰 (수동 진단·트리거용).
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk){
     const user = await requireAdmin(req, res);
     if (!user) return;

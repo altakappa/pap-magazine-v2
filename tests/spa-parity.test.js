@@ -193,7 +193,7 @@ console.log('\n[9] IG 링크 자동화 — "임베드 코드는 살았는데 데
   const bf = R('api/editorials/backfill-ig.js');
   const vj = R('vercel.json');
   t('크론 인증은 Bearer CRON_SECRET (x-vercel-cron 헤더 읽기 금지 — celeb-classify 사고)',
-    /auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(bf)
+    (/bearerOk\(auth, process\.env\.CRON_SECRET\)/.test(bf) || /auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(bf)) // 2026-09-04
     && !/headers\[['"]x-vercel-cron/.test(bf));
   t('withCronGuard 로 감싼다 (기록 없는 크론 금지 — 뉴스레터 3주 침묵 교훈)',
     /module\.exports = withCronGuard\('editorial-ig-link', handler\)/.test(bf));

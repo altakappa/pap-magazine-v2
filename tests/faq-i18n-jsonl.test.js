@@ -136,7 +136,15 @@ const srcMap = new Map([['e1', KO], ['e2', KO]]);
   console.log('\n[5] 노트가 거짓말하지 않는다');
   reply = el(0) + '\n{"i":1,"faq":[{"q":"Q1",';                // 2건 요청 · 1건 저장
   const out = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 200000, model: 'm' });
-  t('요청 대비 저장이 보인다 (1/2)', /1\/2/.test(out.note), out.note);
+  /* 2026-09-04 — 종전 단정은 /1\/2/ 였다. 숫자를 박아 둔 굳은 단정이라,
+     한 회차에 바퀴를 더 돌게 하자 같은 뜻인데도 3/6 이 되어 빨갛게 죽었다.
+     재야 할 것은 **저장이 요청보다 적으면 그게 노트에 보이는가** 이지
+     그 숫자가 1과 2인가가 아니다. (누적 14번째 굳은 단정, 이것도 내가 썼다) */
+  {
+    const m = /([a-z]{2}):(\d+)\/(\d+)/.exec(out.note);
+    t('저장이 요청보다 적으면 노트에 저장/요청 으로 보인다',
+      !!m && Number(m[2]) < Number(m[3]), out.note);
+  }
   /* 괄호 안 내용이 늘어날 수 있으므로 닫는 괄호를 강제하지 않는다 —
      '잔여 191(2/7개 언어, it부터)' 처럼. 검사할 것은 **언어 수가 붙는가** 다. */
   t('잔여 옆에 확인한 언어 수가 붙는다  ← 215↔478 진동의 정체',
@@ -314,6 +322,77 @@ const srcMap = new Map([['e1', KO], ['e2', KO]]);
   t('꼬리도 그대로 남긴다 (2026-08-08 교훈)', /\| tail=/.test(SRC));
   t('stop_reason 을 계속 남긴다', /stop_reason=/.test(SRC));
 
+
+
+  console.log('\n[12] 바퀴 — 시간이 남으면 더 돌되, 못 돌 바퀴는 열지 않는다 (2026-09-04)');
+  {
+    /* 한 회차 천장은 파도가 아니라 언어 수 x 배치였다. 시간이 남으면 같은 순서로
+       한 바퀴 더 돈다. 새 동작이 아니라 10분 뒤 크론이 할 일을 지금 하는 것이다. */
+    t('바퀴 상한이 있다 (무한히 돌지 않는다)', i18n.MAX_LAPS >= 2 && i18n.MAX_LAPS <= 5, i18n.MAX_LAPS);
+    t('파도 상한이 바퀴를 감당한다',
+      i18n.MAX_WAVES >= Math.ceil(i18n.TARGET_LANGS.length / i18n.CONCURRENCY) * i18n.MAX_LAPS,
+      'waves=' + i18n.MAX_WAVES + ' langs=' + i18n.TARGET_LANGS.length
+        + ' conc=' + i18n.CONCURRENCY + ' laps=' + i18n.MAX_LAPS);
+
+    // 시간이 넉넉하면 두 바퀴 이상 돈다
+    updates.length = 0;
+    trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
+    reply = el(0) + '\n' + el(1);
+    const 넉넉 = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 200000, model: 'm' });
+    t('시간이 남으면 한 바퀴를 넘게 돈다', 넉넉.laps > 1, 넉넉.laps);
+    t('바퀴 수가 상한을 안 넘는다', 넉넉.laps <= i18n.MAX_LAPS, 넉넉.laps);
+    t('바퀴가 노트에 보인다 (안 보이면 도는지 모른다)', /바퀴/.test(넉넉.note), 넉넉.note);
+
+    // 시간이 빠듯하면 한 바퀴도 못 채우고 멈춘다 — 안전선이 그대로인지
+    updates.length = 0;
+    trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
+    const 빠듯 = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 30000, model: 'm' });
+    t('시간이 모자라면 바퀴를 새로 열지 않는다', 빠듯.laps === 1, 빠듯.laps);
+    t('예산이 없으면 노트에 바퀴 표기가 없다', !/바퀴/.test(빠듯.note), 빠듯.note);
+
+    /* ── 노트가 안 돈 바퀴를 말할 수 없는가 ─────────────────────────
+       2026-09-04 돌연변이 시험에서 '시간 검사 전에 바퀴를 연다' 가 안 잡혔다.
+       그러면 한 바퀴만 돌고도 노트가 '2바퀴' 라고 거짓말한다.
+       테스트를 더 붙이는 대신 **거짓말이 나올 수 없게** 코드를 고쳤다
+       (파도가 실제로 도는 것을 본 뒤에 센다). 그 성질을 불변식으로 못박는다.
+
+         바퀴 N 을 주장하려면 그 바퀴에서 파도를 **최소 한 번**은 돌았어야 한다.
+         → waves >= (laps - 1) * 한바퀴파도수 + 1 */
+    const 한바퀴파도 = Math.ceil(i18n.TARGET_LANGS.length / i18n.CONCURRENCY);
+    /* laps 1 은 '바퀴를 안 열었다' 는 뜻이라 파도 0 이어도 정직하다
+       (노트도 그때는 바퀴를 아예 안 적는다). 2바퀴부터가 주장이다. */
+    const 정직 = (r) => r.laps === 1 || r.waves >= (r.laps - 1) * 한바퀴파도 + 1;
+    t('넉넉할 때 — 안 돈 바퀴를 주장하지 않는다', 정직(넉넉),
+      'waves=' + 넉넉.waves + ' laps=' + 넉넉.laps);
+    t('빠듯할 때 — 안 돈 바퀴를 주장하지 않는다', 정직(빠듯),
+      'waves=' + 빠듯.waves + ' laps=' + 빠듯.laps);
+    t('파도를 한 번도 못 돌면 바퀴는 1이다', 빠듯.waves > 0 || 빠듯.laps === 1,
+      'waves=' + 빠듯.waves + ' laps=' + 빠듯.laps);
+
+    /* 이 변경이 **콜의 모양은 안 건드린다**는 것을 못박는다.
+       빨라지자고 배치·동시성·콜 상한을 흔들면 새 실패 모양이 생긴다. */
+    t('배치·동시성·콜 상한은 그대로 (새 실패 모양을 만들지 않는다)',
+      i18n.CONCURRENCY === 2 && i18n.CALL_TIMEOUT_MS === 55000,
+      'conc=' + i18n.CONCURRENCY + ' callTimeout=' + i18n.CALL_TIMEOUT_MS);
+  }
+
+  console.log('\n[13] 예산과 상한이 서로 맞는다');
+  {
+    const vj = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
+    const fn = (vj.functions || {})['api/cron/backfill-editorial-faq.js'];
+    const glob = (vj.functions || {})['api/**/*.js'];
+    const maxDur = (fn && fn.maxDuration) || (glob && glob.maxDuration) || 0;
+    const cronSrc = fs.readFileSync(path.join(ROOT, 'api', 'cron', 'backfill-editorial-faq.js'), 'utf8');
+    const budget = Number((/const left = (\d+) - \(Date\.now\(\)/.exec(cronSrc) || [])[1]);
+    t('이 크론에 전용 함수 상한이 있다', !!fn, JSON.stringify(vj.functions));
+    t('내부 예산이 함수 상한 안에 있다 (강제종료되면 기록조차 안 남는다)',
+      budget > 0 && budget / 1000 <= maxDur - 20, '예산=' + budget / 1000 + 's 상한=' + maxDur + 's');
+    /* 크론 주기보다 짧아야 다음 회차와 안 겹친다. 4,14,24… = 10분. */
+    t('내부 예산이 크론 주기(600초)보다 짧다', budget / 1000 < 600, budget / 1000);
+    const crons = (vj.crons || []).filter((c) => /backfill-editorial-faq/.test(c.path));
+    t('크론 주기를 안 건드렸다 (호출 예산 2,598/2,600)',
+      crons.length === 1 && crons[0].schedule === '4,14,24,34,44,54 * * * *', JSON.stringify(crons));
+  }
 
   console.log('\n[7] 잃은 것은 이유가 로그에 남는다 (2026-09-04)');
   /* 2026-09-03 노트에 'de:4/5(none/버림1)' 이 찍혔다. 런타임 로그를 뒤졌는데

@@ -59,6 +59,7 @@
  *                                     실제 배치는 위 EDITORIAL/ARTICLE 두 개다.
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { runBackfillBatch, remainingFor, normalizeBatch, LANG_NAMES, KINDS } = require('../_lib/seoTranslateBackfill');
 
@@ -178,7 +179,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   if (!process.env.CRON_SECRET) return res.status(500).json({ error: 'CRON_SECRET not configured' });
   {
     const auth = req.headers['authorization'] || '';
-    if (auth !== 'Bearer ' + process.env.CRON_SECRET) {
+    if (!bearerOk(auth, process.env.CRON_SECRET)) { // 2026-09-04 timing-safe
       return res.status(401).json({ error: 'unauthorized' });
     }
   }

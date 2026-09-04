@@ -19,6 +19,7 @@
  * cron_runs.note 에 생산량을 적는다 — '돌았다 ≠ 했다' 를 또 겪지 않기 위해.
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { runSovProbe } = require('../_lib/aiVisibility');
@@ -26,7 +27,7 @@ const { runSovProbe } = require('../_lib/aiVisibility');
 module.exports = withCronGuard('ai-sov-probe', async function handler(req, res) {
   res.locals = res.locals || {};
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
     const user = await requireAdmin(req, res);
     if (!user) return;

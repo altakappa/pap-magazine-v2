@@ -113,7 +113,7 @@ console.log('=== [B] 실제로 실행 — capture 가 언제 불리는가 ===');
 function loadHandler(stubs) {
   const p = (rel) => require.resolve(path.join(ROOT, rel));
   const set = (rel, exports) => { require.cache[p(rel)] = { id: p(rel), filename: p(rel), loaded: true, exports }; };
-  set('api/_lib/auth.js', { requireAuth: () => stubs.user });
+  set('api/_lib/auth.js', { requireAuth: () => stubs.user, requireAuthStrict: async () => stubs.user }); // 2026-09-04 결제 경로 strict
   set('api/_lib/cors.js', { handleCors: () => false });
   set('api/_lib/rateLimit.js', { rateLimit: () => false, RATE_LIMITS: { auth: {} } });
   set('api/_lib/telegram.js', { sendTextToTelegramSafe: (t) => { stubs.telegram.push(t); return Promise.resolve(); } });

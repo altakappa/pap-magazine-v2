@@ -68,7 +68,7 @@ ok(bf.indexOf("from('editorials')") < bf.indexOf("from('articles')"),
    '에디토리얼 고아를 먼저 채운다 (추천 UI 가 이미 붙어 있어 효과가 즉시다)');
 ok(/count: 'exact', head: true/.test(bf), '남은 대기를 DB 에 직접 센다');
 ok(/OPENAI_API_KEY/.test(bf), '키가 없으면 조용히 넘어간다');
-ok(/Bearer ' \+ process\.env\.CRON_SECRET/.test(bf), '버셀 크론 인증 방식이 맞다');
+ok(/bearerOk\(auth, process\.env\.CRON_SECRET\)/.test(bf) || /Bearer ' \+ process\.env\.CRON_SECRET/.test(bf), '버셀 크론 인증 방식이 맞다'); // 2026-09-04 timing-safe 형태 인정
 ok(!/summary/.test(bf), "articles 에 없는 컬럼(summary)을 조회하지 않는다");
 ok(/subtitle, category, tags, content/.test(bf), '실제로 있는 컬럼만 조회한다');
 

@@ -16,6 +16,7 @@
  * 수동 트리거: 관리자 토큰 POST 허용.
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { reportAiResponse } = require('../_lib/aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { withCronGuard } = require('../_lib/cronGuard');
@@ -60,7 +61,7 @@ function kstDate(offsetDays) {
 
 module.exports = withCronGuard('weekly-briefing', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
     const user = await requireAdmin(req, res);
     if (!user) return;

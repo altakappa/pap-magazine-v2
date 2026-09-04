@@ -26,6 +26,7 @@
  *   (여기서 인증을 강제하면 맥미니에 비밀값을 심어야 하고, 그게 더 나쁘다)
  */
 
+const { safeEqual } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 
 // 아는 이름만 받는다. 임의 키로 테이블이 오염되는 것을 막는다.
@@ -85,7 +86,7 @@ module.exports = async function handler(req, res) {
 
   const secret = process.env.HEARTBEAT_SECRET;
   const src = { ...(req.query || {}), ...(typeof req.body === 'object' && req.body ? req.body : {}) };
-  if (secret && String(src.token || '') !== secret) {
+  if (secret && !safeEqual(String(src.token || ''), secret)) { // 2026-09-04 timing-safe
     return res.status(401).json({ error: 'bad token' });
   }
 

@@ -11,6 +11,7 @@
  * 잔여 0이면 Claude 를 호출하지 않으므로 완주 후 크론을 켜둬도 비용이 없다.
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard, reportProduction } = require('../_lib/cronGuard');
 const { runFaqBackfillBatch, normalizeBatch } = require('../_lib/faqBackfill');
@@ -19,7 +20,7 @@ const { runFaqEnBatch } = require('../_lib/faqEnBackfill');
 module.exports = withCronGuard('backfill-faq', async function handler(req, res) {
   res.locals = res.locals || {};
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
     const user = await requireAdmin(req, res);
     if (!user) return;

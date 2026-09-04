@@ -6,6 +6,7 @@
  * 대상: 발행 화보 2,303편 중 설명문 보유 2,291편 (2026-08-27 기준, faq 0에서 시작).
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { runEditorialFaqBackfillBatch } = require('../_lib/editorialFaqBackfill');
@@ -15,7 +16,7 @@ const { normalizeBatch } = require('../_lib/faqBackfill');
 module.exports = withCronGuard('backfill-editorial-faq', async function handler(req, res) {
   res.locals = res.locals || {};
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
     const user = await requireAdmin(req, res);
     if (!user) return;
@@ -34,7 +35,18 @@ module.exports = withCronGuard('backfill-editorial-faq', async function handler(
        호출 상한을 지킨다 — 새 크론을 등록하면 그 상한을 넘긴다. 같은 호출 안에서
        이어 돌면 호출 수 증가가 0이다. 실패해도 ①의 결과는 그대로 보고한다. */
     let i18n = null;
-    const left = 100000 - (Date.now() - started);
+    /* 100초 → 270초 (2026-09-04). 함수 상한을 120 → 300 으로 올렸다.
+       ■ 왜 이게 안전한가
+         · 300 은 이 저장소가 **이미 쓰고 있는 값**이다 (weekly-news · trend-scout ·
+           ai-sov-probe · ig-comment-scan · celeb-brief). 새로 시험하는 숫자가 아니다.
+         · 크론 주기가 10분(600초)이라 270초는 다음 회차와 겹치지 않는다.
+         · 콜 하나하나는 **오늘과 완전히 같다.** 배치 5 · 동시 2 · 콜 상한 55초.
+           바뀌는 건 '같은 콜을 한 회차에 몇 번 하느냐' 뿐이라 새 실패 모양이 없다.
+         · 크론 호출 수는 그대로다 (예산 2,598/2,600 을 안 건드린다).
+         · 비용: Vercel 은 실제로 돈 시간만 청구한다. 항목당 초는 오히려 준다
+           (기동 비용이 더 많은 항목에 나눠지므로). 총 일감은 유한하니 총액은 같고
+           끝나는 날짜만 당겨진다. */
+    const left = 270000 - (Date.now() - started);
     if (left > 25000) {
       try {
         /* 6 → 18 (2026-09-02). 6 은 "응답이 잘리면 배치 전멸" 이라는 전제로 고른

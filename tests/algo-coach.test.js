@@ -64,7 +64,7 @@ console.log('\n[2] 분위값');
 console.log('\n[3] 계약 — 소스 검사');
 {
   t('Bearer CRON_SECRET (x-vercel-cron 헤더 읽기 금지)',
-    /auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(src) && !/headers\[['"]x-vercel-cron/.test(src));
+    (/bearerOk\(auth, process\.env\.CRON_SECRET\)/.test(src) || /auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(src)) && !/headers\[['"]x-vercel-cron/.test(src)); // 2026-09-04
   t('cronGuard 로 감싼다', /withCronGuard\('algo-coach', handler\)/.test(src));
   t('claim-first — INSERT 후 23505 판단', src.indexOf('.insert({ post_id') < src.indexOf("claimErr.code === '23505'"));
   t('hot 만 텔레그램 (cold 는 조용히)', /verdict === 'hot'/.test(src)

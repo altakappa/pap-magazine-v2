@@ -26,6 +26,7 @@
  * Security: Vercel cron 은 Bearer <CRON_SECRET> 서명. expiry-sweep 과 동일 게이트.
  */
 
+const { safeEqual } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { withCronGuard } = require('../_lib/cronGuard');
@@ -69,7 +70,7 @@ async function handler(req, res) {
     console.error('[cron/trial-reminder] CRON_SECRET env not set');
     return res.status(500).json({ message: 'CRON_SECRET not configured' });
   }
-  if (got !== expected) {
+  if (!safeEqual(got, expected)) { // 2026-09-04 timing-safe
     return res.status(401).json({ message: 'Unauthorized' });
   }
 

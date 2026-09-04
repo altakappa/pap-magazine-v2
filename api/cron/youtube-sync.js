@@ -26,6 +26,7 @@
  * 수동 트리거: 관리자 토큰 GET (?dry=1 로 선택 결과만 확인).
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
@@ -63,7 +64,7 @@ module.exports = withCronGuard('youtube-sync', async function handler(req, res) 
   res.locals = res.locals || {};
 
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
     const user = await requireAdmin(req, res);
     if (!user) return;

@@ -187,7 +187,7 @@ console.log('\n[7] 배선 — 다이제스트가 category 를 안 본다');
      그 헤더를 안 보낸다. 예약 실행이 전부 401 로 끝나고 note 는 빈칸이었다.
      저장소의 다른 크론과 같은 관문이어야 한다. */
   t('크론 인증은 Authorization: Bearer CRON_SECRET 이다',
-    /auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(cron));
+    (/bearerOk\(auth, process\.env\.CRON_SECRET\)/.test(cron) || /auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(cron))); // 2026-09-04
   t('x-vercel-cron 헤더에 기대지 않는다 (버셀은 안 보낸다)',
     !/x-vercel-cron/.test(cron.replace(/\/\*[\s\S]*?\*\//g, '')));
   t('인증에 막혀도 note 를 남긴다 — 빈칸이면 아무도 못 본다',

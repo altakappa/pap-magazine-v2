@@ -20,6 +20,7 @@
  *   PINTEREST_SYNC_BATCH    : (선택) 실행당 발행 수, 기본 12
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { HTML_TAG_RE, dropKnownTags } = require('../_lib/stripHtml');
 const { supabaseAdmin } = require('../_lib/supabase');
 // 2026-08-07 — 가드 추가. 그전까지 이 크론은 cron_runs 에 아무 기록도
@@ -56,7 +57,7 @@ module.exports = withCronGuard('sync-pinterest', async function handler(req, res
   if (!process.env.CRON_SECRET) return res.status(500).json({ error: 'CRON_SECRET not configured' });
   {
     const auth = req.headers['authorization'] || '';
-    if (auth !== 'Bearer ' + process.env.CRON_SECRET) {
+    if (!bearerOk(auth, process.env.CRON_SECRET)) { // 2026-09-04 timing-safe
       return res.status(401).json({ error: 'unauthorized' });
     }
   }

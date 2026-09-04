@@ -16,6 +16,7 @@
  *
  * 보안: CRON_SECRET Bearer 또는 관리자 토큰(다른 크론과 동일 관문).
  */
+const { bearerOk } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
@@ -43,7 +44,7 @@ const { parseBrandCredits } = require('../_lib/fashionCredits');
 
 module.exports = withCronGuard('brand-sync', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) { const u = await requireAdmin(req, res); if (!u) return; }
 
   // 1) 발행 기사의 fashion 크레딧 수집 (페이지네이션)

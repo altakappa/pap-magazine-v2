@@ -68,6 +68,7 @@
  * 한 실행에 최대 4건만 생성하고, 부족분은 다음 크론 실행이 이어서 채운다.
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { generateNext } = require('../admin/naver-blog-draft');
@@ -120,7 +121,7 @@ async function expireStale(ttlDays) {
 
 module.exports = withCronGuard('naver-draft-sweep', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
     // 크론 시크릿 없이 열리면 거부 (관리자 수동 트리거는 /naver-blog 도구 사용)
     return res.status(401).json({ error: 'cron only' });

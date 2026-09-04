@@ -96,6 +96,79 @@ console.log('\n=== ⑥ threads/delete · uninstall — Meta signed_request 검�
   }
 }
 
+
+/* ───────────────────────── 2군 (2026-09-04, 도메니코 "권고대로하자") ───────────────────────── */
+
+console.log('\n=== 2군 D — 쿠키 인증 CSRF: Origin 검사 (실제 JWT 로) ===');
+{
+  process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
+  process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'https://x.supabase.co';
+  process.env.SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'x';
+  process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || 'x';
+  const jwt = require('jsonwebtoken');
+  const { verifyToken } = require('../api/_lib/auth');
+  const tok = jwt.sign({ id: 'u1', email: 'a@b.c', role: 'user', tv: 0 }, process.env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
+  const cookieReq = (method, headers) => ({ method, headers: Object.assign({ cookie: 'pap_auth=' + tok }, headers || {}) });
+  const bearerReq = (method, headers) => ({ method, headers: Object.assign({ authorization: 'Bearer ' + tok }, headers || {}) });
+
+  t('쿠키 + GET + 아무 Origin → 통과 (읽기는 CSRF 무관)', !!verifyToken(cookieReq('GET', { origin: 'https://evil.example' })));
+  t('쿠키 + POST + 우리 Origin → 통과', !!verifyToken(cookieReq('POST', { origin: 'https://www.pap-magazine.com' })));
+  t('쿠키 + POST + 남의 Origin → 차단 (CSRF)', verifyToken(cookieReq('POST', { origin: 'https://evil.example' })) === null);
+  t('쿠키 + DELETE + 남의 Origin → 차단', verifyToken(cookieReq('DELETE', { origin: 'https://evil.example' })) === null);
+  t('쿠키 + POST + Origin 없음 + Sec-Fetch-Site cross-site → 차단', verifyToken(cookieReq('POST', { 'sec-fetch-site': 'cross-site' })) === null);
+  t('쿠키 + POST + Origin 없음 + Sec-Fetch-Site same-origin → 통과', !!verifyToken(cookieReq('POST', { 'sec-fetch-site': 'same-origin' })));
+  t('쿠키 + POST + 헤더 둘 다 없음(구형 브라우저·서버간) → 통과', !!verifyToken(cookieReq('POST', {})));
+  t('Bearer + POST + 남의 Origin → 통과 (Bearer 는 브라우저가 자동으로 안 붙임)', !!verifyToken(bearerReq('POST', { origin: 'https://evil.example' })));
+}
+
+console.log('\n=== 2군 E — 시크릿 비교 timing-safe 공용 헬퍼 ===');
+{
+  const { safeEqual, bearerOk } = require('../api/_lib/secretCompare');
+  t('safeEqual 같음', safeEqual('abc', 'abc') === true);
+  t('safeEqual 다름', safeEqual('abc', 'abd') === false);
+  t('safeEqual 길이 다름', safeEqual('abc', 'abcd') === false);
+  t('safeEqual 빈값·null 은 항상 false (fail-closed)', !safeEqual('', '') && !safeEqual(null, null) && !safeEqual('a', undefined));
+  t('bearerOk 정상', bearerOk('Bearer s3cr3t', 's3cr3t') === true);
+  t('bearerOk 접두사 없음', bearerOk('s3cr3t', 's3cr3t') === false);
+  t('bearerOk 시크릿 미설정이면 false', bearerOk('Bearer ', '') === false && bearerOk('Bearer x', undefined) === false);
+  /* 소스 레벨: api/ 아래 어디에도 시크릿 문자열 비교가 남아 있지 않다 (송신용 헤더 조립은 제외) */
+  const walk = (d) => fs.readdirSync(d).flatMap((n) => { const q = path.join(d, n); return fs.statSync(q).isDirectory() ? walk(q) : [q]; });
+  const srcs = walk(path.join(ROOT, 'api')).filter((q) => q.endsWith('.js') && !q.includes(path.sep + '_lib' + path.sep));
+  const leftovers = srcs.filter((q) => {
+    const src = fs.readFileSync(q, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    return /(===|!==)\s*'Bearer ' \+ process\.env\.[A-Z_]+/.test(src)
+        || /'Bearer ' \+ process\.env\.[A-Z_]+\s*(===|!==)/.test(src)
+        || /if \(got !== expected\)/.test(src)
+        || /(===|!==)\s*process\.env\.(CRON_SECRET|INDEXNOW_SECRET|HEARTBEAT_SECRET|TELEGRAM_WEBHOOK_SECRET)\b/.test(src);
+  }).map((q) => path.relative(ROOT, q));
+  t('api/ 에 시크릿 === / !== 비교가 남아 있지 않다', leftovers.length === 0, leftovers.join(', '));
+  /* require 경로가 실제로 resolve 된다 — CLAUDE.md: api/ 최상위는 ./_lib, node --check 는 못 잡는다 */
+  const badReq = srcs.filter((q) => {
+    const m = fs.readFileSync(q, 'utf8').match(/require\('([^']*_lib\/secretCompare)'\)/); // 접두사 없는 '_lib/…' 도 잡는다
+    return m && !fs.existsSync(path.resolve(path.dirname(q), m[1] + '.js'));
+  }).map((q) => path.relative(ROOT, q));
+  t('secretCompare require 경로가 전부 resolve 된다', badReq.length === 0, badReq.join(', '));
+}
+
+console.log('\n=== 2군 A(쉬운 부분) — CSP 에서 unsafe-eval 제거 ===');
+{
+  const v = rd('vercel.json');
+  t("vercel.json 에 'unsafe-eval' 없음", !v.includes("'unsafe-eval'"));
+  t('프론트에 eval / new Function 사용 없음 (있으면 위 제거가 화면을 깨뜨린다)', (() => {
+    const dir = path.join(ROOT, 'frontend');
+    const files = fs.readdirSync(dir).filter((n) => /\.(js|html)$/.test(n));
+    return files.every((n) => !/\beval\(|new Function\(/.test(fs.readFileSync(path.join(dir, n), 'utf8')));
+  })());
+}
+
+console.log('\n=== 2군 C — 결제 경로는 requireAuthStrict ===');
+{
+  for (const f of ['api/subscriptions/checkout.js', 'api/submissions/paypal-capture.js', 'api/submissions/paypal-authorize.js', 'api/submissions/paypal-order.js']) {
+    const s = rd(f).replace(/\/\*[\s\S]*?\*\//g, '');
+    t(f + ': await requireAuthStrict', /await requireAuthStrict\(req, res\)/.test(s) && !/\brequireAuth\(req, res\)/.test(s));
+  }
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 console.log((fail ? '❌' : '✅') + ' security-audit-2026-09 ' + (fail ? 'FAILED' : 'passed'));
 process.exit(fail ? 1 : 0);

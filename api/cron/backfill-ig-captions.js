@@ -21,6 +21,7 @@
  * 지금 값이 나오는 기사부터 채워야 다음 작업이 바로 굴러간다.
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { fetchCaptionById } = require('../_lib/instagramImport');
@@ -83,7 +84,7 @@ async function remainingCount() {
 
 module.exports = withCronGuard('backfill-ig-captions', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
-  if (!(process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET)) {
+  if (!bearerOk(auth, process.env.CRON_SECRET)) { // 2026-09-04 timing-safe
     return res.status(401).json({ error: 'cron only' });
   }
   if (String(process.env.IG_CAPTION_BACKFILL_ENABLED || '').toLowerCase() === 'false') {

@@ -15,6 +15,7 @@
  * 수동 트리거: 관리자 토큰으로 POST 도 허용 (대시보드의 '지금 재분석' 버튼).
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { reportAiResponse } = require('../_lib/aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { withCronGuard } = require('../_lib/cronGuard');
@@ -90,7 +91,7 @@ async function generateFeedback(todayAudit, yesterdayAudit, events) {
 module.exports = withCronGuard('daily-growth-feedback', async function handler(req, res) {
   // 크론 Bearer 또는 관리자 (대시보드 수동 재분석)
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
     const user = await requireAdmin(req, res);
     if (!user) return;

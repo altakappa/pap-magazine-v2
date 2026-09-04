@@ -54,12 +54,38 @@ function verifyToken(req) {
   }
 
   // 2. Fallback to httpOnly cookie
+  let fromCookie = false;
   if (!token) {
     const cookies = parseCookies(req.headers.cookie);
     token = cookies.pap_auth;
+    fromCookie = !!token;
   }
 
   if (!token) return null;
+
+  /* 2026-09-04 보안감사 (2군 D) — CSRF 2겹째.
+     쿠키(pap_auth)는 브라우저가 어느 사이트에서 보낸 요청이든 자동으로 붙인다. 그래서 다른
+     사이트가 우리 API 로 POST 를 쏘면 쿠키 인증이 그대로 통과한다(CSRF). 지금까지의 방어는
+     쿠키의 SameSite=Lax 하나뿐이었다(api/_lib/csrf.js 의 verifyCsrf 는 어디서도 안 불림).
+     Bearer 토큰은 브라우저가 자동으로 붙이지 않으므로 CSRF 와 무관 — 검사하지 않는다.
+     규칙: 쿠키로 인증된 상태변경 요청(POST/PUT/DELETE/PATCH)은
+       · Origin 헤더가 있으면 허용 목록(cors.js ALLOWED_ORIGINS)에 있어야 하고,
+       · Origin 이 없으면 Sec-Fetch-Site 가 'cross-site' 가 아니어야 한다.
+     브라우저는 교차 출처 POST 에 Origin 을 반드시 보내므로 CSRF 는 여기서 걸린다.
+     서버 간 호출(웹훅·크론)은 Bearer 를 쓰거나 쿠키가 없으므로 영향 없다. */
+  if (fromCookie) {
+    const m = String(req.method || 'GET').toUpperCase();
+    if (m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS') {
+      const origin = req.headers.origin;
+      const sfs = String(req.headers['sec-fetch-site'] || '').toLowerCase();
+      const { ALLOWED_ORIGINS } = require('./cors');
+      if (origin) {
+        if (!ALLOWED_ORIGINS.includes(origin)) return null;
+      } else if (sfs === 'cross-site') {
+        return null;
+      }
+    }
+  }
 
   try {
     return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });

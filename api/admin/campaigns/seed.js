@@ -14,6 +14,7 @@
  * asked for.
  */
 
+const { safeEqual } = require('../../_lib/secretCompare');
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
 
@@ -32,7 +33,7 @@ module.exports = async function handler(req, res) {
     console.error('[seed] CRON_SECRET env not set');
     return res.status(500).json({ message: 'Server misconfiguration (CRON_SECRET missing)' });
   }
-  if (got !== expected) {
+  if (!safeEqual(got, expected)) { // 2026-09-04 timing-safe
     return res.status(401).json({ message: 'Unauthorized' });
   }
 

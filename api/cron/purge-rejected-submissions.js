@@ -22,6 +22,7 @@
  * as send-due-campaigns.js.
  */
 
+const { safeEqual } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 // 2026-08-07 — 가드 추가. 그전까지 이 크론은 cron_runs 에 아무 기록도
@@ -63,7 +64,7 @@ module.exports = withCronGuard('purge-rejected-submissions', async function hand
     console.error('[cron/purge-rejected] CRON_SECRET env not set');
     return res.status(500).json({ message: 'CRON_SECRET not configured' });
   }
-  if (got !== expected) {
+  if (!safeEqual(got, expected)) { // 2026-09-04 timing-safe
     return res.status(401).json({ message: 'Unauthorized' });
   }
 

@@ -12,6 +12,7 @@
  * 수동 트리거: 관리자 토큰 POST 허용.
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 // 2026-08-07 — 가드 추가. 그전까지 이 크론은 cron_runs 에 아무 기록도
@@ -61,7 +62,7 @@ module.exports = withCronGuard('trend-scout', async function handler(req, res) {
   const started = Date.now();
   const msLeft = () => BUDGET_MS - (Date.now() - started);
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
     const user = await requireAdmin(req, res);
     if (!user) return;

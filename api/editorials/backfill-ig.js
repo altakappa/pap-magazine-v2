@@ -35,6 +35,7 @@
  * 필요 환경변수: IG_ACCESS_TOKEN, IG_USER_ID (sync-instagram 과 동일)
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
@@ -107,7 +108,7 @@ async function handler(req, res) {
   /* 크론 인증 — Vercel 은 Authorization: Bearer CRON_SECRET 을 보낸다.
      ⚠ x-vercel-cron 헤더는 오지 않는다 (celeb-classify 무한 401 사고). */
   const auth = req.headers.authorization || '';
-  const isCron = !!process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const isCron = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!isCron) {
     const user = await requireAdmin(req, res);
     if (!user) { note('인증 거부 — 크론이면 CRON_SECRET 확인'); return; }

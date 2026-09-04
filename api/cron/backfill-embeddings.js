@@ -33,6 +33,7 @@
 
 'use strict';
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
@@ -64,7 +65,7 @@ module.exports = withCronGuard('backfill-embeddings', async function handler(req
   // 버셀 크론은 Authorization: Bearer $CRON_SECRET 을 보낸다.
   // (x-vercel-cron 헤더는 오지 않는다 — celeb-classify 가 그걸로 하루를 버렸다.)
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
     const admin = await requireAdmin(req, res);
     if (!admin) { note(res, '인증 거부 — 크론 시크릿도 관리자 세션도 아님'); return; }

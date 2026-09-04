@@ -18,7 +18,8 @@ function t(n, c, d){ if(c){pass++;console.log('  ✓',n);} else {fail++;console.
 
 console.log('\n=== 이관 크론 (migrate-external-images) ===');
 t('크론 인증 규약 (CRON_SECRET Bearer + admin 폴백)',
-  /CRON_SECRET && auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(mig) && /requireAdmin/.test(mig));
+  /* 2026-09-04 보안감사: 문자열 비교 → bearerOk(timing-safe). 두 형태 모두 인정 */
+  (/bearerOk\(auth, process\.env\.CRON_SECRET\)/.test(mig) || /CRON_SECRET && auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(mig)) && /requireAdmin/.test(mig));
 t('선별은 SQL 함수 external_image_editorials (gallery 배열 포함 검색)',
   /rpc\('external_image_editorials'/.test(mig));
 t('이미지 MIME 검증 (비이미지 응답 거부)', /\^image\\\//.test(mig));
@@ -36,7 +37,7 @@ t('시간 예산 90s 가드 (다음 실행이 이어감)', /TIME_BUDGET_MS = 900
 t('죽은 링크 발견 시 텔레그램 알림', /sendTextToTelegramSafe/.test(mig));
 
 console.log('=== 점검 크론 (image-link-check) ===');
-t('크론 인증 규약', /CRON_SECRET && auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(chk));
+t('크론 인증 규약', /bearerOk\(auth, process\.env\.CRON_SECRET\)/.test(chk) || /CRON_SECRET && auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(chk));
 t('published 대표 이미지(cover/thumbnail) 대상', /cover_image, thumbnail/.test(chk) && /eq\('status', 'published'\)/.test(chk));
 t('드라이브 "200 + html 오류 페이지" 함정 감지', /html-instead-of-image/.test(chk));
 t('동시 20 · 시간 예산 가드', /CONCURRENCY = 20/.test(chk) && /TIME_BUDGET_MS/.test(chk));

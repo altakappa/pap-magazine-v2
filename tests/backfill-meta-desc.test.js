@@ -14,7 +14,7 @@ function t(n, cond, d){ if(cond){pass++;console.log('  ✓',n);} else {fail++;co
 
 console.log('\n=== 메타 설명 백필 크론 ===');
 t('크론 인증 규약(CRON_SECRET + admin 폴백)',
-  /CRON_SECRET && auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(c) && /requireAdmin/.test(c));
+  (/bearerOk\(auth, process\.env\.CRON_SECRET\)/.test(c) || /CRON_SECRET && auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(c)) && /requireAdmin/.test(c)); // 2026-09-04 timing-safe 형태 인정
 t('ANTHROPIC_API_KEY 없으면 무해 대기', /ANTHROPIC_API_KEY/.test(c) && /비전 백필 대기/.test(c));
 t('선별 SQL 함수 short_desc_editorials 사용', /rpc\('short_desc_editorials'/.test(c));
 t('검증된 비전 생성기 재사용', /generateEditorialDescriptions/.test(c) && /artistStatement: ''/.test(c));

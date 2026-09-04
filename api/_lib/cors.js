@@ -40,4 +40,4 @@ function handleCors(req, res) {
   return false;
 }
 
-module.exports = { handleCors, setCors };
+module.exports = { handleCors, setCors, ALLOWED_ORIGINS };

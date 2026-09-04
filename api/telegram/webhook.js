@@ -44,6 +44,7 @@
 
 'use strict';
 
+const { safeEqual } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const celebBrief = require('../_lib/celebBrief');
 
@@ -141,7 +142,7 @@ module.exports = async function handler(req, res) {
     return res.status(503).json({ error: 'webhook secret not configured' });
   }
   const got = String(req.headers['x-telegram-bot-api-secret-token'] || '');
-  if (got !== secret) return res.status(401).json({ error: 'bad secret' });
+  if (!safeEqual(got, secret)) return res.status(401).json({ error: 'bad secret' }); // 2026-09-04 timing-safe
 
   let update = req.body;
   if (typeof update === 'string') { try { update = JSON.parse(update); } catch (_e) { update = null; } }

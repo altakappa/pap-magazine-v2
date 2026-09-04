@@ -32,6 +32,7 @@
 
 'use strict';
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
@@ -313,7 +314,7 @@ async function runPublish(row, res, dry) {
 
 module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
     const user = await requireAdmin(req, res);
     if (!user) return;

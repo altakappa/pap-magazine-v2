@@ -9,7 +9,7 @@
  *   5. Returns success status
  */
 
-const { requireAuth } = require('../_lib/auth');
+const { requireAuthStrict } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
@@ -64,7 +64,10 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const user = requireAuth(req, res);
+  /* 2026-09-04 보안감사 (2군 C) — 결제 경로는 strict 로. requireAuth 는 DB 를 안 봐서
+     로그아웃(token_version 증가) 뒤에도 옛 토큰이 7일간 먹는다. 돈이 걸린 곳은 매 요청
+     DB 에서 token_version·role 을 대조한다(auth.js:110 주석의 원칙과 일치). */
+  const user = await requireAuthStrict(req, res);
   if (!user) return;
 
   // Surface a clear error if PortOne credentials weren't configured on Vercel.

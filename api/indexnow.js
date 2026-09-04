@@ -25,6 +25,7 @@
  *       (자기 사이트 URL 재수집 요청이라 위험도는 낮음)
  */
 
+const { bearerOk, safeEqual } = require('./_lib/secretCompare');
 const { supabaseAdmin } = require('./_lib/supabase');
 /* 2026-08-07 — 가드 추가. 그전까지 이 경로는 매일 02:00 에 예약돼 있으면서도
    cron_runs 에 아무 기록을 남기지 않았다. 제출이 되는지, 검색엔진이 받았는지,
@@ -169,7 +170,7 @@ module.exports = withCronGuard('indexnow', async function handler(req, res) {
   // (기존 버그 수정: INDEXNOW_SECRET 만 검사해서 Vercel cron 의
   //  Bearer CRON_SECRET 호출이 401 로 튕겨 매일 크론이 조용히 실패하는 구조였음)
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   /* 2026-09-04 보안감사 — INDEXNOW_SECRET 이 없으면 검사를 건너뛰던 fail-open 이었다.
      크론 시크릿도 아니고 INDEXNOW_SECRET 도 설정돼 있지 않으면 거부한다. */
   if (!cronOk) {
@@ -178,7 +179,7 @@ module.exports = withCronGuard('indexnow', async function handler(req, res) {
       return res.status(503).json({ error: 'INDEXNOW_SECRET not configured' });
     }
     const s = (req.query && req.query.secret) || '';
-    if (s !== process.env.INDEXNOW_SECRET) {
+    if (!safeEqual(s, process.env.INDEXNOW_SECRET)) { // 2026-09-04 timing-safe
       note(res, '인증 거부 — 크론 시크릿도 ?secret= 도 아님');
       return res.status(401).json({ error: 'unauthorized' });
     }

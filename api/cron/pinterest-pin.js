@@ -13,6 +13,7 @@
  * - 실패해도 던지지 않고 로그만 — 다음 실행이 재시도.
  * 수동: 관리자 토큰, ?dry=1 미리보기, ?max=N.
  */
+const { bearerOk } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
@@ -87,7 +88,7 @@ async function createPin({ token, boardId, title, description, link, imageUrl })
 
 module.exports = withCronGuard('pinterest-pin', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) { const u = await requireAdmin(req, res); if (!u) return; }
 
   const token = cleanCred(process.env.PINTEREST_ACCESS_TOKEN);

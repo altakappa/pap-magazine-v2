@@ -19,6 +19,7 @@
  * ?days=N 으로 소급 수집도 된다(최초 1회는 90 정도로 한 번 돌리면 된다).
  */
 
+const { bearerOk } = require('../_lib/secretCompare');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { supabaseAdmin } = require('../_lib/supabase');
@@ -40,7 +41,7 @@ async function saveChunked(table, rows, conflict) {
 
 module.exports = withCronGuard('gsc-sync', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
-  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
     const user = await requireAdmin(req, res);
     if (!user) return;

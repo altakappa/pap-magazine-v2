@@ -85,7 +85,7 @@ console.log('\n=== ④ 상위 노출 먼저 ===');
 
 console.log('\n=== ⑤ 접근 통제 ===');
 {
-  t('CRON_SECRET 없이는 401', /CRON_SECRET && auth === 'Bearer '/.test(src) && /401/.test(src));
+  t('CRON_SECRET 없이는 401', (/bearerOk\(auth, process\.env\.CRON_SECRET\)/.test(src) || /CRON_SECRET && auth === 'Bearer '/.test(src)) && /401/.test(src)); // 2026-09-04 timing-safe 형태 인정
   t('환경변수로 끌 수 있다', /IG_CAPTION_BACKFILL_ENABLED/.test(src));
   t('cronGuard 로 감싼다', /withCronGuard\('backfill-ig-captions'/.test(src));
   t('_lib 경로가 ../_lib (api/cron 규칙)', /require\('\.\.\/_lib\//.test(src));

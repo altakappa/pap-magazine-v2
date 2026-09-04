@@ -33,6 +33,7 @@
  *   needed) and rerunning is safe.
  */
 
+const { safeEqual } = require('../_lib/secretCompare');
 const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
@@ -131,7 +132,7 @@ module.exports = withCronGuard('release-due-scheduled', async function handler(r
     console.error('[cron/release-due-scheduled] CRON_SECRET env not set — refusing to run');
     return res.status(500).json({ message: 'CRON_SECRET not configured' });
   }
-  if (got !== expected) {
+  if (!safeEqual(got, expected)) { // 2026-09-04 timing-safe
     return res.status(401).json({ message: 'Unauthorized' });
   }
 

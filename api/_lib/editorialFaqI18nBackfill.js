@@ -382,7 +382,20 @@ const CONCURRENCY = 2;
 const CALL_TIMEOUT_MS = 55000;
 
 /* 한 회차의 파도 상한 (무한 반복 안전핀). */
-const MAX_WAVES = 4;
+/* 4 → 12 · 바퀴 3 (2026-09-04).
+   ■ 한 회차 천장은 파도가 아니라 **언어 수 × 배치**였다
+     큐는 7개 언어다. 파도마다 2개씩 꺼내니 4파도면 큐가 빈다.
+     즉 종전 천장은 7 x 5 = 35칸이고, 실측 평균은 24.8칸이었다
+     (노트의 '4/7개 언어' 가 그 증거 — 시간이 모자라 다 못 돌았다).
+   ■ 시간이 남으면 같은 순서로 한 바퀴 더 돈다
+     새로운 동작이 아니다. 10분 뒤 크론이 할 일을 지금 하는 것뿐이다.
+     빈칸이 없는 언어는 runOneLang 이 모델을 안 부르고 즉시 돌아온다
+     (`if (!take.length) return`) — 헛돈이 안 나간다.
+   ■ 안전선은 그대로다
+     파도를 시작할지는 여전히 '직전 파도 시간 x 1.15' 로 **재서** 정한다.
+     끝낼 수 없는 파도는 시작하지 않는다. 배치·동시성·콜 상한은 안 건드렸다. */
+const MAX_WAVES = 12;
+const MAX_LAPS = 3;
 
 /**
  * 한 회차: 언어를 **동시에** 부르고, 예산이 남으면 다음 묶음으로 넘어간다.
@@ -437,12 +450,28 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, n
      이게 오늘 세 번 틀린 "얼마면 될까" 를 "얼마 걸렸나" 로 바꾸는 것이다. */
   let lastWaveMs = 0;
 
-  while (queue.length && waves < MAX_WAVES) {
+  let laps = 1;
+  while (waves < MAX_WAVES) {
     const left = deadline - Date.now();
     const need = lastWaveMs ? Math.round(lastWaveMs * 1.15) : START_FLOOR_MS;
     if (left <= need) break;
 
+    /* 한 바퀴를 다 돌았는데 시간이 남았다 — 같은 순서로 다시 채운다.
+
+       ⚠️ laps 를 여기서 올리지 않는다. 돌연변이 시험에서 배웠다:
+          시간 검사와 이 블록의 순서가 바뀌면, 한 바퀴만 돌고도 노트가
+          '2바퀴' 라고 **거짓말**한다. 잔여 0 · 버림 0 과 같은 계열의 사고다.
+          순서에 기대는 대신, **파도가 실제로 도는 것을 본 뒤에** 센다.
+          그러면 순서가 바뀌어도 거짓말이 나올 수 없다. */
+    let 새바퀴 = false;
+    if (!queue.length) {
+      if (laps >= MAX_LAPS) break;
+      queue = order.slice();
+      새바퀴 = true;
+    }
+
     waves++;
+    if (새바퀴) laps++;
     const waveStart = Date.now();
     const group = queue.splice(0, CONCURRENCY);
     const budget = Math.min(CALL_TIMEOUT_MS,
@@ -485,7 +514,7 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, n
   return {
     processed,
     remaining: remainingKnown ? remaining : null,
-    visited, waves,
+    visited, waves, laps,
     order,
     /* 잔여 뒤에 '(N개 언어)' 를 붙인다. 이 값은 전체가 아니라 **이번에 확인한
        언어들의 합**이다. 안 적으면 215↔478 진동이 원인 불명으로 보인다.
@@ -493,10 +522,10 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, n
     note: '화보FAQ 언어판 ' + processed
       + ' · 잔여 ' + (remainingKnown ? remaining : '?')
       + '(' + visited + '/' + TARGET_LANGS.length + '개 언어, ' + order[0] + '부터)'
-      + ' · ' + waves + '회전'
+      + ' · ' + waves + '회전' + (laps > 1 ? '/' + laps + '바퀴' : '')
       + (per.length ? ' · ' + per.join(' ') : ''),
     scope: srcMap.size,
   };
 }
 
-module.exports = { runEditorialFaqI18nBatch, runOneLang, pickPending, countPendingSafe, ID_CHUNK, CALL_TIMEOUT_MS, rotatedLangs, ROTATE_SLOT_MS, recentWithFaq, recentLimit, TARGET_LANGS, CONCURRENCY };
+module.exports = { runEditorialFaqI18nBatch, runOneLang, pickPending, countPendingSafe, ID_CHUNK, CALL_TIMEOUT_MS, rotatedLangs, ROTATE_SLOT_MS, recentWithFaq, recentLimit, TARGET_LANGS, CONCURRENCY, MAX_WAVES, MAX_LAPS };
