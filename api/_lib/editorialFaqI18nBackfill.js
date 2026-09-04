@@ -275,6 +275,16 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
     const lines = parseJsonLines(text, 'faq-i18n/' + lang);
     arr = lines.value;
     repaired = lines.repaired + (lines.dropped ? '/버림' + lines.dropped : '');
+    /* 2026-09-04 — 버린 줄을 **왜** 버렸는지 남긴다.
+       전날 노트에 'de:4/5(none/버림1)' 이 찍혔는데 로그에는 아무것도 없어서
+       그 한 줄이 왜 깨졌는지 알 수가 없었다. 세는 것과 아는 것은 다르다. */
+    if (lines.dropped) {
+      for (const d of (lines.droppedDetail || [])) {
+        console.error('[faq-i18n]', lang, '줄 버림',
+          'len=' + d.len, '| why=' + d.why,
+          '| head=' + JSON.stringify(d.head), '| tail=' + JSON.stringify(d.tail));
+      }
+    }
   } catch (lineErr) {
   try {
     const parsed = parseJsonArray(text, 'faq-i18n/' + lang);
@@ -301,12 +311,17 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
   }
 
   let processed = 0;
+  /* 여기서도 조용히 버리고 있었다 (2026-09-04). 파서가 살려 낸 줄이라도
+     이 세 조건에 걸리면 그냥 continue 였다. 'asked 5 · processed 4' 만 보이고
+     넷 중 어느 이유였는지는 아무 데도 안 남았다. 이유별로 센다. */
+  const skip = { 색인없음: 0, 길이불일치: 0, 형식이상: 0 };
   for (const item of arr) {
-    if (!item || typeof item.i !== 'number') continue;
+    if (!item || typeof item.i !== 'number') { skip.형식이상++; continue; }
     const id = take[item.i];
-    if (!id) continue;
+    if (!id) { skip.색인없음++; continue; }
     const trFaq = normalizeFaq(item.faq);
-    if (!trFaq || trFaq.length !== (srcMap.get(id) || []).length) continue;
+    if (!trFaq) { skip.형식이상++; continue; }
+    if (trFaq.length !== (srcMap.get(id) || []).length) { skip.길이불일치++; continue; }
     const { error: upErr } = await supabaseAdmin
       .from('seo_translations')
       .update({ faq: trFaq, updated_at: new Date().toISOString() })
@@ -314,10 +329,16 @@ async function runOneLang(lang, srcMap, batch, model, timeoutMs) {
     if (upErr) { console.error('[faq-i18n]', lang, id, upErr.message); continue; }
     processed++;
   }
+  const skipped = skip.색인없음 + skip.길이불일치 + skip.형식이상;
+  if (skipped) {
+    console.error('[faq-i18n]', lang, '저장 안 함 ' + skipped + '건',
+      '| 색인없음=' + skip.색인없음, '| 길이불일치=' + skip.길이불일치,
+      '| 형식이상=' + skip.형식이상, '| 요청=' + take.length, '| 저장=' + processed);
+  }
   /* 요청 건수를 함께 돌려준다 — JSONL 은 일부만 살아 오는 게 장점인데
      그 유실이 안 보이면 장점이 조용한 손실이 된다. */
   return { processed, remaining: Math.max(0, pendingTotal - processed),
-    lang, repaired, asked: take.length };
+    lang, repaired, asked: take.length, skip };
 }
 
 /* 한 콜을 시작하려면 최소 이만큼 남아 있어야 한다. 20초로는 콜을 **시작만 하고**

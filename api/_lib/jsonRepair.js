@@ -351,11 +351,24 @@ function _linesOnce(s, what) {
   }
   const value = [];
   const kinds = new Set();
+  const droppedDetail = [];
   let dropped = 0;
   for (const c of chunks) {
     const r = ladderParse(c, false);
     if (r) { value.push(r.value); if (r.repaired !== 'none') kinds.add(r.repaired); }
-    else dropped++;
+    else {
+      dropped++;
+      /* 2026-09-04 — 버린 줄의 **이유**를 함께 낸다.
+         전날 'de:4/5(none/버림1)' 을 보고 로그를 뒤졌는데 아무것도 없었다.
+         세기만 하고 이유를 안 남기면 '뭔가 잃었다' 까지만 알고 끝난다.
+         머리와 꼬리를 둘 다 남긴다 — 앞에 붙은 것과 잘린 끝은 서로 다른 병이다.
+         3개까지만 남긴다(로그가 응답 전체가 되면 아무도 안 읽는다). */
+      if (droppedDetail.length < 3) {
+        let why = '';
+        try { JSON.parse(c); } catch (e) { why = String((e && e.message) || e).slice(0, 120); }
+        droppedDetail.push({ why, head: c.slice(0, 120), tail: c.slice(-120), len: c.length });
+      }
+    }
   }
   if (!value.length) {
     throw new Error(what + ' 객체 ' + chunks.length + '개를 찾았으나 전부 파싱 실패: '
@@ -364,7 +377,7 @@ function _linesOnce(s, what) {
   return {
     value,
     repaired: kinds.size ? Array.from(kinds).join('+') : 'none',
-    dropped,
+    dropped, droppedDetail,
   };
 }
 
@@ -395,7 +408,7 @@ function parseJsonLines(text, label) {
         return {
           value: second.value,
           repaired: (second.repaired === 'none' ? '' : second.repaired + '+') + 'typo-quotes',
-          dropped: second.dropped,
+          dropped: second.dropped, droppedDetail: second.droppedDetail,
         };
       }
     }

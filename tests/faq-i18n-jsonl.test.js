@@ -314,6 +314,57 @@ const srcMap = new Map([['e1', KO], ['e2', KO]]);
   t('꼬리도 그대로 남긴다 (2026-08-08 교훈)', /\| tail=/.test(SRC));
   t('stop_reason 을 계속 남긴다', /stop_reason=/.test(SRC));
 
+
+  console.log('\n[7] 잃은 것은 이유가 로그에 남는다 (2026-09-04)');
+  /* 2026-09-03 노트에 'de:4/5(none/버림1)' 이 찍혔다. 런타임 로그를 뒤졌는데
+     그 한 줄이 왜 깨졌는지 **아무 데도 없었다.** 세는 것과 아는 것은 다르다.
+     정규식으로 소스를 훑지 않고 실제로 돌려서 console.error 를 잡는다. */
+  function 로그잡기(fn) {
+    const 원래 = console.error;
+    const 줄 = [];
+    console.error = (...a) => 줄.push(a.map(String).join(' '));
+    return Promise.resolve().then(fn).then(
+      (v) => { console.error = 원래; return { out: v, 로그: 줄.join('\n') }; },
+      (e) => { console.error = 원래; throw e; });
+  }
+
+  {
+    updates.length = 0;
+    trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
+    // 괄호 짝은 맞아 덩어리로는 잡히는데 값이 비어 못 읽는 줄
+    reply = el(0) + '\n{"i":1,"faq":[{"q":"Q1","a":}]}';
+    const { out: r7, 로그 } = await 로그잡기(() => i18n.runOneLang('de', srcMap, 6, 'm', 60000));
+    t('온전한 줄은 저장된다', r7.processed === 1, r7);
+    t("노트에 '버림' 이 남는다", /버림/.test(String(r7.repaired)), r7.repaired);
+    t('버린 줄을 로그에 찍는다', /줄 버림/.test(로그), 로그.slice(0, 200));
+    t('왜 깨졌는지 로그에 적는다', /why=/.test(로그) && /not valid JSON|Unexpected/.test(로그), 로그.slice(0, 300));
+    t('머리와 꼬리를 둘 다 남긴다', /head=/.test(로그) && /tail=/.test(로그), 로그.slice(0, 300));
+  }
+
+  {
+    updates.length = 0;
+    trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
+    // 파싱은 되는데 항목 수가 원본과 달라 저장을 안 하는 경우 (종전엔 조용히 continue)
+    reply = '{"i":0,"faq":[{"q":"Q1","a":"A1"}]}';
+    const { out: r8, 로그 } = await 로그잡기(() => i18n.runOneLang('de', srcMap, 6, 'm', 60000));
+    t('반쪽 FAQ 는 여전히 저장하지 않는다', r8.processed === 0 && updates.length === 0, r8);
+    t('안 저장한 이유를 로그에 찍는다', /저장 안 함/.test(로그), 로그.slice(0, 200));
+    t('이유를 갈라서 센다 (길이불일치)', /길이불일치=1/.test(로그), 로그.slice(0, 300));
+    t('요청·저장 수를 함께 남긴다', /요청=2/.test(로그) && /저장=0/.test(로그), 로그.slice(0, 300));
+    t('이유별 셈을 값으로도 돌려준다', r8.skip && r8.skip.길이불일치 === 1, r8.skip);
+  }
+
+  {
+    // 다 잘된 회차는 조용해야 한다 — 헛로그가 쌓이면 아무도 안 읽는다
+    updates.length = 0;
+    trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
+    reply = el(0) + '\n' + el(1);
+    const { out: r9, 로그 } = await 로그잡기(() => i18n.runOneLang('de', srcMap, 6, 'm', 60000));
+    t('전부 저장되면 2건', r9.processed === 2, r9);
+    t('잃은 게 없으면 버림·저장안함 로그가 없다',
+      !/줄 버림/.test(로그) && !/저장 안 함/.test(로그), 로그.slice(0, 200));
+  }
+
   console.log('\n' + (fail ? '✗' : '✓') + ' faq-i18n-jsonl: ' + pass + ' passed / ' + fail + ' failed');
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error('테스트가 던졌다:', e); process.exit(1); });

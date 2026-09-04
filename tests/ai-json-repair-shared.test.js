@@ -227,6 +227,32 @@ console.log('\n=== 8. 다섯째 칸 — 활자 따옴표 (2026-09-03 de 실측) 
     ok(r2.value[1] && r2.value[1].faq[0].a.indexOf('Studio Nord') !== -1, '깨진 줄의 내용도 살아난다');
   }
 
+  /* 2026-09-04 — 버린 줄은 **이유까지** 낸다.
+     전날 노트에 'de:4/5(none/버림1)' 이 찍혔는데 런타임 로그에 아무것도 없어서
+     그 한 줄이 왜 깨졌는지 알 수가 없었다. 세는 것과 아는 것은 다르다. */
+  {
+    const 온전 = '{"i":0,"faq":[{"q":"a","a":"b"}]}';
+    /* 괄호는 짝이 맞아서 '덩어리' 로는 잡히는데, 값이 비어 파싱은 안 되는 모양.
+       괄호까지 어긋난 것은 애초에 덩어리로 안 잡혀 dropped 에 안 들어간다 —
+       그건 다섯째 칸이 맡는다(위 절). 여기서 재는 건 '잡혔는데 못 읽은 줄' 이다. */
+    const 못살림 = '{"i":1,"faq":[{"q":"c","a":}]}';
+    const r3 = parseJsonLines(온전 + '\n' + 못살림, 'faq-i18n/de');
+    ok(r3.dropped > 0, '못 살린 줄을 센다 (' + r3.dropped + ')');
+    ok(Array.isArray(r3.droppedDetail) && r3.droppedDetail.length > 0,
+      '버린 줄의 내역을 함께 낸다');
+    const d0 = r3.droppedDetail[0];
+    ok(d0 && typeof d0.why === 'string' && d0.why.length > 0, '왜 깨졌는지 적는다: ' + (d0 && d0.why));
+    ok(d0 && d0.head && d0.tail, '머리와 꼬리를 둘 다 남긴다 (앞에 붙은 것과 잘린 끝은 다른 병이다)');
+    ok(d0 && d0.head.length <= 120 && d0.tail.length <= 120, '길이를 자른다 (로그가 응답 전체가 되면 안 읽는다)');
+    ok(r3.value.length === 1, '멀쩡한 줄은 그대로 살린다');
+  }
+  {
+    /* 다 살렸으면 내역이 비어 있어야 한다 — 헛것을 남기지 않는다 */
+    const ok2 = parseJsonLines('{"i":0,"faq":[]}\n{"i":1,"faq":[]}', 'x');
+    eq(ok2.dropped, 0, '버린 게 없으면 0');
+    eq((ok2.droppedDetail || []).length, 0, '버린 게 없으면 내역도 비어 있다');
+  }
+
   /* 못 고치는 것은 여전히 던진다 — 고쳐 놓고 성공한 척하지 않는다 */
   let threw = false;
   try { parseJsonObject('{"a":„망가짐", "b":', 'x'); } catch (e) { threw = true; }
