@@ -11,6 +11,7 @@
 
 const { supabaseAdmin } = require('./_lib/supabase');
 const { sendEmail } = require('./_lib/email');
+const { rateLimitStrict, RATE_LIMITS } = require('./_lib/rateLimit');
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -19,6 +20,10 @@ function esc(s) {
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  /* 2026-09-04 보안감사 — 레이트리밋이 없었다. 방어는 honeypot 하나였고, 요청마다
+     brand_inquiries INSERT + contact@ 로 메일 발송이라 스팸·메일 쿼터 소진 벡터였다.
+     login 과 같은 DB 기반 리밋(10/분)을 건다. */
+  if (await rateLimitStrict(req, res, RATE_LIMITS.auth, 'brand-inquiry')) return;
 
   let b = req.body;
   if (typeof b === 'string') { try { b = JSON.parse(b); } catch (_) { b = {}; } }

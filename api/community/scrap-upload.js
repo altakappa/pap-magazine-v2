@@ -20,6 +20,8 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif', 'image/avif'];
 const ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'avif'];
+const EXT_TO_MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+  webp: 'image/webp', heic: 'image/heic', heif: 'image/heif', avif: 'image/avif' };
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB per scrap
 
 module.exports.config = { api: { bodyParser: false } };
@@ -41,7 +43,11 @@ module.exports = async function handler(req, res) {
     // Validate
     const ext = (file.originalFilename ? file.originalFilename.split('.').pop() : '').toLowerCase();
     const mime = (file.mimetype || '').toLowerCase();
-    if (!ALLOWED_EXT.includes(ext) && !ALLOWED_MIME.includes(mime)) {
+    /* 2026-09-04 보안감사 — 예전엔 `확장자 OK && MIME OK` 둘 다 틀릴 때만 거부했다(OR 통과).
+       'x.jpg' 이름에 mimetype text/html 을 실어 보내면 통과했고, 아래서 그 mime 그대로
+       public 버킷에 저장돼 PAP 계정으로 HTML(피싱) 페이지를 호스팅할 수 있었다.
+       둘 다 허용 목록에 있어야 통과한다. */
+    if (!ALLOWED_EXT.includes(ext) || !ALLOWED_MIME.includes(mime)) {
       return res.status(415).json({ message: `Unsupported file type (${mime || ext || 'unknown'})` });
     }
     if (file.size > MAX_FILE_SIZE) {
@@ -57,7 +63,7 @@ module.exports = async function handler(req, res) {
     const { error: upErr } = await supabaseAdmin.storage
       .from('media')
       .upload(storagePath, buffer, {
-        contentType: mime || 'image/jpeg',
+        contentType: EXT_TO_MIME[safeExt] || 'image/jpeg' /* 2026-09-04 클라이언트 mime 불신 */,
         upsert: false,
       });
     if (upErr) {

@@ -51,7 +51,10 @@ function truncate(s, n) {
 
 module.exports = withCronGuard('sync-pinterest', async function handler(req, res) {
   // Vercel cron 보호
-  if (process.env.CRON_SECRET) {
+  /* 2026-09-04 보안감사 — CRON_SECRET 이 없으면 검사를 건너뛰던 fail-open 이었다.
+     env 를 잊으면 누구나 이 크론을 돌릴 수 있었다. 없으면 거부한다(fail-closed). */
+  if (!process.env.CRON_SECRET) return res.status(500).json({ error: 'CRON_SECRET not configured' });
+  {
     const auth = req.headers['authorization'] || '';
     if (auth !== 'Bearer ' + process.env.CRON_SECRET) {
       return res.status(401).json({ error: 'unauthorized' });

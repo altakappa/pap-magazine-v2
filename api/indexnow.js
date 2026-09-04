@@ -170,7 +170,13 @@ module.exports = withCronGuard('indexnow', async function handler(req, res) {
   //  Bearer CRON_SECRET 호출이 401 로 튕겨 매일 크론이 조용히 실패하는 구조였음)
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
-  if (process.env.INDEXNOW_SECRET && !cronOk) {
+  /* 2026-09-04 보안감사 — INDEXNOW_SECRET 이 없으면 검사를 건너뛰던 fail-open 이었다.
+     크론 시크릿도 아니고 INDEXNOW_SECRET 도 설정돼 있지 않으면 거부한다. */
+  if (!cronOk) {
+    if (!process.env.INDEXNOW_SECRET) {
+      note(res, '인증 거부 — INDEXNOW_SECRET 미설정 (fail-closed)');
+      return res.status(503).json({ error: 'INDEXNOW_SECRET not configured' });
+    }
     const s = (req.query && req.query.secret) || '';
     if (s !== process.env.INDEXNOW_SECRET) {
       note(res, '인증 거부 — 크론 시크릿도 ?secret= 도 아님');

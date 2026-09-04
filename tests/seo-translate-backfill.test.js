@@ -328,7 +328,12 @@ async function testCron() {
     };
     return r;
   }
-  const run = async (headers) => { const res = mkRes(); calls = []; await handler({ headers: headers || {} }, res); return res; };
+  /* 2026-09-04 보안감사 — 크론이 fail-closed 가 됐다(CRON_SECRET 없으면 500).
+     예전 테스트는 시크릿 검사 뒤 env 를 지우고 무인증으로 기능 검사를 이어갔다.
+     그건 "시크릿 없으면 열린다" 는 옛 동작에 기댄 것이었다. 이제 기능 검사는
+     맞는 시크릿을 들고 돈다. 헤더 인자를 주면 그것을, 안 주면 맞는 시크릿을 쓴다. */
+  const OK_HDR = { authorization: 'Bearer sekret' };
+  const run = async (headers) => { const res = mkRes(); calls = []; await handler({ headers: headers || OK_HDR }, res); return res; };
 
   process.env.ANTHROPIC_API_KEY = 'test-key-not-used';
 
@@ -337,7 +342,11 @@ async function testCron() {
   ok('시크릿 없는 요청 401', (await run({})).code === 401);
   ok('틀린 시크릿 401', (await run({ authorization: 'Bearer wrong' })).code === 401);
   ok('맞는 시크릿 200', (await run({ authorization: 'Bearer sekret' })).code === 200);
-  delete process.env.CRON_SECRET;
+  {
+    const saved = process.env.CRON_SECRET; delete process.env.CRON_SECRET;
+    ok('CRON_SECRET 미설정이면 500 (fail-closed, 2026-09-04)', (await run({})).code === 500);
+    process.env.CRON_SECRET = saved;
+  }
 
   /* 2026-07-31 — 링을 예산이 다할 때까지 반복해서 돈다.
      전에는 조합 목록을 한 바퀴만 돌고 끝나서, 예산이 남아도 함수가 그냥
@@ -376,7 +385,7 @@ async function testCron() {
       ? new Error('Claude API 실패 (500): boom')
       : { processed: 7, remaining: 42 });
     const r = mkRes(); calls = [];
-    await handler({ headers: {} }, r);
+    await handler({ headers: OK_HDR }, r);
     const note = r.locals && r.locals.cronNote;
     ok('note 를 남긴다', typeof note === 'string' && note.length > 0);
     // 링을 여러 바퀴 도므로 건수는 누적된다 — 조합당 한 줄로 합쳐졌는지를 본다.

@@ -18,8 +18,17 @@ function generateCode() {
   return crypto.randomInt(100000, 999999).toString();
 }
 
-function hashCode(code) {
-  return crypto.createHash('sha256').update(code).digest('hex');
+/* 2026-09-04 보안감사 — 예전에는 sha256(code) 를 verificationToken(JWT) 에 넣어
+   클라이언트로 돌려줬다. JWT 는 서명만 되고 암호화는 안 되므로 누구나 payload 를 읽는다.
+   6자리 코드는 90만 가지뿐이라 해시를 받은 사람은 1초 안에 코드를 역산할 수 있었다.
+   → 이메일 인증을 통째로 우회해 아무 이메일로나 가입 가능(오프라인 브루트포스).
+   지금은 서버 비밀키(JWT_SECRET)로 HMAC 을 만든다. 비밀키 없이는 클라이언트가 같은 값을
+   계산할 수 없으므로 payload 를 읽어도 코드를 알 수 없다. 이메일을 함께 섞어 토큰 재사용도 막는다.
+   send-code.js 와 verify-code.js 는 **반드시 같은 함수**여야 한다. */
+function hashCode(code, email) {
+  return crypto.createHmac('sha256', JWT_SECRET)
+    .update(String(email || '').trim().toLowerCase() + ':' + String(code))
+    .digest('hex');
 }
 
 function buildVerificationEmail(code) {
@@ -76,7 +85,7 @@ module.exports = async function handler(req, res) {
     if (await rateLimitAccount(res, email, { limit: 5, windowMs: 15 * 60 * 1000, name: 'sendcode:acct' })) return;
 
     const code = generateCode();
-    const codeHash = hashCode(code);
+    const codeHash = hashCode(code, email);
 
     // Create a signed token with hashed code + email + expiry
     const verificationToken = jwt.sign(

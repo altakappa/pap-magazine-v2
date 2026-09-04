@@ -30,7 +30,12 @@ module.exports = async function handler(req, res) {
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
 
-  const user = requireAdmin(req, res);
+  /* 2026-09-04 보안감사 — await 가 빠져 있었다. requireAdmin 은 async 라 Promise 를
+     돌려주고, Promise 는 항상 truthy 다. 그래서 `if (!user) return` 이 절대 걸리지 않았고,
+     유효 JWT 를 가진 **일반 회원**이 이 엔드포인트(다운로드 로그: 이메일·IP·UA)를 읽을 수
+     있었다(admin 조회와 로그 조회가 경주해서 응답이 먼저 나가는 쪽이 이김).
+     전 코드베이스에서 이 파일만 await 가 없었다. */
+  const user = await requireAdmin(req, res);
   if (!user) return;
 
   const q = req.query || {};
