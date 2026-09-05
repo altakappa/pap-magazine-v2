@@ -245,7 +245,12 @@ console.log('\n=== DB 세기와 생산자 세기의 범위가 다르다 (완주�
     windowHours: 3, runs: 18, parsed: s3.parsed, fails: 0, partRuns: 0,
     silentParts: [], noteRemaining: s3.noteRemaining });
   t('생산자가 잔여 0 이면 완주로 본다', d3.status === 'done' && d3.healthy, d3.status + ' / ' + d3.reason);
-  t('DB 에 남은 칸이 왜 있는지 함께 말한다', /897/.test(d3.reason) && /원본/.test(d3.reason), d3.reason);
+  /* 2026-09-06 — 종전 단정은 /원본/ 이었다. 그 설명 자체가 틀린 것이었다.
+     조인 실측: draft 화보 886행 + 삭제된 화보 고아 11행 · 발행됐는데 원본 없음 0.
+     알림은 사람을 '원본을 만들어야 하나' 로 보내면 안 된다 — 만들 게 없다. */
+  t('DB 에 남은 칸이 왜 있는지 함께 말한다',
+    /897/.test(d3.reason) && /발행/.test(d3.reason), d3.reason);
+  t('없는 일(원본 생성)을 시키지 않는다', !/원본이 없어/.test(d3.reason), d3.reason);
 
   /* 못 잰 것을 0 으로 읽지 않는다 — 노트의 '?' 는 null 로 온다 */
   const 못잼 = ['화보FAQ 언어판 0 · 잔여 ?(2/7개 언어, fr부터) · 1회전 · fr:실패 es:실패'];
