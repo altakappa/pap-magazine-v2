@@ -73,23 +73,50 @@ const STATIC_URLS = [
 /**
  * 콘텐츠 URL 수집.
  * @param {string|null} sinceIso — 지정 시 그 시각 이후 발행/갱신된 것만 (recent 모드)
+ *
+ * 2026-09-05 — "발행/갱신" 이라고 적혀 있었지만 코드는 published_date 만 봤다.
+ * 그래서 발행 뒤에 바뀐 페이지는 검색엔진에 한 번도 다시 알려지지 않았다:
+ *   · 제목 수정(2024 레거시 오탈자 등) · FAQ 부착(기사 2,655 · 화보 2,291)
+ *   · 영문 FAQ 백필(4,351편 진행 중) · 언어판 번역 갱신(48h 에 12,468행)
+ * Ahrefs Site Audit(9/1): "Changed pages not submitted to IndexNow" 9,998 페이지.
+ * DB 실측(9/5): 48h 안에 발행일은 옛날인데 updated_at 이 바뀐 기사 1,147편.
+ * 네이버·빙은 IndexNow 로만 "다시 읽어 달라" 를 듣는다 — 그 채널이 갱신에는
+ * 닫혀 있었다. since 가 있으면 published_date 또는 updated_at 중 하나라도
+ * 그 이후인 행을 고르고, 최근 갱신순으로 자른다.
+ *
+ * 스팸 방지: updated_at 은 실제로 바뀐 행만 움직인다(DB 트리거). 같은 URL 을
+ * 매일 되밀지 않는 원칙은 그대로다 — "바뀐 것" 의 정의를 넓혔을 뿐이다.
  */
+/* PostgREST or() 값에 밀리초 점(.000Z)이 들어가면 파서가 헷갈릴 여지가 있어
+   초 단위로 자른다. published_date 는 date 형이라 시각 부분은 어차피 버려진다. */
+const CHANGED_FILTER = (sinceIso) => {
+  const t = String(sinceIso).replace(/\.\d{1,3}Z$/, 'Z');
+  return 'published_date.gte.' + t + ',updated_at.gte.' + t;
+};
+let lastRecentStats = null;
 /* 2026-08-26 — 언어판 제출 추가. Bing 웹마스터 "Important URLs missing" 이
    전부 /en /ja /zh /es /it /de 기사였다: IndexNow 가 ko URL 만 제출하고
    언어판은 검색엔진이 알아서 발견하길 기다리는 구조였기 때문. en 은 SSR 이
    항상 존재(title_en 기반)하니 무조건, 나머지 언어는 seo_translations 에
    번역이 실재하는 것만 제출한다 — 없는 페이지를 밀어넣지 않기 위해. */
-async function langVariantUrls(kind, rows) {
+/* 2026-09-05 — sinceIso 를 받는다. recent 모드에서 ko 원본이 바뀌었다고 해서
+   8개 언어판이 전부 바뀐 건 아니다(언어판 본문·FAQ 는 seo_translations 에서
+   온다). 번역행의 updated_at 이 since 이후인 언어만 낸다 — 안 바뀐 URL 을
+   매일 되밀어 넣는 건 IndexNow 가이드라인상 스팸 신호다. en 은 title_en SSR
+   이라 원본이 바뀌면 같이 바뀌므로 항상 포함. */
+async function langVariantUrls(kind, rows, sinceIso) {
   const out = [];
   const byId = new Map();
   (rows || []).forEach(r => { const h = r.slug || r.custom_url || r.id; if (h) byId.set(r.id, h); });
   if (!byId.size) return out;
   for (const h of byId.values()) out.push(SITE + '/en/' + kind + '/' + encodeURIComponent(h));
   try {
-    const { data: trs } = await supabaseAdmin
+    let tq = supabaseAdmin
       .from('seo_translations').select('content_id, lang')
       .eq('kind', kind)
       .in('content_id', [...byId.keys()]);
+    if (sinceIso && tq && typeof tq.gte === 'function') tq = tq.gte('updated_at', sinceIso);
+    const { data: trs } = await tq;
     (trs || []).forEach(t => {
       const h = byId.get(t.content_id);
       if (h && t.lang && t.lang !== 'ko' && t.lang !== 'en') {
@@ -107,35 +134,35 @@ async function recentContentUrls(sinceIso, limits, withLangs) {
     let q = supabaseAdmin
       .from('editorials').select('slug, id')
       .eq('status', 'published')
-      .order('published_date', { ascending: false, nullsFirst: false })
+      .order(sinceIso ? 'updated_at' : 'published_date', { ascending: false, nullsFirst: false })
       .limit(L.editorial || 30);
-    if (sinceIso) q = q.gte('published_date', sinceIso);
+    if (sinceIso) q = q.or(CHANGED_FILTER(sinceIso));
     const { data: eds } = await q;
     (eds || []).forEach(e => {
       const h = e.slug || e.id; if (h) urls.push(SITE + '/editorial/' + encodeURIComponent(h));
     });
-    if (withLangs) urls.push(...await langVariantUrls('editorial', eds));
+    if (withLangs) urls.push(...await langVariantUrls('editorial', eds, sinceIso));
   } catch (_) {}
   try {
     let q = supabaseAdmin
       .from('articles').select('slug, custom_url, id')
       .eq('status', 'published')
-      .order('published_date', { ascending: false })
+      .order(sinceIso ? 'updated_at' : 'published_date', { ascending: false, nullsFirst: false })
       .limit(L.article || 30);
-    if (sinceIso) q = q.gte('published_date', sinceIso);
+    if (sinceIso) q = q.or(CHANGED_FILTER(sinceIso));
     const { data: arts } = await q;
     (arts || []).forEach(a => {
       const h = a.slug || a.custom_url || a.id; if (h) urls.push(SITE + '/article/' + encodeURIComponent(h));
     });
-    if (withLangs) urls.push(...await langVariantUrls('article', arts));
+    if (withLangs) urls.push(...await langVariantUrls('article', arts, sinceIso));
   } catch (_) {}
   try {
     let q = supabaseAdmin
       .from('films').select('slug, title, id')
       .eq('status', 'published')
-      .order('published_date', { ascending: false })
+      .order(sinceIso ? 'updated_at' : 'published_date', { ascending: false, nullsFirst: false })
       .limit(L.film || 20);
-    if (sinceIso) q = q.gte('published_date', sinceIso);
+    if (sinceIso) q = q.or(CHANGED_FILTER(sinceIso));
     const { data: films } = await q;
     (films || []).forEach(f => {
       /* 2026-08-26 — 종전엔 title 로 URL 을 만들었다. 프론트 링크는 slug||id 라
@@ -143,6 +170,41 @@ async function recentContentUrls(sinceIso, limits, withLangs) {
       const h = f.slug || f.id; if (h) urls.push(SITE + '/film/' + encodeURIComponent(h));
     });
   } catch (_) {}
+  /* 원본 행은 안 바뀌고 번역행만 바뀐 경우(언어판 FAQ 백필이 그렇다) — 위 세
+     블록은 원본 updated_at 을 보므로 놓친다. 번역행 자체를 since 로 골라 그
+     언어판 URL 만 낸다. en 은 seo_translations 에 없으므로 여기서 안 나온다. */
+  const before = urls.length;
+  if (sinceIso && withLangs) {
+    try {
+      const { data: trs } = await supabaseAdmin
+        .from('seo_translations').select('content_id, kind, lang')
+        .gte('updated_at', sinceIso)
+        .neq('lang', 'ko')
+        .order('updated_at', { ascending: false })
+        .limit((L.translation || 600));
+      const byKind = {};
+      (trs || []).forEach(t => {
+        if (!t || !t.content_id || !t.kind || !t.lang || t.lang === 'en') return;
+        (byKind[t.kind] = byKind[t.kind] || []).push(t);
+      });
+      for (const kind of Object.keys(byKind)) {
+        const table = kind === 'article' ? 'articles' : kind === 'editorial' ? 'editorials' : kind === 'film' ? 'films' : null;
+        if (!table) continue;
+        const ids = [...new Set(byKind[kind].map(t => t.content_id))];
+        const { data: rows } = await supabaseAdmin
+          .from(table).select('id, slug' + (kind === 'article' ? ', custom_url' : ''))
+          .eq('status', 'published')
+          .in('id', ids);
+        const handle = new Map();
+        (rows || []).forEach(r => { const h = r.slug || r.custom_url || r.id; if (h) handle.set(r.id, h); });
+        byKind[kind].forEach(t => {
+          const h = handle.get(t.content_id);
+          if (h) urls.push(SITE + '/' + t.lang + '/' + kind + '/' + encodeURIComponent(h));
+        });
+      }
+    } catch (_) {}
+  }
+  lastRecentStats = { total: urls.length, translationOnly: urls.length - before };
   return urls;
 }
 
@@ -218,12 +280,17 @@ module.exports = withCronGuard('indexnow', async function handler(req, res) {
 
     if (!urlList.length && mode === 'recent') {
       const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-      const recent = await recentContentUrls(since, { article: 200 }, true);
+      /* 2026-09-05 — 갱신분이 들어오면서 48h 변경분이 200 을 훌쩍 넘는다
+         (영문 FAQ 백필 파도 동안 기사 1,147/48h). 표별 상한을 올리고 총량은
+         아래에서 INDEXNOW_RECENT_CAP(기본 2,000)으로 자른다 — 하루 1만 건은
+         이 규모 사이트엔 과하고, 파도는 며칠이면 빠진다. */
+      const recent = await recentContentUrls(since, { editorial: 300, article: 600, film: 50, translation: 600 }, true);
       if (!recent.length) {
         note(res, '최근 48시간 변경 콘텐츠 없음 — 제출 생략 (정상)');
         return res.status(200).json({ submitted: 0, mode, message: '최근 48시간 변경 콘텐츠 없음 — 제출 생략.' });
       }
-      urlList = [SITE + '/'].concat(recent);
+      const cap = Math.max(100, parseInt(process.env.INDEXNOW_RECENT_CAP || '2000', 10) || 2000);
+      urlList = [SITE + '/'].concat(recent).slice(0, cap);
     }
 
     // 기본 세트 (파라미터 없을 때): 정적 주요 페이지 + 최신 콘텐츠
@@ -246,7 +313,8 @@ module.exports = withCronGuard('indexnow', async function handler(req, res) {
       note(res, (mode || 'full') + ': ' + urlList.length + '건 제출했으나 수락 0 — ' + detail);
       return res.status(502).json({ submitted: urlList.length, accepted: 0, mode: mode || 'full', endpoints: results });
     }
-    note(res, (mode || 'full') + ': ' + urlList.length + '건 제출 · 수락 ' + accepted + '/' + results.length + ' — ' + detail);
+    const statsTxt = (mode === 'recent' && lastRecentStats) ? ' · 언어판전용 ' + lastRecentStats.translationOnly : '';
+    note(res, (mode || 'full') + ': ' + urlList.length + '건 제출' + statsTxt + ' · 수락 ' + accepted + '/' + results.length + ' — ' + detail);
     return res.status(200).json({
       submitted: urlList.length,
       accepted,
@@ -266,3 +334,5 @@ module.exports.epLabel = epLabel;
 module.exports.epAccepted = epAccepted;
 module.exports.ENDPOINTS = ENDPOINTS;
 module.exports.langVariantUrls = langVariantUrls;
+module.exports.recentContentUrls = recentContentUrls;
+module.exports.CHANGED_FILTER = CHANGED_FILTER;

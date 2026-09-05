@@ -105,6 +105,54 @@ Module._load = _origLoad;
   ok(!urls.some(u => u.indexOf('/it/editorial/no-tr') !== -1), '번역 없는 콘텐츠에 언어판을 지어내지 않는다');
   ok(urls.includes(S + '/en/editorial/id3'), 'slug 없으면 id 폴백');
 
+  console.log('\n=== 6. 갱신된 페이지도 제출한다 (2026-09-05) ===');
+  /* [왜] 주석은 "발행/갱신" 이었는데 코드는 published_date 만 봤다. 제목 수정·
+     FAQ 부착·영문 FAQ 백필·번역 갱신이 검색엔진에 한 번도 다시 알려지지 않았다.
+     Ahrefs Site Audit 9/1: "Changed pages not submitted to IndexNow" 9,998.
+     DB 9/5: 48h 안에 발행일은 옛날인데 updated_at 이 바뀐 기사 1,147편. */
+  ok(/CHANGED_FILTER/.test(src) && /updated_at\.gte\./.test(src),
+     'recent 필터가 updated_at 을 본다 (published_date 만 보던 회귀 방지)');
+  ok(!/if \(sinceIso\) q = q\.gte\('published_date', sinceIso\)/.test(src),
+     'published_date 단독 필터가 남아 있지 않다');
+  ok(/\.order\(sinceIso \? 'updated_at' : 'published_date'/.test(src),
+     'since 모드에서는 최근 갱신순으로 자른다 (오래된 갱신이 limit 에 밀려 영영 못 나가는 것 방지)');
+  ok(/INDEXNOW_RECENT_CAP/.test(src), 'recent 총량 상한이 있다 (하루 1만 건 되밀기 방지)');
+  ok(/translationOnly/.test(src), '번역행만 바뀐 언어판을 따로 세어 note 에 남긴다 (조용한 성공 금지)');
+
+  const f = m2.CHANGED_FILTER('2026-09-03T06:12:34.567Z');
+  ok(f === 'published_date.gte.2026-09-03T06:12:34Z,updated_at.gte.2026-09-03T06:12:34Z',
+     'or 필터 문자열: 두 칼럼 모두, 밀리초 제거 — ' + f);
+
+  /* 실행 검증 — since 가 있으면 언어판은 since 이후 갱신된 번역행만 */
+  const calls = [];
+  Module._load = function (req) {
+    if (/_lib\/supabase$/.test(req)) return { supabaseAdmin: {
+      from: () => ({ select: () => ({ eq: () => ({ in: () => {
+        const rows = [
+          { content_id: 'id1', lang: 'it' },   // 갱신됨(모의: gte 호출 시 it 만 남긴다)
+          { content_id: 'id1', lang: 'ja' },
+        ];
+        const thenable = {
+          gte: (col, v) => { calls.push([col, v]); return Promise.resolve({ data: rows.filter(r => r.lang === 'it') }); },
+          then: (res) => res({ data: rows }),
+        };
+        return thenable;
+      } }) }) }),
+    } };
+    if (/_lib\/cronGuard$/.test(req)) return { withCronGuard: (name, h) => h };
+    return _origLoad.apply(this, arguments);
+  };
+  delete require.cache[require.resolve(SRC)];
+  const m3 = require(SRC);
+  Module._load = _origLoad;
+  const withSince = await m3.langVariantUrls('article', [{ id: 'id1', slug: 'x' }], '2026-09-03T00:00:00Z');
+  ok(calls.length === 1 && calls[0][0] === 'updated_at', 'since 지정 시 번역행을 updated_at 으로 거른다');
+  ok(withSince.includes(S + '/en/article/x'), 'en 은 원본이 바뀌면 항상 (title_en SSR)');
+  ok(withSince.includes(S + '/it/article/x') && !withSince.includes(S + '/ja/article/x'),
+     '갱신된 번역(it)만 내고 안 바뀐 언어(ja)는 되밀지 않는다');
+  const noSince = await m3.langVariantUrls('article', [{ id: 'id1', slug: 'x' }]);
+  ok(noSince.includes(S + '/ja/article/x'), 'since 없으면(backfill·full) 종전대로 실재 언어 전부');
+
   console.log(`\npassed: ${pass} failed: ${fail}`);
   if (fail) process.exit(1);
   console.log('✅ indexnow-guard tests passed');
