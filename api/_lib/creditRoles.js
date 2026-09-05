@@ -135,6 +135,42 @@ const ALIASES = {
   'cinematographer': 'DOP / Cinematographer',
   'video dir': 'Video Director',
   'video director': 'Video Director',
+
+  // ── 브라우저 자동번역 역번역 (2026-09-05) ─────────────────────────
+  // Modern Teddy 서브미션(2026-09-04)에서 제출자가 Chrome 자동번역을 켠 채
+  // 폼을 썼고, 폼이 라벨의 textContent 를 그대로 읽어 '摄影师' 같은 번역문이
+  // DB 까지 들어와 사이트에 노출됐다. 프론트(data-role)가 1차 방어지만
+  // API 를 직접 치거나 옛 캐시 페이지에서 오면 뚫리므로 서버도 되돌린다.
+  // 표는 폼의 8개 고정 라벨 + 자주 쓰는 역할을 중/한/일로 번역기가 내는
+  // 대표 표기만 담는다. 확신 없는 건 넣지 않는다(잘못 붙이면 창작자에게 실례).
+  // 중국어(간체/번체)
+  '摄影师': 'Photographer', '攝影師': 'Photographer', '摄影': 'Photographer', '攝影': 'Photographer',
+  '摄影助理': 'Photographer assist', '攝影助理': 'Photographer assist',
+  '造型师': 'Stylist', '造型師': 'Stylist', '造型': 'Stylist',
+  '造型助理': 'Stylist assist', '造型师助理': 'Stylist assist', '造型師助理': 'Stylist assist',
+  '化妆': 'Make Up', '化妝': 'Make Up', '化妆师': 'Make Up', '化妝師': 'Make Up',
+  '发型': 'Hair', '髮型': 'Hair', '发型师': 'Hair', '髮型師': 'Hair',
+  '化妆和发型': 'Make Up & Hair', '化妝和髮型': 'Make Up & Hair', '化妆与发型': 'Make Up & Hair', '妆发': 'Make Up & Hair', '妝髮': 'Make Up & Hair',
+  '布景设计': 'Set Design', '佈景設計': 'Set Design', '场景设计': 'Set Design', '場景設計': 'Set Design',
+  '修图': 'Retouching', '修圖': 'Retouching', '修饰': 'Retouching', '润饰': 'Retouching',
+  '制片人': 'Producer', '製片人': 'Producer', '制片': 'Producer', '製片': 'Producer', '制作人': 'Producer', '製作人': 'Producer',
+  '艺术总监': 'Art Director', '藝術總監': 'Art Director', '美术指导': 'Art Director', '美術指導': 'Art Director',
+  '创意总监': 'Creative Director', '創意總監': 'Creative Director',
+  '选角导演': 'Casting Director', '選角導演': 'Casting Director',
+  '模特': 'Model', '模特儿': 'Model', '模特兒': 'Model',
+  '主演': 'Starring',
+  '经纪公司': 'Talent Agency', '經紀公司': 'Talent Agency',
+  // 한국어
+  '포토그래퍼': 'Photographer', '사진작가': 'Photographer', '사진': 'Photographer',
+  '스타일리스트': 'Stylist', '스타일링': 'Stylist',
+  '메이크업': 'Make Up', '헤어': 'Hair', '메이크업 헤어': 'Make Up & Hair', '메이크업 및 헤어': 'Make Up & Hair',
+  '세트 디자인': 'Set Design', '리터칭': 'Retouching', '보정': 'Retouching',
+  '프로듀서': 'Producer', '아트 디렉터': 'Art Director', '크리에이티브 디렉터': 'Creative Director',
+  '모델': 'Model', '주연': 'Starring',
+  // 일본어
+  'フォトグラファー': 'Photographer', '写真家': 'Photographer', '撮影': 'Photographer',
+  'スタイリスト': 'Stylist', 'メイク': 'Make Up', 'ヘア': 'Hair', 'メイク ヘア': 'Make Up & Hair', 'ヘアメイク': 'Make Up & Hair',
+  'レタッチ': 'Retouching', 'プロデューサー': 'Producer', 'アートディレクター': 'Art Director',
 };
 
 // 비교용 키: 소문자 + 마침표/앰퍼샌드/슬래시 제거 + 공백 1칸으로 압축.

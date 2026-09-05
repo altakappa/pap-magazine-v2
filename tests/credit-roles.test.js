@@ -49,7 +49,8 @@ if (m) {
 
 console.log('\n=== 2. 서브미션 제출 화면 고정 역할이 전부 표준값 ===');
 const subSrc = fs.readFileSync(path.join(ROOT, 'frontend/submission.html'), 'utf8');
-const labels = (subSrc.match(/<div class="team-role">([^<]+)<\/div>/g) || [])
+// 2026-09-05 — 자동번역 방어로 data-role/translate 속성이 붙었다(속성 허용)
+const labels = (subSrc.match(/<div class="team-role"[^>]*>([^<]+)<\/div>/g) || [])
   .map((s) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim());
 t('고정 역할 행을 찾았다 (' + labels.length + '개)', labels.length >= 8);
 labels.forEach((l) => t('"' + l + '" 은 표준값', isCanonical(l)));

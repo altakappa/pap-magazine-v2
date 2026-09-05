@@ -17,6 +17,8 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit } = require('../_lib/submissionType');
 const { findNonLatin } = require('../_lib/latinOnly');
+const { normalizeRole } = require('../_lib/creditRoles');
+const { normalizeItemType } = require('../_lib/itemTypes');
 const { feeForType } = require('../_lib/submissionPayment');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
 const { sendEmail, templates } = require('../_lib/email');
@@ -146,6 +148,15 @@ module.exports = async function handler(req, res) {
       // look number it belongs to so the admin review modal can show the
       // brand crew per image.
       const looks = Array.isArray(data.looks) ? data.looks : [];
+      // 2026-09-05 — 브라우저 자동번역 방어(서버쪽). 제출자가 Chrome 번역을
+      // 켜면 폼 옵션 글자가 '裤子' 처럼 바뀌어 저장되던 사고(Modern Teddy).
+      // 품목(type)은 표준 영어값으로 되돌려 저장한다. api/_lib/itemTypes.js 참조.
+      looks.forEach(function (lk) {
+        if (!lk || !Array.isArray(lk.items)) return;
+        lk.items.forEach(function (it) {
+          if (it && it.type) it.type = normalizeItemType(it.type);
+        });
+      });
       const lookImageMap = Array.isArray(data.lookImageMap) ? data.lookImageMap : [];
       // Submission-type classification (2026-07-19) — DETECT + STORE only, no
       // payment/email. Recomputed AUTHORITATIVELY here from the persisted
@@ -198,6 +209,20 @@ module.exports = async function handler(req, res) {
       // .credits in its native shape ({roles[], name, instagram, website})
       // without re-parsing "Name (@handle)" strings.
       const team = Array.isArray(data.team) ? data.team : [];
+      // 2026-09-05 — 역할도 같은 이유로 표준화(摄影师 → Photographer 등).
+      // 모르는 자유입력 역할은 normalizeRole 이 원본을 보존한다.
+      team.forEach(function (m) {
+        if (m && m.role) m.role = normalizeRole(m.role);
+      });
+      // data.credits 는 역할을 키로 쓰는 레거시 평면 뷰라 키도 같이 되돌린다.
+      if (data.credits && typeof data.credits === 'object' && !Array.isArray(data.credits)) {
+        const fixed = {};
+        Object.keys(data.credits).forEach(function (k) {
+          const nk = (normalizeRole(k) || k).toLowerCase().replace(/\s+/g, '_');
+          fixed[nk] = (fixed[nk] || []).concat(data.credits[k]);
+        });
+        data.credits = fixed;
+      }
 
       const { data: submission, error } = await supabaseAdmin
         .from('submissions')

@@ -697,14 +697,14 @@ function navigateWithInterstitial(url){
         <span data-i18n="hdrRole">ROLE</span><span data-i18n="hdrName">NAME</span><span data-i18n="hdrLink">LINK</span><span></span>
       </div>
       <div id="teamList">
-        <div class="team-row"><div class="team-role">Photographer</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><span class="team-remove" style="visibility:hidden" aria-hidden="true" title="Photographer credit is required">×</span></div>
-        <div class="team-row"><div class="team-role">Art Director</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
-        <div class="team-row"><div class="team-role">Stylist</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
-        <div class="team-row"><div class="team-role">Make Up &amp; Hair</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
-        <div class="team-row"><div class="team-role">Set Design</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
-        <div class="team-row"><div class="team-role">Stylist assist</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
-        <div class="team-row"><div class="team-role">Retouching</div><input class="team-input" placeholder="Name / Studio"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
-        <div class="team-row"><div class="team-role">Producer</div><input class="team-input" placeholder="Name / Studio"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
+        <div class="team-row"><div class="team-role" data-role="Photographer" translate="no">Photographer</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><span class="team-remove" style="visibility:hidden" aria-hidden="true" title="Photographer credit is required">×</span></div>
+        <div class="team-row"><div class="team-role" data-role="Art Director" translate="no">Art Director</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
+        <div class="team-row"><div class="team-role" data-role="Stylist" translate="no">Stylist</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
+        <div class="team-row"><div class="team-role" data-role="Make Up &amp; Hair" translate="no">Make Up &amp; Hair</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
+        <div class="team-row"><div class="team-role" data-role="Set Design" translate="no">Set Design</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
+        <div class="team-row"><div class="team-role" data-role="Stylist assist" translate="no">Stylist assist</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
+        <div class="team-row"><div class="team-role" data-role="Retouching" translate="no">Retouching</div><input class="team-input" placeholder="Name / Studio"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
+        <div class="team-row"><div class="team-role" data-role="Producer" translate="no">Producer</div><input class="team-input" placeholder="Name / Studio"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
       </div>
       <button class="add-btn" style="margin-top:12px" onclick="addTeamRow()" data-i18n="btnAddTeam">+ Add Team Member</button>
 
@@ -1856,7 +1856,7 @@ function _validateStep(n){
         // Pre-filled row — role은 div이므로 자동 채워짐.
         roleInput = null;
         nameInput = nameInputs[0];
-        roleText = (roleEl.textContent || '').trim();
+        roleText = (roleEl.getAttribute('data-role') || roleEl.textContent || '').trim(); // 2026-09-05 자동번역 방어
       } else {
         // Added row — nameInputs[0]=Role, nameInputs[1]=Name
         roleInput = nameInputs[0];
@@ -2104,7 +2104,7 @@ function removeTeamRow(btn){
   // 2026-07-20 (도메니코 지시) — 포토그래퍼는 유일하게 삭제 불가능한 크레딧.
   // (마크업에서도 Photo 행의 × 를 제거했지만, 방어적으로 로직에서도 차단)
   var roleEl=row.querySelector('.team-role');
-  var roleTxt=roleEl?String(roleEl.textContent||'').trim().toLowerCase():'';
+  var roleTxt=roleEl?String(roleEl.getAttribute('data-role')||roleEl.textContent||'').trim().toLowerCase():''; // 2026-09-05 자동번역 방어
   if(roleTxt==='photo'||roleTxt==='photographer'){
     // 2026-07-26 — 영/한 병기 하드코딩이었다. 언어별로 하나만 나가야 한다.
     if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_errT('photoCreditLocked'),'error');
@@ -2367,7 +2367,7 @@ function addLook(){
     +'<div class="look-images"><div class="look-img-label">LOOK '+n+' IMAGES</div><div class="look-img-zone" id="liz'+n+'"><input type="file" multiple accept="image/jpeg,image/png,image/webp,image/tiff,.jpg,.jpeg,.png,.webp,.tif,.tiff" onchange="addLookFiles('+n+',this.files)"><div class="liz-text"><strong>Click</strong> or drag images for Look '+n+'</div><div class="liz-hint" data-i18n="lookImgHintAuto">Auto-compressed · max 2MB per image</div></div><div class="look-thumbs" id="lookThumbs'+n+'"></div></div>'
     +'<div class="look-item-header"><span>ITEM TYPE</span><span>BRAND NAME</span><span>INSTAGRAM</span></div>'
     +'<div class="look-items" id="lookItems'+n+'">'
-    +'<div class="look-item"><select class="look-select">'+itemOptions()+'</select><input class="look-input" placeholder="Brand Name"><input class="look-input" placeholder="@instagram"></div>'
+    +'<div class="look-item"><select class="look-select" translate="no">'+itemOptions()+'</select><input class="look-input" placeholder="Brand Name"><input class="look-input" placeholder="@instagram"></div>'
     +'</div>'
     +'<button class="add-btn-sm" onclick="addLookItem('+n+')">+ Add Item</button>';
   list.appendChild(block);
@@ -2379,8 +2379,11 @@ function addLook(){
   if(typeof _renderSubmissionTypeNotice==='function') _renderSubmissionTypeNotice();
 }
 
+// 2026-09-05 — value 를 명시한다. 브라우저 자동번역은 option 의 글자만 바꾸고
+// value 속성은 안 건드리므로, select.value 가 항상 영어 원본을 돌려준다.
+// (Modern Teddy 서브미션에서 '裤子/项链/戒指' 가 그대로 저장된 사고의 재발 방지)
 function itemOptions(){
-  return '<option value="">Select...</option><option>Jacket</option><option>Top</option><option>Shirt</option><option>Sweater</option><option>Dress</option><option>Pants</option><option>Skirt</option><option>Bodysuit</option><option>Costume</option><option>Coat</option><option>Shoes</option><option>Boots</option><option>Bag</option><option>Glasses</option><option>Sunglasses</option><option>Hat</option><option>Belt</option><option>Ring</option><option>Necklace</option><option>Earrings</option><option>Watch</option><option>Scarf</option><option>Gloves</option><option>Other</option>';
+  return '<option value="">Select...</option><option value="Jacket">Jacket</option><option value="Top">Top</option><option value="Shirt">Shirt</option><option value="Sweater">Sweater</option><option value="Dress">Dress</option><option value="Pants">Pants</option><option value="Skirt">Skirt</option><option value="Bodysuit">Bodysuit</option><option value="Costume">Costume</option><option value="Coat">Coat</option><option value="Shoes">Shoes</option><option value="Boots">Boots</option><option value="Bag">Bag</option><option value="Glasses">Glasses</option><option value="Sunglasses">Sunglasses</option><option value="Hat">Hat</option><option value="Belt">Belt</option><option value="Ring">Ring</option><option value="Necklace">Necklace</option><option value="Earrings">Earrings</option><option value="Watch">Watch</option><option value="Scarf">Scarf</option><option value="Gloves">Gloves</option><option value="Other">Other</option>';
 }
 
 async function addLookFiles(n,fl){
@@ -2534,7 +2537,7 @@ function addLookItem(lookNum){
   var items=document.getElementById('lookItems'+lookNum);
   var item=document.createElement('div');
   item.className='look-item';
-  item.innerHTML='<select class="look-select">'+itemOptions()+'</select><input class="look-input" placeholder="Brand Name"><input class="look-input" placeholder="@instagram">';
+  item.innerHTML='<select class="look-select" translate="no">'+itemOptions()+'</select><input class="look-input" placeholder="Brand Name"><input class="look-input" placeholder="@instagram">';
   items.appendChild(item);
   if(typeof _renderSubmissionTypeNotice==='function') _renderSubmissionTypeNotice();
 }
@@ -3204,7 +3207,9 @@ function _showAuthPendingScreen(submissionId){
     var nameInp  = row.querySelectorAll('.team-input:not(.team-link-input)');
     // For pre-filled rows (role is a div) → nameInp[0] = Name
     // For added rows (role is an input)   → nameInp[0] = Role, nameInp[1] = Name
-    var role = roleEl ? roleEl.textContent : (nameInp[0] ? nameInp[0].value : '');
+    // 2026-09-05 — 브라우저 자동번역(Chrome 번역 등)이 라벨 텍스트를 바꿔도
+    // 저장값은 영어 원본이어야 한다. data-role 이 진실, textContent 는 폴백.
+    var role = roleEl ? (roleEl.getAttribute('data-role') || roleEl.textContent) : (nameInp[0] ? nameInp[0].value : '');
     var name = roleEl ? (nameInp[0] ? nameInp[0].value : '') : (nameInp[1] ? nameInp[1].value : '');
     var linkSel = row.querySelector('.team-link-type');
     var linkInp = row.querySelector('.team-link-input');

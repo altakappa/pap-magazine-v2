@@ -19,6 +19,7 @@ const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 // 크레딧 역할 표준화 — 서브미션 라벨('Photo')을 관리자 기준값('Photographer')으로.
 // 매핑 정의와 배경은 api/_lib/creditRoles.js 참조.
 const { normalizeRole } = require('../../_lib/creditRoles');
+const { normalizeItemType } = require('../../_lib/itemTypes'); // 2026-09-05 자동번역 방어
 // QA #184 — AI description generator was moved into the shared lib so
 // the admin-side "🤖 자동 생성" button + bulk-fill endpoint can reuse the
 // exact same prompts. Keeps the behaviour identical to what this file
@@ -401,7 +402,7 @@ function _buildEditorialFashion(desc, fileUrls) {
         .map((it) => {
           if (!it) return '';
           const handle = (it.instagram || '').trim();
-          const type = (it.type || '').trim();
+          const type = normalizeItemType(it.type); // 2026-09-05 — '裤子' 같은 번역문 → 'Pants'
           if (!handle && !it.brand) return '';
           // Format expected by the editorial detail renderer: "@handle Type"
           // (admin "이미지별 착장 크레딧" parses the same shape).
