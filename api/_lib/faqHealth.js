@@ -219,7 +219,7 @@ function parseFaqI18nNote(note) {
    라벨 뒤부터 잘라서 보므로 앞쪽 원본 FAQ 요약과 섞이지 않는다 —
    'FAQ 0 · 완주' 의 0 을 생산량으로 읽는 사고를 막는다. */
 function parseLane(note, label) {
-  const empty = { parsed: false, produced: 0, remaining: null, waves: null, parts: {}, fails: 0 };
+  const empty = { parsed: false, produced: 0, remaining: null, waves: null, parts: {}, done: {}, fails: 0 };
   const s = String(note == null ? '' : note);
   const i = s.indexOf(label);
   if (i < 0) return empty;
@@ -234,12 +234,16 @@ function parseLane(note, label) {
   /* 파트별 결과: '기사:4' '화보:8/20' 'it:6(block)' 'fr:실패'
      콜론 앞은 표 이름(한글)이거나 언어 코드다. */
   const parts = {};
+  const done = {};
   let fails = 0;
-  const re = /([가-힣A-Za-z]{2,6}):(실패|잘림|\d+)/g;
+  /* '완주' 추가 (2026-09-05) — 빈칸이 0 이라 할 일이 없는 파트.
+     생산 0 이라는 점은 굶은 파트와 같지만 **뜻이 정반대**라 반드시 갈라야 한다. */
+  const re = /([가-힣A-Za-z]{2,6}):(실패|잘림|완주|\d+)/g;
   let m;
   while ((m = re.exec(seg))) {
     const key = m[1];
     if (key === '잔여' || key === '회전') continue;
+    if (m[2] === '완주') { parts[key] = 0; done[key] = true; continue; }
     if (m[2] === '실패' || m[2] === '잘림') { parts[key] = null; fails++; }
     else parts[key] = Number(m[2]);
   }
@@ -249,7 +253,7 @@ function parseLane(note, label) {
     produced: Number(mProd[1]),
     remaining: mRem ? Number(mRem[1]) : null,
     waves: mWav ? Number(mWav[1]) : null,
-    parts, fails,
+    parts, done, fails,
   };
 }
 
@@ -263,12 +267,17 @@ function summarizeLaneRuns(notes, label) {
        를 못 가른다. 그 둘은 고치는 곳이 완전히 다르다(회전 로직 vs 파싱·모델).
        de 알림이 앞의 것이라고 단정했는데 실제로는 뒤의 것이었다. 그래서
        파트별로 **몇 번 나왔고 몇 번 실패했는지**를 따로 센다. */
-    partSeen: new Map(), partFails: new Map(),
+    partSeen: new Map(), partFails: new Map(), partDone: new Set(),
+    noteRemaining: undefined,
   };
   for (const n of list) {
     const p = parseLane(n, label);
     if (!p.parsed) continue;
     out.parsed++;
+    /* 목록은 최신순이라 처음 읽는 것이 가장 최근이다 (2026-09-05).
+       생산자가 스스로 센 잔여다. DB 세기와 **범위가 다를 수 있다** —
+       아래 judgeLaneHealth 머리말 참고. */
+    if (out.noteRemaining === undefined) out.noteRemaining = p.remaining;
     out.produced += p.produced;
     out.fails += p.fails;
     if (p.waves != null) out.wavesMax = Math.max(out.wavesMax == null ? 0 : out.wavesMax, p.waves);
@@ -279,6 +288,10 @@ function summarizeLaneRuns(notes, label) {
       out.partSeen.set(k, (out.partSeen.get(k) || 0) + 1);
       if (v == null) out.partFails.set(k, (out.partFails.get(k) || 0) + 1);
     }
+    /* 완주한 파트는 '생산 0' 이지만 굶은 게 아니다 (2026-09-05).
+       parts 에 이미 0 으로 들어와 있으므로 partSeen 은 위에서 셌다.
+       여기서 또 세면 '차례가 두 번 왔다' 가 된다 (테스트가 잡았다). */
+    for (const k of Object.keys(p.done || {})) out.partDone.add(k);
   }
   return out;
 }
@@ -310,6 +323,7 @@ function judgeLaneHealth(o) {
   const partRuns = Math.max(0, Number(o && o.partRuns) || 0);
   const wavesMax = (o && o.wavesMax == null) ? null : Number(o.wavesMax);
   const silent = (o && o.silentParts) || [];
+  const noteRemaining = (o && o.noteRemaining == null) ? null : Number(o.noteRemaining);
 
   const perHour = Math.round((produced / hours) * 10) / 10;
   const etaHours = perHour > 0 ? Math.ceil(remaining / perHour) : null;
@@ -322,6 +336,20 @@ function judgeLaneHealth(o) {
   // 할 일이 없으면 정상. 완주 후 30분마다 울리면 재앙이다.
   if (remaining === 0) {
     return { ...base, status: 'done', healthy: true, reason: label + ' 완주 — 남은 칸 없음.' };
+  }
+  /* ■ DB 세기와 생산자 세기의 범위가 다르다 (2026-09-05 실측)
+     감시기의 countRemaining 은 `faq is null` 행을 전부 센다. 그런데 백필은
+     **원본 한국어 FAQ 가 있는 화보만** 채울 수 있다. 원본이 없는 화보의
+     번역행 897개는 백필이 영원히 못 채운다.
+       DB 세기 897  ·  생산자가 센 잔여 0
+     그래서 DB 세기만 보면 **완주를 영원히 못 본다.** 실제로 09-05 에
+     백필이 다 끝난 뒤에도 알림이 계속 울렸다.
+     생산자가 숫자로 0 을 말했으면 그건 '자기 범위 안에서 끝났다' 는 뜻이다.
+     못 잰 회차는 노트에 '?' 로 찍히고 여기 null 로 들어오므로 완주로 안 읽는다. */
+  if (noteRemaining === 0) {
+    return { ...base, status: 'done', healthy: true,
+      reason: label + ' 완주 — 생산자 기준 남은 칸 0'
+        + (remaining > 0 ? ' (DB 에 ' + remaining + '칸이 남아 있지만 원본이 없어 채울 수 없는 행이다)' : '') + '.' };
   }
   if (runs === 0) {
     return { ...base, status: 'stalled', healthy: false, cause: 'no-runs',
@@ -388,14 +416,26 @@ function judgeLaneHealth(o) {
       + (etaHours != null ? ' → 약 ' + Math.ceil(etaHours / 24) + '일' : '') + '.' };
 }
 
-/** 창 내내 0 이었던 파트 고르기. 다른 파트가 생산했을 때만 의미가 있다. */
-function findSilentParts(byPart, expected) {
+/**
+ * 창 내내 0 이었던 파트 고르기. 다른 파트가 생산했을 때만 의미가 있다.
+ *
+ * ■ 2026-09-05 사고 — 완주를 굶음으로 읽었다
+ * 언어판이 사실상 끝나고 de 하나만 남아 돌던 날, 나머지 6개 언어는 생산 0
+ * 이었다. **할 일이 없어서 0** 이었는데 알림은 "차례 자체가 안 왔다(회전)"
+ * 라고 단언했다. 어제 '굶음과 실패' 를 가르면서 **세 번째 상태(완주)** 를
+ * 빠뜨린 것이다. 오늘 하루 종일 걸린 것과 같은 병이다 — 0 을 잘못 읽는다.
+ *
+ * @param {Set|string[]} [doneParts] 빈칸이 0 이라 할 일이 없는 파트. 굶음이 아니다.
+ */
+function findSilentParts(byPart, expected, doneParts) {
   const map = byPart instanceof Map ? byPart : new Map(Object.entries(byPart || {}));
+  const done = doneParts instanceof Set ? doneParts : new Set(doneParts || []);
   let anyProduced = false;
   for (const v of map.values()) if (v > 0) { anyProduced = true; break; }
   if (!anyProduced) return [];            // 전부 0 이면 그건 no-output 이 잡는다
   const out = [];
   for (const k of (expected || Array.from(map.keys()))) {
+    if (done.has(k)) continue;            // 끝난 파트는 굶은 게 아니다
     if (!(map.get(k) > 0)) out.push(k);
   }
   return out;

@@ -259,6 +259,53 @@ console.log('\n=== 8. 다섯째 칸 — 활자 따옴표 (2026-09-03 de 실측) 
   ok(threw, '구조가 잘린 응답은 다섯째 칸으로도 살리지 않는다');
 }
 
+
+console.log('\n=== 9. 여섯째 칸 — 괄호 종류가 틀렸다 (2026-09-05 fr 실측) ===');
+{
+  const { parseJsonLines, parseJsonObject, fixBracketKinds } = require('../api/_lib/jsonRepair');
+
+  /* 라이브 로그에서 그대로 옮긴 모양. 꼬리가 `}}` 인데 정답은 `}]}` 다 —
+     배열 닫는 ] 자리에 } 를 썼고, 그 바람에 닫는 괄호가 하나 모자란다. */
+  const fr = '{"i":4,"faq":[{"q":"Quel est le concept de la série «3021» ?",'
+    + '"a":"Un univers post-apocalyptique."},'
+    + '{"q":"Et la beauté ?","a":"Des volumes capillaires irréels."}}';
+  let threwRaw = false;
+  try { JSON.parse(fr); } catch (e) { threwRaw = true; }
+  ok(threwRaw, '원문은 그대로는 못 읽는다 (시험이 진짜인지 먼저 확인)');
+
+  const r = parseJsonLines(fr, 'faq-i18n/fr');
+  eq(r.value.length, 1, '한 줄을 살린다 (종전에는 버렸다)');
+  eq(r.dropped, 0, '버린 줄이 없다');
+  ok(/bracket-kind/.test(r.repaired), "복구했으면 남긴다 — 조용히 고치지 않는다 (" + r.repaired + ")");
+  eq(r.value[0].faq.length, 2, 'faq 항목을 잃지 않는다');
+  ok(r.value[0].faq[1].a.indexOf('capillaires') !== -1, '내용이 그대로다');
+
+  /* 반대 방향(] 자리에 })도 잡는다 */
+  eq(fixBracketKinds('{"a":[1,2}}'), '{"a":[1,2]}', '] 자리의 } 를 바로잡는다');
+  eq(fixBracketKinds('{"a":{"b":1]}'), '{"a":{"b":1}}', '} 자리의 ] 를 바로잡는다');
+
+  /* 문자열 안의 괄호는 세지 않는다 */
+  eq(fixBracketKinds('{"a":"}]{["}'), '{"a":"}]{["}', '문자열 안의 괄호는 안 건드린다');
+  eq(fixBracketKinds('{"a":"x\\"}]"}'), '{"a":"x\\"}]"}', '이스케이프된 따옴표도 넘긴다');
+
+  /* 멀쩡한 것은 한 글자도 안 바뀐다 */
+  for (const 정상 of ['{"a":[1,2]}', '[{"x":1},{"y":[2]}]', '{}', '[]']) {
+    eq(fixBracketKinds(정상), 정상, '멀쩡하면 그대로: ' + 정상);
+  }
+
+  /* ■ 잘린 응답은 살리지 않는다 — 그건 복구가 아니라 창작이다
+     이 경계가 이 칸의 안전선 전부다. 문자열 한가운데서 끝났거나 마지막
+     글자가 닫는 괄호가 아니면 손대지 않는다. */
+  let threw = false;
+  try { parseJsonLines('{"i":1,"faq":[{"q":"Q","a":"Des volumes capi', 'x'); } catch (e) { threw = true; }
+  ok(threw, '문자열 한가운데서 잘린 응답은 던진다 (반쪽을 완성품으로 만들지 않는다)');
+  eq(fixBracketKinds('{"a":"미완성 문장'), '{"a":"미완성 문장', '문자열 안에서 끝나면 한 글자도 안 붙인다');
+  eq(fixBracketKinds('{"a":1,"b":'), '{"a":1,"b":', '값이 없이 끝나면 안 붙인다');
+
+  /* 멀쩡하면 여섯째 칸이 아예 안 돈다 */
+  eq(parseJsonObject('{"a":[1,2]}', 'x').repaired, 'none', '멀쩡하면 안 돈다');
+}
+
 console.log(`\npassed: ${pass} failed: ${fail}`);
 if (fail) process.exit(1);
 console.log('✅ ai-json-repair-shared tests passed');

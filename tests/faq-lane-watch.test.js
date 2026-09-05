@@ -197,5 +197,65 @@ console.log('\n=== 굶은 건가, 실패한 건가 (2026-09-03 de 사고) ===');
   t('두 경우의 원인이 다르다', d1.cause !== d2.cause, d1.cause + ' vs ' + d2.cause);
 }
 
+
+console.log('\n=== 완주를 굶음으로 읽지 않는다 (2026-09-05 헛알림) ===');
+{
+  /* 실제 사고: 언어판이 사실상 끝나고 de 하나만 남아 돌던 날, 나머지 6개
+     언어는 '할 일이 없어서' 생산 0 이었다. 알림은 "차례 자체가 안 왔다
+     (회전)" 라고 단언했다. 어제 굶음·실패를 가르면서 **세 번째 상태(완주)**
+     를 빠뜨렸다. 아래는 그날 cron_runs 노트를 그대로 옮긴 것이다. */
+  const 기대 = ['it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
+  const 실제노트 = [
+    '화보FAQ 0 · 완주 | 화보FAQ 언어판 15 · 잔여 8(7/7개 언어, fr부터) · 12회전/3바퀴 · de:15 it:완주 fr:완주 es:완주 ja:완주 zh:완주 ru:완주',
+    '화보FAQ 0 · 완주 | 화보FAQ 언어판 15 · 잔여 23(7/7개 언어, it부터) · 12회전/3바퀴 · de:15 it:완주 fr:완주 es:완주 ja:완주 zh:완주 ru:완주',
+    '화보FAQ 0 · 완주 | 화보FAQ 언어판 15 · 잔여 38(7/7개 언어, ru부터) · 12회전/3바퀴 · de:15 it:완주 fr:완주 es:완주 ja:완주 zh:완주 ru:완주',
+  ];
+  const s1 = h.summarizeLaneRuns(실제노트, '화보FAQ 언어판');
+  t("'완주' 를 파트 상태로 읽는다", s1.partDone.has('fr') && s1.partDone.has('ru'),
+    Array.from(s1.partDone).join('·'));
+  t('완주한 파트도 본 것으로 센다 (차례가 안 온 게 아니다)', s1.partSeen.get('fr') === 3, s1.partSeen.get('fr'));
+
+  const silent1 = h.findSilentParts(s1.byPart, 기대, s1.partDone);
+  t('완주한 언어는 굶은 목록에 안 들어간다', silent1.length === 0, JSON.stringify(silent1));
+
+  const d1 = h.judgeLaneHealth({ label: '화보FAQ 언어판', remaining: 897, produced: s1.produced,
+    windowHours: 3, runs: s1.total, parsed: s1.parsed, fails: s1.fails, partRuns: s1.partRuns,
+    wavesMax: s1.wavesMax, silentParts: silent1, partSeen: s1.partSeen, partFails: s1.partFails,
+    noteRemaining: s1.noteRemaining });
+  t('헛알림이 안 나간다', d1.healthy === true, d1.status + ' / ' + d1.reason);
+
+  /* 진짜로 굶은 언어는 여전히 잡는다 — 완주 처리가 눈을 가리면 안 된다 */
+  const 섞인노트 = [
+    '화보FAQ 언어판 15 · 잔여 300(6/7개 언어, de부터) · 3회전 · de:15 it:완주 fr:완주 es:완주 ja:완주 zh:완주',
+  ];
+  const s2 = h.summarizeLaneRuns(섞인노트, '화보FAQ 언어판');
+  const silent2 = h.findSilentParts(s2.byPart, 기대, s2.partDone);
+  t('완주도 아니고 안 나온 언어는 여전히 잡는다', silent2.indexOf('ru') !== -1, JSON.stringify(silent2));
+  t('완주한 언어는 그 목록에 섞이지 않는다', silent2.indexOf('fr') === -1, JSON.stringify(silent2));
+}
+
+console.log('\n=== DB 세기와 생산자 세기의 범위가 다르다 (완주를 영원히 못 보는 문제) ===');
+{
+  /* 감시기의 countRemaining 은 faq 가 빈 행을 전부 센다. 백필은 **원본
+     한국어 FAQ 가 있는 화보만** 채울 수 있다. 09-05 실측: DB 897 · 생산자 0.
+     DB 만 보면 완주를 영원히 못 보고 알림이 계속 울린다. */
+  const 끝난노트 = ['화보FAQ 언어판 0 · 잔여 0(7/7개 언어, fr부터) · 12회전/3바퀴'];
+  const s3 = h.summarizeLaneRuns(끝난노트, '화보FAQ 언어판');
+  const d3 = h.judgeLaneHealth({ label: '화보FAQ 언어판', remaining: 897, produced: 0,
+    windowHours: 3, runs: 18, parsed: s3.parsed, fails: 0, partRuns: 0,
+    silentParts: [], noteRemaining: s3.noteRemaining });
+  t('생산자가 잔여 0 이면 완주로 본다', d3.status === 'done' && d3.healthy, d3.status + ' / ' + d3.reason);
+  t('DB 에 남은 칸이 왜 있는지 함께 말한다', /897/.test(d3.reason) && /원본/.test(d3.reason), d3.reason);
+
+  /* 못 잰 것을 0 으로 읽지 않는다 — 노트의 '?' 는 null 로 온다 */
+  const 못잼 = ['화보FAQ 언어판 0 · 잔여 ?(2/7개 언어, fr부터) · 1회전 · fr:실패 es:실패'];
+  const s4 = h.summarizeLaneRuns(못잼, '화보FAQ 언어판');
+  t("노트가 '?' 면 완주로 읽지 않는다", s4.noteRemaining === null, String(s4.noteRemaining));
+  const d4 = h.judgeLaneHealth({ label: '화보FAQ 언어판', remaining: 500, produced: 0,
+    windowHours: 3, runs: 18, parsed: 1, fails: 2, partRuns: 2,
+    silentParts: [], noteRemaining: s4.noteRemaining });
+  t('못 잰 회차를 완주로 바꾸지 않는다', d4.status !== 'done', d4.status + ' / ' + d4.reason);
+}
+
 console.log('\n' + (fail ? '✗' : '✓') + ' faq-lane-watch: ' + pass + ' passed / ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

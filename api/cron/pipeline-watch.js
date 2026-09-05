@@ -841,7 +841,7 @@ async function checkLane(opts, cfg) {
     const sum = summarizeLaneRuns(notes, cfg.label);
     /* 어떤 파트가 굶고 있는지는 '기대 목록' 이 있어야 안다. 목록이 없으면
        실제로 등장한 파트만 본다 — 한 번도 안 나온 파트는 판단 근거가 없다. */
-    const silent = findSilentParts(sum.byPart, cfg.expectedParts);
+    const silent = findSilentParts(sum.byPart, cfg.expectedParts, sum.partDone);
 
     const d = judgeLaneHealth({
       label: cfg.label,
@@ -857,6 +857,8 @@ async function checkLane(opts, cfg) {
       /* '차례가 안 왔다' 와 '차례는 왔는데 실패했다' 를 가르는 재료 (2026-09-03) */
       partSeen: sum.partSeen,
       partFails: sum.partFails,
+      /* 생산자가 스스로 센 잔여. DB 세기와 범위가 다르다 (2026-09-05) */
+      noteRemaining: sum.noteRemaining,
     });
     if (opts && opts.dry) return { dry: true, ...d };
 

@@ -182,6 +182,77 @@ function closeTypographicQuotes(s) {
     (m, open, inner) => open + inner + (TYPO_CLOSER[open] || '”'));
 }
 
+
+/* ── 여섯째 칸: 괄호 종류가 틀린 것을 바로잡는다 (2026-09-05) ──────────────
+ *
+ * ■ 실측 — 어제 붙인 '버린 이유' 로그가 바로 답을 줬다
+ *
+ *   [faq-i18n] fr 줄 버림 len=769
+ *   | why=Expected ',' or ']' after array element in JSON at position 768
+ *   | tail="…post-apocalyptique.\"}}"
+ *
+ * 꼬리가 `}}` 다. 정답은 `}]}`. 모델이 **배열 닫는 ] 자리에 } 를 썼다.**
+ *
+ *   {"i":4,"faq":[{…},{…}}      ← ] 가 } 로 바뀌었다
+ *
+ * 2026-09-02 에 기록한 "모델이 바깥 ] 를 빼먹는다" 와 같은 병인데, 이번엔
+ * **한 줄 안쪽의 faq 배열**에서 났다. 앞의 다섯 칸(제어문자·따옴표·덩어리
+ * 고르기·활자따옴표)은 전부 **문법 흠**을 고치는 장치라 이 모양을 못 산다.
+ *
+ * ■ 규칙 — 여는 괄호 스택을 보고, 짝이 틀린 닫는 괄호만 바로잡는다
+ *
+ *   여는 것을 쌓는다. 닫는 것이 오면 스택 맨 위와 맞춰 본다.
+ *     맞으면      그대로 둔다
+ *     안 맞으면   스택 맨 위에 맞는 글자로 **바꾼다** (} ↔ ])
+ *   문자열 안은 세지 않는다. 이스케이프도 건너뛴다.
+ *   스택이 비었는데 닫는 게 오면 **손대지 않는다** — 그건 구조가 깨진 것이지
+ *   괄호 종류가 틀린 게 아니다. 모르는 건 고치지 않는다.
+ *
+ * 원문이 그대로 파싱되면 이 함수는 **아예 안 돈다** (마지막 칸에서만 부른다). */
+const OPENERS = { '{': '}', '[': ']' };
+function fixBracketKinds(input) {
+  const s = String(input);
+  let out = '';
+  const stack = [];
+  let inStr = false, esc = false;
+  for (let k = 0; k < s.length; k++) {
+    const c = s[k];
+    if (inStr) {
+      out += c;
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { out += c; inStr = true; continue; }
+    if (c === '{' || c === '[') { stack.push(OPENERS[c]); out += c; continue; }
+    if (c === '}' || c === ']') {
+      if (!stack.length) { out += c; continue; }   // 짝 없는 닫는 괄호 — 안 건드린다
+      out += stack.pop();                          // 스택이 정답이다
+      continue;
+    }
+    out += c;
+  }
+  /* ■ 실측을 다시 보니 '종류가 틀린' 게 아니라 **하나가 통째로 빠졌다**
+     꼬리 `"}}` 의 정답은 `"}]}` 다. 글자 수가 하나 적다. 종류만 바로잡으면
+     맨 바깥 { 가 안 닫힌 채로 끝난다(첫 시도에서 그대로 실패했다).
+
+     그래서 남은 스택을 닫아 준다. 단, **아무 때나 닫지 않는다.**
+       · 문자열 한가운데서 끝났으면 손대지 않는다
+       · 마지막 글자가 닫는 괄호가 아니면 손대지 않는다
+     이 두 가지가 '괄호만 모자란 응답' 과 '중간에 잘린 응답' 을 가른다.
+     잘린 응답을 닫아 버리면 반쪽 FAQ 를 완성품으로 만든다 — 그건 복구가
+     아니라 창작이고, 이 파일 머리말이 하지 말라고 못박은 짓이다. */
+  if (stack.length && !inStr) {
+    const tail = out.replace(/\s+$/, '');
+    const last = tail.charAt(tail.length - 1);
+    if (last === '}' || last === ']') {
+      while (stack.length) out += stack.pop();
+    }
+  }
+  return out;
+}
+
 /**
  * 객체 하나를 뽑는다 — 계단식. (2026-08-18 신설, weekly-news 용)
  *
@@ -220,12 +291,13 @@ function parseJsonObject(text, label, _retry) {
 
   /* 다섯째 칸 (2026-09-03) — 활자 따옴표를 닫고 계단을 통째로 한 번 더. */
   if (!_retry) {
-    const fixed = closeTypographicQuotes(s);
-    if (fixed !== s) {
+    for (const [고침, 이름] of [[closeTypographicQuotes, 'typo-quotes'], [fixBracketKinds, 'bracket-kind']]) {
+      const fixed = 고침(s);
+      if (fixed === s) continue;
       try {
         const r = parseJsonObject(fixed, label, true);
-        return { value: r.value, repaired: (r.repaired === 'none' ? '' : r.repaired + '+') + 'typo-quotes' };
-      } catch (_) { /* 못 살렸으면 원래 오류를 낸다 */ }
+        return { value: r.value, repaired: (r.repaired === 'none' ? '' : r.repaired + '+') + 이름 };
+      } catch (_) { /* 다음 고침으로 · 다 실패하면 원래 오류를 낸다 */ }
     }
   }
 
@@ -281,12 +353,13 @@ function parseJsonArray(text, label, _retry) {
 
   /* 다섯째 칸 (2026-09-03) — 활자 따옴표를 닫고 계단을 통째로 한 번 더. */
   if (!_retry) {
-    const fixed = closeTypographicQuotes(s);
-    if (fixed !== s) {
+    for (const [고침, 이름] of [[closeTypographicQuotes, 'typo-quotes'], [fixBracketKinds, 'bracket-kind']]) {
+      const fixed = 고침(s);
+      if (fixed === s) continue;
       try {
         const r = parseJsonArray(fixed, label, true);
-        return { value: r.value, repaired: (r.repaired === 'none' ? '' : r.repaired + '+') + 'typo-quotes' };
-      } catch (_) { /* 못 살렸으면 원래 오류를 낸다 */ }
+        return { value: r.value, repaired: (r.repaired === 'none' ? '' : r.repaired + '+') + 이름 };
+      } catch (_) { /* 다음 고침으로 · 다 실패하면 원래 오류를 낸다 */ }
     }
   }
 
@@ -398,19 +471,18 @@ function parseJsonLines(text, label) {
         '잃은 걸 못 셌다' 를 '잃은 게 없다' 로 읽는다(2026-09-02 '잔여 0' 과 같은 실수).
         그래서 **고칠 거리가 있으면 항상 한 번 더 해 보고, 더 많이 살렸을 때만
         채택한다.** 판단 기준을 셈이 아니라 결과로 바꾼다. */
-  {
-    const fixed = closeTypographicQuotes(s);
-    if (fixed !== s) {
-      let second = null;
-      try { second = _linesOnce(fixed, what); } catch (_) { /* 원본 결과로 간다 */ }
-      /* 더 많이 살렸을 때만 채택한다. 고친 쪽이 더 나쁘면 쓰지 않는다. */
-      if (second && (!first || second.value.length > first.value.length)) {
-        return {
-          value: second.value,
-          repaired: (second.repaired === 'none' ? '' : second.repaired + '+') + 'typo-quotes',
-          dropped: second.dropped, droppedDetail: second.droppedDetail,
-        };
-      }
+  for (const [고침, 이름] of [[closeTypographicQuotes, 'typo-quotes'], [fixBracketKinds, 'bracket-kind']]) {
+    const fixed = 고침(s);
+    if (fixed === s) continue;
+    let second = null;
+    try { second = _linesOnce(fixed, what); } catch (_) { continue; }
+    /* 더 많이 살렸을 때만 채택한다. 고친 쪽이 더 나쁘면 쓰지 않는다. */
+    if (second && (!first || second.value.length > first.value.length)) {
+      return {
+        value: second.value,
+        repaired: (second.repaired === 'none' ? '' : second.repaired + '+') + 이름,
+        dropped: second.dropped, droppedDetail: second.droppedDetail,
+      };
     }
   }
 
@@ -418,4 +490,4 @@ function parseJsonLines(text, label) {
   throw firstErr;
 }
 
-module.exports = { parseJsonLines, closeTypographicQuotes, escapeRawControls, escapeInnerQuotes, tryRepairedParse, findBalancedChunks, pickBalancedChunk, parseJsonObject, parseJsonArray };
+module.exports = { parseJsonLines, closeTypographicQuotes, fixBracketKinds, escapeRawControls, escapeInnerQuotes, tryRepairedParse, findBalancedChunks, pickBalancedChunk, parseJsonObject, parseJsonArray };

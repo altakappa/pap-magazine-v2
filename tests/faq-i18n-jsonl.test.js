@@ -298,6 +298,33 @@ const srcMap = new Map([['e1', KO], ['e2', KO]]);
   const fast = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 120000, model: 'm', now: 0 });
   t('예산이 넉넉하면 여전히 여러 파도를 돈다', fast.waves >= 2, fast.waves);
 
+
+  console.log('\n[14] 할 일이 없는 언어를 노트에서 숨기지 않는다 (2026-09-05 헛알림)');
+  {
+    /* ■ 실제 사고
+       언어판이 사실상 끝나고 de 하나만 남아 돌던 날, 노트는 `… · de:15` 뿐이었다.
+       나머지 6개 언어는 **할 일이 없어서** 0 이었는데 노트에서 통째로 사라졌고,
+       감시기는 그걸 "차례 자체가 안 왔다(회전)" 로 읽어 헛알림을 냈다.
+       안 보이는 것과 없는 것은 다르다. 빈칸이 0 이면 '완주' 라고 적는다. */
+    updates.length = 0;
+    trRows = [];                         // 채울 행이 하나도 없다 = 전부 완주
+    reply = el(0);
+    const 끝 = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 200000, model: 'm' });
+    t('할 일이 없어도 언어가 노트에 남는다', /완주/.test(끝.note), 끝.note);
+    t('일곱 언어가 다 보인다 (숨지 않는다)',
+      i18n.TARGET_LANGS.every((L) => new RegExp(L + ':완주').test(끝.note)), 끝.note);
+    t('생산은 0 이다', 끝.processed === 0, 끝.processed);
+    t("잔여도 0 이라고 말한다 ('?' 가 아니다)", /잔여 0/.test(끝.note), 끝.note);
+
+    /* 감시기가 이 노트를 완주로 읽는지 — 두 파일을 잇는 계약이다 */
+    const health = require(path.join(ROOT, 'api', '_lib', 'faqHealth.js'));
+    const sum = health.summarizeLaneRuns([끝.note], '화보FAQ 언어판');
+    t('감시기가 완주 언어를 알아본다',
+      i18n.TARGET_LANGS.every((L) => sum.partDone.has(L)), Array.from(sum.partDone).join('·'));
+    const silent = health.findSilentParts(sum.byPart, i18n.TARGET_LANGS, sum.partDone);
+    t('굶은 언어로 오해하지 않는다', silent.length === 0, JSON.stringify(silent));
+  }
+
   console.log('\n[10] 왜 느린지 잴 수 있어야 한다 (2026-09-03)');
   /* 네 언어(ja·de·it·ru)만 55초 상한을 넘고 세 언어(zh·fr·es)는 한 번도 안 넘는다.
      429 도 아니고 멀티바이트도 아니다(zh 가 실패 0). **원인을 모른다.**

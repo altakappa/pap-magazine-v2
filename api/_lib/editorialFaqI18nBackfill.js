@@ -500,6 +500,12 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, n
   for (const [lang, cur] of acc) {
     processed += cur.processed;
     if (typeof cur.remaining === 'number') { remaining += cur.remaining; remainingKnown = true; }
+    /* 2026-09-05 — 종전에는 '한 것도 없고 남은 것도 없는' 언어를 노트에서
+       **통째로 지웠다.** 그래서 다 끝낸 언어와 차례가 안 온 언어가 노트에서
+       똑같이 안 보였고, 감시기가 완주를 '굶었다' 로 읽어 헛알림을 냈다
+       (실측: 09-05 12시대, de 만 남았는데 나머지 6개 언어를 '회전이 죽었다' 로 알림).
+       빈칸이 0 인 언어는 '완주' 라고 **적는다.** 안 보이는 것과 없는 것은 다르다. */
+    if (!cur.processed && !cur.tag && cur.remaining === 0) { per.push(lang + ':완주'); continue; }
     if (!cur.processed && !cur.remaining && !cur.tag) continue;
     /* '실패' 와 '일부만 저장' 을 가른다. 종전에는 둘 다 'it:0' 으로 보여
        파싱이 죽은 것과 대상이 없는 것을 구분할 수 없었다. */
