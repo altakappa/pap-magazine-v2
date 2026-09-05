@@ -374,6 +374,16 @@ async function runFaqEnBatch({ batch = 8, timeoutMs = 90000, model } = {}) {
   for (const cur of acc.values()) {
     processed += cur.processed;
     if (typeof cur.remaining === 'number') { remaining += cur.remaining; remainingKnown = true; }
+    /* 2026-09-06 — 언어판(editorialFaqI18nBackfill)에 어제 넣은 고침을 **여기에는
+       안 넣었다.** 그래서 하루 만에 같은 헛알림이 이 차선에서 그대로 났다.
+
+         09-05 17:33  … · 기사:12 화보:9      ← 화보가 마지막 9건을 채우고 끝
+         09-05 18:03  … · 기사:12            ← 화보가 노트에서 사라짐
+         알림:        "화보 은 차례 자체가 안 왔다(회전)"   ← 완주인데 굶었다고 읽었다
+
+       '규칙이 두 벌이면 한쪽만 고쳐진다' 를 내가 그대로 재현했다.
+       빈칸이 0 이면 '완주' 라고 적는다. 안 보이는 것과 없는 것은 다르다. */
+    if (!cur.processed && !cur.tag && cur.remaining === 0) { per.push(cur.label + ':완주'); continue; }
     if (!cur.processed && !cur.remaining && !cur.tag) continue;
     /* 요청 건수와 저장 건수가 다르면 그 사실을 남긴다. JSONL 은 한 줄이 깨져도
        나머지가 살아 오는 게 장점인데, 그 '일부 유실' 이 안 보이면 조용한 손실이 된다. */

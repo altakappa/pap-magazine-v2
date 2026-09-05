@@ -160,6 +160,44 @@ console.log('\n=== ④ 무차별 스테이징 차단 훅 ===');
   t('훅이 settings.json 에 배선돼 있다 (파일만 있고 안 걸리면 무의미)', wired);
 }
 
+
+/* ────────────────────────────────────────────────────────────────
+ * ⑤ 백필 차선이 둘이다 — 한쪽만 고치면 깨진다 (2026-09-06)
+ *
+ * 09-05 에 언어판 백필에 '빈칸이 0 이면 노트에 완주라고 적는다' 를 넣었다.
+ * **영문 백필에는 안 넣었다.** 하루 만에 같은 헛알림이 그 차선에서 났다.
+ *
+ *   09-05 17:33  … · 기사:12 화보:9    ← 화보가 마지막 9건을 채우고 끝
+ *   09-05 18:03  … · 기사:12          ← 화보가 노트에서 사라졌다
+ *   알림:        "화보 은 차례 자체가 안 왔다(회전)"   ← 완주를 굶음으로 읽었다
+ *
+ * 이 저장소가 가장 비싸게 재발하는 교훈을, 그 교훈을 적은 다음 날 내가
+ * 재현했다. 두 차선이 노트 만드는 코드를 각자 가지고 있는 한 또 난다.
+ * 지금 합치면 무관한 두 백필의 동작을 한 커밋에서 바꾸게 되므로,
+ * **둘 다 가지고 있는지를 여기서 고정한다.** 셋째 차선이 생기면 여기에 추가한다.
+ * ──────────────────────────────────────────────────────────────── */
+console.log('\n=== ⑤ 두 백필이 완주 규칙을 둘 다 가진다 ===');
+{
+  const LANES = [
+    ['api/_lib/faqEnBackfill.js', '영문FAQ (기사·화보)'],
+    ['api/_lib/editorialFaqI18nBackfill.js', '화보FAQ 언어판 (7개 언어)'],
+  ];
+  for (const [rel, 이름] of LANES) {
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    t("빈칸 0 인 파트를 '완주' 로 적는다 — " + 이름,
+      /cur\.remaining === 0[\s\S]{0,80}':완주'/.test(src),
+      rel + ' 에 완주 표기가 없다. 한쪽만 고치면 그 차선에서 헛알림이 난다.');
+  }
+  /* 감시기가 그 글자를 실제로 읽는지 — 적기만 하고 안 읽으면 소용없다 */
+  const health = require(path.join(ROOT, 'api', '_lib', 'faqHealth.js'));
+  const a = health.parseLane('영문FAQ 0 · 잔여 0 · 1회전 · 기사:완주 화보:완주', '영문FAQ');
+  t('감시기가 완주를 읽는다 (영문)', !!(a.done && a.done['기사'] && a.done['화보']), JSON.stringify(a.done));
+  const b = health.parseLane('화보FAQ 언어판 0 · 잔여 0 · 1회전 · de:완주 fr:완주', '화보FAQ 언어판');
+  t('감시기가 완주를 읽는다 (언어판)', !!(b.done && b.done.de && b.done.fr), JSON.stringify(b.done));
+  t('완주 처리가 두 차선에서 같은 함수를 쓴다 (파서는 한 벌이다)',
+    typeof health.findSilentParts === 'function' && typeof health.parseLane === 'function');
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail > 0) process.exit(1);
 console.log('✓ no-duplicate-rules tests passed');

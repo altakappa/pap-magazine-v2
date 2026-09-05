@@ -62,7 +62,11 @@ function tableStub() {
     limit(n) { return Promise.resolve({ data: pending.slice(0, n), error: null }); },
     range() { return Promise.resolve({ data: [], error: null }); },
     update(v) { return { eq: (c, id) => { updates.push({ id, v }); return Promise.resolve({ error: null }); } }; },
-    then(res) { return Promise.resolve({ count: 7, error: null }).then(res); },
+    /* 개수 질의도 **pending 을 따른다** (2026-09-06). 종전에는 7 로 박아 놔서
+       '채울 게 하나도 없다' 는 상태를 이 하네스로 만들 수가 없었다. 그 바람에
+       완주 경로가 검사되지 않았고, 라이브에서 헛알림으로 드러났다.
+       스텁이 DB 의 제약을 안 지키면 그 자리는 검사 안 되는 셈이다 (limit 과 같은 교훈). */
+    then(res) { return Promise.resolve({ count: pending.length, error: null }).then(res); },
   };
   return q;
 }
@@ -177,6 +181,40 @@ function el(i) { return '{"i":' + i + ',"faq":[{"q":"Q1","a":"A1"},{"q":"Q2","a"
     !!ratio && Number(ratio[1]) < Number(ratio[2]), batchOut.note);
   t('note 에 잔여가 함께 찍힌다', /잔여 \d/.test(batchOut.note), batchOut.note);
   t('두 표를 다 돌고 라벨을 남긴다', /기사/.test(batchOut.note) && /화보/.test(batchOut.note), batchOut.note);
+
+
+  console.log('\n[6-2] 할 일이 없는 표를 노트에서 숨기지 않는다 (2026-09-06 헛알림)');
+  {
+    /* ■ 실제 사고 — 어제 언어판에 넣은 고침을 **이 파일에는 안 넣었다**
+         09-05 17:33  … · 기사:12 화보:9    ← 화보가 마지막 9건을 채우고 끝
+         09-05 18:03  … · 기사:12          ← 화보가 노트에서 사라졌다
+         알림:        "화보 은 차례 자체가 안 왔다(회전)"
+       완주인데 굶었다고 읽었다. 실측: editorials 남은칸 0 · articles 352.
+       '규칙이 두 벌이면 한쪽만 고쳐진다' 를 하루 만에 내가 재현했다. */
+    pending = [];                                   // 채울 것이 하나도 없다
+    reply = el(0);
+    const 끝 = await fe.runFaqEnBatch({ batch: 4, timeoutMs: 120000, model: 'm' });
+    t('할 일이 없어도 표가 노트에 남는다', /완주/.test(끝.note), 끝.note);
+    t('두 표가 다 보인다 (숨지 않는다)',
+      /기사:완주/.test(끝.note) && /화보:완주/.test(끝.note), 끝.note);
+    t('생산은 0 이다', 끝.processed === 0, 끝.processed);
+
+    /* 감시기가 이 노트를 완주로 읽는가 — 두 파일을 잇는 계약이다 */
+    const health = require(path.join(ROOT, 'api', '_lib', 'faqHealth.js'));
+    const sum = health.summarizeLaneRuns([끝.note], '영문FAQ');
+    t('감시기가 완주한 표를 알아본다',
+      sum.partDone.has('기사') && sum.partDone.has('화보'), Array.from(sum.partDone).join('·'));
+    const silent = health.findSilentParts(sum.byPart, ['기사', '화보'], sum.partDone);
+    t('굶은 표로 오해하지 않는다', silent.length === 0, JSON.stringify(silent));
+
+    /* 한쪽만 끝난 실제 모양 — 이게 알림을 울린 상태다 */
+    const 실제 = '영문FAQ 12 · 잔여 352 · 2회전 · 기사:12 화보:완주';
+    const s2 = health.summarizeLaneRuns([실제, 실제, 실제], '영문FAQ');
+    const silent2 = health.findSilentParts(s2.byPart, ['기사', '화보'], s2.partDone);
+    t('한 표만 끝나도 헛알림이 안 나간다', silent2.length === 0, JSON.stringify(silent2));
+
+    pending = [{ id: 'a1', faq: KO }, { id: 'a2', faq: KO }];   // 원상복구
+  }
 
   console.log('\n[7] 처리량 — 한 회차에 한 번만 부르고 끝내지 않는다 (2026-09-02)');
   /* 실측: 함수 예산 100초인데 실행이 45~68초였다. 표마다 한 번씩 부르고 끝나서
