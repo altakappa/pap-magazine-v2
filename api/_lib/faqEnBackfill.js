@@ -334,9 +334,27 @@ async function runFaqEnBatch({ batch = 8, timeoutMs = 90000, model } = {}) {
 
   let live = TARGETS.slice();
   let waves = 0;
+  /* 직전 파도가 **실제로** 걸린 시간. 다음 파도를 시작할지 재서 정한다.
 
-  while (live.length && waves < MAX_WAVES && Date.now() <= deadline - START_FLOOR_MS) {
+     ■ 2026-09-06 실측 — 매 회차 콜 두 번 중 한 번이 통째로 버려지고 있었다
+         [faq-en] articles batch=12 stop_reason=? len=0 The operation was aborted due to timeout
+       노트는 '2회전 · 기사:12'. 파도는 두 번 돌았는데 저장은 한 번치다.
+       파도 하나가 약 60초인데 고정 문턱이 35초라, 35초만 남아도 시작하고
+       그대로 죽었다. 돈은 나가고 데이터는 0이다.
+
+     ■ 이 규칙은 이미 있었다. 옆 차선에만.
+       editorialFaqI18nBackfill 이 2026-09-02 에 똑같은 사고를 겪고 고정 문턱을
+       '직전 파도 x 1.15' 로 바꿨다. **여기는 안 고쳤다.**
+       "규칙이 두 벌이면 한쪽만 고쳐진다" 를 오늘 세 번째로 재현했다.
+       (앞의 둘: 완주 표기 · 알림 문구) */
+  let lastWaveMs = 0;
+
+  while (live.length && waves < MAX_WAVES) {
+    const left = deadline - Date.now();
+    const need = lastWaveMs ? Math.round(lastWaveMs * 1.15) : START_FLOOR_MS;
+    if (left <= need) break;
     waves++;
+    const waveStart = Date.now();
     const budget = Math.max(20000, deadline - Date.now() - 5000);
     const before = new Map(live.map((t) => [t.table, (acc.get(t.table) || {}).remaining]));
 
@@ -365,6 +383,7 @@ async function runFaqEnBatch({ batch = 8, timeoutMs = 90000, model } = {}) {
       if (t) next.push(t);
     }
     live = next;
+    lastWaveMs = Date.now() - waveStart;
   }
 
   let processed = 0;

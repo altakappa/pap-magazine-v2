@@ -188,6 +188,38 @@ console.log('\n=== ⑤ 두 백필이 완주 규칙을 둘 다 가진다 ===');
       /cur\.remaining === 0[\s\S]{0,80}':완주'/.test(src),
       rel + ' 에 완주 표기가 없다. 한쪽만 고치면 그 차선에서 헛알림이 난다.');
   }
+  /* 2026-09-06 — 같은 날 **세 번째** 중복이 나왔다.
+     '파도를 시작할지 직전 파도 시간으로 재서 정한다' 를 09-02 에 언어판에만
+     넣었고, 영문 차선은 고정 문턱 35초 그대로였다. 파도가 60초인데 35초만
+     남아도 시작해서, 매 회차 콜 하나가 통째로 버려지고 있었다.
+     (실측 로그: [faq-en] articles ... The operation was aborted due to timeout) */
+  for (const [rel, 이름] of LANES) {
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    t('파도 문턱을 직전 파도 시간으로 잰다 — ' + 이름,
+      /lastWaveMs \* 1\.15/.test(src) && /lastWaveMs = Date\.now\(\) - waveStart/.test(src),
+      rel + ' 이 고정 문턱만 쓴다. 파도가 문턱보다 길면 못 끝낼 콜을 시작한다.');
+  }
+
+  /* 예산과 함수 상한이 맞는지도 **두 크론 다** 본다.
+     이 검사는 09-04 에 언어판 쪽에만 붙였고, 오늘 영문 쪽 상한을 올릴 때
+     그 검사가 없어서 돌연변이가 안 잡혔다. 검사도 두 벌이면 한쪽만 고쳐진다. */
+  const vj = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
+  for (const [cron, 이름] of [
+    ['api/cron/backfill-faq.js', '영문FAQ 크론'],
+    ['api/cron/backfill-editorial-faq.js', '화보FAQ 언어판 크론'],
+  ]) {
+    const src = fs.readFileSync(path.join(ROOT, cron), 'utf8');
+    const m = /const left = (\d+) - \(Date\.now\(\)/.exec(src);
+    const 예산 = m ? Number(m[1]) : 0;
+    const fn = (vj.functions || {})[cron];
+    const glob = (vj.functions || {})['api/**/*.js'];
+    const 상한 = (fn && fn.maxDuration) || (glob && glob.maxDuration) || 0;
+    t('내부 예산이 함수 상한 안에 있다 — ' + 이름,
+      예산 > 0 && 예산 / 1000 <= 상한 - 20,
+      '예산=' + 예산 / 1000 + 's 상한=' + 상한 + 's · 넘으면 강제종료되고 기록조차 안 남는다');
+    t('내부 예산이 크론 주기보다 짧다 — ' + 이름, 예산 / 1000 < 600, 예산 / 1000);
+  }
+
   /* 감시기가 그 글자를 실제로 읽는지 — 적기만 하고 안 읽으면 소용없다 */
   const health = require(path.join(ROOT, 'api', '_lib', 'faqHealth.js'));
   const a = health.parseLane('영문FAQ 0 · 잔여 0 · 1회전 · 기사:완주 화보:완주', '영문FAQ');

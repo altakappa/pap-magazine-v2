@@ -40,7 +40,15 @@ module.exports = withCronGuard('backfill-faq', async function handler(req, res) 
        같은 호출 안에서 이어 돌면 호출 수 증가가 0이다.
        ②가 실패해도 ①의 결과는 그대로 보고한다. */
     let en = null;
-    const left = 100000 - (Date.now() - started);
+    /* 100초 → 270초 (2026-09-06). 함수 상한을 120 → 300 으로 올렸다.
+       언어판 차선에서 09-04 에 같은 변경을 하고 실측했다: 회차당 25 → 70칸,
+       실패 0, 실행 244~262초(상한 300 안). 콜 하나하나는 그대로다.
+
+       ⚠️ 아래 runFaqEnBatch 머리말의 "maxDuration 을 늘리면 비용이 는다" 는
+          2026-09-02 의 판단인데 **반만 맞다.** Vercel 은 실제로 돈 시간만
+          청구하므로 **항목당 비용은 같다**(기동 비용이 더 많은 항목에 나뉘어
+          오히려 조금 준다). 일감은 유한하니 총액은 같고 끝나는 날짜만 당겨진다. */
+    const left = 270000 - (Date.now() - started);
     if (left > 25000) {
       try {
         en = await runFaqEnBatch({ batch: 8, timeoutMs: left });

@@ -183,6 +183,33 @@ function el(i) { return '{"i":' + i + ',"faq":[{"q":"Q1","a":"A1"},{"q":"Q2","a"
   t('두 표를 다 돌고 라벨을 남긴다', /기사/.test(batchOut.note) && /화보/.test(batchOut.note), batchOut.note);
 
 
+
+  console.log('\n[6-3] 못 끝낼 파도를 시작하지 않는다 (2026-09-06 실측)');
+  {
+    /* 실측: [faq-en] articles ... The operation was aborted due to timeout 이
+       매 회차 찍히고 노트는 '2회전 · 기사:12' 였다. 파도는 두 번 돌았는데
+       저장은 한 번치다 — 두 번째 콜이 통째로 버려졌다.
+       파도 하나가 약 60초인데 고정 문턱이 35초였기 때문이다. */
+    pending = new Array(60).fill(0).map((_, i) => ({ id: 'p' + i, faq: KO }));
+    reply = el(0) + '\n' + el(1);
+
+    // 예산이 첫 파도 문턱보다 적으면 아예 시작하지 않는다
+    const 없음 = await fe.runFaqEnBatch({ batch: 4, timeoutMs: 10000, model: 'm' });
+    t('첫 파도 문턱도 못 넘으면 한 번도 안 돈다', 없음.waves === 0, 없음.waves);
+
+    // 넉넉하면 여러 파도를 돈다
+    const 넉넉 = await fe.runFaqEnBatch({ batch: 4, timeoutMs: 270000, model: 'm' });
+    t('예산이 넉넉하면 파도를 여러 번 돈다', 넉넉.waves >= 2, 넉넉.waves);
+    t('파도 수가 상한을 안 넘는다', 넉넉.waves <= 6, 넉넉.waves);
+
+    /* 규칙이 코드에 실제로 걸려 있는가 — 상수만 있고 안 쓰면 의미가 없다 */
+    t('직전 파도 시간을 잰다', /lastWaveMs = Date\.now\(\) - waveStart/.test(SRC));
+    t('그 값으로 다음 파도를 정한다', /lastWaveMs \* 1\.15/.test(SRC));
+    t('첫 파도는 잴 게 없으니 종전 문턱을 쓴다', /: START_FLOOR_MS/.test(SRC));
+
+    pending = [{ id: 'a1', faq: KO }, { id: 'a2', faq: KO }];   // 원상복구
+  }
+
   console.log('\n[6-2] 할 일이 없는 표를 노트에서 숨기지 않는다 (2026-09-06 헛알림)');
   {
     /* ■ 실제 사고 — 어제 언어판에 넣은 고침을 **이 파일에는 안 넣었다**
