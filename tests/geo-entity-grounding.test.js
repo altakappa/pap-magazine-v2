@@ -50,6 +50,14 @@ console.log('\n[1] matchEntities — 매칭 규칙');
     const r2 = matchEntities({ title: 'Chanel show', tags: ['chanel', '샤넬'] });
     return r2.about.length + r2.mentions.length === 1;
   })());
+  // 2026-09-06 서치콘솔: about/mentions 의 @type:Event 가 이벤트 리치결과로 검사돼 1,923건 잘못됨.
+  // 행사는 Thing + sameAs 로만 그라운딩한다. Event 와 그 하위형은 사전에 못 들어온다.
+  t('사전에 Event 계열 타입이 없다(리치결과 검사 회피)', ENTITIES.every(e => !/Event/.test(e.type)));
+  t('패션위크는 Thing 으로 나간다', (() => {
+    const r3 = matchEntities({ title: 'Paris Fashion Week SS27', tags: [] });
+    return r3.about.length === 1 && r3.about[0]['@type'] === 'Thing' && /Paris_Fashion_Week/.test(r3.about[0].sameAs);
+  })());
+  t('허용 타입은 Organization·Person·MusicGroup·Thing 뿐', ENTITIES.every(e => ['Organization', 'Person', 'MusicGroup', 'Thing'].includes(e.type)));
 }
 
 console.log('\n[2] 렌더러 배선');

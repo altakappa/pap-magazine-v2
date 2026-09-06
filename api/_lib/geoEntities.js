@@ -18,8 +18,16 @@
 
 const W = (slug) => 'https://en.wikipedia.org/wiki/' + slug;
 
-/* type: Organization(브랜드) | Person | MusicGroup | Event
-   aliases: 소문자 비교. tagOnly:true 면 제목 매칭 금지(중의성). */
+/* type: Organization(브랜드) | Person | MusicGroup | Thing(행사)
+   aliases: 소문자 비교. tagOnly:true 면 제목 매칭 금지(중의성).
+
+   [행사를 Event 로 쓰지 않는 이유 — 2026-09-06 서치콘솔 실측]
+   about/mentions 안에 @type:Event 를 넣으면 구글은 그것을 "이벤트 리치결과
+   후보"로 따로 떼어 검사한다. 패션위크·멧 갈라는 날짜·장소·티켓이 없는
+   언급이라 startDate/location 누락으로 1,923건 전부 '잘못됨' 판정을 받았다
+   (유효 0). EventSeries 도 Event 의 하위형이라 같은 검사를 받는다.
+   지식그래프 그라운딩은 sameAs(위키피디아)가 담당하므로 Thing 으로 두면
+   GEO 효과는 유지되고 리치결과 검사에서는 빠진다. Event 금지는 테스트 가드. */
 const ENTITIES = [
   // ── 패션 하우스 ──
   { name: 'Chanel', type: 'Organization', sameAs: W('Chanel'), aliases: ['chanel', '샤넬'] },
@@ -87,13 +95,13 @@ const ENTITIES = [
   { name: 'Hailey Bieber', type: 'Person', sameAs: W('Hailey_Bieber'), aliases: ['hailey bieber', '헤일리 비버'] },
   { name: 'Margot Robbie', type: 'Person', sameAs: W('Margot_Robbie'), aliases: ['margot robbie', '마고 로비'] },
   // ── 이벤트 ──
-  { name: 'Met Gala', type: 'Event', sameAs: W('Met_Gala'), aliases: ['met gala', '멧 갈라', '멧갈라'] },
-  { name: 'Coachella', type: 'Event', sameAs: W('Coachella'), aliases: ['coachella', '코첼라'] },
-  { name: 'Paris Fashion Week', type: 'Event', sameAs: W('Paris_Fashion_Week'), aliases: ['paris fashion week', '파리 패션위크', '파리패션위크'] },
-  { name: 'Milan Fashion Week', type: 'Event', sameAs: W('Milan_Fashion_Week'), aliases: ['milan fashion week', '밀라노 패션위크', '밀라노패션위크'] },
-  { name: 'London Fashion Week', type: 'Event', sameAs: W('London_Fashion_Week'), aliases: ['london fashion week', '런던 패션위크'] },
-  { name: 'New York Fashion Week', type: 'Event', sameAs: W('New_York_Fashion_Week'), aliases: ['new york fashion week', '뉴욕 패션위크'] },
-  { name: 'Seoul Fashion Week', type: 'Event', sameAs: W('Seoul_Fashion_Week'), aliases: ['seoul fashion week', '서울 패션위크', '서울패션위크'] },
+  { name: 'Met Gala', type: 'Thing', sameAs: W('Met_Gala'), aliases: ['met gala', '멧 갈라', '멧갈라'] },
+  { name: 'Coachella', type: 'Thing', sameAs: W('Coachella'), aliases: ['coachella', '코첼라'] },
+  { name: 'Paris Fashion Week', type: 'Thing', sameAs: W('Paris_Fashion_Week'), aliases: ['paris fashion week', '파리 패션위크', '파리패션위크'] },
+  { name: 'Milan Fashion Week', type: 'Thing', sameAs: W('Milan_Fashion_Week'), aliases: ['milan fashion week', '밀라노 패션위크', '밀라노패션위크'] },
+  { name: 'London Fashion Week', type: 'Thing', sameAs: W('London_Fashion_Week'), aliases: ['london fashion week', '런던 패션위크'] },
+  { name: 'New York Fashion Week', type: 'Thing', sameAs: W('New_York_Fashion_Week'), aliases: ['new york fashion week', '뉴욕 패션위크'] },
+  { name: 'Seoul Fashion Week', type: 'Thing', sameAs: W('Seoul_Fashion_Week'), aliases: ['seoul fashion week', '서울 패션위크', '서울패션위크'] },
 ];
 
 const ABOUT_MAX = 2;
