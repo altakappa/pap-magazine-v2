@@ -185,9 +185,9 @@ function englishSignals(raw) {
   const messenger = MESSENGER_SQ.test(sq);
   if (messenger) sig.push({ k: 'offplatform_contact', w: 60 });
 
-  // 2) 그 낱말을 쪼개 놓았다 (tele gram / w h a t s a p p)
+  // 2) 그 낱말을 쪼개 놓았다 (tele gram / t.e.l.e.g.r.a.m / w h a t s a p p)
   //    한글 쪽 search_engine_obfuscated 와 같은 수법, 같은 판정 방식이다.
-  if (messenger && !MESSENGER_W.test(w)) sig.push({ k: 'contact_word_split', w: 40 });
+  if (messenger && !MESSENGER_W.test(w)) sig.push({ k: 'contact_word_split', w: 90 });
 
   // 3) 마약 낱말 + 판매 신호. 반드시 둘 다 있어야 한다.
   if (DRUG_RE.test(w) && SALE_RE.test(w)) sig.push({ k: 'drug_sale', w: 90 });
@@ -250,6 +250,25 @@ const BURST_MIN_COUNT = 3;
 const AUTO_MIN_SCORE = 150;
 const AUTO_MIN_OWN_SIGNALS = 2;
 
+/* ── 단독으로도 확정인 신호 ─────────────────────────────────
+ * 2026-09-06 도메니코 지시: "tele 나 gram 이 들어가면 다 스팸 처리해서 숨겨줘".
+ *
+ * 글자 그대로 부분문자열로 찾을 수는 없다. 'instagram' 안에 'gram' 이 있다.
+ * program·diagram·monogram·grammy 도 마찬가지고, 'tele' 는 television·
+ * telephone·telefono(밀라노 쪽 이탈리아어 댓글) 안에 있다. 그대로 켜면
+ * 인스타 댓글에서 제일 흔한 낱말이 통째로 숨겨진다.
+ *
+ * 그래서 낱말 단위로 본다. 'telegram' 이 보이면(쪼개 놨든 아니든) 확정으로 친다.
+ * 'instagram' 안에는 'telegram' 이 없으므로 안전하다.
+ * 'on the gram'(인스타를 가리키는 영어 속어)도 telegram 이 아니므로 안 걸린다.
+ *
+ * 이 신호가 있으면 점수와 신호 개수를 보지 않고 숨긴다.
+ * 정상 독자가 우리 화보 밑에 텔레그램·왓츠앱·위커를 적을 이유가 사실상 없다.
+ * 대가는 분명하다: "Are you on telegram?" 같은 진짜 댓글도 숨겨진다.
+ * 도메니코가 그 대가를 알고 고른 것이다. 되돌리려면 이 집합을 비우면 된다.
+ */
+const DECISIVE = new Set(['offplatform_contact', 'contact_word_split']);
+
 /** 살포(burst)를 뺀, 그 댓글이 스스로 낸 신호 */
 function ownSignals(signals) {
   return (signals || []).filter((s) => !String(s).startsWith('burst:'));
@@ -263,6 +282,8 @@ function autoHidable(score, signals, opts) {
   const minScore = Number((opts && opts.minScore) || AUTO_MIN_SCORE);
   const minOwn = Number((opts && opts.minOwnSignals) || AUTO_MIN_OWN_SIGNALS);
   const own = ownSignals(signals);
+  const decisive = own.filter((x) => DECISIVE.has(String(x)));
+  if (decisive.length) return { auto: true, why: `단독 확정 신호 ${decisive.join('+')} (${score}점)` };
   if (score < minScore) return { auto: false, why: `${score}점 < 자동 기준 ${minScore}점` };
   if (own.length < minOwn) {
     return { auto: false, why: `자기 신호 ${own.length}개 < ${minOwn}개 (살포 가산만으로는 자동 처리하지 않는다)` };
@@ -272,4 +293,4 @@ function autoHidable(score, signals, opts) {
 
 module.exports = { BURST_BONUS, BURST_MIN_COUNT, normalize, squash, structuralSignals, keywordHits, score, fingerprint,
   autoHidable, ownSignals, AUTO_MIN_SCORE, AUTO_MIN_OWN_SIGNALS, BAIT,
-  latinWords, latinSquash, englishSignals, contactHandle };
+  latinWords, latinSquash, englishSignals, contactHandle, DECISIVE };

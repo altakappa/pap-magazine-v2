@@ -232,7 +232,6 @@ t('영어 정상 댓글을 하나도 자동 숨김에 넣지 않는다', () => {
     'we should work together, hit me up',
     'this is legit the best cover you have done',
     'shipping to Korea available?',
-    'Are you on telegram? I sent you a message',
     'contact me for the styling credits',
     'dm me the brand of that jacket',
     'Buy now? worldwide shipping?',
@@ -242,6 +241,52 @@ t('영어 정상 댓글을 하나도 자동 숨김에 넣지 않는다', () => {
     const a = autoHidable(r.total + 60, [...r.signals, 'burst:9건']);  // 살포까지 겹쳐도
     assert.ok(!a.auto, `자동 숨김 오탐(${r.total}점, ${r.signals}): ${h}`);
   }
+});
+
+/* ── 단독 확정 신호 (2026-09-06 도메니코 지시) ─────────────────
+ * "tele 나 gram 이 들어가면 다 스팸 처리해서 숨겨줘".
+ * 글자 그대로 부분문자열로는 못 한다 — 'instagram' 안에 'gram' 이 있다.
+ * 낱말 단위로 telegram 을 본다. 아래 두 테스트가 그 선을 지킨다.
+ */
+t('텔레그램은 쪼개 놨든 아니든 단독으로 숨긴다', () => {
+  for (const s of ['message dr_wright00 on tele gram',
+                   't.e.l.e.g.r.a.m : dr_wright00',
+                   'T E L E G R A M dr_wright00',
+                   'hit me up on telegram',
+                   'whatsapp +1 555 0100',
+                   'wickr me for prices']) {
+    const r = score(s);
+    assert.ok(autoHidable(r.total, r.signals).auto, `안 숨겨진다(${r.total}점 ${r.signals}): ${s}`);
+  }
+});
+
+/* 이게 이 지시의 진짜 위험 지점이다. 여기가 깨지면 협업 크리에이터 댓글이
+ * 조용히 사라진다. 'instagram' 은 우리 댓글에서 제일 흔한 낱말 중 하나다. */
+t('instagram·program·television 은 절대 걸리지 않는다', () => {
+  for (const h of ['follow us on instagram @pap_magazine',
+                   'instagram vs tiktok, which is better?',
+                   'best on the gram right now',
+                   'this program is amazing',
+                   'love the monogram detail',
+                   'she should win a grammy',
+                   'check the diagram on page 4',
+                   'saw this on television last night',
+                   'mandami il tuo telefono per favore',
+                   '500 gram of pure talent',
+                   '인스타그램에서 봤어요 너무 예뻐요']) {
+    const r = score(h);
+    assert.strictEqual(r.total, 0, `오탐(${r.total}점, ${r.signals}): ${h}`);
+    assert.ok(!autoHidable(r.total, r.signals).auto, '자동 숨김 오탐: ' + h);
+  }
+});
+
+/* 받아들인 대가 — 숨기지 않는다.
+ * 진짜 독자가 "Are you on telegram?" 이라고 쓰면 그것도 숨겨진다.
+ * 도메니코가 그 대가를 알고 고른 것이다. 되돌리려면 DECISIVE 를 비운다. */
+t('진짜 독자의 telegram 언급도 숨겨진다 (의도된 대가)', () => {
+  const r = score('Are you on telegram? I sent you a message');
+  assert.ok(autoHidable(r.total, r.signals).auto,
+    '이 테스트가 깨졌다면 DECISIVE 정책이 바뀐 것이다 — 의도한 변경인지 확인할 것');
 });
 
 /* 2026-09-06: domain_bait 가 squash(점·공백이 사라진 문자열)에 대고 'tme' 를
