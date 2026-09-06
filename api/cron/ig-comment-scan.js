@@ -71,6 +71,13 @@ module.exports = withCronGuard('ig-comment-scan', async function handler(req, re
   // ── 2. 댓글 수집 + 판정 ─────────────────────────────────
   const rows = [];
   const fpCount = new Map();
+  /* 목적지 계정별로 '서로 다른 계정이 몇 개나 뿌렸나' 를 센다.
+   * 2026-09-06: 마약 판매 스팸은 문구를 조금씩 바꿔서 지문 묶음이 2건에 그쳤다.
+   * 하지만 목적지(텔레그램 계정)는 6건 전부 같았다. 글은 바꿔도 연락처는 못 바꾼다.
+   * 지문과 같은 성격의 증거라 신호를 새로 만들지 않고 살포 계산에 키만 하나 더한다.
+   * (댓글 수가 아니라 계정 수로 세는 이유: 한 사람이 같은 연락처를 세 번 적는 것은 살포가 아니다.) */
+  const handleUsers = new Map();
+  const handleOf = new Map();
   let scanned = 0;
   let readFail = null;
 
@@ -89,6 +96,12 @@ module.exports = withCronGuard('ig-comment-scan', async function handler(req, re
       const sc = spam.score(c.text || '');
       const fp = spam.fingerprint(c.text || '');
       if (fp) fpCount.set(fp, (fpCount.get(fp) || 0) + 1);
+      const handle = spam.contactHandle(c.text || '');
+      if (handle) {
+        handleOf.set(c.id, handle);
+        if (!handleUsers.has(handle)) handleUsers.set(handle, new Set());
+        handleUsers.get(handle).add(String(c.username || c.id));
+      }
       rows.push({
         comment_id: c.id, media_id: m.id, permalink: m.permalink || null,
         text: String(c.text || '').slice(0, 900),
@@ -110,8 +123,11 @@ module.exports = withCronGuard('ig-comment-scan', async function handler(req, re
   /* 살포 가산 — 자기 신호가 0점인 댓글에는 주지 않는다.
    * '남들도 똑같이 썼다'는 사실만으로는 스팸이 아니다 (6c37aa7 교훈). */
   for (const r of rows) {
-    if (!r.fingerprint || r.score <= 0) continue;
-    const n = fpCount.get(r.fingerprint) || 0;
+    if (r.score <= 0) continue;
+    const byText = r.fingerprint ? (fpCount.get(r.fingerprint) || 0) : 0;
+    const h = handleOf.get(r.comment_id);
+    const byHandle = h ? (handleUsers.get(h) || new Set()).size : 0;
+    const n = Math.max(byText, byHandle);
     if (n >= spam.BURST_MIN_COUNT) { r.score += spam.BURST_BONUS; r.signals = [...r.signals, 'burst:' + n + '건']; }
   }
 

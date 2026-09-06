@@ -172,4 +172,102 @@ t('날짜·금액·전화번호는 숫자끊기로 걸리지 않는다', () => {
   }
 });
 
+
+/* ── 영문 마약 판매 스팸 (2026-09-06) ─────────────────────────
+ * 도메니코가 캡처를 보냈다. 6개 계정이 같은 게시물에 텔레그램 계정 하나를
+ * 뿌리고 있었다. 그 6건을 당시 판정기에 넣으니 전부 0점이었다.
+ *
+ * ⚠️ 아래 표본은 캡처의 '모양'을 재구성한 것이다. 캡처 원문을 글자 그대로
+ *    보관하지 못했다. 진짜 검증은 다음 회차 크론이 큐에 적재한 실제 본문이다.
+ *    (ig_comment_queue 에서 signals 에 offplatform_contact 가 있는 행을 본다.)
+ */
+const EN_SPAM = [
+  'Best plug for psychedelics and mushrooms available, message dr_wright00 on tele gram',
+  'shrooms lsd dmt available worldwide, discreet shipping. contact dr_wright00 on telegram',
+  'Need magic mushrooms? dr_wright00 on tele gram has the best carts and edibles for order',
+  'psilocybin microdose capsules in stock, hit me up dr_wright00 on tele gram',
+];
+
+t('영문 마약 판매 스팸을 탐지한다', () => {
+  for (const s of EN_SPAM) {
+    const r = score(s);
+    assert.ok(r.total >= T, `놓침(${r.total}점): ${s.slice(0, 40)}`);
+  }
+});
+
+t('영문 스팸은 살포 가산 없이도 자동 숨김 기준을 넘는다', () => {
+  // 문구를 바꿔 가며 뿌리므로 지문 살포에 기대면 안 된다. 글 하나만으로 서야 한다.
+  for (const s of EN_SPAM) {
+    const r = score(s);
+    const a = autoHidable(r.total, r.signals);
+    assert.ok(a.auto, `자동 숨김 미달: ${r.total}점 ${r.signals} | ${s.slice(0, 40)}`);
+  }
+});
+
+t('낱말을 쪼갠 연락처(tele gram)를 잡는다', () => {
+  const a = score('message me on tele gram');
+  assert.ok(a.signals.includes('contact_word_split'), a.signals.join(','));
+  const b = score('message me on telegram');
+  assert.ok(!b.signals.includes('contact_word_split'), '안 쪼갠 것까지 쪼갠 것으로 센다');
+  assert.ok(b.signals.includes('offplatform_contact'));
+});
+
+t('마약 낱말만으로는 절대 신호를 내지 않는다', () => {
+  for (const h of ['the mushrooms in this set design are incredible',
+                   'weed all over the styling, so 70s',
+                   'this jacket is pure molly hatchet energy']) {
+    const r = score(h);
+    assert.ok(!r.signals.includes('drug_sale'), '오탐: ' + h + ' → ' + r.signals.join(','));
+  }
+});
+
+t('영어 정상 댓글을 하나도 자동 숨김에 넣지 않는다', () => {
+  const EN_HAM = [
+    'Where can I buy this? Link please',
+    'amazing work as always',
+    'love this editorial, who is the photographer?',
+    'DM me for collaboration inquiries please',
+    'Stunning! Available for shoots in Milan?',
+    'Can I order prints of this?',
+    'we should work together, hit me up',
+    'this is legit the best cover you have done',
+    'shipping to Korea available?',
+    'Are you on telegram? I sent you a message',
+    'contact me for the styling credits',
+    'dm me the brand of that jacket',
+    'Buy now? worldwide shipping?',
+  ];
+  for (const h of EN_HAM) {
+    const r = score(h);
+    const a = autoHidable(r.total + 60, [...r.signals, 'burst:9건']);  // 살포까지 겹쳐도
+    assert.ok(!a.auto, `자동 숨김 오탐(${r.total}점, ${r.signals}): ${h}`);
+  }
+});
+
+/* 2026-09-06: domain_bait 가 squash(점·공백이 사라진 문자열)에 대고 'tme' 를
+ * 찾고 있었다. "contact me" → "contactme" 안에 tme 가 들어 있어서 영어 정상
+ * 댓글이 45점을 받았다. 같은 이유로 '.zone/.club' 은 한 번도 걸린 적이 없다. */
+t('도메인 미끼가 평범한 영어 문장을 잡지 않는다', () => {
+  for (const h of ['contact me for the styling credits', 'hit me up anytime',
+                   'well done. top work everyone', 'best club in milan',
+                   'that meeting was great']) {
+    assert.ok(!score(h).signals.includes('domain_bait'), '오탐: ' + h);
+  }
+});
+
+t('도메인 미끼가 진짜 도메인은 잡는다', () => {
+  for (const s of ['join t.me/darkshop now', 'see 19x。zone', '(19x.club) 어서', 'go to 19x 。 z o n e']) {
+    assert.ok(score(s).signals.includes('domain_bait'), '놓침: ' + s);
+  }
+});
+
+t('목적지 계정은 연락처 유도가 있을 때만 뽑는다', () => {
+  const { contactHandle } = require('../api/_lib/igCommentSpam');
+  assert.strictEqual(contactHandle('message dr_wright00 on tele gram'), 'dr_wright00');
+  assert.strictEqual(contactHandle('@pap_magazine 🤍'), null, '우리 태그를 목적지로 센다');
+  assert.strictEqual(contactHandle('dr_wright00 nice shot'), null, '연락처 유도 없이 계정을 센다');
+  assert.strictEqual(contactHandle('follow me on telegram'), null, '평범한 낱말을 계정으로 센다');
+});
+
+
 console.log(`\n${n}개 테스트 통과`);

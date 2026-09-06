@@ -57,8 +57,19 @@ function structuralSignals(raw) {
   const q = squash(s);
   if (/(검색해봐|찾기해봐|글로검색|쳐봐|검색해보|구글에)/.test(q)) sig.push({ k: 'search_bait', w: 30 });
 
-  // 6) 도메인 흔적
-  if (/(19x|\.zone|\.club|\.top|\.xyz|tme|wame)/i.test(q)) sig.push({ k: 'domain_bait', w: 45 });
+  /* 6) 도메인 흔적
+   *    2026-09-06: 여기 있던 규칙은 squash(점·공백이 다 사라진 문자열)에 대고
+   *    'tme' 를 찾고 있었다. 그래서 "contact me" 가 "contactme" 가 되면서
+   *    영어 정상 댓글이 45점을 받았다. ('hit me up' 도 같다.)
+   *    같은 이유로 '.zone/.club/.top/.xyz' 는 점이 이미 사라져 한 번도 걸린 적이 없다.
+   *    죽은 규칙 넷과 오탐 규칙 둘이었다. 점을 살린 문자열에 대고 다시 본다. */
+  const dom = String(s).normalize('NFKC').toLowerCase().replace(/[。｡·・]/g, '.').replace(/\s+/g, '');
+  const domSp = String(s).normalize('NFKC').toLowerCase().replace(/[。｡]/g, '.');
+  if (/19x/.test(dom)
+      || /\b(t|wa)\s*\.\s*me\b/.test(domSp)
+      || /[a-z0-9-]{2,}\.(zone|club|top|xyz)(?![a-z])/.test(domSp)) {
+    sig.push({ k: 'domain_bait', w: 45 });
+  }
 
   // 7) 검색엔진 이름을 구분자로 찢어놓은 경우
   //    G....__O__O__G__L__E / G⁺O⁺O⁺G⁺L⁺E / GιOιOιGιLιE / Ｇ○ogle / 구ι글
@@ -95,7 +106,7 @@ function keywordHits(raw) {
 }
 
 function score(raw) {
-  const all = [...structuralSignals(raw), ...keywordHits(raw)];
+  const all = [...structuralSignals(raw), ...keywordHits(raw), ...englishSignals(raw)];
   const total = all.reduce((a, x) => a + x.w, 0);
   return { total, signals: all.map((x) => x.k), normalized: normalize(raw), squashed: squash(raw) };
 }
@@ -119,6 +130,93 @@ function fingerprint(raw) {
   let h = 5381;
   for (let i = 0; i < q.length; i++) h = ((h * 33) ^ q.charCodeAt(i)) >>> 0;
   return h.toString(36) + ':' + q.length;
+}
+
+
+/* ── 영문 스팸 (마약 판매 유인) ──────────────────────────────
+ * 2026-09-06. 도메니코가 인스타 댓글 캡처를 보냈다. 6개 계정이 같은 게시물에
+ * 마약 판매 텔레그램 계정을 뿌리고 있었다.
+ *
+ * 그 6건을 위 판정기에 그대로 넣어 봤다. 전부 0점이었다. 살포 판정도 안 걸렸다
+ * (문구를 조금씩 바꿔서 같은 지문 최대 묶음이 2건, 기준은 3건).
+ * 이유는 명확하다. 위의 신호는 전부 한글·CJK 구두점·한국어 미끼어가 있어야 켜진다.
+ * 2026-08-19 한국어 성인 스팸 표본 하나만 보고 만든 자였다.
+ *
+ * 그동안 크론은 12일 내내 '스팸 0건'이라고 정상 보고했다.
+ * 0은 깨끗하다는 뜻이 아니라 이 자로는 못 잰다는 뜻이었다.
+ *
+ * 여기서 세는 것은 낱말이 아니라 '파는 구조'다.
+ *   ① 플랫폼 밖 연락처로 빼낸다 (텔레그램·왓츠앱·위커)
+ *   ② 그 낱말을 쪼갠다 (tele gram) — 한글 char_spacing 의 영어판
+ *   ③ 마약 낱말 + 판매 신호가 함께 나온다 (둘 중 하나만으로는 안 센다)
+ *   ④ 목적지 계정은 안 바뀐다 — 문구는 바꿔도 연락처는 못 바꾼다
+ * ④는 여기서 신호로 만들지 않는다. 살포(burst)와 완전히 같은 성격이라
+ * 크론의 살포 계산에 키 하나를 더하는 쪽이 맞다. 규칙을 두 벌로 만들지 않는다.
+ */
+
+/** 낱말 경계를 살린 라틴 형태 — 짧은 낱말(lsd·dmt)을 안전하게 본다 */
+function latinWords(raw) {
+  return String(raw || '').normalize('NFKC').replace(/[​-‍﻿]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+/** 라틴 문자만 붙인 형태 — "tele gram" 과 "telegram" 을 같게 만든다 */
+function latinSquash(raw) {
+  return latinWords(raw).replace(/ /g, '');
+}
+
+const MESSENGER = 'telegram|telegam|telgram|tellegram|whatsapp|whatapp|watsapp|wickr';
+const MESSENGER_SQ = new RegExp('(' + MESSENGER + ')');
+const MESSENGER_W = new RegExp('\\b(' + MESSENGER + ')\\b');
+
+/* 마약 낱말. 이것만으로는 절대 판정하지 않는다 — 화보 댓글에도 나올 수 있다. */
+const DRUG_RE = /\b(psychedelic|psychedelics|psilocybin|mushroom|mushrooms|shroom|shrooms|lsd|dmt|mdma|ketamine|ayahuasca|mescaline|microdose|microdosing|molly|adderall|xanax|percocet|oxycodone|cannabis|marijuana|weed|edibles|carts)\b/;
+/* 파는 자리에서만 나오는 말 */
+const SALE_RE = /\b(available|order|orders|ordering|shipping|ship|discreet|discreetly|delivery|deliver|plug|dm|dms|hmu|inbox|contact|buy|purchase|stock|vendor|supply|supplier|legit|worldwide|prices|priced)\b/;
+/* 밖으로 불러내는 말 */
+const SOLICIT_RE = /\b(dm|dms|message|text|contact|write)\s+(me|him|her|us)\b|\bhit\s+me\s+up\b|\bhmu\b|\breach\s+out\b/;
+
+function englishSignals(raw) {
+  const sig = [];
+  const w = latinWords(raw);
+  const sq = latinSquash(raw);
+  if (!w) return sig;
+
+  // 1) 플랫폼 밖 연락처 유도
+  const messenger = MESSENGER_SQ.test(sq);
+  if (messenger) sig.push({ k: 'offplatform_contact', w: 60 });
+
+  // 2) 그 낱말을 쪼개 놓았다 (tele gram / w h a t s a p p)
+  //    한글 쪽 search_engine_obfuscated 와 같은 수법, 같은 판정 방식이다.
+  if (messenger && !MESSENGER_W.test(w)) sig.push({ k: 'contact_word_split', w: 40 });
+
+  // 3) 마약 낱말 + 판매 신호. 반드시 둘 다 있어야 한다.
+  if (DRUG_RE.test(w) && SALE_RE.test(w)) sig.push({ k: 'drug_sale', w: 90 });
+
+  // 4) 밖으로 불러내는 문구
+  if (SOLICIT_RE.test(w)) sig.push({ k: 'dm_solicit', w: 30 });
+
+  return sig;
+}
+
+/**
+ * 목적지 계정. 연락처 유도 신호가 있는 댓글에서만 뽑는다.
+ * 그냥 아무 @멘션이나 세면 '@pap_magazine 🤍' 4건이 살포로 묶인다 (6c37aa7 오탐).
+ * 평범한 영어 낱말은 목적지가 아니다 — 밑줄이나 숫자가 있는 것만 본다.
+ */
+function contactHandle(raw) {
+  const sq = latinSquash(raw);
+  if (!MESSENGER_SQ.test(sq)) return null;
+  const toks = String(raw || '').normalize('NFKC').toLowerCase().match(/[a-z][a-z0-9._]{3,29}/g) || [];
+  for (const tok of toks) {
+    const clean = tok.replace(/[._]+$/, '');
+    if (clean.length < 5) continue;
+    if (!/[._0-9]/.test(clean)) continue;
+    const bare = clean.replace(/[._]/g, '');
+    if (OWN_HANDLES.test(bare)) continue;
+    if (MESSENGER_SQ.test(bare)) continue;
+    return clean;
+  }
+  return null;
 }
 
 
@@ -173,4 +271,5 @@ function autoHidable(score, signals, opts) {
 }
 
 module.exports = { BURST_BONUS, BURST_MIN_COUNT, normalize, squash, structuralSignals, keywordHits, score, fingerprint,
-  autoHidable, ownSignals, AUTO_MIN_SCORE, AUTO_MIN_OWN_SIGNALS, BAIT };
+  autoHidable, ownSignals, AUTO_MIN_SCORE, AUTO_MIN_OWN_SIGNALS, BAIT,
+  latinWords, latinSquash, englishSignals, contactHandle };
