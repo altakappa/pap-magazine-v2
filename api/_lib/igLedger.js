@@ -149,18 +149,25 @@ async function buildIgLedger(days) {
   }
   const dailyFollowers = [...dayMax.entries()].map(([day, followers]) => ({ day, followers }));
 
-  /* 게시물별 최종 캡처 1행 — age_hours 최대가 가장 익은 수치다 */
+  /* 게시물별 최종 캡처 1행.
+     [2026-09-07 버그] 예전엔 ig_post_metric 전량을 age_hours 내림차순 .limit(20000) 으로
+     받아 앞 행만 썼다. 그런데 Supabase 는 한 응답에 최대 5,000행만 준다(에러 없이 조용히
+     자름 — fetchAllRows.js 주석). 29일치 캡처는 15,899행이라 **가장 어린(최근 2~3일)
+     게시물이 통째로 잘렸고**, 주간 브리핑 장부의 마지막 사흘이 "캐러셀 0 · 릴스 0" 으로
+     찍혔다(실제 9/5 5편 · 9/6 7편 · 9/7 5편). 뷰 ig_post_latest(마이그레이션 144)가
+     게시물당 최신 1행을 DB 쪽에서 고르므로 그것을 읽는다 — 289행, 상한 걱정 없음. */
   const { data: metrics, error: e2 } = await supabaseAdmin
-    .from('ig_post_metric')
+    .from('ig_post_latest')
     .select('post_id, media_type, posted_at, follows, age_hours')
     .gte('posted_at', sinceIso)
-    .order('age_hours', { ascending: false })
-    .limit(20000);
-  if (e2) throw new Error('ig_post_metric: ' + e2.message);
+    .order('posted_at', { ascending: false })
+    .limit(4000);
+  if (e2) throw new Error('ig_post_latest: ' + e2.message);
   const latest = new Map();
   for (const m of metrics || []) {
     if (m && m.post_id && !latest.has(m.post_id)) latest.set(m.post_id, m);
   }
+  if (latest.size >= 4000) throw new Error('ig_post_latest: 4,000행 상한 도달 — 잘린 장부를 내지 않는다');
   const ledger = computeLedger(dailyFollowers, [...latest.values()]);
 
   /* ── 이탈 병합 (2026-08-22) — ig_follower_flux 가 있으면 gains·이탈을 붙인다.

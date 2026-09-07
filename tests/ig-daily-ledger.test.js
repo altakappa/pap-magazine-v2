@@ -145,6 +145,15 @@ console.log('\n=== 7. 주간 브리핑 배선 ===');
     /ig_follower_delta_28d/.test(wb) && /ig_attributed_28d/.test(wb) && /ig_residual_28d/.test(wb));
 }
 
+console.log('\n=== 8. 조회 상한 (2026-09-07 — 마지막 사흘이 0 으로 찍힌 버그) ===');
+{
+  const src = fs.readFileSync(path.join(ROOT, 'api/_lib/igLedger.js'), 'utf8');
+  t('게시물 지표는 ig_post_latest 뷰에서 읽는다 (게시물당 1행, DB 가 고른다)', /\.from\('ig_post_latest'\)/.test(src));
+  t('ig_post_metric 전량을 limit 으로 받지 않는다 (5,000행에서 조용히 잘린다)',
+    !/\.from\('ig_post_metric'\)[\s\S]{0,400}\.limit\(/.test(src));
+  t('상한에 닿으면 잘린 장부 대신 에러', /4,000행 상한 도달/.test(src));
+}
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ ig-daily-ledger tests FAILED'); process.exit(1); }
 console.log('✅ ig-daily-ledger tests passed');
