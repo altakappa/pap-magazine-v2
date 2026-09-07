@@ -43,6 +43,27 @@ t('수집 코드가 data-role 을 먼저 읽음 (제출)', /var role = roleEl \?
 t('검증 코드가 data-role 을 먼저 읽음 (필수 크레딧)', /roleText = \(roleEl\.getAttribute\('data-role'\) \|\| roleEl\.textContent/.test(html));
 t('삭제 방어가 data-role 을 먼저 읽음', /roleEl\.getAttribute\('data-role'\)\|\|roleEl\.textContent/.test(html));
 
+console.log('\n=== 1b) 장르 버튼 (2026-09-07 러시아 회원 400 사고) ===');
+const genreBtns = html.match(/<button class="genre-tag"[^>]*>/g) || [];
+t('장르 버튼 8개', genreBtns.length === 8, genreBtns.length);
+t('모든 장르 버튼에 data-genre', genreBtns.every((b) => /data-genre="[^"]+"/.test(b)));
+t('모든 장르 버튼에 translate="no"', genreBtns.every((b) => /translate="no"/.test(b)));
+const { ALLOWED_CATEGORIES, normalizeGenres } = require('../api/_lib/submissionCategories');
+const genreVals = genreBtns.map((b) => /data-genre="([^"]+)"/.exec(b)[1]);
+t('data-genre 값 == 서버 화이트리스트', JSON.stringify(genreVals) === JSON.stringify(ALLOWED_CATEGORIES), genreVals.join('|'));
+t('장르 수집이 _genreOf 를 씀', (html.match(/selectedGenres\.push\(_genreOf\(g\)\)/g) || []).length === 2);
+t('장르 수집에 textContent 직접 사용 없음', !/selectedGenres\.push\(g\.textContent\)/.test(html));
+t('초안 복원이 _genreOf 를 씀', /_genreOf\(tag\)===g/.test(html) && /d\.genre\.indexOf\(_genreOf\(g\)\)/.test(html));
+t('서버 역번역: МОДА→FASHION', JSON.stringify(normalizeGenres(['МОДА'])) === '["FASHION"]');
+t('서버 역번역: Показ мод→FASHION SHOW', JSON.stringify(normalizeGenres(['Показ мод'])) === '["FASHION SHOW"]');
+t('서버 역번역: 時尚/뷰티/ビューティー', JSON.stringify(normalizeGenres(['時尚','뷰티','ビューティー'])) === '["FASHION","BEAUTY"]');
+t('서버: 모르는 값은 여전히 거부', normalizeGenres(['HACK','<script>']).length === 0);
+const idx0 = read('api/submissions/index.js');
+t('서버 400 에 code + 로그 (_reject400)', /function _reject400\(/.test(idx0) && /CATEGORY_INVALID/.test(idx0) && /GENRE_REQUIRED/.test(idx0) && /TITLE_REQUIRED/.test(idx0) && /NO_IMAGE_URLS/.test(idx0));
+t('서버 400 에 코드 없는 res.status(400) 남지 않음 (헬퍼 1곳 + 기존 2곳)', (idx0.match(/res\.status\(400\)/g) || []).length === 3);
+t('프론트가 CATEGORY_INVALID 를 언어별 문구로', /code==='CATEGORY_INVALID'/.test(html) && /categoryInvalid:\{ko:/.test(html));
+t('프론트가 BRAND_LATIN_ONLY 를 언어별 문구로', /code==='BRAND_LATIN_ONLY'/.test(html) && /brandLatin:\{ko:/.test(html));
+
 console.log('\n=== 2) 서버 저장 api/submissions/index.js ===');
 const idx = read('api/submissions/index.js');
 t('creditRoles require', /require\('\.\.\/_lib\/creditRoles'\)/.test(idx));

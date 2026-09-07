@@ -609,14 +609,14 @@ function navigateWithInterstitial(url){
       <div class="error-summary" id="errSummary1"></div>
       <p style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:16px;line-height:1.8" data-i18n-html="step1Desc">Select the categories that apply to your editorial (multiple allowed).</p>
       <div class="genre-tags" id="genreTags">
-        <button class="genre-tag" onclick="selectGenre(this)">FASHION</button>
-        <button class="genre-tag" onclick="selectGenre(this)">BEAUTY</button>
-        <button class="genre-tag" onclick="selectGenre(this)">ART</button>
-        <button class="genre-tag" onclick="selectGenre(this)">PORTRAIT</button>
-        <button class="genre-tag" onclick="selectGenre(this)">STREET</button>
-        <button class="genre-tag" onclick="selectGenre(this)">FASHION SHOW</button>
-        <button class="genre-tag" onclick="selectGenre(this)">BACKSTAGE</button>
-        <button class="genre-tag" onclick="selectGenre(this)">ARTICLE</button>
+        <button class="genre-tag" data-genre="FASHION" translate="no" onclick="selectGenre(this)">FASHION</button>
+        <button class="genre-tag" data-genre="BEAUTY" translate="no" onclick="selectGenre(this)">BEAUTY</button>
+        <button class="genre-tag" data-genre="ART" translate="no" onclick="selectGenre(this)">ART</button>
+        <button class="genre-tag" data-genre="PORTRAIT" translate="no" onclick="selectGenre(this)">PORTRAIT</button>
+        <button class="genre-tag" data-genre="STREET" translate="no" onclick="selectGenre(this)">STREET</button>
+        <button class="genre-tag" data-genre="FASHION SHOW" translate="no" onclick="selectGenre(this)">FASHION SHOW</button>
+        <button class="genre-tag" data-genre="BACKSTAGE" translate="no" onclick="selectGenre(this)">BACKSTAGE</button>
+        <button class="genre-tag" data-genre="ARTICLE" translate="no" onclick="selectGenre(this)">ARTICLE</button>
       </div>
       <div class="field-error" id="err-genre"></div>
 
@@ -1167,10 +1167,15 @@ async function _compressToTarget(file, targetSize){
 }
 
 // GENRE SELECTION
+// 2026-09-07 — 장르 값은 data-genre 에서 읽는다. 브라우저 자동번역(Chrome 번역)이
+// 버튼 글자를 'МОДА' 처럼 바꾸면 textContent 가 그대로 서버로 가서 화이트리스트에
+// 걸려 400 'At least one valid category is required' → 회원은 "제출 실패"만 봤다
+// (2026-09-07 러시아 회원, 20장 업로드 후 2회 실패). 역할·품목과 같은 사고 유형.
+function _genreOf(el){ return ((el && (el.getAttribute('data-genre') || el.textContent)) || '').trim(); }
 function selectGenre(el){
   el.classList.toggle('selected');
   selectedGenres=[];
-  document.querySelectorAll('.genre-tag.selected').forEach(function(g){ selectedGenres.push(g.textContent); });
+  document.querySelectorAll('.genre-tag.selected').forEach(function(g){ selectedGenres.push(_genreOf(g)); });
   _clearErr('genre');var _gt=document.getElementById('genreTags');if(_gt)_gt.classList.remove('error');
   var _s1=document.getElementById('errSummary1');if(_s1){_s1.classList.remove('visible');_s1.innerHTML='';}
 }
@@ -1582,6 +1587,12 @@ var _ERR_I18N = {
   imgQuotaLeft:{ko:'이미지 {used} / {max}장 — {left}장 더 추가할 수 있습니다.',en:'{used} of {max} images — you can add {left} more.',de:'{used} von {max} Bildern — Sie können noch {left} hinzufügen.',it:'{used} di {max} immagini — puoi aggiungerne altre {left}.',fr:'{used} sur {max} images — vous pouvez en ajouter {left}.',es:'{used} de {max} imágenes — puedes añadir {left} más.',ja:'画像 {used} / {max}枚 — あと{left}枚追加できます。',zh:'图片 {used} / {max} 张 — 还可再添加 {left} 张。',ru:'{used} из {max} изображений — можно добавить ещё {left}.'},
   unsupportedType:{ko:'지원하지 않는 파일 형식이 포함되어 있습니다 ({index}번째). JPG · PNG · WebP · TIFF 만 업로드할 수 있습니다.',en:'An unsupported file type was included (file {index}). Only JPG, PNG, WebP and TIFF can be uploaded.',de:'Ein nicht unterstützter Dateityp ist enthalten (Datei {index}). Nur JPG, PNG, WebP und TIFF sind möglich.',it:'È incluso un formato non supportato (file {index}). Sono ammessi solo JPG, PNG, WebP e TIFF.',fr:'Un format non pris en charge est inclus (fichier {index}). Seuls JPG, PNG, WebP et TIFF sont acceptés.',es:'Se incluyó un formato no admitido (archivo {index}). Solo se permiten JPG, PNG, WebP y TIFF.',ja:'対応していないファイル形式が含まれています（{index}番目）。JPG・PNG・WebP・TIFF のみアップロードできます。',zh:'包含不支持的文件格式（第 {index} 个）。仅支持 JPG、PNG、WebP 和 TIFF。',ru:'Включён неподдерживаемый формат (файл {index}). Допустимы только JPG, PNG, WebP и TIFF.'},
   fileTooLarge:{ko:'파일 하나가 너무 큽니다 ({index}번째). 1장당 최대 25MB까지 가능합니다.',en:'One of the files is too large (file {index}). The maximum is 25MB per image.',de:'Eine Datei ist zu groß (Datei {index}). Maximal 25 MB pro Bild.',it:'Un file è troppo grande (file {index}). Massimo 25MB per immagine.',fr:'Un fichier est trop volumineux (fichier {index}). Maximum 25 Mo par image.',es:'Uno de los archivos es demasiado grande (archivo {index}). El máximo es 25MB por imagen.',ja:'ファイルが大きすぎます（{index}番目）。1枚あたり最大25MBです。',zh:'有文件过大（第 {index} 个）。每张图片最大 25MB。',ru:'Один из файлов слишком большой (файл {index}). Максимум 25 МБ на изображение.'},
+  // 2026-09-07 — 서버 400 code 4종 + 라틴 전용. 이전엔 전부 generic 으로 뭉개졌다.
+  categoryInvalid:{ko:'카테고리를 인식하지 못했습니다. 브라우저 자동 번역을 끄고(원문 보기) 1단계에서 카테고리를 다시 선택해 주세요.',en:'The category could not be recognised. Please turn off browser auto-translation (show original) and re-select a category in step 1.',de:'Die Kategorie wurde nicht erkannt. Bitte Browser-Übersetzung ausschalten (Original anzeigen) und in Schritt 1 die Kategorie erneut wählen.',it:'Categoria non riconosciuta. Disattiva la traduzione automatica del browser (mostra originale) e riseleziona la categoria al passo 1.',fr:'Catégorie non reconnue. Désactivez la traduction automatique du navigateur (afficher l’original) et resélectionnez la catégorie à l’étape 1.',es:'No se reconoció la categoría. Desactiva la traducción automática del navegador (ver original) y vuelve a seleccionar la categoría en el paso 1.',ja:'カテゴリーを認識できませんでした。ブラウザの自動翻訳をオフ（原文を表示）にして、ステップ1でカテゴリーを選び直してください。',zh:'无法识别类别。请关闭浏览器自动翻译（显示原文），并在第1步重新选择类别。',ru:'Категория не распознана. Отключите автоперевод браузера (показать оригинал) и заново выберите категорию на шаге 1.'},
+  genreRequired:{ko:'1단계에서 카테고리를 하나 이상 선택해 주세요.',en:'Please select at least one category in step 1.',de:'Bitte in Schritt 1 mindestens eine Kategorie wählen.',it:'Seleziona almeno una categoria al passo 1.',fr:'Sélectionnez au moins une catégorie à l’étape 1.',es:'Selecciona al menos una categoría en el paso 1.',ja:'ステップ1でカテゴリーを1つ以上選んでください。',zh:'请在第1步至少选择一个类别。',ru:'Выберите хотя бы одну категорию на шаге 1.'},
+  titleRequired:{ko:'에디토리얼 제목을 입력해 주세요.',en:'Please enter the editorial title.',de:'Bitte den Editorial-Titel eingeben.',it:'Inserisci il titolo dell’editoriale.',fr:'Veuillez saisir le titre de l’éditorial.',es:'Introduce el título del editorial.',ja:'エディトリアルのタイトルを入力してください。',zh:'请输入编辑标题。',ru:'Введите название редакционной съёмки.'},
+  noImages:{ko:'이미지가 서버에 전달되지 않았습니다. 페이지를 새로고침한 뒤 다시 업로드해 주세요.',en:'No images reached the server. Please refresh the page and upload again.',de:'Es kamen keine Bilder beim Server an. Bitte Seite neu laden und erneut hochladen.',it:'Nessuna immagine è arrivata al server. Ricarica la pagina e carica di nuovo.',fr:'Aucune image n’est parvenue au serveur. Rechargez la page et téléversez à nouveau.',es:'No llegó ninguna imagen al servidor. Recarga la página y vuelve a subirlas.',ja:'画像がサーバーに届きませんでした。ページを再読み込みして再アップロードしてください。',zh:'图片未送达服务器。请刷新页面后重新上传。',ru:'Изображения не дошли до сервера. Обновите страницу и загрузите заново.'},
+  brandLatin:{ko:'브랜드명과 인스타그램 핸들은 영문(라틴 문자)으로만 입력해 주세요: {list}',en:'Brand names and Instagram handles must use Latin letters only: {list}',de:'Markennamen und Instagram-Handles nur in lateinischen Buchstaben: {list}',it:'Nomi dei brand e handle Instagram solo in caratteri latini: {list}',fr:'Noms de marques et identifiants Instagram en caractères latins uniquement : {list}',es:'Nombres de marca e identificadores de Instagram solo con letras latinas: {list}',ja:'ブランド名とInstagramハンドルはラテン文字のみで入力してください：{list}',zh:'品牌名和 Instagram 账号仅可使用拉丁字母：{list}',ru:'Названия брендов и Instagram-ники только латиницей: {list}'},
   lookCredit:{ko:'각 룩에는 최소 1개의 크레딧(브랜드 또는 인스타그램)이 필요합니다. 누락된 룩: {looks}',en:'Each look needs at least one credit (brand or Instagram). Missing: Look {looks}',de:'Jeder Look braucht mindestens einen Credit (Marke oder Instagram). Fehlt: Look {looks}',it:'Ogni look richiede almeno un credito (brand o Instagram). Mancanti: Look {looks}',fr:'Chaque look doit avoir au moins un crédit (marque ou Instagram). Manquant : Look {looks}',es:'Cada look necesita al menos un crédito (marca o Instagram). Faltan: Look {looks}',ja:'各ルックには最低1つのクレジット（ブランドまたはInstagram）が必要です。不足：ルック {looks}',zh:'每个造型至少需要一个署名（品牌或 Instagram）。缺少：造型 {looks}',ru:'Каждому образу нужен хотя бы один кредит (бренд или Instagram). Отсутствует: образ {looks}'}
 };
 function _errT(k,p){
@@ -1598,6 +1609,14 @@ function _localizeApiError(e, fallbackKey){
   var raw=(e&&e.message)?String(e.message):'';
   var code=(e&&e.code)?String(e.code):'';
   try{ console.error('[PAP submission] raw error:', code||'(no code)', raw); }catch(_){}
+  if(code==='CATEGORY_INVALID') return _errT('categoryInvalid');
+  if(code==='GENRE_REQUIRED')    return _errT('genreRequired');
+  if(code==='TITLE_REQUIRED')    return _errT('titleRequired');
+  if(code==='NO_IMAGE_URLS' || code==='URL_NOT_OWNED') return _errT('noImages');
+  if(code==='BRAND_LATIN_ONLY'){
+    var _v=(e&&e.payload&&Array.isArray(e.payload.violations))?e.payload.violations.map(function(x){return x.value;}).join(', '):'';
+    return _errT('brandLatin',{list:_v});
+  }
   if(code==='LOOK_CREDIT_REQUIRED'){
     var looks=(e&&e.payload&&Array.isArray(e.payload.missingLooks))?e.payload.missingLooks.join(', '):'';
     return _errT('lookCredit',{looks:looks});
@@ -2694,7 +2713,7 @@ async function loadReviseSubmission(){
     if(Array.isArray(desc.genre)){
       desc.genre.forEach(function(g){
         document.querySelectorAll('.genre-tag').forEach(function(tag){
-          if(tag.textContent.trim()===g && !tag.classList.contains('selected')){ tag.click(); }
+          if(_genreOf(tag)===g && !tag.classList.contains('selected')){ tag.click(); }
         });
       });
     }
@@ -3513,10 +3532,10 @@ function _restorePapDraft(){
   setv('videoUrl', d.videoUrl);
   if(Array.isArray(d.genre) && d.genre.length){
     document.querySelectorAll('.genre-tag').forEach(function(g){
-      if(d.genre.indexOf(g.textContent)>-1) g.classList.add('selected');
+      if(d.genre.indexOf(_genreOf(g))>-1) g.classList.add('selected');
     });
     selectedGenres=[];
-    document.querySelectorAll('.genre-tag.selected').forEach(function(g){ selectedGenres.push(g.textContent); });
+    document.querySelectorAll('.genre-tag.selected').forEach(function(g){ selectedGenres.push(_genreOf(g)); });
   }
   try{ if(typeof _updateCharCount==='function') _updateCharCount(); }catch(_){}
   var bar=document.getElementById('_papDraftBanner'); if(bar&&bar.parentNode) bar.parentNode.removeChild(bar);

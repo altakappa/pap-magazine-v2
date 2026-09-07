@@ -59,6 +59,18 @@ function sanitizeUrlList(list, prefix) {
   return out;
 }
 
+// 2026-09-07 — 400 은 반드시 code 와 함께, 그리고 서버 로그에 이유를 남긴다.
+// 배경: 러시아 회원이 이미지 20장을 두 번 올리고 두 번 400 을 받았는데 Vercel 로그엔
+// "POST 400" 한 줄뿐이라 어느 검증에 걸렸는지 알 수 없었다(용의자: 브라우저 자동번역이
+// 장르 버튼 글자를 바꿔 CATEGORY 화이트리스트 탈락). 회원 화면도 code 가 없으면
+// "요청을 처리하지 못했습니다" 만 보인다. 이제 code 로 언어별 문구를 고른다.
+function _reject400(res, user, code, message, extra) {
+  try {
+    console.warn('[submissions] 400 %s user=%s %s', code, user && user.id, extra ? JSON.stringify(extra).slice(0, 300) : '');
+  } catch (_) { /* 로깅 실패는 무시 */ }
+  return res.status(400).json(Object.assign({ code, message }, extra || {}));
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
 
@@ -81,10 +93,10 @@ module.exports = async function handler(req, res) {
 
       // Validate required fields
       if (!data.title || !String(data.title).trim()) {
-        return res.status(400).json({ message: 'Title is required' });
+        return _reject400(res, user, 'TITLE_REQUIRED', 'Title is required');
       }
       if (!data.genre || !Array.isArray(data.genre) || data.genre.length === 0) {
-        return res.status(400).json({ message: 'At least one genre is required' });
+        return _reject400(res, user, 'GENRE_REQUIRED', 'At least one genre is required');
       }
 
       // FIX-1 (2026-07-19) — persist the selected category into the dedicated
@@ -98,7 +110,7 @@ module.exports = async function handler(req, res) {
       // the rule is regression-tested against the real code.
       const normalizedGenres = normalizeGenres(data.genre);
       if (normalizedGenres.length === 0) {
-        return res.status(400).json({ message: 'At least one valid category is required' });
+        return _reject400(res, user, 'CATEGORY_INVALID', 'At least one valid category is required', { received: data.genre });
       }
       const primaryCategory = normalizedGenres[0];
 
@@ -107,7 +119,7 @@ module.exports = async function handler(req, res) {
       const additionalUrls = sanitizeUrlList(body.additionalUrls, prefix);
 
       if (lookUrls.length + additionalUrls.length === 0) {
-        return res.status(400).json({ message: 'No valid image URLs provided' });
+        return _reject400(res, user, 'NO_IMAGE_URLS', 'No valid image URLs provided');
       }
 
       // Reject if any submitted URL was stripped for being out-of-scope — the
@@ -121,9 +133,7 @@ module.exports = async function handler(req, res) {
           '[submissions] dropped %d out-of-scope URLs (user=%s)',
           submittedTotal - acceptedTotal, user.id
         );
-        return res.status(400).json({
-          message: 'One or more image URLs do not belong to this user',
-        });
+        return _reject400(res, user, 'URL_NOT_OWNED', 'One or more image URLs do not belong to this user');
       }
 
       // Validate optional video URL (Dropbox / WeTransfer / Swisstransfer / etc.)
@@ -183,6 +193,7 @@ module.exports = async function handler(req, res) {
       });
       const _nonLatin = findNonLatin(_brandEntries);
       if (_nonLatin.length) {
+        try { console.warn('[submissions] 400 BRAND_LATIN_ONLY user=%s %s', user.id, JSON.stringify(_nonLatin).slice(0, 300)); } catch (_) {}
         return res.status(400).json({
           code: 'BRAND_LATIN_ONLY',
           message: 'Brand names and handles must be written in English (Latin letters): '
@@ -196,6 +207,7 @@ module.exports = async function handler(req, res) {
       // 있어야 제출/재제출 가능. 과거엔 강제하지 않아 룩 크레딧 없이 통과됐다(예: Marooned).
       const _missingCreditLooks = looksMissingCredit(looks);
       if (looks.length && _missingCreditLooks.length) {
+        try { console.warn('[submissions] 400 LOOK_CREDIT_REQUIRED user=%s looks=%s', user.id, _missingCreditLooks.join(',')); } catch (_) {}
         return res.status(400).json({
           code: 'LOOK_CREDIT_REQUIRED',
           message: 'Each look needs at least one credit (brand or Instagram). Missing: Look ' + _missingCreditLooks.join(', '),
