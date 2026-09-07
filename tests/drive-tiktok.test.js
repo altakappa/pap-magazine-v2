@@ -108,10 +108,21 @@ t('모든 200 반환이 note(res,…) 를 통과한다', rets.every((r) => r.ind
 
 console.log('\n[5] 매칭·제외는 유튜브와 같은 규칙을 쓴다');
 t('koMatch 를 공유한다 (규칙이 두 벌이 되면 갈라진다)', /require\('\.\.\/_lib\/koMatch'\)/.test(src));
-t('driveVideos 의 제외 규칙을 공유한다', /drive\.shouldSkip/.test(src));
+/* 2026-09-07: 제외 규칙·상한·기사 조회 창이 _lib/tiktokDrive 로 옮겨갔다.
+ * 릴스 크론이 같은 규칙을 봐야 두 크론이 같은 영상을 두 번 올리지 않는다.
+ * 그래서 '크론 파일 안에 그 코드가 있는가' 가 아니라
+ * '그 규칙이 지켜지는가' 를 본다. 자리를 옮겼다고 검사가 죽으면 안 된다. */
+const tkdSrc = fs.readFileSync(path.join(ROOT, 'api/_lib/tiktokDrive.js'), 'utf8');
+t('driveVideos 의 제외 규칙을 공유한다', /drive\.shouldSkip/.test(tkdSrc));
 t("틱톡 크론이 자기 채널을 넘긴다 (유튜브 전용 제외에 안 걸리게)",
-  /shouldSkip\(f\.name, null, 'tiktok'\)/.test(src));
-t('상한 100MB', /MAX_BYTES = 100 \* 1024 \* 1024/.test(src));
+  /shouldSkip\(f\.name, null, 'tiktok'\)/.test(tkdSrc));
+t('크론이 공유 선별을 쓴다 (자기 사본을 다시 만들지 않는다)',
+  /tkd\.pickViable\(files, done\)/.test(src));
+/* 예전엔 여기서 100MB 를 고정으로 확인했다. 그 숫자가 틀렸다 —
+ * 스토리지 실제 상한은 50MB 라, 그 사이 크기 영상이 통과 후 업로드에서 죽고
+ * 10분마다 영원히 재시도했다 (실측 3건). 이제 상한은 스토리지와 같아야 한다. */
+t('상한이 스토리지 실제 상한(50MB)과 같다',
+  /MAX_BYTES = Number\(process\.env\.TIKTOK_DRIVE_MAX_BYTES \|\| 50 \* 1024 \* 1024\)/.test(tkdSrc));
 t('크론이 vercel.json 에 등록됨',
   (require(path.join(ROOT, 'vercel.json')).crons || []).some((c) => c.path === '/api/cron/drive-tiktok-post'));
 t('유튜브 크론과 시간이 겹치지 않는다 (같은 함수 상한을 동시에 밀지 않게)', (() => {

@@ -40,10 +40,14 @@ const { matchArticle, groupUnmatched } = require('../_lib/koMatch');
 const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim');
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
-const MAX_BYTES = 100 * 1024 * 1024;
+/* 상한·파일 선별·기사 조회 창은 _lib/tiktokDrive 한 곳에만 둔다.
+ * 여기 100MB, 스토리지 50MB 로 서로 달라서 50~100MB 영상이 10분마다
+ * 영원히 재시도하며 영원히 실패했다 (2026-09-07). */
+const tkd = require('../_lib/tiktokDrive');
+const MAX_BYTES = tkd.MAX_BYTES;
 const CAPTION_MAX = 2200;                 // Buffer 경유 TikTok 캡션 상한 (2026-08-07 실측)
-const ART_COLS = 'id, title, slug, custom_url, content, category, tags, published_date';
-const LOOKBACK_DAYS = Number(process.env.DRIVE_MATCH_LOOKBACK_DAYS || 21);
+const ART_COLS = tkd.ART_COLS;
+const LOOKBACK_DAYS = tkd.LOOKBACK_DAYS;
 const STORAGE_DIR = 'tiktok-drive';
 
 function note(res, msg) {
@@ -118,18 +122,7 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
       .select('drive_file_id, status, created_at').not('drive_file_id', 'is', null).limit(5000);
     const done = doneIdsFrom(doneRows);
 
-    const skipped = [];
-    const candidates = [];
-    for (const f of files) {
-      if (done.has(f.id)) continue;
-      const why = drive.shouldSkip(f.name, null, 'tiktok');
-      if (why) { skipped.push({ name: f.name, why }); continue; }
-      if (f.bytes > MAX_BYTES) {
-        skipped.push({ name: f.name, why: Math.round(f.bytes / 1048576) + 'MB — 상한 초과' });
-        continue;
-      }
-      candidates.push(f);
-    }
+    const { candidates, skipped } = tkd.pickViable(files, done);
 
     if (req.query && req.query.list === '1') {
       return res.status(200).json({
@@ -144,12 +137,7 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
       });
     }
 
-    const since = new Date(Date.now() - LOOKBACK_DAYS * 86400000).toISOString();
-    const { data: arts } = await supabaseAdmin.from('articles')
-      .select(ART_COLS).eq('status', 'published')
-      .gte('published_date', since)
-      .order('published_date', { ascending: false }).limit(400);
-    const articles = arts || [];
+    const articles = await tkd.recentArticles();
 
     const unmatched = [];
     let pick = null;
@@ -170,6 +158,33 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
     }
 
     const { file, art, match } = pick;
+
+    /* ── 올리기 전에 확인한다 (2026-09-07) ──────────────────────
+     * 예전에는 이 확인이 **게시 뒤에** 있었다. 유니크 충돌만 피하려고
+     * article_id 를 비웠고, 영상은 이미 밖으로 나간 뒤였다.
+     * 그래서 같은 기사가 틱톡에 두 번 올라갔다 (실측 12쌍).
+     *
+     * 이제는 올리기 전에 보고, 이미 나간 기사면 올리지 않는다.
+     * 파일은 'skipped' 로 기록해 다음 회차에 또 집지 않게 한다
+     * (failed 로 두면 10분마다 영원히 다시 집는다).
+     *
+     * 도메니코 결정으로 드라이브가 우선이지만, 릴스가 먼저 나가버린 뒤라면
+     * 되돌릴 수 없다. 그때 할 수 있는 최선은 두 번 올리지 않는 것이다. */
+    try {
+      const { data: taken0 } = await supabaseAdmin.from('tiktok_posts')
+        .select('drive_file_id, status').eq('article_id', art.id).limit(1).maybeSingle();
+      if (taken0 && taken0.status !== 'failed' && taken0.drive_file_id !== file.id) {
+        await supabaseAdmin.from('tiktok_posts').insert({
+          drive_file_id: file.id, status: 'skipped',
+          detail: 'drive:' + file.name + ' · 이미 기사 경로로 게시된 기사(' + art.id + ') — 중복 방지로 올리지 않음',
+        });
+        return res.status(200).json({
+          ok: true, skippedDuplicate: true, file: file.name, article: art.title,
+          note: note(res, '중복 방지 — 이미 게시된 기사의 영상: ' + file.name),
+        });
+      }
+    } catch (_) { /* 확인 실패는 게시를 막지 않는다 — 아래 기록 단계가 다시 본다 */ }
+
     const caption = buildCaption(art);
     const shortTitle = (String(art.title || '') + ' — PAP MAGAZINE').slice(0, 90);
 

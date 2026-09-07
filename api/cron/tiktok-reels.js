@@ -54,11 +54,21 @@ const { requireAdmin } = require('../_lib/auth');
 const { verdictForMedia } = require('../_lib/igCredit');
 const { IG_HANDLE_URL } = require('../_lib/igFirstLink');
 const buffer = require('../_lib/buffer');
+const tkd = require('../_lib/tiktokDrive');
 
 const CAPTION_MAX = 2200;          // Buffer 경유 상한 (TikTok 자체는 4000)
 const CREDIT_SCAN_MAX = 8;         // 크레딧 재조회 비용 상한 (youtube-post 와 동일)
 const STALE_CLAIM_MS = 15 * 60 * 1000;
-const ART_COLS = 'id, title, slug, custom_url, content, videos, category, tags, source_media_type, source_instagram_post_id';
+
+/* 드라이브가 이길 시간 (2026-09-07 도메니코 결정: 드라이브 우선).
+ * 드라이브 영상은 사람이 편집한 세로 영상이고, 릴스는 기사에서 자동으로 나온 것이다.
+ * 다만 영원히 기다리면 드라이브 쪽이 막혔을 때 그 기사가 틱톡에 아예 안 나간다.
+ * 이 시간이 지나면 릴스가 가져간다 — 그 뒤 드라이브가 뒤늦게 돌아도
+ * 이제는 게시 전에 확인하므로 두 번 나가지 않는다. */
+const DRIVE_YIELD_H = Number(process.env.TIKTOK_REELS_DRIVE_YIELD_H || 48);
+/* published_date 는 드라이브 양보 기한을 재는 데 쓴다 (2026-09-07).
+ * 없으면 기한을 못 재서 영원히 양보한다 — 반드시 함께 가져온다. */
+const ART_COLS = 'id, title, slug, custom_url, content, videos, category, tags, source_media_type, source_instagram_post_id, published_date';
 
 /** 조기 반환마다 cron_runs 에 메모를 남긴다 — 없으면 '무음 실패' 가 된다. */
 function note(res, msg) {
@@ -126,12 +136,28 @@ module.exports = withCronGuard('tiktok-reels', async function handler(req, res) 
     !done.has(a.id) && Array.isArray(a.videos) && a.videos.length >= 1
     && typeof a.videos[0] === 'string' && /^https:\/\//.test(a.videos[0]));
 
+  /* ── 드라이브 양보 (2026-09-07) ────────────────────────────────
+   * 아직 안 올라간 드라이브 영상이 이 기사를 가리키고 있으면 릴스는 비킨다.
+   * 매칭은 drive-tiktok-post 와 같은 함수·같은 기사 목록을 쓴다(_lib/tiktokDrive).
+   * 두 크론이 각자 판단하면 바로 그게 지금 고치는 중복의 원인이다. */
+  let waiting = { ids: new Set(), note: '' };
+  try { waiting = await tkd.articlesWaitingForDrive(); } catch (_) { /* 못 보면 양보하지 않는다 */ }
+  const yieldCut = Date.now() - DRIVE_YIELD_H * 3600000;
+  const yielded = [];
+  const afterYield = candidates.filter((a) => {
+    if (!waiting.ids.has(a.id)) return true;
+    const at = a.published_date ? Date.parse(a.published_date) : 0;
+    if (at && at < yieldCut) return true;      // 너무 오래 기다렸다 — 릴스가 가져간다
+    yielded.push(a.title);
+    return false;
+  });
+
   /* 크레딧 게이트는 후보를 '건너뛴다'. 첫 후보가 외부 크레딧이라고 거기서
      멈추면 그 릴스가 신선도 창에 있는 동안 틱톡이 통째로 죽는다.
      (youtube-post 와 같은 규칙 — 두 채널의 선택 결과가 갈리면 안 된다) */
   let art = null; let credit = null;
   const skipped = [];
-  for (const cand of candidates.slice(0, CREDIT_SCAN_MAX)) {
+  for (const cand of afterYield.slice(0, CREDIT_SCAN_MAX)) {
     const v = await verdictForMedia(cand.source_instagram_post_id);
     if (v.owned) { art = cand; credit = v; break; }
     skipped.push({ title: cand.title, reason: v.reason });
@@ -140,7 +166,9 @@ module.exports = withCronGuard('tiktok-reels', async function handler(req, res) 
     return res.status(200).json({
       ok: true, skipped,
       note: note(res, '올릴 릴스 기사 없음 (최근 ' + freshDays + '일 · 후보 '
-        + candidates.length + '건 / 크레딧 스킵 ' + skipped.length + '건)'),
+        + candidates.length + '건 / 크레딧 스킵 ' + skipped.length + '건'
+        + (yielded.length ? ' / 드라이브 양보 ' + yielded.length + '건: ' + yielded.slice(0, 3).join(', ') : '')
+        + ')'),
     });
   }
 
@@ -204,6 +232,8 @@ module.exports = withCronGuard('tiktok-reels', async function handler(req, res) 
 
   return res.status(200).json({
     ok: true, title: art.title, article_id: art.id,
-    note: note(res, '릴스 1건 게시: ' + art.title + (skipped.length ? ' (크레딧 스킵 ' + skipped.length + '건)' : '')),
+    note: note(res, '릴스 1건 게시: ' + art.title
+      + (skipped.length ? ' (크레딧 스킵 ' + skipped.length + '건)' : '')
+      + (yielded.length ? ' (드라이브 양보 ' + yielded.length + '건)' : '')),
   });
 });
