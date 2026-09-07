@@ -69,7 +69,7 @@ function pickViable(files, doneSet) {
       /* 사전에 걸러서 보류로 보여준다. 예전엔 통과시킨 뒤 업로드에서 죽어
        * 10분마다 조용히 재시도했다 — 사람 눈에는 '그 영상만 안 올라감' 이었다. */
       skipped.push({
-        name: f.name,
+        name: f.name, over: true, mb: Math.round(f.bytes / 1048576),
         why: Math.round(f.bytes / 1048576) + 'MB — 상한 '
           + Math.round(MAX_BYTES / 1048576) + 'MB 초과 (스토리지가 못 받는다)',
       });
@@ -131,7 +131,65 @@ async function articlesWaitingForDrive() {
   return { ids, files: files.length, note: '드라이브 대기 ' + candidates.length + '건 · 기사 ' + ids.size + '건 예약' };
 }
 
+/* ── 적체 판정 (2026-09-07) ────────────────────────────────────
+ * 도메니코: "오늘부터 앞으로 안 올라가는 건 없게 하자."
+ *
+ * 그러려면 '안 올라간 것' 을 누군가 보고 있어야 한다. 지금은 아무도 안 본다.
+ * pipeline-watch 의 틱톡 감시는 **화보 사진 경로(tiktok-post)만** 본다.
+ * 드라이브 영상 경로와 릴스 경로는 감시 대상이 아니었다 — 그래서 50MB 초과
+ * 영상 3건이 10분마다 실패하는 동안 아무 알림도 안 갔다.
+ *
+ * 이 함수는 원인을 가리지 않는다. 상한 초과든, 기사 매칭 실패든, 크론이
+ * 죽었든, 결과는 하나다: **폴더에 넣었는데 안 올라간 영상이 있다.**
+ * 그 하나만 본다.
+ *
+ * 순수 함수다 — 네트워크 없이 테스트한다.
+ */
+const STALE_HOURS = Number(process.env.TIKTOK_DRIVE_STALE_HOURS || 6);
+
+function judgeDriveBacklog(files, doneSet, opts) {
+  const o = opts || {};
+  const now = o.now ? new Date(o.now).getTime() : Date.now();
+  const staleH = Number.isFinite(o.staleHours) ? o.staleHours : STALE_HOURS;
+  const { candidates, skipped } = pickViable(files, doneSet);
+
+  const ageH = (f) => (f.modifiedAt ? (now - Date.parse(f.modifiedAt)) / 3600000 : 0);
+
+  /* 방금 넣은 영상은 아직 정상 대기다. 10분마다 도니까 몇 시간이면 충분하다. */
+  const stuck = candidates
+    .filter((f) => ageH(f) >= staleH)
+    .map((f) => ({ name: f.name, hours: Math.round(ageH(f)) }))
+    .sort((a, b) => b.hours - a.hours);
+
+  /* 상한 초과는 기다린다고 풀리지 않는다. 사람이 줄여야 한다 —
+   * 그래서 대기 시간과 무관하게 바로 알린다.
+   * (파일명에 _ 를 붙였거나 '완료' 가 들어간 의도적 제외는 여기 안 들어온다) */
+  const oversize = skipped.filter((x) => x && x.over)
+    .map((x) => ({ name: x.name, mb: x.mb }));
+
+  const healthy = stuck.length === 0 && oversize.length === 0;
+  let cause = null;
+  let reason = '드라이브 영상 적체 없음 (대기 ' + candidates.length + '건)';
+  if (oversize.length) {
+    cause = 'oversize';
+    reason = '상한 초과로 못 올리는 영상 ' + oversize.length + '건 — 사람이 줄여야 한다';
+  } else if (stuck.length) {
+    cause = 'stuck';
+    reason = staleH + '시간 넘게 안 올라간 영상 ' + stuck.length + '건 (최장 ' + stuck[0].hours + '시간)';
+  }
+  return { healthy, cause, reason, stuck, oversize, waiting: candidates.length, staleHours: staleH };
+}
+
+/** 실제 드라이브·DB 를 읽어 적체를 판정한다. */
+async function driveBacklog(opts) {
+  if (!drive.isConfigured()) return { healthy: true, cause: null, reason: '드라이브 미설정', stuck: [], oversize: [], waiting: 0 };
+  const files = await drive.listVideos();
+  const done = await doneDriveIds();
+  return judgeDriveBacklog(files, done, opts);
+}
+
 module.exports = {
-  MAX_BYTES, LOOKBACK_DAYS, ART_COLS,
+  MAX_BYTES, LOOKBACK_DAYS, ART_COLS, STALE_HOURS,
   pickViable, recentArticles, doneDriveIds, articlesWaitingForDrive,
+  judgeDriveBacklog, driveBacklog,
 };

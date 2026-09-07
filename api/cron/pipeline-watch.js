@@ -24,6 +24,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { pushAlert } = require('../_lib/pushAlert');
+const tkd = require('../_lib/tiktokDrive');
 const { listRecentMedia, isLikelyEditorialCaption, _extractShortcode } = require('../_lib/instagramImport');
 const { diagnoseBackfill, buildBackfillAlert } = require('../_lib/backfillHealth');
 const { judgeTranslateHealth, buildTranslateAlert } = require('../_lib/translateHealth');
@@ -254,6 +255,7 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * res.locals.cronNote 를 안 세운 탓에 기록이 통째로 비어 있었기 때문이다.
    * 이제 크론의 자기보고 대신 tiktok_posts 행 수를 직접 센다. */
   const tiktok = await checkTikTok({ dry });
+  const tiktokDrive = await checkDriveTikTok({ dry });
 
   /* ── 죽은사람 스위치 (2026-08-07 추가) ──
    * 맥미니 영상 압축기는 서버 밖에서 돈다. 조용히 멈춰도 cron_runs 에
@@ -300,7 +302,7 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 크론 쪽은 위 생산량 계약으로 막았고, 이건 그 마지막 구멍이다. */
   const deploy = await checkDeployReach({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons, production, deploy });
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, tiktokDrive, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons, production, deploy });
 });
 
 /**
@@ -1184,6 +1186,7 @@ module.exports.buildNaverDraftAlert = buildNaverDraftAlert;
  * 창은 30시간이다. 에디토리얼 크론은 하루 1회(02:00 UTC)뿐이라 24시간
  * 창은 실행 경계에서 표본 0이 되는 순간이 생긴다. 6시간 여유를 준다. */
 const TIKTOK_ALERT_KEY = 'tiktok-post-health';
+const TIKTOK_DRIVE_ALERT_KEY = 'tiktok-drive-backlog';
 
 /**
  * 틱톡 게시 건강도 판정 (순수 함수, 테스트 대상).
@@ -1258,6 +1261,71 @@ function buildTikTokAlert(d, site) {
     url: `${site}/admin/crons`,
     urlLabel: '크론 상태',
   };
+}
+
+/* ── 드라이브 영상 적체 감시 (2026-09-07 추가) ──────────────────
+ * 도메니코: "오늘부터 앞으로 안 올라가는 건 없게 하자."
+ *
+ * 위 checkTikTok 은 **화보 사진 경로(tiktok-post)만** 본다. 드라이브 영상
+ * 경로와 릴스 경로는 어떤 감시에도 안 걸려 있었다. 그래서 50MB 초과 영상
+ * 3건이 08-21 부터 10분마다 실패하는 동안 아무 알림도 안 갔다.
+ * "폴더에 넣었는데 안 올라간다" 를 아무도 안 보고 있었던 것이 진짜 문제다.
+ *
+ * 원인을 가리지 않는다. 상한 초과든 기사 매칭 실패든 크론이 죽었든,
+ * 결과는 하나다 — 폴더에 있는데 안 올라갔다. 그 하나만 본다.
+ */
+async function checkDriveTikTok(opts) {
+  try {
+    const d = await tkd.driveBacklog();
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', TIKTOK_DRIVE_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.TIKTOK_DRIVE_ALERT_COOLDOWN_H || 12);
+
+    let alerted = false;
+    if (!d.healthy && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      const lines = [d.reason];
+      /* 무엇을 해야 하는지까지 적는다. '뭔가 막혔다' 만 오는 알림은
+       * 두 번째부터 안 읽힌다 (2026-09-06 화보 언어판 알림에서 겪었다). */
+      for (const o of d.oversize.slice(0, 5)) {
+        lines.push('· ' + o.name + ' (' + o.mb + 'MB) — 파일을 줄여서 다시 넣어 주세요');
+      }
+      for (const x of d.stuck.slice(0, 5)) {
+        lines.push('· ' + x.name + ' — ' + x.hours + '시간째 대기 (기사 매칭 실패일 수 있음)');
+      }
+      await pushAlert({
+        personalOnly: true,
+        title: '⚠️ 틱톡 드라이브 영상이 안 올라간다',
+        lines,
+        url: SITE + '/api/cron/drive-tiktok-post?list=1', urlLabel: '대기 목록',
+      });
+      alerted = true;
+    } else if (d.healthy && wasBroken) {
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 틱톡 드라이브 영상 적체 해소',
+        lines: [d.reason],
+        url: SITE + '/admin/crons', urlLabel: '크론 상태',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== !d.healthy) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: TIKTOK_DRIVE_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken: !d.healthy, cause: d.cause,
+          stuck: d.stuck.length, oversize: d.oversize.length },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] tiktok drive backlog 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
 }
 
 async function checkTikTok(opts) {

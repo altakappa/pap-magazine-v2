@@ -145,4 +145,76 @@ t('릴스는 여전히 자리를 먼저 찜한다', () => {
   assert.ok(/status: 'claiming'/.test(REELS), '찜 없이 올리면 2026-08-09 사고가 돌아온다');
 });
 
+console.log('=== ⑥ 안 올라간 것을 누가 본다 ===');
+
+/* 2026-09-07 도메니코: "오늘부터 앞으로 안 올라가는 건 없게 하자."
+ * 그러려면 '안 올라간 것' 을 누군가 보고 있어야 한다. 지금은 아무도 안 봤다.
+ * pipeline-watch 의 틱톡 감시는 화보 사진 경로(tiktok-post)만 봤고,
+ * 드라이브 영상·릴스 경로는 어떤 감시에도 안 걸려 있었다. 그래서 50MB 초과
+ * 영상 3건이 08-21 부터 10분마다 실패하는 동안 알림이 한 번도 안 갔다. */
+const WATCH = read('api/cron/pipeline-watch.js');
+
+const now = Date.parse('2026-09-07T12:00:00Z');
+const hAgo = (n) => new Date(now - n * 3600000).toISOString();
+const FILES = [
+  { id: 'a', name: '0907_방금넣은영상.mp4', bytes: 10e6, modifiedAt: hAgo(1) },
+  { id: 'b', name: '0906_아홉시간째.mp4', bytes: 10e6, modifiedAt: hAgo(9) },
+  { id: 'c', name: '0905_큰영상.mp4', bytes: 80e6, modifiedAt: hAgo(40) },
+  { id: 'd', name: '_제외한영상.mp4', bytes: 10e6, modifiedAt: hAgo(50) },
+  { id: 'e', name: '0904_이미올림.mp4', bytes: 10e6, modifiedAt: hAgo(60) },
+];
+
+t('감시가 드라이브 경로를 본다 (예전엔 화보 사진만 봤다)', () => {
+  assert.ok(/checkDriveTikTok/.test(WATCH), 'pipeline-watch 에 드라이브 감시가 없다');
+  assert.ok(/tkd\.driveBacklog\(\)/.test(WATCH), '공유 판정을 안 쓴다');
+  assert.ok(/tiktokDrive = await checkDriveTikTok/.test(WATCH), '감시를 부르지 않는다');
+  assert.ok(/tiktok, tiktokDrive,/.test(WATCH), '결과를 응답에 안 싣는다');
+});
+
+t('막 넣은 영상은 적체가 아니다', () => {
+  const d = tkd.judgeDriveBacklog([FILES[0]], new Set(), { now });
+  assert.strictEqual(d.healthy, true, '1시간 된 영상을 적체로 본다');
+});
+
+t('오래 대기한 영상을 잡는다', () => {
+  const d = tkd.judgeDriveBacklog([FILES[0], FILES[1]], new Set(), { now });
+  assert.strictEqual(d.healthy, false);
+  assert.strictEqual(d.cause, 'stuck');
+  assert.deepStrictEqual(d.stuck.map((x) => x.name), ['0906_아홉시간째.mp4']);
+});
+
+t('상한 초과는 대기 시간과 무관하게 바로 잡는다', () => {
+  // 기다린다고 풀리지 않는다. 사람이 파일을 줄여야 한다.
+  const d = tkd.judgeDriveBacklog([{ ...FILES[2], modifiedAt: hAgo(0.1) }], new Set(), { now });
+  assert.strictEqual(d.healthy, false);
+  assert.strictEqual(d.cause, 'oversize');
+  assert.strictEqual(d.oversize[0].mb, 76);
+});
+
+t('일부러 뺀 파일(_ 접두사)은 적체가 아니다', () => {
+  const d = tkd.judgeDriveBacklog([FILES[3]], new Set(), { now });
+  assert.strictEqual(d.healthy, true, '사람이 의도적으로 뺀 것을 알린다');
+});
+
+t('이미 올린 파일은 적체가 아니다', () => {
+  const d = tkd.judgeDriveBacklog([FILES[4]], new Set(['e']), { now });
+  assert.strictEqual(d.healthy, true);
+});
+
+t('알림이 무엇을 해야 하는지까지 말한다', () => {
+  // '뭔가 막혔다' 만 오는 알림은 두 번째부터 안 읽힌다.
+  assert.ok(/파일을 줄여서 다시 넣어 주세요/.test(WATCH), '상한 초과에 할 일이 없다');
+  assert.ok(/시간째 대기 \(기사 매칭 실패일 수 있음\)/.test(WATCH), '대기 건에 단서가 없다');
+  assert.ok(/drive-tiktok-post\?list=1/.test(WATCH), '대기 목록으로 가는 링크가 없다');
+});
+
+t('복구되면 한 번 알린다', () => {
+  assert.ok(/틱톡 드라이브 영상 적체 해소/.test(WATCH), '복구 알림이 없다');
+  assert.ok(/TIKTOK_DRIVE_ALERT_KEY/.test(WATCH), '쿨다운 키가 없다');
+});
+
+t('감시 실패가 pipeline-watch 를 죽이지 않는다', () => {
+  assert.ok(/tiktok drive backlog 실패/.test(WATCH), 'try/catch 가 없다');
+});
+
 console.log(`\n${n}개 테스트 통과`);
