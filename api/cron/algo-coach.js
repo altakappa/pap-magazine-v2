@@ -74,7 +74,7 @@ async function runEarlyPass() {
 
   const { data: freshRows, error: eA } = await supabaseAdmin
     .from('ig_post_metric')
-    .select('post_id, permalink, media_type, posted_at, like_count, age_hours')
+    .select('post_id, permalink, media_type, posted_at, like_count, saved, shares, age_hours')
     .gte('posted_at', since).gte('age_hours', EARLY_MIN_AGE).lte('age_hours', EARLY_MAX_AGE)
     .limit(500);
   if (eA) throw eA;
@@ -84,26 +84,35 @@ async function runEarlyPass() {
 
   const { data: histRows, error: eB } = await supabaseAdmin
     .from('ig_post_metric')
-    .select('post_id, like_count, age_hours')
+    .select('post_id, like_count, shares, age_hours')
     .lt('posted_at', since).gte('age_hours', EARLY_MIN_AGE).lte('age_hours', EARLY_MAX_AGE)
     .limit(5000);
   if (eB) throw eB;
-  const hist = pickClosestAge(histRows, EARLY_TARGET_H)
-    .map((r) => Number(r.like_count) || 0).sort((a, b) => a - b);
+  const histPicked = pickClosestAge(histRows, EARLY_TARGET_H);
+  const hist = histPicked.map((r) => Number(r.like_count) || 0).sort((a, b) => a - b);
+  const histShares = histPicked.map((r) => Number(r.shares) || 0).sort((a, b) => a - b);
   out.hist = hist.length;
   if (hist.length < 20) { out.skipped = '1시간 표본 부족(' + hist.length + ')'; return out; }
   const p50 = percentileOf(hist, 0.50);
   const p75 = percentileOf(hist, 0.75);
+  const sharesP90 = percentileOf(histShares, 0.90);
 
   for (const c of cands) {
     const likes = Number(c.like_count) || 0;
-    if (likes < p75) continue;   // 미달은 침묵 — 판정도 알림도 하지 않는다
+    const shares = Number(c.shares) || 0;
+    const saves = Number(c.saved) || 0;
+    /* 2026-09-07 — 좋아요만 보던 것을 공유로 넓힌다. 팔로워를 만든 히트(8/27 공유 6,457 ·
+       8/31 9,281)는 전부 공유가 먼저 튀었다. 좋아요는 팔로워가 누르고, 공유는 팔로워 밖으로
+       나간다. 좋아요 P75 또는 공유 P90 이면 알린다. 미달은 침묵. */
+    const bySharesHit = sharesP90 != null && sharesP90 > 0 && shares >= sharesP90;
+    if (likes < p75 && !bySharesHit) continue;   // 미달은 침묵 — 판정도 알림도 하지 않는다
 
     /* 선점 후 알림 (확인 후 알림은 매시 크론에서 두 번 쏜다) */
     const { error: claimEarlyErr } = await supabaseAdmin.from('ops_alert_state').insert({
       key: earlyAlertKey(c.post_id),
       last_alert_at: new Date().toISOString(),
-      last_payload: { kind: 'algo_coach_1h', likes_1h: likes, p50: p50, p75: p75,
+      last_payload: { kind: 'algo_coach_1h', likes_1h: likes, saves_1h: saves, shares_1h: shares,
+        p50: p50, p75: p75, shares_p90: sharesP90, by_shares: bySharesHit,
         permalink: String(c.permalink || '').slice(0, 200) },
       updated_at: new Date().toISOString(),
     });
@@ -115,9 +124,11 @@ async function runEarlyPass() {
 
     try {
       await sendTextToTelegramPersonalSafe(
-        '⚡ [PAP] 게시 1시간 — 초반 속도가 빠릅니다 (지금이 개입 시점)\n\n'
+        (bySharesHit ? '🔥🔥 [PAP] 게시 1시간 — 공유가 튀고 있습니다 (히트 후보, 지금이 개입 시점)\n\n'
+                     : '⚡ [PAP] 게시 1시간 — 초반 속도가 빠릅니다 (지금이 개입 시점)\n\n')
         + (c.permalink || c.post_id) + '\n'
-        + '1시간 좋아요 ' + likes + ' (평소 중앙값 ' + p50 + ' · 상위 25% 기준 ' + p75 + ')\n\n'
+        + '1시간 좋아요 ' + likes + ' (평소 중앙값 ' + p50 + ' · 상위 25% 기준 ' + p75 + ')\n'
+        + '1시간 공유 ' + shares + ' (상위 10% 기준 ' + (sharesP90 == null ? '?' : sharesP90) + ') · 저장 ' + saves + '\n\n'
         + '앞으로 60분 안에 하면 증폭이 커지는 것:\n'
         + '1. 본계정 스토리로 리샤어\n'
         + '2. 크레딧된 팀에게 공동 게시(Collab) 초대\n'
@@ -150,7 +161,7 @@ async function handler(req, res) {
     const sixHrsAgo = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
     const { data: recentRows, error: e1 } = await supabaseAdmin
       .from('ig_post_metric')
-      .select('post_id, permalink, media_type, posted_at, like_count, age_hours')
+      .select('post_id, permalink, media_type, posted_at, like_count, saved, shares, age_hours')
       .gte('posted_at', sixHrsAgo).gte('age_hours', 2).lte('age_hours', 4)
       .limit(500);
     if (e1) throw e1;
@@ -165,11 +176,13 @@ async function handler(req, res) {
     /* 2) 역사 분포 (후보 제외) — 임계값 */
     const { data: histRows, error: e2 } = await supabaseAdmin
       .from('ig_post_metric')
-      .select('post_id, like_count, age_hours')
+      .select('post_id, like_count, shares, age_hours')
       .lt('posted_at', sixHrsAgo).gte('age_hours', 2).lte('age_hours', 4)
       .limit(5000);
     if (e2) throw e2;
-    const hist = pickClosest3h(histRows).map((r) => Number(r.like_count) || 0).sort((a, b) => a - b);
+    const histPicked3 = pickClosest3h(histRows);
+    const hist = histPicked3.map((r) => Number(r.like_count) || 0).sort((a, b) => a - b);
+    const histShares3 = histPicked3.map((r) => Number(r.shares) || 0).sort((a, b) => a - b);
     if (hist.length < 20) {
       note('역사 표본 부족 (' + hist.length + ') — 판정 보류 · ' + earlyNote);
       return res.status(200).json({ ok: true, hist: hist.length, early: early });
@@ -177,8 +190,9 @@ async function handler(req, res) {
     const p25 = percentileOf(hist, 0.25);
     const p50 = percentileOf(hist, 0.50);
     const p75 = percentileOf(hist, 0.75);
+    const sharesP90 = percentileOf(histShares3, 0.90);   // 2026-09-07 — 히트 후보 기준 (공유 상위 10%)
 
-    let hot = 0, mid = 0, cold = 0, dup = 0;
+    let hot = 0, mid = 0, cold = 0, dup = 0, hitCands = 0;
     for (const c of candidates) {
       /* 게시물당 1회 — 선점 INSERT (23505 = 이미 코칭됨) */
       const { error: claimErr } = await supabaseAdmin.from('algo_coach')
@@ -188,7 +202,12 @@ async function handler(req, res) {
         throw claimErr;
       }
       const likes = Number(c.like_count) || 0;
-      const verdict = likes >= p75 ? 'hot' : (likes <= p25 ? 'cold' : 'mid');
+      const shares3 = Number(c.shares) || 0;
+      const saves3 = Number(c.saved) || 0;
+      /* 공유 P90 이면 좋아요와 무관하게 hot — 팔로워 밖으로 나가는 신호가 더 중요하다 (2026-09-07) */
+      const hitCand = sharesP90 != null && sharesP90 > 0 && shares3 >= sharesP90;
+      if (hitCand) hitCands++;
+      const verdict = (likes >= p75 || hitCand) ? 'hot' : (likes <= p25 ? 'cold' : 'mid');
       if (verdict === 'hot') hot++; else if (verdict === 'cold') cold++; else mid++;
 
       await supabaseAdmin.from('algo_coach')
@@ -198,9 +217,11 @@ async function handler(req, res) {
         /* 알림 실패는 삼킨다 — 판정 기록(핵심)은 이미 끝났다 */
         try {
           await sendTextToTelegramPersonalSafe(
-            '🔥 [PAP] 게시물 떡상 조짐 — 지금이 골든타임\n\n'
+            (hitCand ? '🔥🔥 [PAP] 히트 후보 — 3시간 공유가 상위 10% (팔로워 밖으로 퍼지는 중)\n\n'
+                     : '🔥 [PAP] 게시물 떡상 조짐 — 지금이 골든타임\n\n')
             + (c.permalink || c.post_id) + '\n'
-            + '3시간 좋아요 ' + likes + ' (평소 중앙값 ' + p50 + ' · 상위 25% 기준 ' + p75 + ')\n\n'
+            + '3시간 좋아요 ' + likes + ' (평소 중앙값 ' + p50 + ' · 상위 25% 기준 ' + p75 + ')\n'
+            + '3시간 공유 ' + shares3 + ' (상위 10% 기준 ' + (sharesP90 == null ? '?' : sharesP90) + ') · 저장 ' + saves3 + '\n\n'
             + '지금 하면 알고리즘 증폭이 커지는 것:\n'
             + '1. 본계정 스토리로 리샤어\n'
             + '2. 크레딧된 팀에게 공동 게시(Collab) 초대\n'
@@ -211,8 +232,9 @@ async function handler(req, res) {
     }
 
     note('판정 ' + (hot + mid + cold) + '건 (🔥' + hot + ' · 보통 ' + mid + ' · 저조 ' + cold + ')'
-      + (dup ? ' · 기판정 ' + dup : '') + ' — 기준 P75=' + p75 + ' · ' + earlyNote);
-    return res.status(200).json({ ok: true, hot, mid, cold, dup, p25, p50, p75, early: early });
+      + (hitCands ? ' · 히트후보 ' + hitCands : '')
+      + (dup ? ' · 기판정 ' + dup : '') + ' — 기준 P75=' + p75 + ' · 공유P90=' + sharesP90 + ' · ' + earlyNote);
+    return res.status(200).json({ ok: true, hot, mid, cold, dup, hitCands, p25, p50, p75, sharesP90, early: early });
   } catch (err) {
     console.error('[algo-coach] error:', err);
     note('실패: ' + String((err && err.message) || err).slice(0, 150));

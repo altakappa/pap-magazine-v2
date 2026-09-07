@@ -119,7 +119,13 @@ console.log('\n[5] 1시간령 조기 알림 (2026-08-12) — 개입할 시간이
     src.indexOf("from('ops_alert_state').insert(") < src.indexOf("claimEarlyErr.code === '23505'"));
   t('스키마를 늘리지 않는다 (algo_coach ALTER·새 컬럼 없음)',
     !/alter table/i.test(src) && !/likes_1h:.*column/i.test(src));
-  t('임계 미달은 침묵 — 알림도 기록도 없다', /if \(likes < p75\) continue;/.test(src));
+  t('임계 미달은 침묵 — 알림도 기록도 없다', /if \(likes < p75 && !bySharesHit\) continue;/.test(src));
+  // 2026-09-07 — 공유 신호. 팔로워를 만든 히트(8/27 공유 6,457 · 8/31 9,281)는 공유가 먼저 튀었다.
+  t('1시간 패스: 공유 P90 이면 좋아요 미달이어도 알린다', /shares >= sharesP90/.test(src) && /bySharesHit/.test(src));
+  t('3시간 판정: 공유 P90 이면 hot (히트 후보)', /shares3 >= sharesP90/.test(src) && /\(likes >= p75 \|\| hitCand\) \? 'hot'/.test(src));
+  t('알림에 공유·저장 수치가 실린다', /1시간 공유 ' \+ shares/.test(src) && /3시간 공유 ' \+ shares3/.test(src));
+  t('히트 후보는 🔥🔥 로 구분한다', (src.match(/🔥🔥/g) || []).length >= 2);
+  t('note 에 공유P90 기준이 남는다', /공유P90=/.test(src));
   t('1시간 표본 20 미만이면 보류', /hist\.length < 20[\s\S]{0,120}1시간 표본 부족/.test(src));
   t('조기 패스 실패가 3시간 판정을 막지 않는다',
     /try \{ early = await runEarlyPass\(\); \}[\s\S]{0,160}catch/.test(src));

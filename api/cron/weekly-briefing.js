@@ -30,6 +30,8 @@ const { buildChannelScorecard, renderScorecardMd } = require('../_lib/channelSco
 // (릴스는 인스타가 per-media 지표를 안 줌 — 확정), 그 사각지대를 하루 단위
 // 잔차로 재는 유일한 계기다. 성적표와 같은 원칙: 결정론 집계라 AI 가 죽어도 나간다.
 const { buildIgLedger, renderIgLedgerMd } = require('../_lib/igLedger');
+// 2026-09-07 — 소재 유형별 성적표 (히트·팔로우를 만드는 소재를 매주 같은 자로)
+const { buildIgContentMix, renderContentMixMd } = require('../_lib/igContentMix');
 /* 2026-08-28 — AI 답변 점유율. 교재 8장("클릭이 아니라 점유율")이 비어 있었다.
    **읽기만 한다** — 수집은 별도 주간 크론(ai-sov-probe)이 40분 먼저 끝낸다.
    프로브는 32콜(웹검색 포함)이라 브리핑 함수 안에서 돌리면 브리핑이 인질이 된다. */
@@ -105,6 +107,11 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     try { igLedger = await buildIgLedger(28); }
     catch (e) { console.warn('[weekly-briefing] igLedger failed:', e && e.message); }
 
+    // IG 소재 유형별 성적표 — best-effort (2026-09-07)
+    let contentMix = null;
+    try { contentMix = await buildIgContentMix(Date.now()); }
+    catch (e) { console.warn('[weekly-briefing] contentMix failed:', e && e.message); }
+
     // AI 답변 점유율 — best-effort. DB 읽기뿐이라 싸다. 기록이 없으면 null.
     let sov = null;
     try { sov = await buildSovReport({ days: 60 }); }
@@ -160,6 +167,10 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     if (igLedger) {
       const lgMd = renderIgLedgerMd(igLedger);
       if (lgMd) briefing = briefing ? (briefing + '\n\n---\n\n' + lgMd) : lgMd;
+    }
+    if (contentMix) {
+      const cmMd = renderContentMixMd(contentMix);
+      if (cmMd) briefing = briefing ? (briefing + '\n\n---\n\n' + cmMd) : cmMd;
     }
     if (sov) {
       const sovMd = renderSovMd(sov);
