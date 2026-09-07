@@ -91,6 +91,28 @@ t('사실이 모자라면 만들지 않는다', () => {
   assert.strictEqual(buildGalleryFaq({ title: '무제', tags: [], content: '', gallery: new Array(20).fill(1) }), null);
 });
 
+/* 2026-09-07 실전 사고. 26건 전부 촬영자를 놓쳤다.
+ * 실제 본문은 이렇게 생겼다:  Photographer. <a ...><strong>CLAUDIO K</strong></a>
+ * '.' 다음이 '<' 라 이름 자리가 안 맞았다.
+ * 드라이런은 통과했는데, 내가 태그를 미리 벗긴 표본을 썼기 때문이다.
+ * **표본이 실물과 달랐다.** 이제 고정물은 실제 HTML 을 그대로 담는다. */
+t('태그에 싸인 촬영자를 찾는다 (실전 사고 회귀)', () => {
+  const html = '<p style="text-align:right; font-family: Montserrat;">Photographer. '
+    + '<a href="https://www.instagram.com/claudiok_ph/" style="text-decoration-line:none" target="_blank">'
+    + '<strong style="color: black;">CLAUDIO K</strong></a></p>';
+  assert.strictEqual(parseShooter(html), 'CLAUDIO K');
+});
+
+t('고정물은 실제 HTML 을 담고 있다 (벗겨진 표본이면 이 검사가 무의미해진다)', () => {
+  const withCredit = FIX.filter((r) => /photographer/i.test(r.content));
+  assert.ok(withCredit.length >= 8, '촬영자 표기가 있는 표본이 너무 적다: ' + withCredit.length);
+  for (const r of withCredit) {
+    assert.ok(/<[a-z]/i.test(r.content), '태그가 벗겨진 표본이다: ' + r.title);
+    const faq = buildGalleryFaq(asRow(r));
+    assert.ok(faq.some((f) => /누가 촬영/.test(f.q)), '촬영자를 놓쳤다: ' + r.title);
+  }
+});
+
 t('조각 해석기: 시즌·도시·종류·촬영자', () => {
   assert.strictEqual(parseSeason('FW26').ko, '2026 가을겨울');
   assert.strictEqual(parseSeason('SS25').ko, '2025 봄여름');

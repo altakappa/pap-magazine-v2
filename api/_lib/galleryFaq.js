@@ -1,4 +1,5 @@
 'use strict';
+const { stripHtml } = require('./stripHtml');
 /**
  * 사진 화보용 FAQ — 모델을 부르지 않고, 우리가 이미 가진 사실만 조립한다.
  *
@@ -73,11 +74,18 @@ function parseKind(text) {
 
 /* ── 촬영자 ────────────────────────────────────────────
  * "Photographer. CLAUDIO K" / "Photographer: NATASHA" / "사진. 홍길동"
- * 줄 끝까지 먹지 않게 길이를 제한한다. 이름이 아닌 문장이 딸려오면 버린다. */
+ * 줄 끝까지 먹지 않게 길이를 제한한다. 이름이 아닌 문장이 딸려오면 버린다.
+ *
+ * 2026-09-07 실전에서 26건 전부 촬영자를 놓쳤다. 원인은 태그였다:
+ *   Photographer. <a href="..."><strong>CLAUDIO K</strong></a>
+ * '.' 다음이 '<' 라 이름 자리가 안 맞았다. 드라이런 때는 내가 태그를 미리
+ * 벗긴 표본을 썼기 때문에 통과했다 — 표본이 실물과 달랐다.
+ * 이제 공용 stripHtml 로 벗기고 본다. 태그 벗기기 규칙을 여기서 새로 쓰면
+ * 규칙이 두 벌이 된다. */
 const SHOOTER_RE = /(?:photographer|photography|사진|촬영)\s*[.:·]?\s*([A-Za-z가-힣][A-Za-z가-힣0-9 .&'\-]{1,38})/i;
 
 function parseShooter(text) {
-  const m = SHOOTER_RE.exec(String(text || ''));
+  const m = SHOOTER_RE.exec(stripHtml(String(text || '')));
   if (!m) return null;
   const name = m[1].replace(/\s+/g, ' ').trim().replace(/[.,]+$/, '');
   if (name.length < 2 || name.length > 40) return null;
