@@ -55,7 +55,9 @@ function parseFollowerCountSeries(json) {
 function computeUnfollows(fluxRows, ledgerDays) {
   const gainsBy = new Map((fluxRows || []).map((f) => [f.day, f.gains]));
   return (ledgerDays || []).map((d) => {
-    const gains = gainsBy.has(d.day) ? gainsBy.get(d.day) : null;
+    /* 0 은 "모름"으로 읽는다 (2026-09-07, captureFlux 주석). 146 이전에 저장된 0 행도 같은 규칙. */
+    const raw = gainsBy.has(d.day) ? gainsBy.get(d.day) : null;
+    const gains = (typeof raw === 'number' && raw > 0) ? raw : null;
     let unfollows = null, anomaly = false;
     if (gains != null) {
       unfollows = gains - d.delta;
@@ -102,7 +104,19 @@ async function captureFlux() {
   const series = parseFollowerCountSeries(json);
   if (!series.length) return { status: 'empty', detail: 'follower_count 값 0건' };
 
-  const rows = series.map((s) => ({ day: s.day, handle: HANDLE, gains: s.gains }));
+  /* 2026-09-07 — 0 은 사실이 아니라 "모름"이다.
+     실측: API 가 9/5·9/6 gains=0 을 줬는데 앱 인사이트는 같은 날 팔로우 ~150 을 보였다.
+     (9/4 도 첫 수집 0 → 다음날 136 으로 바뀜: 버킷이 덜 닫힌 채 내려온다.)
+     0 을 저장하면 장부가 "신규 0 · 이탈 15" 라는 거짓 그림을 그리고, 그 위에서
+     "카운터 동결" 같은 엉뚱한 가설이 나왔다(9/6~9/7). 0 인 날은 쓰지 않는다 —
+     이미 있는 양수 값을 0 으로 덮지도, 없는 날을 0 으로 채우지도 않는다.
+     장부에서는 gains 가 없는 날 = 이탈 null (computeUnfollows 가 이미 그렇게 한다). */
+  const usable = series.filter((s) => Number(s.gains) > 0);
+  const zeros = series.length - usable.length;
+  const tail = series.slice(-3).map((s) => s.day.slice(5) + ':' + s.gains).join(' ');
+  if (!usable.length) return { status: 'all_zero', detail: 'API 가 전부 0 — 저장 안 함 · ' + tail, tail, zeros };
+
+  const rows = usable.map((s) => ({ day: s.day, handle: HANDLE, gains: s.gains }));
   const { error } = await supabaseAdmin.from('ig_follower_flux')
     .upsert(rows, { onConflict: 'day,handle' });
   if (error) {
@@ -110,7 +124,7 @@ async function captureFlux() {
     if (error.code === '42P01') return { status: 'no_table', detail: '마이그레이션 134 미실행' };
     return { status: 'failed', detail: error.message };
   }
-  return { status: 'ok', days: rows.length };
+  return { status: 'ok', days: rows.length, zeros, tail };
 }
 
 /** 오늘(KST) 이미 gains 를 저장했으면 true — 시간당 크론에서 하루 1회 가드 */

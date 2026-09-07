@@ -115,6 +115,19 @@ console.log('\n=== 6. 장부 렌더에 이탈 열 ===');
   t('flux 없으면 기존 표 그대로 (— 로 도배하지 않는다)', /날짜\(KST\) \| 증가 \|/.test(mdNo));
 }
 
+console.log('\n[6] 0 은 모름이다 (2026-09-07 — API 가 9/5·9/6 에 0 을 줬는데 앱은 ~150)');
+{
+  const days = [{ day: '2026-09-05', delta: -15, carousels: 3, videos: 2, images: 0, attributed: 0, residual: -15 }];
+  const out = computeUnfollows([{ day: '2026-09-05', gains: 0 }], days);
+  t('저장된 gains=0 은 null 로 읽는다 (이탈 15 라고 지어내지 않는다)', out[0].gains === null && out[0].unfollows === null, JSON.stringify(out[0]));
+  const src = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'igFlux.js'), 'utf8');
+  t('captureFlux 는 gains>0 인 날만 저장한다', /series\.filter\(\(s\) => Number\(s\.gains\) > 0\)/.test(src));
+  t('전부 0 이면 저장하지 않고 all_zero 로 보고한다', /status: 'all_zero'/.test(src));
+  t('최근 사흘 원본(tail)을 돌려준다 — 크론 note 에서 눈으로 본다', /tail/.test(src));
+  const cron = fs.readFileSync(path.join(__dirname, '..', 'api', 'cron', 'ig-snapshot.js'), 'utf8');
+  t('ig-snapshot 응답에 flux_tail 이 실린다', /flux_tail/.test(cron));
+}
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ ig-flux tests FAILED'); process.exit(1); }
 console.log('✅ ig-flux tests passed');

@@ -95,5 +95,6 @@ module.exports = withCronGuard('ig-snapshot', async function handler(req, res) {
     console.warn('[ig-snapshot] flux 실패(비치명):', e && e.message);
   }
 
-  return res.status(200).json({ ok: true, ...result, flux: flux && flux.status });
+  /* flux_tail: API 가 최근 사흘에 준 원본(날짜:gains). 0 이 오는 날을 눈으로 보기 위해 note 에 남긴다 (2026-09-07). */
+  return res.status(200).json({ ok: true, ...result, flux: flux && flux.status, flux_tail: (flux && flux.tail) || undefined });
 });
