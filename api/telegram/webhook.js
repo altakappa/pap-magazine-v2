@@ -156,6 +156,21 @@ module.exports = async function handler(req, res) {
     return OK(res, { ok: true, skipped: 'chat_not_allowed' });
   }
 
+  /* ── 팔로우 수동 기록 ("팔로우 <숏코드|링크> <숫자>", 2026-09-07) ──────
+     릴스는 API 가 follows 를 안 준다. 앱 인사이트에서 읽은 숫자를 한 줄로 적으면
+     ig_manual_follows 에 저장되고 장부(ig_post_latest)가 흡수한다. 형태가 아니면
+     아래 흐름에 영향 없음. 본문은 데이터다 — 정규식 형태만 받는다. */
+  {
+    const { parseFollowCommand, recordManualFollows } = require('../_lib/igManualFollows');
+    const fc = parseFollowCommand(parsed.text);
+    if (fc) {
+      if (fc.error) { await say(parsed.chatId, fc.error); return OK(res, { ok: true, skipped: 'follow_cmd_bad' }); }
+      const r = await recordManualFollows(supabaseAdmin, fc, parsed.chatId);
+      await say(parsed.chatId, r.message);
+      return OK(res, { ok: true, follow_cmd: r.ok });
+    }
+  }
+
   /* ── 게시 명령 ("올려") ──────────────────────────────────────
      도메니코가 브리프를 보고 판단해서 내리는 명령이다. 여기서는 **표시만** 하고
      실제 게시는 크론이 한다 — 게시는 컨테이너 생성 + 릴스 인코딩 폴링까지
