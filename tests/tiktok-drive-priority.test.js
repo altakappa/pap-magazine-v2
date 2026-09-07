@@ -183,12 +183,39 @@ t('오래 대기한 영상을 잡는다', () => {
   assert.deepStrictEqual(d.stuck.map((x) => x.name), ['0906_아홉시간째.mp4']);
 });
 
-t('상한 초과는 대기 시간과 무관하게 바로 잡는다', () => {
-  // 기다린다고 풀리지 않는다. 사람이 파일을 줄여야 한다.
+/* 2026-09-07 오후. 첫 판은 상한 초과를 즉시 알리고 "파일을 줄여서 다시 넣어
+ * 주세요" 라고 사람에게 시켰다. 틀렸다 — 그건 맥미니 압축기가 5분마다 하는 일이다.
+ * 실제로 '0822_포핸즈'는 그 알림이 나간 지 15분 만에 압축기가
+ * 50.5MB → 12.4MB 로 처리했다. 기계가 이미 하는 일을 사람에게 시키는 알림은
+ * 없느니만 못하다. 압축기에게 시간을 준 뒤에도 남아 있을 때만 알린다. */
+t('막 들어온 큰 파일은 압축기를 기다린다 (사람을 부르지 않는다)', () => {
   const d = tkd.judgeDriveBacklog([{ ...FILES[2], modifiedAt: hAgo(0.1) }], new Set(), { now });
+  assert.strictEqual(d.oversize.length, 0, '압축기가 손 대기도 전에 사람을 부른다');
+  assert.strictEqual(d.healthy, true);
+});
+
+t('압축기에게 시간을 줬는데도 크면 그때 알린다', () => {
+  const d = tkd.judgeDriveBacklog([{ ...FILES[2], modifiedAt: hAgo(3) }], new Set(), { now });
   assert.strictEqual(d.healthy, false);
   assert.strictEqual(d.cause, 'oversize');
   assert.strictEqual(d.oversize[0].mb, 76);
+  assert.ok(d.oversize[0].hours >= 1, '얼마나 됐는지 안 알려준다');
+});
+
+t('원인이 둘이면 둘 다 제목에 적는다', () => {
+  // 첫 판은 제목에 '상한 초과 1건' 만 적고 밑에 대기 5건을 나열해서,
+  // 읽는 사람이 둘을 한 가지 일로 오해했다 (2026-09-07 실제 발생).
+  const d = tkd.judgeDriveBacklog(
+    [{ ...FILES[2], modifiedAt: hAgo(40) }, FILES[1]], new Set(), { now });
+  assert.strictEqual(d.cause, 'both');
+  assert.ok(/압축기가 못 줄인 영상 1건/.test(d.reason), d.reason);
+  assert.ok(/안 올라간 영상 1건/.test(d.reason), d.reason);
+});
+
+t('알림이 기계가 할 일을 사람에게 시키지 않는다', () => {
+  assert.ok(!/파일을 줄여서 다시 넣어/.test(WATCH), '압축기가 하는 일을 사람에게 시킨다');
+  assert.ok(/압축기가 그 파일을 못 보고 있다/.test(WATCH), '진짜 원인을 안 말한다');
+  assert.ok(/기사를 발행하면 자동으로 올라간다/.test(WATCH), '대기 건의 할 일이 없다');
 });
 
 t('일부러 뺀 파일(_ 접두사)은 적체가 아니다', () => {
@@ -203,8 +230,11 @@ t('이미 올린 파일은 적체가 아니다', () => {
 
 t('알림이 무엇을 해야 하는지까지 말한다', () => {
   // '뭔가 막혔다' 만 오는 알림은 두 번째부터 안 읽힌다.
-  assert.ok(/파일을 줄여서 다시 넣어 주세요/.test(WATCH), '상한 초과에 할 일이 없다');
-  assert.ok(/시간째 대기 \(기사 매칭 실패일 수 있음\)/.test(WATCH), '대기 건에 단서가 없다');
+  // 문구 자체가 아니라 '할 일이 적혀 있는가' 를 본다 — 문구를 고정하면
+  // 말을 다듬을 때마다 검사가 깨지고, 결국 검사를 지우게 된다.
+  assert.ok(/원인|압축기가 그 파일을 못 보고 있다/.test(WATCH), '상한 초과의 원인이 없다');
+  assert.ok(/기사를 발행하면 자동으로 올라간다/.test(WATCH), '대기 건에 할 일이 없다');
+  assert.ok(/_ 를 붙이거나 이름에 완료/.test(WATCH), '뺄 방법을 안 알려준다');
   assert.ok(/drive-tiktok-post\?list=1/.test(WATCH), '대기 목록으로 가는 링크가 없다');
 });
 

@@ -1290,11 +1290,22 @@ async function checkDriveTikTok(opts) {
       const lines = [d.reason];
       /* 무엇을 해야 하는지까지 적는다. '뭔가 막혔다' 만 오는 알림은
        * 두 번째부터 안 읽힌다 (2026-09-06 화보 언어판 알림에서 겪었다). */
-      for (const o of d.oversize.slice(0, 5)) {
-        lines.push('· ' + o.name + ' (' + o.mb + 'MB) — 파일을 줄여서 다시 넣어 주세요');
+      /* 2026-09-07 오후 수정 — 첫 판은 사람더러 파일을 손수 줄여 오라고 시켰다.
+       * 그건 맥미니 압축기가 5분마다 자동으로 하는 일이다.
+       * 실제로 그 알림이 나간 지 15분 만에 압축기가 처리했다. 기계가 이미
+       * 하는 일을 사람에게 시키는 알림은 없느니만 못하다. */
+      if (d.oversize.length) {
+        lines.push('[압축이 안 됐다 — 압축기가 그 파일을 못 보고 있다]');
+        for (const o of d.oversize.slice(0, 5)) {
+          lines.push('· ' + o.name + ' (' + o.mb + 'MB · ' + o.hours + '시간째)');
+        }
       }
-      for (const x of d.stuck.slice(0, 5)) {
-        lines.push('· ' + x.name + ' — ' + x.hours + '시간째 대기 (기사 매칭 실패일 수 있음)');
+      if (d.stuck.length) {
+        lines.push('[짝이 될 기사가 웹사이트에 없다 — 기사를 발행하면 자동으로 올라간다]');
+        for (const x of d.stuck.slice(0, 5)) {
+          lines.push('· ' + x.name + ' — ' + x.hours + '시간째');
+        }
+        lines.push('안 올릴 영상은 파일명 앞에 _ 를 붙이거나 이름에 완료 를 넣으면 목록에서 빠집니다.');
       }
       await pushAlert({
         personalOnly: true,

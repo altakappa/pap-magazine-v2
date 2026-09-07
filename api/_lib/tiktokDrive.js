@@ -146,6 +146,14 @@ async function articlesWaitingForDrive() {
  * 순수 함수다 — 네트워크 없이 테스트한다.
  */
 const STALE_HOURS = Number(process.env.TIKTOK_DRIVE_STALE_HOURS || 6);
+/* 상한 초과를 곧바로 알리지 않고 기다리는 시간 (2026-09-07 오후 수정).
+ * 첫 판에서 "파일을 줄여서 다시 넣어 주세요" 라고 사람에게 시켰다. 틀렸다 —
+ * 그건 맥미니 압축기가 5분마다 자동으로 하는 일이다. 실제로 '0822_포핸즈'는
+ * 알림이 나간 지 15분 만에 압축기가 50.5MB → 12.4MB 로 처리했다.
+ * 사람에게 기계가 이미 하는 일을 시키는 알림은 없느니만 못하다.
+ * 그래서 압축기에게 몇 바퀴 줄 시간을 준다. 그 시간이 지나도 남아 있으면
+ * 그건 파일 문제가 아니라 **압축기가 그 파일을 못 보고 있다**는 뜻이다. */
+const OVERSIZE_GRACE_H = Number(process.env.TIKTOK_DRIVE_OVERSIZE_GRACE_H || 1);
 
 function judgeDriveBacklog(files, doneSet, opts) {
   const o = opts || {};
@@ -161,23 +169,28 @@ function judgeDriveBacklog(files, doneSet, opts) {
     .map((f) => ({ name: f.name, hours: Math.round(ageH(f)) }))
     .sort((a, b) => b.hours - a.hours);
 
-  /* 상한 초과는 기다린다고 풀리지 않는다. 사람이 줄여야 한다 —
-   * 그래서 대기 시간과 무관하게 바로 알린다.
+  /* 상한 초과 — 압축기에게 시간을 준 뒤에도 남아 있는 것만 센다.
    * (파일명에 _ 를 붙였거나 '완료' 가 들어간 의도적 제외는 여기 안 들어온다) */
+  const graceH = Number.isFinite(o.oversizeGraceHours) ? o.oversizeGraceHours : OVERSIZE_GRACE_H;
+  const byName = new Map((files || []).filter((f) => f && f.name).map((f) => [f.name, f]));
   const oversize = skipped.filter((x) => x && x.over)
-    .map((x) => ({ name: x.name, mb: x.mb }));
+    .map((x) => ({ name: x.name, mb: x.mb, hours: Math.round(ageH(byName.get(x.name) || {})) }))
+    .filter((x) => x.hours >= graceH);
 
   const healthy = stuck.length === 0 && oversize.length === 0;
   let cause = null;
+  const parts = [];
+  if (oversize.length) parts.push('압축기가 못 줄인 영상 ' + oversize.length + '건');
+  if (stuck.length) parts.push(staleH + '시간 넘게 안 올라간 영상 ' + stuck.length + '건 (최장 ' + stuck[0].hours + '시간)');
   let reason = '드라이브 영상 적체 없음 (대기 ' + candidates.length + '건)';
-  if (oversize.length) {
-    cause = 'oversize';
-    reason = '상한 초과로 못 올리는 영상 ' + oversize.length + '건 — 사람이 줄여야 한다';
-  } else if (stuck.length) {
-    cause = 'stuck';
-    reason = staleH + '시간 넘게 안 올라간 영상 ' + stuck.length + '건 (최장 ' + stuck[0].hours + '시간)';
+  if (parts.length) {
+    /* 원인이 둘이면 둘 다 적는다. 첫 판은 제목에 하나만 적고 밑에 다른 원인을
+     * 나열해서, 읽는 사람이 둘을 한 가지 일로 오해했다 (2026-09-07 실제 발생). */
+    cause = oversize.length && stuck.length ? 'both' : (oversize.length ? 'oversize' : 'stuck');
+    reason = parts.join(' · ');
   }
-  return { healthy, cause, reason, stuck, oversize, waiting: candidates.length, staleHours: staleH };
+  return { healthy, cause, reason, stuck, oversize, waiting: candidates.length,
+    staleHours: staleH, oversizeGraceHours: graceH };
 }
 
 /** 실제 드라이브·DB 를 읽어 적체를 판정한다. */
