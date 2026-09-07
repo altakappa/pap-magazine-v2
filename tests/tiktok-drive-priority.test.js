@@ -217,4 +217,39 @@ t('감시 실패가 pipeline-watch 를 죽이지 않는다', () => {
   assert.ok(/tiktok drive backlog 실패/.test(WATCH), 'try/catch 가 없다');
 });
 
+console.log('=== ⑦ 압축기와 서버가 같은 것을 영상이라 부른다 ===');
+
+/* 2026-09-07 실측. '0822_포핸즈'(50.5MB · 1080x1920 · 32초 · 확장자 없음)가
+ * 8/31 부터 유튜브 폴더에 그대로 있었다.
+ *   압축기  확장자로만 훑는다(.mov .mp4 .m4v .avi .mkv)  → 못 봤다
+ *   서버    구글 드라이브의 mimeType 으로 본다            → 영상이라고 집었다
+ * 그래서 압축은 안 된 채 서버가 계속 집어 스토리지 상한에 죽었다.
+ * 같은 폴더를 두 규칙으로 본 것이다. */
+const COMP = read('tools/pap-video-compress.sh');
+
+t('압축기가 확장자 없는 영상도 잡는다', () => {
+  assert.ok(/probe_is_video\(\)/.test(COMP), 'ffprobe 판별 함수가 없다');
+  assert.ok(/scan_unknown\(\)/.test(COMP), '낯선 확장자 훑기가 없다');
+  assert.ok(/scan_unknown "\$WATCH"/.test(COMP), '메인 폴더에 적용 안 됨');
+  assert.ok(/scan_unknown "\$STORY"/.test(COMP), '스토리쇼츠 폴더에 적용 안 됨');
+});
+
+t('판별 함수가 while 루프보다 먼저 정의된다', () => {
+  // 프로세스 치환은 루프 본문보다 먼저 평가된다.
+  // 함수가 루프 안에 있으면 호출 시점에 아직 없다 (내가 처음에 그렇게 짰다).
+  const fn = COMP.indexOf('scan_unknown() {');
+  const loop = COMP.indexOf('while IFS= read -r f; do');
+  assert.ok(fn > 0 && loop > 0, '둘 다 있어야 한다');
+  assert.ok(fn < loop, '함수가 루프 뒤에 정의돼 있다 — 호출 때 없는 함수가 된다');
+});
+
+t('압축 목표가 스토리지 상한보다 작다', () => {
+  // 압축기 48MB < 스토리지 50MB. 이게 뒤집히면 압축을 끝내도 업로드에서 죽는다.
+  const m = /MAX_MB="\$\{PAP_MAX_MB:-(\d+)\}"/.exec(COMP);
+  assert.ok(m, '압축 목표를 못 찾았다');
+  const compressMb = Number(m[1]);
+  assert.ok(compressMb * 1024 * 1024 <= tkd.MAX_BYTES,
+    `압축 목표 ${compressMb}MB 가 업로드 상한 ${Math.round(tkd.MAX_BYTES / 1048576)}MB 보다 크다`);
+});
+
 console.log(`\n${n}개 테스트 통과`);

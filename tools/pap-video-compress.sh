@@ -392,6 +392,27 @@ NOW="$(date +%s)"
 WAITLINES=""           # 이번 훑기에서 대기 중인 것들 (장부에 통째로 다시 쓴다)
 STUCK=""; stuck_n=0    # 기준일을 넘긴 것들 (경보 대상)
 WAIT_ALERT_SECS=$(( WAIT_ALERT_DAYS * 86400 ))
+# ── 확장자가 없거나 낯선 파일도 본다 (2026-09-07 신설) ──────────
+# 실측: '0822_포핸즈'(50.5MB · 1080x1920 · 32초 · **확장자 없음**)가 8/31 부터
+# 유튜브 폴더에 그대로 있었다. 압축기는 확장자로만 훑어서 못 봤고, 서버 크론은
+# 구글 드라이브가 알려주는 mimeType 으로 '영상'이라 보고 집었다가 스토리지
+# 상한(50MB)에 걸려 10분마다 영원히 실패했다.
+# **같은 폴더를 두 규칙으로 본 것이다.** 08-21 스토리쇼츠 누락과 같은 모양이다.
+# 이름만으로는 알 수 없으니 ffprobe 에게 직접 물어본다.
+probe_is_video() {
+  ffprobe -v error -select_streams v:0 -show_entries stream=codec_type \
+    -of csv=p=0 "$1" 2>/dev/null | grep -q '^video$'
+}
+
+scan_unknown() {   # $1 = 폴더
+  find "$1" -maxdepth 1 -type f \
+    ! -iname '.*' \
+    ! -iname '*.mov' ! -iname '*.mp4' ! -iname '*.m4v' ! -iname '*.avi' ! -iname '*.mkv' \
+    2>/dev/null | while IFS= read -r cand; do
+      probe_is_video "$cand" && printf '%s\n' "$cand"
+    done
+}
+
 while IFS= read -r f; do
   [ -f "$f" ] || continue
   nm="$(basename "$f")"
@@ -442,6 +463,7 @@ while IFS= read -r f; do
 done < <( { find "$WATCH" -maxdepth 1 -type f \
             \( -iname '*.mov' -o -iname '*.mp4' -o -iname '*.m4v' -o -iname '*.avi' -o -iname '*.mkv' \) \
             2>/dev/null
+          scan_unknown "$WATCH"
           # 스토리쇼츠도 같은 규칙으로 훑는다 (하위 폴더는 여기 하나뿐이다.
           # -maxdepth 1 을 걷어내지 않는 이유: '원본/' 아카이브까지 다시
           # 압축하기 시작하면 이미 끝난 일을 영원히 되풀이한다)
@@ -449,6 +471,7 @@ done < <( { find "$WATCH" -maxdepth 1 -type f \
             find "$STORY" -maxdepth 1 -type f \
               \( -iname '*.mov' -o -iname '*.mp4' -o -iname '*.m4v' -o -iname '*.avi' -o -iname '*.mkv' \) \
               2>/dev/null
+            scan_unknown "$STORY"
           fi; } )
 
 # 대기 장부를 이번 훑기 기준으로 통째로 새로 쓴다.
