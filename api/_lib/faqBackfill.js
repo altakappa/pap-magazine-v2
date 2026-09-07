@@ -25,6 +25,7 @@
 
 const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 const { supabaseAdmin } = require('./supabase');
+const { buildGalleryFaq } = require('./galleryFaq');
 
 /** 배치 크기 정규화 — 1~20. */
 function normalizeBatch(v, fallback) {
@@ -172,6 +173,44 @@ async function countRemainingSafe() {
   } catch (_) { return null; }
 }
 
+/* ── 사진 화보 FAQ (모델 없이) ─────────────────────────────
+ * 2026-09-07. 본문 80자 미만이라 위 경로가 영원히 건너뛰던 26건이 있었다.
+ * 전부 스트릿 스타일·백스테이지·애프터파티 사진 화보다.
+ *
+ * 60자짜리 캡션을 모델에 던지면 지어낼 수밖에 없다. 그 판단은 지금도 유효하다.
+ * 대신 우리가 이미 가진 사실만 조립한다 — tags(시즌·도시·브랜드),
+ * gallery(사진 수), content(촬영자). 모델 호출 0회, 지어내기 0회.
+ * 조립할 사실이 2개 미만이면 만들지 않는다.
+ *
+ * FAQ 는 JSON-LD 뿐 아니라 페이지에 실제로 보인다(seo-faq 섹션). 발행된 글의
+ * 화면을 바꾸는 일이므로 끌 수 있어야 한다: FAQ_GALLERY=0 이면 통째로 쉰다.
+ */
+const GALLERY_ON = process.env.FAQ_GALLERY !== '0';
+
+async function fillGalleryFaqs(limit = 30) {
+  if (!GALLERY_ON) return { made: 0, skipped: 0, off: true };
+  const { data, error } = await supabaseAdmin
+    .from('articles')
+    .select('id, title, content, tags, gallery')
+    .eq('status', 'published')
+    .is('faq', null)
+    .order('published_date', { ascending: false })
+    .limit(Math.max(1, Math.min(100, limit)));
+  if (error) throw error;
+
+  let made = 0;
+  let skipped = 0;
+  for (const row of (data || [])) {
+    const faq = buildGalleryFaq(row);
+    if (!faq) { skipped++; continue; }
+    const { error: upErr } = await supabaseAdmin
+      .from('articles').update({ faq }).eq('id', row.id);
+    if (upErr) { skipped++; continue; }
+    made++;
+  }
+  return { made, skipped, off: false };
+}
+
 /**
  * 1배치 처리.
  * @returns {Promise<{processed, remaining, errors?, note?}>}
@@ -190,13 +229,21 @@ async function runFaqBackfillBatch({ batch = 10, timeoutMs = 90000 } = {}) {
     /* 요약 한 줄이 곧 생산량 기록이다 — pipeline-watch 의 faqHealth 가 이 문장을
        읽어 '돌았는데 아무것도 안 만든' 상태를 잡는다. 세 문장을 구분하는 이유:
        완주 / 실질 완주 / 앞이 막힘 은 볼 곳이 완전히 다르다. */
+    /* 모델 경로가 빈손이면, 남은 건 전부 짧은 글이다. 그때 화보 경로를 태운다.
+     * 순서가 중요하다 — 긴 글이 밀려 있는데 화보부터 채우면 우선순위가 뒤집힌다. */
+    let gallery = { made: 0, skipped: 0, off: !GALLERY_ON };
+    try { gallery = await fillGalleryFaqs(30); } catch (_) { /* 화보 실패가 본 경로를 죽이지 않는다 */ }
+
     const remaining = await countRemainingSafe();
     const rem = remaining == null ? '?' : remaining;
     let note;
-    if (remaining === 0) {
+    if (gallery.made) {
+      note = 'FAQ 0 · 화보 ' + gallery.made + '건(사실 조립) · 잔여 ' + rem;
+    } else if (remaining === 0) {
       note = 'FAQ 0 · 완주';
     } else if (scan.exhausted) {
-      note = 'FAQ 0 · 완주 (잔여 ' + rem + '건은 본문 ' + MIN_BODY_CHARS + '자 미만)';
+      note = 'FAQ 0 · 완주 (잔여 ' + rem + '건은 본문 ' + MIN_BODY_CHARS + '자 미만'
+        + (gallery.off ? ', 화보 경로 꺼짐' : ', 화보 조립 불가') + ')';
     } else {
       note = 'FAQ 0 · 대상 없음 — 앞 ' + scan.scanned + '건이 전부 본문 '
         + MIN_BODY_CHARS + '자 미만 (잔여 ' + rem + ')';
@@ -274,5 +321,5 @@ async function runFaqBackfillBatch({ batch = 10, timeoutMs = 90000 } = {}) {
 
 module.exports = {
   runFaqBackfillBatch, normalizeBatch, toPlain, parseFaqResponse,
-  selectWorkable, scanSpan, MIN_BODY_CHARS,
+  selectWorkable, scanSpan, MIN_BODY_CHARS, fillGalleryFaqs,
 };
