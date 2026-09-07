@@ -59,8 +59,11 @@ async function buildChannelScorecard(now) {
   // 유입: 주간 수백 건 규모(실측 120/기간)라 행을 받아 JS 로 집계한다.
   // (PostgREST 는 group by 가 없고, rpc 를 새로 파는 것보다 이게 단순하다.
   //  폭증 대비 상한 20,000 — 넘치면 그건 행복한 비상사태고 rpc 로 옮긴다.)
+  // 2026-09-07 — 원본이 아니라 인간필터 뷰(145)를 센다. 9/2~9/4 IP 분산 봇 함대
+  // (1,950 IP × 1클릭, 데스크톱 100%) 가 webstory 를 39 → 1,950 으로 부풀렸고
+  // 브리핑이 그 위에 "다음 주의 베팅"을 세웠다. 아웃클릭(127)과 같은 규칙.
   const { data: inRows, error: inErr } = await supabaseAdmin
-    .from('social_inclicks').select('src, clicked_at')
+    .from('social_inclicks_human').select('src, clicked_at')
     .gte('clicked_at', d14).limit(20000);
   if (inErr) throw inErr;
   // 실제로 들어온 값 그대로 집계한다 (고정 목록으로 미리 자르지 않는다).

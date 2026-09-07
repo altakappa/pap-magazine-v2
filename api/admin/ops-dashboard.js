@@ -281,7 +281,8 @@ module.exports = async function handler(req, res) {
       countOf('funnel_events', q => q.eq('step', 'subscribe_view').gte('created_at', WF.todayStart)),
       countOf('funnel_events', q => q.eq('step', 'subscribe_view').gte('created_at', D7)),
       countOf('funnel_events', q => q.eq('step', 'subscribe_view').gte('created_at', D30)),
-      rows('social_inclicks', {
+      // 145 — 봇 함대를 뺀 인간필터 뷰. 원본(social_inclicks)은 9/2~9/4 함대로 오염됐다.
+      rows('social_inclicks_human', {
         cols: 'src, clicked_at',
         fn: q => q.gte('clicked_at', D30).limit(5000),
       }),

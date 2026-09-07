@@ -81,6 +81,15 @@ console.log('\n[3] 집계 소스 — 올바른 컬럼·필터');
   t('유입은 clicked_at 기준 (created_at 아님 — 실제 스키마)', /clicked_at', d14/.test(libSrc));
   t('유료는 standard·premium 만 센다', /\['standard', 'premium'\]/.test(libSrc));
   t('유입 행 상한이 있다 (폭증 대비)', /limit\(20000\)/.test(libSrc));
+  // 2026-09-07 — webstory 1,950 봇 함대(IP 1,950 × 1클릭, 데스크톱 100%)가 브리핑을 속였다.
+  t('유입은 원본이 아니라 인간필터 뷰(social_inclicks_human)를 센다', /from\('social_inclicks_human'\)/.test(libSrc)
+    && !/from\('social_inclicks'\)/.test(libSrc));
+  const mig = fs.readFileSync(path.join(ROOT, 'supabase_migrations/145_social_inclicks_human.sql'), 'utf8');
+  t('145 뷰: (일자, src) 고유IP 60+ AND 모바일 10% 미만이면 봇', /count\(DISTINCT r\.ip_hash\) >= 60/.test(mig)
+    && /mobile'\) \* 10 < count\(\*\)/.test(mig));
+  t('145 뷰: 한 IP 하루 10건 상한', /nth_same_ip_src <= 10/.test(mig));
+  t('145 뷰: service_role 전용', /REVOKE ALL ON public\.social_inclicks_human FROM anon/.test(mig)
+    && /GRANT SELECT ON public\.social_inclicks_human TO service_role/.test(mig));
 }
 
 console.log('\n[4] weekly-briefing 배선');

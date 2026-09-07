@@ -685,7 +685,7 @@ console.log('\n[17] 어드민에서 유입·전환을 볼 수 있다 (2026-08-13
   t('기사 조회를 집계한다', /countOf\('article_views'/.test(api));
   t('구독 페이지 도달을 집계한다',
      /countOf\('funnel_events'[\s\S]{0,80}subscribe_view/.test(api));
-  t('유입 채널(social_inclicks)을 집계한다', /rows\('social_inclicks'/.test(api));
+  t('유입 채널(social_inclicks_human — 봇 제외 뷰)을 집계한다', /rows\('social_inclicks_human'/.test(api));
   t('응답에 funnel 블록을 담는다', /\n\s*funnel,\n/.test(api));
   t('오늘·7일·30일 세 창을 다 준다',
      /article_views_today/.test(api) && /article_views_7d/.test(api) && /article_views_30d/.test(api));

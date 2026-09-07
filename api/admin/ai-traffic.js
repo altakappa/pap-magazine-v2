@@ -53,11 +53,11 @@ module.exports = async function handler(req, res) {
   try {
     /* ── 유입 (사람) ─────────────────────────────────────────── */
     const { data: inRows, error: inErr } = await supabaseAdmin
-      .from('social_inclicks')
+      .from('social_inclicks_human')   // 145 — 봇 함대·한 IP 반복 제외 뷰
       .select('src, path, page, referrer_host, clicked_at')
       .gte('clicked_at', since + 'T00:00:00Z')
       .limit(50000);
-    if (inErr) throw new Error('social_inclicks: ' + inErr.message);
+    if (inErr) throw new Error('social_inclicks_human: ' + inErr.message);
 
     const byPlatform = new Map();   // 플랫폼 → 유입 수
     const byPath = new Map();       // 경로 → {hits, platforms:Set}
