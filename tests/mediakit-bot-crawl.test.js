@@ -29,8 +29,12 @@ ok('봇 판별(uaIsBot)이 레이트리미터보다 먼저 온다',
    iBot > -1 && iLimit > -1 && iBot < iLimit, `bot@${iBot} limit@${iLimit}`);
 ok('레이트리미터는 사람 트래픽에만 걸린다 (!uaIsBot 가드)',
    /!uaIsBot && await rateLimitStrict\(/.test(src));
-ok('봇은 여전히 302 리다이렉트를 받는다 (로그 미기록)',
-   /if \(uaIsBot\) return res\.redirect\(302, dest\);/.test(src));
+// 2026-09-08 — 봇 302 는 드라이브가 크롤러를 거부해 GSC 5xx(760건)로 되돌아왔다. 봇은 200+noindex.
+ok('봇은 리다이렉트 대신 200 + noindex 를 받는다 (드라이브 5xx 를 뒤집어쓰지 않는다)',
+   /if \(uaIsBot\) \{[\s\S]{0,200}X-Robots-Tag', 'noindex, nofollow'[\s\S]{0,400}status\(200\)/.test(src)
+   && !/if \(uaIsBot\) return res\.redirect\(302, dest\);/.test(src));
+ok('봇 응답 HTML 에도 meta robots noindex 가 있다', /meta name="robots" content="noindex, nofollow"/.test(src));
+ok('사람은 여전히 302 → 미디어킷 파일', /return res\.redirect\(302, dest \|\| HOME_URL\);/.test(src));
 ok('봇 판별이 기존과 동일한 2중 판별(isLikelyBot + isBot)',
    /isLikelyBot\(uaEarly\) \|\| isBot\(uaEarly\)/.test(src));
 ok('사람 로그 기록에 쓰는 ua 는 동일 값을 재사용한다',

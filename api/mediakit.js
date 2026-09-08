@@ -128,8 +128,24 @@ module.exports = async function handler(req, res) {
     console.warn('[mediakit] settings lookup failed', e && e.message);
   }
 
-  // 크롤러는 리다이렉트만 — 사람 지표만 남긴다 (ig-out 2026-07-20/29 교훈)
-  if (uaIsBot) return res.redirect(302, dest);
+  /* 크롤러는 리다이렉트하지 않는다 (2026-09-08, GSC 서버 오류 760건 실측).
+     8/25 에 봇을 리미터 앞에서 302 로 보냈더니 5xx 가 162 → 760 으로 늘었다.
+     Vercel 로그는 구글 실시간 테스트(08:47:53Z)에 정확히 302 를 줬는데 GSC 는
+     "서버 오류(5xx)" 라고 했다 — 구글이 302 를 따라간 곳(drive.google.com)이
+     크롤러를 거부한 것이고, 그 결과가 우리 URL 의 성적으로 찍힌다. 남의 5xx 를
+     우리가 뒤집어쓰는 구조. 봇에게는 리다이렉트 대신 **작은 200 + noindex** 를
+     준다: 크롤러는 색인 대상 아님을 알고 물러나고(크롤 예산 회수), 5xx 는 사라진다.
+     사람 경로(아래)는 그대로 302 → 미디어킷 파일. */
+  if (uaIsBot) {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(
+      '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow">'
+      + '<title>PAP Magazine Media Kit</title></head><body>'
+      + '<p>PAP Magazine media kit is available to advertisers on request.</p>'
+      + '<p><a href="' + HOME_URL + '/business">Advertise with PAP Magazine</a></p>'
+      + '</body></html>');
+  }
   const ua = uaEarly;
 
   /* 리퍼러 없는 요청은 기록하지 않는다 (2026-07-30 오염 실측 후 추가).

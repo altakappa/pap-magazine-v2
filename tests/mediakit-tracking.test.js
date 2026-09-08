@@ -109,7 +109,8 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
   const req = (q, ua, url, ref) => ({ method: 'GET', url: url || '/mediakit', query: q,
     headers: { 'user-agent': ua || 'Mozilla/5.0 iPhone',
                referer: ref === null ? undefined : (ref || 'https://www.pap-magazine.com/business') } });
-  const res = () => ({ setHeader(){}, redirect(c, u){ redirected = { c, u }; }, status(){ return this; }, send(){} });
+  let sent = null, statusCode = null;
+  const res = () => ({ setHeader(){}, redirect(c, u){ redirected = { c, u }; }, status(c){ statusCode = c; return this; }, send(b){ sent = b; } });
 
   return (async () => {
     await handler(req({ lang: 'ko', src: 'ig_bio' }), res());
@@ -127,9 +128,10 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
     await handler(req({ lang: 'en', src: 'a'.repeat(80) }), res());
     t('src 길이 40자 상한', inserted.row.src.length === 40);
 
-    inserted = null;
+    inserted = null; redirected = null; sent = null; statusCode = null;
     await handler(req({ lang: 'ko' }, 'Googlebot/2.1'), res());
-    t('봇은 리다이렉트만, 로그 없음', inserted === null && redirected.u.includes('1uFbkiba'));
+    /* 2026-09-08 — 봇 302 는 드라이브가 크롤러를 거부해 GSC 5xx 로 되돌아왔다. 봇은 200 + noindex, 로그 없음, 리다이렉트 없음. */
+    t('봇은 200 + noindex HTML, 로그 없음, 리다이렉트 없음', inserted === null && redirected === null && statusCode === 200 && /noindex, nofollow/.test(String(sent)));
 
     inserted = null;
     await handler(req({}), res());
