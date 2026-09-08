@@ -117,6 +117,14 @@ SELECT
   a_digest_kind                       AS digest_kind,
   (a_caption ~ '(🎥|🎬|📹|📷|📸|📽)\s*PAP') AS pap_shot,
   COALESCE(substring(a_caption FROM '(?:^|\s)#h([1-9])\M'), 'none') AS hook_code,
+  CASE WHEN reach > 0 THEN round(1000.0 * COALESCE(saved,0)  / reach, 2) END AS saves_per_1k,
+  CASE WHEN reach > 0 THEN round(1000.0 * COALESCE(shares,0) / reach, 2) END AS shares_per_1k,
+  CASE WHEN reach > 0 AND follows IS NOT NULL THEN round(1000.0 * follows / reach, 2) END AS follows_per_1k,
+  -- ⚠️ 새 열은 반드시 **맨 뒤**에 붙인다.
+  -- CREATE OR REPLACE VIEW 는 기존 열의 이름·순서·타입을 못 바꾼다. 뒤에 추가만 된다.
+  -- 중간에 끼우면 `cannot change name of view column "saves_per_1k" to "content_kind"` 로
+  -- 실패한다. 그걸 피하려고 DROP 하면 ig_hook_stats(144)까지 CASCADE 로 날아간다.
+  --
   -- 화보인지 기사인지 미매칭인지. 추정이 아니라 조인 결과다.
   -- 화보가 기사보다 먼저다. 실측 9/8: 451행 중 화보 매칭 35 · 기사 매칭 411 · 미매칭 5.
   -- 둘 다 매칭되는 9행이 있는데(같은 숏코드가 양쪽에 적힌 경우) 그건 화보로 친다 —
@@ -126,10 +134,7 @@ SELECT
        ELSE 'unmatched' END           AS content_kind,
   e_id                                AS editorial_id,
   -- 화보는 자동으로 'editorial'. 기사는 AI 판정값. 미매칭은 null.
-  CASE WHEN e_id IS NOT NULL THEN 'editorial' ELSE a_post_form END AS post_form,
-  CASE WHEN reach > 0 THEN round(1000.0 * COALESCE(saved,0)  / reach, 2) END AS saves_per_1k,
-  CASE WHEN reach > 0 THEN round(1000.0 * COALESCE(shares,0) / reach, 2) END AS shares_per_1k,
-  CASE WHEN reach > 0 AND follows IS NOT NULL THEN round(1000.0 * follows / reach, 2) END AS follows_per_1k
+  CASE WHEN e_id IS NOT NULL THEN 'editorial' ELSE a_post_form END AS post_form
 FROM matched;
 
 -- 형태별 30일 집계. 훅 코드 뷰(144)와 같은 모양 — 읽는 사람이 새로 배울 게 없게.

@@ -108,6 +108,19 @@ console.log('\n=== 6. 화보는 추정이 아니라 조인 결과다 ===');
   t('content_kind 를 만든다', /AS content_kind/.test(mig));
   t('화보가 기사보다 먼저다', /WHEN e_id IS NOT NULL THEN 'editorial'[\s\S]{0,80}WHEN a_id IS NOT NULL THEN 'article'/.test(mig));
   t('미매칭을 미매칭이라 부른다', /ELSE 'unmatched'/.test(mig));
+  /* CREATE OR REPLACE VIEW 는 기존 열 사이에 새 열을 못 끼운다 — 뒤에 추가만 된다.
+     중간에 넣으면 `cannot change name of view column` 로 적용이 통째로 실패하고,
+     피하려고 DROP 하면 ig_hook_stats(144)가 CASCADE 로 날아간다. 순서를 못박는다. */
+  {
+    const body = mig.split('FROM matched;')[0];
+    const iFollows = body.lastIndexOf('AS follows_per_1k');
+    const iKind = body.lastIndexOf('AS content_kind');
+    const iForm = body.lastIndexOf('AS post_form');
+    t('새 열이 기존 마지막 열(follows_per_1k) 뒤에 온다', iFollows > 0 && iKind > iFollows && iForm > iFollows,
+      'follows=' + iFollows + ' content_kind=' + iKind + ' post_form=' + iForm);
+    t('왜 뒤여야 하는지 근거가 적혀 있다', /cannot change name of view column/.test(mig));
+    t('DROP 을 쓰지 않는다 (ig_hook_stats CASCADE 방지)', !/DROP VIEW/.test(mig));
+  }
 
   const c = mix.classify;
   t("content_kind=editorial → 화보", c({ content_kind: 'editorial', article_id: 'a' }) === '화보');
