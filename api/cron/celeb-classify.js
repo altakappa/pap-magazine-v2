@@ -51,6 +51,7 @@ const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { markerKind, tagList, KINDS } = require('../_lib/digestKind');
 const { reportAiResponse } = require('../_lib/aiCreditWatch');
+const { runPostFormPass } = require('../_lib/postFormPass');
 
 const MODEL = process.env.CELEB_CLASSIFY_MODEL || 'claude-haiku-4-5-20251001';
 const BATCH = Math.max(1, Math.min(50, Number(process.env.CELEB_CLASSIFY_BATCH) || 25));
@@ -341,9 +342,22 @@ module.exports = withCronGuard('celeb-classify', async (req, res) => {
       + (pendingNone ? ' · 제외후보 ' + pendingNone : '')
       + ') · 남은 대기 ' + remaining + '건' + (failures.length ? ' · 실패 ' + failures.length : '');
 
+  /* 2026-09-08 — 형태(post_form) 판정을 여기에 얹는다 (마이그레이션 147).
+     이유는 api/_lib/postFormPass.js 머리말 참고: 크론 호출 예산이 2,598/2,600 이라
+     새 크론을 못 만들고, 이 크론은 대기열이 0 이라 10분마다 빈손으로 돌고 있었다.
+     **곁다리 일이 본 일을 망치면 안 된다** — 여기서 던져도 갈래 판정 결과는 그대로 낸다. */
+  let form = { saved: 0, note: '형태 판정 건너뜀', remaining: null, failures: [] };
+  try {
+    form = await runPostFormPass();
+  } catch (e) {
+    form = { saved: 0, remaining: null, failures: [String((e && e.message) || e).slice(0, 120)],
+      note: '형태 판정 실패 — ' + String((e && e.message) || e).slice(0, 60) };
+  }
+
   return res.status(200).json({
     ok: true, savedMarker, savedAi, pendingNone, batches, remaining, failures: failures.slice(0, 3),
-    note: note(res, msg),
+    formSaved: form.saved, formRemaining: form.remaining, formFailures: (form.failures || []).slice(0, 2),
+    note: note(res, msg + ' · ' + form.note),
   });
 });
 
