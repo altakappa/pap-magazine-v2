@@ -133,12 +133,71 @@ async function recentWithFaq() {
    통째로 넣으면 URL 이 8만 자를 넘어 요청 자체가 죽는다. 150개면 약 5.5KB 다. */
 const ID_CHUNK = 150;
 
+/* 이 언어의 '빈칸' 을 **id 목록 없이** 한 번에 물어볼 때 받을 최대 행 수.
+   빈칸이 이 수보다 적으면 그 한 번으로 전량을 본 것이 되고 훑기가 끝난다. */
+const PENDING_PAGE = 1000;
+
+/**
+ * 이 언어의 빈칸(faq is null) content_id 를 **한 방에** 받는다.
+ * @returns {{set:Set<string>, full:boolean}|null} full=true 면 더 있을 수 있다(=전량 아님).
+ *   질의가 실패하면 null — 부르는 쪽이 종전 훑기로 되돌아간다.
+ */
+async function pendingIdSet(lang) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('seo_translations')
+      .select('content_id')
+      .eq('kind', 'editorial')
+      .eq('lang', lang)
+      .is('faq', null)
+      .limit(PENDING_PAGE);
+    if (error) return null;
+    const rows = data || [];
+    return { set: new Set(rows.map((r) => r.content_id)), full: rows.length >= PENDING_PAGE };
+  } catch (_) { return null; }
+}
+
 /**
  * 이 언어에서 아직 FAQ 가 안 채워진 화보를 need 개만큼 고른다.
  * srcMap 은 최신순이므로 앞에서부터 훑는다 — 인용 가능성이 높은 쪽을 먼저 채운다.
+ *
+ * ■ 왜 두 갈래인가 (2026-09-08 · 화요일 견고화)
+ * 종전에는 언제나 srcMap 의 id 2,300개를 150개씩 잘라 **16번** 물었다.
+ * 채울 게 많을 때는 첫 묶음에서 need 를 채우고 멈추므로 싸다. 문제는 **다 끝난
+ * 뒤**다 — 걸리는 게 하나도 없으니 16번을 끝까지 다 돌고 빈손으로 나온다.
+ * 그 빈손이 회차마다 24번(12파도 x 2언어) 반복돼 **384번**의 왕복이 된다.
+ * 실측(2026-09-01~09-08): backfill-editorial-faq 1,003회가 '완주' 를 찍으면서
+ * 회차당 76.8초를 썼다 — 주당 21.5시간. 만든 것은 0건이다.
+ * ("돌았다 != 했다" 의 사촌: **끝났는데도 계속 돈다.**)
+ *
+ * 그래서 질문을 뒤집는다. "이 2,300개 중 빈칸이 있나" 대신
+ * "이 언어의 빈칸이 누구냐" 를 한 번 묻고 srcMap 과 메모리에서 겹친다.
+ * 지금 빈칸은 언어당 5~223개라 한 번이면 전량이 온다 → 16번이 1번이 된다.
+ *
+ * 빈칸이 PENDING_PAGE 를 넘으면 한 번으로 다 못 본 것이므로 **종전 훑기로
+ * 되돌아간다.** 백로그가 큰 시절의 동작은 글자 그대로 그대로다.
+ * 즉 이 갈래는 느린 쪽만 빠르게 하고, 빠른 쪽은 건드리지 않는다.
+ *
+ * 고르는 **순서와 결과는 종전과 같다** — 두 길 모두 srcMap(최신순)을 앞에서부터
+ * 훑어 빈칸인 것을 need 개 담는다. 바뀌는 건 '빈칸이냐' 를 어디서 묻느냐뿐이다.
  */
 async function pickPending(lang, srcMap, need) {
   const ids = Array.from(srcMap.keys());
+
+  /* ① 싼 길 — 빈칸이 한 페이지 안에 다 들어올 때만 쓴다. */
+  const pending = await pendingIdSet(lang);
+  if (pending && !pending.full) {
+    const cheap = [];
+    if (!pending.set.size) return cheap;          // 정말 아무것도 없다 — 여기서 끝
+    for (const id of ids) {
+      if (pending.set.has(id)) cheap.push(id);
+      if (cheap.length >= need) break;
+    }
+    return cheap;
+  }
+
+  /* ② 되돌아가는 길 — 빈칸이 많거나(첫 페이지가 꽉 참) 질의가 실패했을 때.
+     id 를 통째로 .in() 에 넣지 않는다(URL 8만 자). ID_CHUNK 단위로 자른다. */
   const take = [];
   for (let i = 0; i < ids.length && take.length < need; i += ID_CHUNK) {
     const chunk = ids.slice(i, i + ID_CHUNK);
@@ -534,4 +593,4 @@ async function runEditorialFaqI18nBatch({ batch = 8, timeoutMs = 90000, model, n
   };
 }
 
-module.exports = { runEditorialFaqI18nBatch, runOneLang, pickPending, countPendingSafe, ID_CHUNK, CALL_TIMEOUT_MS, rotatedLangs, ROTATE_SLOT_MS, recentWithFaq, recentLimit, TARGET_LANGS, CONCURRENCY, MAX_WAVES, MAX_LAPS };
+module.exports = { runEditorialFaqI18nBatch, runOneLang, pickPending, pendingIdSet, PENDING_PAGE, countPendingSafe, ID_CHUNK, CALL_TIMEOUT_MS, rotatedLangs, ROTATE_SLOT_MS, recentWithFaq, recentLimit, TARGET_LANGS, CONCURRENCY, MAX_WAVES, MAX_LAPS };

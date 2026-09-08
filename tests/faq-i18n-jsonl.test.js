@@ -52,14 +52,25 @@ let trRows = [];          // seo_translations 조회 결과
 const inCalls = [];       // .in() 에 한 번에 넣은 id 개수 (URL 길이 감시)
 
 const EDI = [{ id: 'e1', faq: KO }, { id: 'e2', faq: KO }];
-function stub() {
+/* 2026-09-08 — 스텁이 표를 구분하게 했다. pickPending 이 seo_translations 에
+   **id 목록 없이** 한 번 묻는 싼 길이 생겼는데, 표를 안 가르면 그 질의가 화보
+   행(EDI)을 받아 가 버린다. 가짜가 진짜보다 헐거우면 시험이 거짓말을 한다. */
+let limitRows = null;     // seo_translations 의 .limit() 응답. null 이면 trRows 를 쓴다.
+const limitCalls = [];    // 싼 길이 몇 번 불렸나
+function stub(table) {
   const q = {
     select() { return q; }, eq() { return q; }, not() { return q; }, order() { return q; },
     is() { return q; },
     /* 대상 화보를 페이지로 받는다 (범위가 전량이 되면서 .limit 하나로는 못 받는다) */
     range() { return Promise.resolve({ data: EDI, error: null }); },
     in(_c, list) { inCalls.push((list || []).length); return Promise.resolve({ data: trRows, error: null }); },
-    limit() { return Promise.resolve({ data: EDI, error: null }); },
+    limit(n) {
+      if (table === 'seo_translations') {
+        limitCalls.push(n);
+        return Promise.resolve({ data: limitRows === null ? trRows : limitRows, error: null });
+      }
+      return Promise.resolve({ data: EDI, error: null });
+    },
     /* head:true 개수 질의 — 체인 끝에서 바로 await 된다 */
     then(res, rej) { return Promise.resolve({ count: trRows.length, data: null, error: null }).then(res, rej); },
     update(v) {
@@ -69,7 +80,7 @@ function stub() {
   };
   return q;
 }
-inject(path.join(ROOT, 'api', '_lib', 'supabase.js'), { supabaseAdmin: { from: () => stub() } });
+inject(path.join(ROOT, 'api', '_lib', 'supabase.js'), { supabaseAdmin: { from: (table) => stub(table) } });
 
 let reply = '';
 const REAL = require(path.join(ROOT, 'api', '_lib', 'seoTranslateBackfill.js'));
@@ -237,13 +248,75 @@ const srcMap = new Map([['e1', KO], ['e2', KO]]);
      URL 이 그만큼 길면 요청이 통째로 죽는다. */
   const big = new Map();
   for (let i = 0; i < 400; i++) big.set('id-' + i, KO);
+  /* 빈칸이 한 페이지를 꽉 채우면 '싼 길' 로는 전량을 못 본다 → 종전 훑기로 되돌아간다.
+     그 되돌아가는 길에서도 URL 이 안 터지는지가 여기서 지키는 것이다. */
+  limitRows = new Array(i18n.PENDING_PAGE).fill(0).map((_, i) => ({ content_id: 'x-' + i }));
   trRows = [];                       // 아무것도 안 걸리게 해서 전 구간을 훑게 한다
   inCalls.length = 0;
   await i18n.pickPending('it', big, 5);
   t('.in() 한 번에 넣는 id 수가 상한 이하다 (URL 폭발 방지)',
     inCalls.length > 1 && Math.max.apply(null, inCalls) <= i18n.ID_CHUNK,
     { 호출: inCalls.length, 최대: Math.max.apply(null, inCalls), 상한: i18n.ID_CHUNK });
+  limitRows = null;
   trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
+
+  /* ─────────────────────────────────────────────────────────────────
+     [8.5] 끝난 뒤에도 계속 도는 것 — 2026-09-08 화요일 견고화
+
+     실측(2026-09-01~09-08): backfill-editorial-faq 가 1,008회 돌아
+     1,003회 '완주' 를 찍었는데 회차당 76.8초를 썼다. 주당 21.5시간이고
+     생산은 0건이다. 범인은 pickPending 이었다 — 걸리는 게 없으면 id 2,300개를
+     150개씩 잘라 **16번**을 끝까지 다 훑고 빈손으로 나왔다. 그 빈손이 회차마다
+     24번(12파도 x 2언어) 반복돼 384번의 왕복이 됐다.
+
+     여기서 지키는 것: **할 일이 없을 때 훑지 않는다.**
+     ('돌았다 != 했다' 의 사촌 — 끝났는데도 계속 돈다.)                     */
+  console.log('\n[8.5] 다 끝난 뒤에는 훑지 않는다 (2026-09-08 견고화)');
+
+  inCalls.length = 0; limitCalls.length = 0;
+  trRows = [];                                   // 이 언어는 빈칸이 하나도 없다
+  const none = await i18n.pickPending('it', big, 5);
+  t('빈칸이 없으면 한 건도 안 고른다', none.length === 0, none);
+  t('빈칸이 없으면 .in() 훑기를 아예 안 한다  ← 이 커밋의 핵심',
+    inCalls.length === 0, { in호출: inCalls.length });
+  t('대신 싼 질의 한 번으로 끝낸다', limitCalls.length === 1, { limit호출: limitCalls.length });
+
+  /* 회차 전체로도 확인한다 — 언어 7개 x 파도 12번이 곱해지는 자리다. */
+  inCalls.length = 0; limitCalls.length = 0;
+  const idleRun = await i18n.runEditorialFaqI18nBatch({ batch: 6, timeoutMs: 120000, model: 'm', now: 0 });
+  t('완주 회차 전체에서 .in() 왕복이 0 이다 (종전 384번)',
+    inCalls.length === 0, { in호출: inCalls.length });
+  t('완주 회차가 아무것도 안 만든다 (동작은 그대로)', idleRun.processed === 0, idleRun.processed);
+
+  /* 싼 길이 고르는 결과가 종전 훑기와 **같아야** 한다. 빨라도 다르면 실패다. */
+  inCalls.length = 0; limitCalls.length = 0;
+  trRows = [{ content_id: 'id-3' }, { content_id: 'id-1' }];
+  const cheap = await i18n.pickPending('it', big, 5);
+  t('싼 길도 srcMap(최신순) 차례대로 고른다', cheap.join(',') === 'id-1,id-3', cheap);
+  t('싼 길에는 .in() 이 없다', inCalls.length === 0, inCalls.length);
+
+  const need1 = await i18n.pickPending('it', big, 1);
+  t('need 를 넘겨 고르지 않는다', need1.length === 1 && need1[0] === 'id-1', need1);
+
+  /* 질의가 깨지면 조용히 0을 반환하지 않고 **종전 훑기로 되돌아간다.** */
+  inCalls.length = 0;
+  const savedFrom = require(path.join(ROOT, 'api', '_lib', 'supabase.js')).supabaseAdmin.from;
+  require(path.join(ROOT, 'api', '_lib', 'supabase.js')).supabaseAdmin.from = (table) => {
+    const q = stub(table);
+    if (table === 'seo_translations') q.limit = () => Promise.resolve({ data: null, error: { message: 'boom' } });
+    return q;
+  };
+  const fellBack = await i18n.pickPending('it', big, 5);
+  require(path.join(ROOT, 'api', '_lib', 'supabase.js')).supabaseAdmin.from = savedFrom;
+  /* 스텁은 어느 묶음에나 같은 행을 돌려주므로 고른 개수 자체는 스텁의 성질이다.
+     여기서 보는 것은 하나다 — **훑기가 실제로 돌았고 빈손으로 끝나지 않았다.** */
+  t('싼 질의가 실패하면 종전 훑기로 되돌아간다 (조용한 0 금지)',
+    inCalls.length > 0 && fellBack.length > 0
+    && Math.max.apply(null, inCalls) <= i18n.ID_CHUNK,
+    { in호출: inCalls.length, 고름: fellBack.length });
+
+  trRows = [{ content_id: 'e1', faq: null }, { content_id: 'e2', faq: null }];
+  limitRows = null;
 
   console.log('\n[8] 라이브에서 터진 것 두 개 (2026-09-02 14시대 실측)');
   /* ■ 무엇이 터졌나
