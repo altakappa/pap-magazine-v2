@@ -10,6 +10,8 @@
  */
 
 const SITE = 'https://www.pap-magazine.com';
+/* 2026-09-07 — 기사 SSR→SPA 다리 스위치. 기본 꺼짐(기사는 SSR 에 머문다). 되돌릴 때만 env 로 켠다. */
+const ARTICLE_BOUNCE = process.env.SSR_ARTICLE_BOUNCE === '1';
 
 /* 2단계 상품매칭 — 품목 매핑의 단일 출처는 affiliateUrl.js 다. 여기서는
    "매핑 가능한 품목인가"의 판정에만 쓴다 (칩 표기·?item= 전달 게이트). */
@@ -2048,7 +2050,14 @@ ${ogImage && !(cfg.schemaType === 'VideoObject' && isValidYtId)
 </style>
 </head>
 <body class="seo-loading seo-kind-${kind}">
-${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #178 / #233 — Real-browser redirect bridge.
+${(kind === 'article' && !ARTICLE_BOUNCE) ? `<!-- 2026-09-07 — 기사는 SSR 에 머문다 (도메니코 결정, 8/8 결정의 번복).
+     서치콘솔 코어 웹 바이탈: 기사 URL 26,703개 전부 실패 (CLS 0.41 · LCP 4초+ · INP 200ms+, 모바일·데스크톱 모두).
+     원인은 아래 다리(브릿지)였다: 사람은 SSR 기사(자원 22개 · 4KB)를 받자마자 JS 로 홈 SPA(자원 134개 · 800KB ·
+     스크립트 36개)로 튕겨 오버레이를 여는데, 그 두 번째 로드가 LCP 를 늦추고 오버레이가 홈 위에 얹히며 CLS 를 만들고
+     SPA 부트가 INP 를 먹는다. SSR 기사는 7/22 에 SPA 디자인으로 통일됐고 헤더·본문·갤러리·FAQ·좋아요/댓글·관련기사가
+     전부 있으므로 최종 화면으로 충분하다. 되돌리기: Vercel env SSR_ARTICLE_BOUNCE=1 (화보·필름은 그대로 다리를 건넌다).
+     판정: 28일 뒤 서치콘솔 코어 웹 바이탈 기사 그룹. -->` : ''}
+${(kind === 'editorial' || kind === 'film' || (kind === 'article' && ARTICLE_BOUNCE)) ? `<!-- QA #178 / #233 — Real-browser redirect bridge.
      The SSR HTML above + meta tags is what crawlers / social-preview
      scrapers consume (they don't run JS). Real users instead get sent to
      the SPA homepage with the kind-specific deep-link, which renders the

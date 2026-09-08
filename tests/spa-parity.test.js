@@ -50,8 +50,23 @@ const slugSsr = R('api/seo/article/[slug].js');
 
 console.log('\n[1] 기사 브릿지 — 직접 진입도 사이트 내 클릭과 같은 화면');
 {
-  t('브릿지가 article 을 포함한다',
-    /kind === 'editorial' \|\| kind === 'film' \|\| kind === 'article'/.test(seo));
+  /* 2026-09-07 — 기사는 기본적으로 SSR 에 머문다(코어 웹 바이탈 26,703 URL 전부 실패의 원인이 다리였다).
+     다리는 env SSR_ARTICLE_BOUNCE=1 일 때만 기사에 붙는다. 화보·필름은 그대로. */
+  t('브릿지는 화보·필름 + (env 켰을 때만) 기사',
+    /kind === 'editorial' \|\| kind === 'film' \|\| \(kind === 'article' && ARTICLE_BOUNCE\)/.test(seo));
+  t('기사 SSR 머무름 스위치는 env 한 줄 (SSR_ARTICLE_BOUNCE)', /process\.env\.SSR_ARTICLE_BOUNCE === '1'/.test(seo));
+  t('기사 머무름 근거가 주석에 남아 있다 (코어 웹 바이탈)', /코어 웹 바이탈: 기사 URL 26,703개/.test(seo));
+  {
+    /* 실제 렌더로 확인: 기본(env 없음)에서 기사 HTML 에 location.replace 다리가 없다 */
+    const { renderSeoHtml } = require(path.join(ROOT, 'api', '_lib', 'seoRenderer.js'));
+    const rec = { id: '11111111-1111-4111-8111-111111111111', slug: 'stay-test', title: '머무름', title_en: 'Stay', description: 'x', description_en: 'x', created_at: '2026-09-07' };
+    const a = renderSeoHtml('article', rec, { lang: 'ko' });
+    const e = renderSeoHtml('editorial', rec, { lang: 'ko' });
+    t('렌더된 기사 HTML 에 SPA 다리(location.replace)가 없다', !/window\.location\.replace\(target\)/.test(a));
+    t('렌더된 기사 HTML 에 머무름 주석이 있다', /기사는 SSR 에 머문다/.test(a));
+    t('화보 HTML 에는 다리가 그대로 있다', /window\.location\.replace\(target\)/.test(e));
+    t('기사 조회 비콘은 살아 있다 (다리가 없으니 SSR 표면으로 집계)', /surface=ssr/.test(a));
+  }
   t("기사 파람은 'art'", /kind === 'article' \? 'art' : 'ed'/.test(seo));
   t('artid(uuid) 안전핀을 싣는다 — 전량 동기화(수 초)보다 빨리 열기 위해',
     /'&artid=' \+ String\(record\.id\)/.test(seo));
