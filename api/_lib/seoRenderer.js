@@ -103,6 +103,14 @@ const NICHE_IG = [
   [/\bart\b|photograph|exhibit|gallery/i, 'papstudios_', '아트'],
   [/culture|life|trend|film|movie|book/i, 'pap_trends',  '컬처·트렌드'],
 ];
+// 2026-09-10 주제어가 한글 그대로 다른 언어 문장에 끼어들었다("Altro 뷰티 su"). 언어별 주제어.
+const NICHE_TOPIC_T = {
+  '뷰티':      { en: 'beauty', de: 'Beauty', it: 'beauty', fr: 'beauté', es: 'belleza', ja: 'ビューティー', zh: '美妆', ru: 'бьюти' },
+  '패션':      { en: 'fashion', de: 'Fashion', it: 'moda', fr: 'mode', es: 'moda', ja: 'ファッション', zh: '时尚', ru: 'мода' },
+  '셀럽·뮤직': { en: 'celebrity & music', de: 'Celebrity & Musik', it: 'celebrity e musica', fr: 'célébrités et musique', es: 'celebridades y música', ja: 'セレブ・ミュージック', zh: '名人与音乐', ru: 'знаменитости и музыка' },
+  '아트':      { en: 'art', de: 'Kunst', it: 'arte', fr: 'art', es: 'arte', ja: 'アート', zh: '艺术', ru: 'арт' },
+  '컬처·트렌드': { en: 'culture & trends', de: 'Kultur & Trends', it: 'cultura e tendenze', fr: 'culture et tendances', es: 'cultura y tendencias', ja: 'カルチャー・トレンド', zh: '文化与趋势', ru: 'культура и тренды' },
+};
 /* 본문(content) → 평문. record.content 는 세 형태로 온다:
    (a) HTML/평문 문자열 (b) 블록 JSON 문자열 (c) 블록 배열.
    JSON-LD articleBody 와 meta description 두 곳에서 쓰므로 모듈 스코프로 뺐다
@@ -193,9 +201,12 @@ function nicheIg(category) {
   return null;
 }
 // 카테고리별 맞춤 CTA 문구용 — { acct, topic }. 매칭 없으면 null.
-function nicheMeta(category) {
+function nicheMeta(category, lang) {
   const c = String(category || '');
-  for (const [re, acct, topic] of NICHE_IG) if (re.test(c)) return { acct, topic };
+  for (const [re, acct, topic] of NICHE_IG) if (re.test(c)) {
+    const t = (lang && lang !== 'ko' && NICHE_TOPIC_T[topic] && NICHE_TOPIC_T[topic][lang]) || topic;
+    return { acct, topic: t };
+  }
   return null;
 }
 
@@ -663,6 +674,9 @@ const TLDR_LABEL = {
   es: 'Resumen · TL;DR', it: 'In breve · TL;DR', de: 'Kurz gefasst · TL;DR',
   zh: '摘要 · TL;DR', ru: 'Кратко · TL;DR',
 };
+
+// 2026-09-10 Fashion 칩의 '구매' 버튼 — 언어와 무관하게 한글이었다. 9개 언어.
+const BUY_CHIP_T = { ko: '구매', en: 'Shop', de: 'Kaufen', it: 'Acquista', fr: 'Acheter', es: 'Comprar', ja: '購入', zh: '购买', ru: 'Купить' };
 
 function renderSeoHtml(kind, record, opts) {
   const cfg = KIND[kind] || KIND.editorial;
@@ -1480,7 +1494,7 @@ function renderSeoHtml(kind, record, opts) {
           if (!/^[a-z0-9._]{2,30}$/.test(bare.toLowerCase())) {
             return `<span class="ed-fashion-pair"><span class="ed-fashion-chip">${escText(h)}</span></span>`;
           }
-          return `<span class="ed-fashion-pair"><a class="ed-fashion-chip" href="https://www.instagram.com/${escAttr(bare)}/" target="_blank" rel="noopener noreferrer">${escText(h)}</a><a class="ed-buy-chip" href="/go/${encodeURIComponent(bare.toLowerCase())}" target="_blank" rel="sponsored nofollow noopener">구매</a></span>`;
+          return `<span class="ed-fashion-pair"><a class="ed-fashion-chip" href="https://www.instagram.com/${escAttr(bare)}/" target="_blank" rel="noopener noreferrer">${escText(h)}</a><a class="ed-buy-chip" href="/go/${encodeURIComponent(bare.toLowerCase())}" target="_blank" rel="sponsored nofollow noopener">${BUY_CHIP_T[lang] || BUY_CHIP_T.en}</a></span>`;
         }).join('') +
       '</div></section>'
     : '';
@@ -1497,18 +1511,29 @@ function renderSeoHtml(kind, record, opts) {
   /* 2단계 상품매칭 (2026-08-17) — 크레딧에 품목이 있으면 칩에 표기하고
    * /go 에 ?item= 으로 넘긴다. URL 매핑은 서버(affiliateUrl.js) 한 곳에서만. */
   const shopItems = kind === 'editorial' ? extractBrandItems(record) : {};
+  // 2026-09-10 Shop the Story 칩·수수료 안내 — ko/en 삼항이라 다른 7개 언어가 영어로 떨어졌다. 9개 언어 사전.
+  const SHOP_T = {
+    ko: { item: (i) => `${i} 구매 →`, buy: '구매 →', fee: '링크를 통해 구매 시 PAP에 수수료가 지급될 수 있습니다.' },
+    en: { item: (i) => `Shop ${i} →`, buy: 'Shop →', fee: 'PAP may earn a commission on purchases made through these links.' },
+    de: { item: (i) => `${i} kaufen →`, buy: 'Kaufen →', fee: 'PAP erhält möglicherweise eine Provision für Käufe über diese Links.' },
+    it: { item: (i) => `Acquista ${i} →`, buy: 'Acquista →', fee: 'PAP potrebbe ricevere una commissione sugli acquisti effettuati tramite questi link.' },
+    fr: { item: (i) => `Acheter ${i} →`, buy: 'Acheter →', fee: 'PAP peut percevoir une commission sur les achats effectués via ces liens.' },
+    es: { item: (i) => `Comprar ${i} →`, buy: 'Comprar →', fee: 'PAP puede recibir una comisión por las compras realizadas a través de estos enlaces.' },
+    ja: { item: (i) => `${i} を購入 →`, buy: '購入 →', fee: 'リンク経由の購入により PAP に手数料が支払われる場合があります。' },
+    zh: { item: (i) => `购买 ${i} →`, buy: '购买 →', fee: '通过这些链接购买时，PAP 可能会获得佣金。' },
+    ru: { item: (i) => `Купить ${i} →`, buy: 'Купить →', fee: 'PAP может получать комиссию с покупок, совершённых по этим ссылкам.' },
+  };
+  const ST = SHOP_T[lang] || SHOP_T.en;
   const shopHtml = shopBrands.length
     ? '<section class="seo-shop" style="margin:36px 0 0;padding:24px;border:1px solid rgba(255,255,255,.16)">' +
       '<h2 style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin:0 0 12px;font-weight:700">Shop the Story</h2>' +
       '<div>' + shopBrands.slice(0, 12).map(b => {
         const item = shopItems[b.toLowerCase()] || '';
         const q = item ? '?item=' + encodeURIComponent(item) : '';
-        const tail = item
-          ? (lang === 'ko' ? `${escText(item)} 구매 →` : `Shop ${escText(item)} →`)
-          : (lang === 'ko' ? '구매 →' : 'Shop →');
+        const tail = item ? ST.item(escText(item)) : ST.buy;
         return `<a href="/go/${encodeURIComponent(b.toLowerCase())}${q}" target="_blank" rel="sponsored nofollow noopener" style="display:inline-block;margin:0 8px 8px 0;padding:9px 16px;border:1px solid rgba(255,255,255,.25);font-size:12px;color:#fff;text-decoration:none;letter-spacing:.04em">${escText(b)} <span style="opacity:.55">${tail}</span></a>`;
       }).join('') + '</div>' +
-      `<div style="font-size:10.5px;color:#666;margin-top:8px">${lang === 'ko' ? '링크를 통해 구매 시 PAP에 수수료가 지급될 수 있습니다.' : 'PAP may earn a commission on purchases made through these links.'}</div>` +
+      `<div style="font-size:10.5px;color:#666;margin-top:8px">${escText(ST.fee)}</div>` +
       '</section>'
     : '';
 
@@ -1794,6 +1819,7 @@ function renderSeoHtml(kind, record, opts) {
   return `<!DOCTYPE html>
 <html lang="${lang}" prefix="og: https://ogp.me/ns#">
 <head>
+<meta name="pap-ui-i18n" content="_shared" data-v="2">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>${escText(seoTitle)}</title>
@@ -2324,7 +2350,7 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
     <aside class="ig-funnel">
       <div class="igf-kicker">PAP Magazine — Instagram</div>
       ${(() => {
-        const nm = nicheMeta(record.category);
+        const nm = nicheMeta(record.category, lang);
         // 카테고리 매칭 시: 해당 니치 채널을 주 CTA 로 앞세우고 문구도 맞춤.
         if (nm) return `<p class="igf-copy">${FT.niche(nm)}</p>
       <a class="igf-btn" href="/api/ig-out?src=ssr_niche&to=profile&url=${encodeURIComponent('https://www.instagram.com/' + nm.acct + '/')}" target="_blank" rel="noopener">Follow @${nm.acct}</a>
@@ -2371,6 +2397,8 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
 </script>
 <script src="/pap-geo-lang.js?v=2"></script>
 <script src="/cookie-consent.js" defer></script>
+<!-- 2026-09-10 하드코딩 한글 UI(구매 칩·댓글 위젯·서버 메시지)를 9개 언어로 — pap-ui-i18n.js + /i18n/ui/_shared.<lang>.json -->
+<script src="/pap-ui-i18n.js?v=3" defer></script>
 <!-- QA(2026-07) #11 — 공통 헤더/햄버거 nav 통일. pap-header.js 는 자체 CSS·함수를
      주입하는 self-contained 스크립트라 이 SSR 페이지에서도 SPA 와 동일한 헤더를
      보여준다. (에디토리얼/필름 SSR 은 위 브릿지로 SPA 리다이렉트되지만, 기사 SSR 은
@@ -2394,7 +2422,7 @@ window.__PAP_ENGAGE = ${JSON.stringify({
   image: ogImage || '',
 })};
 </script>
-<script src="/pap-engage.js?v=8" defer></script>
+<script src="/pap-engage.js?v=9" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var host = document.getElementById('papEngageMount');

@@ -171,10 +171,11 @@ window.reportContent = function(targetType, targetId){
     es: ['Spam o publicidad','Contenido inapropiado','Discurso de odio','Violación de copyright','Otro'],
     ja: ['スパムまたは広告','不適切なコンテンツ','ヘイトスピーチ','著作権侵害','その他'],
     zh: ['垃圾或广告','不当内容','仇恨言论','版权侵犯','其他'],
-    ru: ['Спам или реклама','Неуместный контент','Разжигание ненависти','Нарушение авторских прав','Другое']
+    ru: ['Спам или реклама','Неуместный контент','Разжигание ненависти','Нарушение авторских прав','Другое'],
+    de: ['Spam oder Werbung','Unangemessener Inhalt','Hassrede','Urheberrechtsverletzung','Sonstiges']
   };
   var r = reasons[lang] || reasons.en;
-  var titles = { ko:'신고 사유를 선택하세요',en:'Select a reason',it:'Seleziona un motivo',fr:'Sélectionnez un motif',es:'Seleccione un motivo',ja:'理由を選択してください',zh:'请选择举报原因',ru:'Выберите причину' };
+  var titles = { ko:'신고 사유를 선택하세요',en:'Select a reason',it:'Seleziona un motivo',fr:'Sélectionnez un motif',es:'Seleccione un motivo',ja:'理由を選択してください',zh:'请选择举报原因',ru:'Выберите причину',de:'Meldegrund auswählen' };
 
   var html = '<div id="reportModal" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:10002;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-family:Montserrat,sans-serif">';
   html += '<div style="background:#fff;padding:32px;max-width:400px;width:90%">';

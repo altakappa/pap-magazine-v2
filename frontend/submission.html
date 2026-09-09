@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<meta name="pap-ui-i18n" content="submission" data-v="2">
 <meta charset="UTF-8">
 <!-- CSP — 2b(2026-07-19): 승인된 유료/브랜디드 서브미션 기본료 Paddle 결제 오버레이용으로
      *.paddle.com 을 script/connect/frame-src 에 추가 (subscribe.html 과 동일 패턴).
@@ -407,6 +408,7 @@ body.submit-overlay-active{overflow:hidden}
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Organization","@id":"https://www.pap-magazine.com/#organization","name":"PAP Magazine","alternateName":["PAP MAGAZINE","PAP 매거진","PAP매거진","팝매거진"],"url":"https://www.pap-magazine.com","logo":"https://www.pap-magazine.com/pap-logo.png","sameAs":["https://www.instagram.com/pap_magazine/","https://x.com/papmagazine_","https://www.youtube.com/@pap-magazine","https://blog.naver.com/pap_magazine","https://www.tiktok.com/@pap_magazine"]}
 </script>
+<script src="/pap-ui-i18n.js?v=3" defer></script>
 </head>
 <body>
 <!-- Nav Overlay -->
@@ -482,7 +484,7 @@ function _showBrandAdInterstitial(ad,callback){
   if(ad.link){mediaWrap.onclick=function(){window.open(ad.link,'_blank');};}
   overlay.appendChild(mediaWrap);
   var lang=localStorage.getItem('pap-lang')||'ko';
-  var skipTexts={ko:'건너뛰기',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
+  var skipTexts={ko:'건너뛰기',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过',de:'Überspringen',ru:'Пропустить'};
   var skipLabel=skipTexts[lang]||skipTexts.en;
   var skip=document.createElement('button');
   skip.style.cssText='position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
@@ -494,7 +496,7 @@ function _showBrandAdInterstitial(ad,callback){
   skip.onclick=function(){closeAd();};
   overlay.appendChild(skip);
   var premBadge=document.createElement('a');premBadge.href='/subscribe';
-  var premTexts={ko:'광고 없이 즐기기',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicità',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
+  var premTexts={ko:'광고 없이 즐기기',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicità',es:'Sin anuncios',ja:'広告なし',zh:'去除广告',de:'Werbefrei genießen',ru:'Смотреть без рекламы'};
   premBadge.textContent=premTexts[lang]||premTexts.en;
   premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.55);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
   premBadge.onmouseover=function(){this.style.color='rgba(255,255,255,.7)';};
@@ -3989,7 +3991,7 @@ document.addEventListener('DOMContentLoaded',function(){
 </script>
 <script src="/pap-utils.js?v=9"></script>
 <script src="/pap-protect.js?v=3" defer></script>
-<script src="/pap-i18n.js?v=9"></script>
+<script src="/pap-i18n.js?v=10"></script>
 <script src="/pap-auth.js?v=3"></script>
 <script src="/pap-search.js?v=5"></script>
 <script src="/pap-static.js?v=1"></script>
@@ -4001,7 +4003,7 @@ document.addEventListener('DOMContentLoaded',function(){
 <script src="/pap-content-creator-shorts.js?v=14"></script>
 <script src="/pap-content-api-sync.js?v=125"></script>
 <script src="/pap-content-seo.js?v=9"></script>
-<script src="/pap-shell-bootstrap.js?v=11"></script>
+<script src="/pap-shell-bootstrap.js?v=12"></script>
 <script src="/pap-app.js?v=20"></script>
 <script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script>
 <script src="/pap-auth-link.js?v=3" defer></script>

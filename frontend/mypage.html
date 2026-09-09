@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="mypage" data-v="1">
+<meta name="pap-ui-i18n" content="mypage" data-v="2">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP Magazine - My Page">
@@ -270,8 +270,8 @@ a{color:#fff;text-decoration:none}
 <script src="cookie-consent.js" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <style>#cookieConsent{display:none!important}</style>
-<script>window._PAP_UITR={"심사중":{"it":"In revisione","fr":"En cours d'examen","es":"En revisión","ja":"審査中","zh":"审核中","ru":"На рассмотрении","de":"In Prüfung"},"승인":{"it":"Approvato","fr":"Approuvé","es":"Aprobado","ja":"承認済み","zh":"已批准","ru":"Одобрено","de":"Genehmigt"},"발급 완료":{"it":"Emesso","fr":"Émis","es":"Emitido","ja":"発行済み","zh":"已签发","ru":"Выдано","de":"Ausgestellt"},"거절":{"it":"Rifiutato","fr":"Refusé","es":"Rechazado","ja":"却下","zh":"已拒绝","ru":"Отклонено","de":"Abgelehnt"},"촬영 예정 ":{"it":"Servizio ","fr":"Séance ","es":"Sesión ","ja":"撮影予定 ","zh":"拍摄计划 ","ru":"Съёмка ","de":"Shooting "},"풀레터 PDF 다운로드":{"it":"Scarica PDF Pull-Letter","fr":"Télécharger le PDF Pull-Letter","es":"Descargar PDF Pull-Letter","ja":"プルレターPDFをダウンロード","zh":"下载 Pull-Letter PDF","ru":"Скачать PDF pull-letter","de":"Pull-Letter-PDF herunterladen"},"신청 철회":{"it":"Annulla richiesta","fr":"Annuler la demande","es":"Cancelar solicitud","ja":"申請を取り消す","zh":"撤回申请","ru":"Отменить запрос","de":"Anfrage zurückziehen"},"수정하러 가기":{"it":"Modifica ora","fr":"Modifier maintenant","es":"Editar ahora","ja":"修正する","zh":"去修改","ru":"Изменить сейчас","de":"Jetzt bearbeiten"},"결제하기":{"it":"Paga ora","fr":"Payer maintenant","es":"Pagar ahora","ja":"支払う","zh":"去支付","ru":"Оплатить","de":"Jetzt bezahlen"},"게시물 보러가기":{"it":"Vedi il post","fr":"Voir la publication","es":"Ver publicación","ja":"投稿を見る","zh":"查看帖子","ru":"Смотреть публикацию","de":"Beitrag ansehen"},"사유 확인":{"it":"Vedi motivo","fr":"Voir la raison","es":"Ver motivo","ja":"理由を確認","zh":"查看原因","ru":"Посмотреть причину","de":"Grund ansehen"}};window._papUIL=function(ko,en){var l;try{l=localStorage.getItem('pap-lang')||'ko';}catch(e){l='ko';}if(l==='ko')return ko;var m=window._PAP_UITR[ko];return (m&&m[l])||en;};</script>
-<script src="/pap-ui-i18n.js?v=2" defer></script>
+<script>window._PAP_UITR={"심사중":{"it":"In revisione","fr":"En cours d'examen","es":"En revisión","ja":"審査中","zh":"审核中","ru":"На рассмотрении","de":"In Prüfung"},"승인":{"it":"Approvato","fr":"Approuvé","es":"Aprobado","ja":"承認済み","zh":"已批准","ru":"Одобрено","de":"Genehmigt"},"발급 완료":{"it":"Emesso","fr":"Émis","es":"Emitido","ja":"発行済み","zh":"已签发","ru":"Выдано","de":"Ausgestellt"},"거절":{"it":"Rifiutato","fr":"Refusé","es":"Rechazado","ja":"却下","zh":"已拒绝","ru":"Отклонено","de":"Abgelehnt"},"촬영 예정 ":{"it":"Servizio ","fr":"Séance ","es":"Sesión ","ja":"撮影予定 ","zh":"拍摄计划 ","ru":"Съёмка ","de":"Shooting "},"풀레터 PDF 다운로드":{"it":"Scarica PDF Pull-Letter","fr":"Télécharger le PDF Pull-Letter","es":"Descargar PDF Pull-Letter","ja":"プルレターPDFをダウンロード","zh":"下载 Pull-Letter PDF","ru":"Скачать PDF pull-letter","de":"Pull-Letter-PDF herunterladen"},"신청 철회":{"it":"Annulla richiesta","fr":"Annuler la demande","es":"Cancelar solicitud","ja":"申請を取り消す","zh":"撤回申请","ru":"Отменить запрос","de":"Anfrage zurückziehen"},"수정하러 가기":{"it":"Modifica ora","fr":"Modifier maintenant","es":"Editar ahora","ja":"修正する","zh":"去修改","ru":"Изменить сейчас","de":"Jetzt bearbeiten"},"결제하기":{"it":"Paga ora","fr":"Payer maintenant","es":"Pagar ahora","ja":"支払う","zh":"去支付","ru":"Оплатить","de":"Jetzt bezahlen"},"게시물 보러가기":{"it":"Vedi il post","fr":"Voir la publication","es":"Ver publicación","ja":"投稿を見る","zh":"查看帖子","ru":"Смотреть публикацию","de":"Beitrag ansehen"},"사유 확인":{"it":"Vedi motivo","fr":"Voir la raison","es":"Ver motivo","ja":"理由を確認","zh":"查看原因","ru":"Посмотреть причину","de":"Grund ansehen"}};window._papUIL=function(ko,en){var l;try{l=localStorage.getItem('pap-lang')||'ko';}catch(e){l='ko';}if(l==='ko')return ko;var m=window._PAP_UITR[ko];if(m&&m[l])return m[l];if(typeof window._papUiI18nTranslate==='function'){var t=window._papUiI18nTranslate(ko);if(t)return t;}return l==='en'?en:ko;};</script>
+<script src="/pap-ui-i18n.js?v=3" defer></script>
 </head>
 <body>
 
@@ -948,11 +948,11 @@ function loadActivityStats(user){
 // freshly minted on each fetch).
 function _plBadge(status){
   var labels = {
-    pending: { ko:'심사중', en:'Pending', cls:'pending' },
-    approved:{ ko:'승인',   en:'Approved', cls:'approved' },
-    issued:  { ko:'발급 완료', en:'Issued', cls:'approved' },
-    rejected:{ ko:'거절',   en:'Rejected', cls:'rejected' },
-    revision:{ ko:'수정 요청', en:'Revision requested', cls:'pending' },
+    pending: { ko:'심사중', en:'Pending', cls:'pending', de:'In Prüfung', it:'In valutazione', fr:'En cours d\'examen', es:'En revisión', ja:'審査中', zh:'审核中', ru:'На рассмотрении' },
+    approved:{ ko:'승인',   en:'Approved', cls:'approved', de:'Genehmigen', it:'Approva', fr:'Approuver', es:'Aprobar', ja:'承認', zh:'通过', ru:'Одобрить' },
+    issued:  { ko:'발급 완료', en:'Issued', cls:'approved', de:'Ausgestellt', it:'Emesso', fr:'Émis', es:'Emitido', ja:'発行完了', zh:'已发放', ru:'Выдано' },
+    rejected:{ ko:'거절',   en:'Rejected', cls:'rejected', de:'Ablehnen', it:'Rifiuta', fr:'Refuser', es:'Rechazar', ja:'拒否', zh:'拒绝', ru:'Отклонить' },
+    revision:{ ko:'수정 요청', en:'Revision requested', cls:'pending', de:'Änderung angefordert', it:'Modifica richiesta', fr:'Modification demandée', es:'Modificación solicitada', ja:'修正依頼', zh:'修改请求', ru:'Запрос на доработку' },
   };
   var b = labels[status] || labels.pending;
   return '<span class="mp-badge ' + b.cls + '">' + _papUIL(b.ko,b.en) + '</span>';
@@ -1460,14 +1460,14 @@ function _mpDeriveStatus(s){
 var _MP_STATUS_META = {
   // 결제 승인 미완 — 결제 대기와 같은 솔리드 골드로 강조한다. 작가가 "내가 할 일이
   // 남아 있다" 는 것을 한눈에 알아야 한다(2026-08-13).
-  authorization_required: { ko:'결제 승인 필요', en:'Authorization needed', fg:'#000', bg:'#c9a86a', bd:'#c9a86a' },
-  pending:          { ko:'대기 중',          en:'Pending',           fg:'rgba(255,180,50,.95)',  bg:'rgba(255,180,50,.1)',  bd:'rgba(255,180,50,.4)'  },
-  resubmitted:      { ko:'보완 완료',        en:'Resubmitted',       fg:'rgba(100,150,255,.95)', bg:'rgba(100,150,255,.1)', bd:'rgba(100,150,255,.4)' },
-  revision:         { ko:'보완 요청',        en:'Revision requested',fg:'rgba(100,150,255,.95)', bg:'rgba(100,150,255,.1)', bd:'rgba(100,150,255,.4)' },
-  payment_required: { ko:'게재료 결제 대기', en:'Payment required',  fg:'#000',                  bg:'#c9a86a',              bd:'#c9a86a'              },
-  final_approved:   { ko:'최종 승인',        en:'Approved',          fg:'rgba(120,220,160,.95)', bg:'rgba(120,220,160,.1)', bd:'rgba(120,220,160,.4)' },
-  uploaded:         { ko:'업로드 완료',      en:'Published',         fg:'rgba(100,200,255,.95)', bg:'rgba(100,200,255,.1)', bd:'rgba(100,200,255,.4)' },
-  rejected:         { ko:'거절',             en:'Rejected',          fg:'rgba(255,107,107,.95)', bg:'rgba(255,107,107,.1)', bd:'rgba(255,107,107,.4)' }
+  authorization_required: { ko:'결제 승인 필요', en:'Authorization needed', fg:'#000', bg:'#c9a86a', bd:'#c9a86a', de:'Zahlungsfreigabe erforderlich', it:'Approvazione del pagamento richiesta', fr:'Approbation du paiement requise', es:'Se requiere aprobación del pago', ja:'決済の承認が必要', zh:'需要支付确认', ru:'Требуется подтверждение оплаты' },
+  pending:          { ko:'대기 중',          en:'Pending',           fg:'rgba(255,180,50,.95)',  bg:'rgba(255,180,50,.1)',  bd:'rgba(255,180,50,.4)', de:'Ausstehend', it:'In attesa', fr:'En attente', es:'Pendiente', ja:'待機中', zh:'等待中', ru:'В ожидании'  },
+  resubmitted:      { ko:'보완 완료',        en:'Resubmitted',       fg:'rgba(100,150,255,.95)', bg:'rgba(100,150,255,.1)', bd:'rgba(100,150,255,.4)', de:'Überarbeitung abgeschlossen', it:'Integrazione completata', fr:'Modification effectuée', es:'Modificación completada', ja:'修正完了', zh:'补充完成', ru:'Доработка завершена' },
+  revision:         { ko:'보완 요청',        en:'Revision requested',fg:'rgba(100,150,255,.95)', bg:'rgba(100,150,255,.1)', bd:'rgba(100,150,255,.4)', de:'Nachbesserung angefordert', it:'Richiesta di integrazione', fr:'Compléments demandés', es:'Corrección solicitada', ja:'修正依頼', zh:'要求补充', ru:'Запрошена доработка' },
+  payment_required: { ko:'게재료 결제 대기', en:'Payment required',  fg:'#000',                  bg:'#c9a86a',              bd:'#c9a86a', de:'Zahlung der Veröffentlichungsgebühr ausstehend', it:'Pagamento della quota di pubblicazione in attesa', fr:'Paiement des frais de publication en attente', es:'Pago de la tarifa de publicación pendiente', ja:'掲載料のお支払い待ち', zh:'待支付刊登费用', ru:'Ожидается оплата публикации'              },
+  final_approved:   { ko:'최종 승인',        en:'Approved',          fg:'rgba(120,220,160,.95)', bg:'rgba(120,220,160,.1)', bd:'rgba(120,220,160,.4)', de:'Endgültige Freigabe', it:'Approvazione finale', fr:'Approbation finale', es:'Aprobación final', ja:'最終承認', zh:'最终批准', ru:'Окончательное одобрение' },
+  uploaded:         { ko:'업로드 완료',      en:'Published',         fg:'rgba(100,200,255,.95)', bg:'rgba(100,200,255,.1)', bd:'rgba(100,200,255,.4)', de:'Upload abgeschlossen', it:'Caricamento completato', fr:'Envoi terminé', es:'Subida completada', ja:'アップロード完了', zh:'上传完成', ru:'Загрузка завершена' },
+  rejected:         { ko:'거절',             en:'Rejected',          fg:'rgba(255,107,107,.95)', bg:'rgba(255,107,107,.1)', bd:'rgba(255,107,107,.4)', de:'Ablehnen', it:'Rifiuta', fr:'Refuser', es:'Rechazar', ja:'拒否', zh:'拒绝', ru:'Отклонить' }
 };
 function _mpDetailBadge(ds){
   var m = _MP_STATUS_META[ds] || _MP_STATUS_META.pending;
@@ -1981,7 +1981,7 @@ function setupMpSidebar(){
 <!-- QA(2026-07) #2 — 햄버거 메뉴 라벨 통일. nav 에 data-i18n 을 쓰면서
      pap-i18n.js(번역기)를 로드하지 않아 표준 메뉴가 영어 기본값으로 남던 문제.
      다른 페이지와 동일하게 번역기를 로드해 라벨을 통일한다. -->
-<script src="/pap-i18n.js?v=9" defer></script>
+<script src="/pap-i18n.js?v=10" defer></script>
 <script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29"></script>
 
 <!-- 크레딧 수정 모달 (프리미엄, 2026-08-26) -->

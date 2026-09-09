@@ -111,6 +111,15 @@
   `tests/ui-i18n-coverage.test.js` 가 페이지의 한글 텍스트 노드 전부가 사전 키에 있는지 검사해 누락을 막는다.
 - 번역 대상에서 빼려면 요소에 `translate="no"` 또는 `data-ui-i18n-skip`. 법률 페이지는 meta `data-legal="1"` (한국어 원문 구속력 안내).
 - 사전을 고치면 각 페이지 `<meta name="pap-ui-i18n" data-v>` 와 스크립트 `?v=` 를 올린다(캐시버스트).
+- **v3 (2026-09-10, 도메니코 "JS 가 동적으로 만드는 한글도 9개 언어, 단 하나도 남김 없이")**
+  · 공용 사전 `/i18n/ui/_shared.<lang>.json` — pap-*.js 공용 스크립트·서버 응답 메시지(`res.json({error:'…'})`)·SSR 셸 문자열. 모든 페이지가 페이지 사전과 함께 읽는다.
+  · 자리표시자 패턴 키 `"총 {0}장 중 {1}장이 더 있습니다"` — 런타임이 정규식으로 값을 잡아 되넣는다. 새 JS 문구가 변수를 이어 붙이면 사전 키도 그 모양으로 쓴다.
+  · 부분 일치(짧은 문자열 ≤120자, 콘텐츠 영역 밖)는 마지막 수단. 기사·화보 본문(`article, .seo-body, #artDetailDesc …`)에는 쓰지 않는다 — 한국어 문장이 뒤섞인다.
+  · `window._papUIL(ko,en)` 은 런타임이 사전 기반으로 교체한다. `alert/confirm/prompt` 메시지도 사전을 거친다.
+  · SSR 셸(seoRenderer·contributorProfile·partners·brand·archive)에도 meta+스크립트가 배선돼 있다. `/stories/:slug`(AMP)는 스크립트 금지라 제외.
+  · `{ko:'…',en:'…',…}` 미니 사전은 **8개 언어를 다 채운다**(de 만 빠져 영어로 떨어지던 사고). ko/en 두 줄짜리 블록 사전(pap-engage.js T 등)도 9개 언어.
+  · 테스트(`tests/ui-i18n-coverage.test.js`)가 프론트 JS·인라인 스크립트·SSR·API 메시지의 한글 리터럴 조각이 사전에 있는지, 미니 사전에 빠진 언어가 없는지까지 검사한다(토크나이저 `tests/_lib/jsKoreanLiterals.js`, 의존성 없음).
+  · 새 한글 문구를 JS 에 넣으면: 공용 스크립트/API 면 `_shared`, 페이지 인라인이면 그 페이지 사전 8개 파일에 같은 키를 넣는다. 번역은 세션에서 만든다(추출기 `_i18n_work/` 참고).
 
 ## 배포 검증 (커밋→푸시 이후)
 1. push 후 ~95초 대기 → Vercel 배포 READY 확인

@@ -145,6 +145,7 @@ module.exports = async function handler(req, res) {
     const html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
+<meta name="pap-ui-i18n" content="brand" data-v="2">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${esc(metaTitle)} | PAP Magazine</title>
@@ -194,6 +195,7 @@ ${JSON.stringify(schema)}
   footer a{color:rgba(255,255,255,.6);text-decoration:none;margin-right:14px}footer a:hover{color:#fff}
   @media(max-width:640px){h1{font-size:30px}.wrap{padding:56px 16px 80px}}
 </style>
+<script src="/pap-ui-i18n.js?v=3" defer></script>
 </head>
 <body>
 <div class="wrap">

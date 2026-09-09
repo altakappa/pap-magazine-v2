@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="pap-magazine-v5" data-v="1">
+<meta name="pap-ui-i18n" content="pap-magazine-v5" data-v="2">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PAP Magazine</title>
@@ -608,7 +608,7 @@ if(!window._papLangPrefix){window._papLangPrefix=function(){try{var m=String(loc
   *{box-shadow:none!important;text-shadow:none!important}
 }
 </style>
-<script src="/pap-ui-i18n.js?v=2" defer></script>
+<script src="/pap-ui-i18n.js?v=3" defer></script>
 </head>
 <body>
 
@@ -1187,7 +1187,7 @@ if(hSlides.length)setInterval(()=>heroGo(hCur+1),3000);
 
 // ======== SEARCH ========
 // ======== LANG HELPER ========
-function getLangText(key,fallback){var lang=localStorage.getItem('pap-lang')||'ko';var msgs={edAccessFree:{ko:'에디토리얼 전체보기는 스탠다드 이상 회원만 이용 가능합니다.',en:'Standard membership or above is required to browse all editorials.',it:'Per accedere a tutti gli editoriali è necessario un abbonamento Standard o superiore.',fr:'Un abonnement Standard ou supérieur est requis pour parcourir tous les éditoriaux.',es:'Se requiere una membresía Estándar o superior para ver todos los editoriales.',ja:'全エディトリアルの閲覧にはスタンダード以上の会員登録が必要です。',zh:'浏览所有社论需要标准会员或以上。',ru:'Для просмотра всех редакционных материалов требуется подписка Standard или выше.'}};var m=msgs[key];if(!m)return fallback||'';return m[lang]||m.en||fallback||'';}
+function getLangText(key,fallback){var lang=localStorage.getItem('pap-lang')||'ko';var msgs={edAccessFree:{ko:'에디토리얼 전체보기는 스탠다드 이상 회원만 이용 가능합니다.',en:'Standard membership or above is required to browse all editorials.',it:'Per accedere a tutti gli editoriali è necessario un abbonamento Standard o superiore.',fr:'Un abonnement Standard ou supérieur est requis pour parcourir tous les éditoriaux.',es:'Se requiere una membresía Estándar o superior para ver todos los editoriales.',ja:'全エディトリアルの閲覧にはスタンダード以上の会員登録が必要です。',zh:'浏览所有社论需要标准会员或以上。',ru:'Для просмотра всех редакционных материалов требуется подписка Standard или выше.',de:'Die vollständige Ansicht von Editorials steht nur Mitgliedern ab STANDARD zur Verfügung.'}};var m=msgs[key];if(!m)return fallback||'';return m[lang]||m.en||fallback||'';}
 
 function toggleSearch(){const o=document.getElementById('searchBar');if(!o)return;o.classList.toggle('active');if(o.classList.contains('active'))setTimeout(()=>document.getElementById('searchInput').focus(),300)}
 var _si=document.getElementById('searchInput');if(_si)_si.addEventListener('input',function(){searchEditorials(this.value);});
@@ -2977,21 +2977,21 @@ try{
 (function(){
   var themes=[
     {id:'dreamy',tags:['dreamy','romantic','soft','ethereal','pastel','gentle','tender','nostalgia','light','spiritual','peaceful'],
-     labels:{ko:'몽환적이고 로맨틱한',en:'Dreamy & Romantic',it:'Onirico & Romantico',fr:'Onirique & Romantique',es:'Onírico & Romántico',ja:'夢幻的でロマンティック',zh:'梦幻浪漫风格',ru:'Мечтательный и романтичный'}},
+     labels:{ko:'몽환적이고 로맨틱한',en:'Dreamy & Romantic',it:'Onirico & Romantico',fr:'Onirique & Romantique',es:'Onírico & Romántico',ja:'夢幻的でロマンティック',zh:'梦幻浪漫风格',ru:'Мечтательный и романтичный',de:'Traumhaft und romantisch'}},
     {id:'bold',tags:['bold','colorful','vibrant','intense','dramatic','fierce','powerful','maximalist','pop','energetic'],
-     labels:{ko:'강렬하고 대담한',en:'Bold & Intense',it:'Audace & Intenso',fr:'Audacieux & Intense',es:'Audaz e Intenso',ja:'大胆で強烈な',zh:'大胆前卫风格',ru:'Смелый и яркий'}},
+     labels:{ko:'강렬하고 대담한',en:'Bold & Intense',it:'Audace & Intenso',fr:'Audacieux & Intense',es:'Audaz e Intenso',ja:'大胆で強烈な',zh:'大胆前卫风格',ru:'Смелый и яркий',de:'Kraftvoll und mutig'}},
     {id:'dark',tags:['dark','moody','noir','shadow','gritty','mysterious','cinematic','urban','underground','dystopian'],
-     labels:{ko:'다크 & 시네마틱',en:'Dark & Cinematic',it:'Dark & Cinematico',fr:'Sombre & Cinématique',es:'Oscuro & Cinemático',ja:'ダーク＆シネマティック',zh:'暗黑电影风格',ru:'Тёмный и кинематографичный'}},
+     labels:{ko:'다크 & 시네마틱',en:'Dark & Cinematic',it:'Dark & Cinematico',fr:'Sombre & Cinématique',es:'Oscuro & Cinemático',ja:'ダーク＆シネマティック',zh:'暗黑电影风格',ru:'Тёмный и кинематографичный',de:'Dunkel & cineastisch'}},
     {id:'nature',tags:['warm','natural','organic','earthy','golden','desert','landscape','bohemian','flowing','sand'],
-     labels:{ko:'자연과 따뜻함',en:'Warm & Organic',it:'Caldo & Organico',fr:'Chaleureux & Organique',es:'Cálido & Orgánico',ja:'自然と温もり',zh:'自然温暖风格',ru:'Тёплый и органичный'}},
+     labels:{ko:'자연과 따뜻함',en:'Warm & Organic',it:'Caldo & Organico',fr:'Chaleureux & Organique',es:'Cálido & Orgánico',ja:'自然と温もり',zh:'自然温暖风格',ru:'Тёплый и органичный',de:'Natur und Wärme'}},
     {id:'modern',tags:['futuristic','modern','geometric','structured','clean','sleek','chrome','metallic','industrial','space','precision'],
-     labels:{ko:'미래적이고 모던한',en:'Futuristic & Modern',it:'Futuristico & Moderno',fr:'Futuriste & Moderne',es:'Futurista & Moderno',ja:'未来的でモダンな',zh:'未来摩登风格',ru:'Футуристичный и современный'}},
+     labels:{ko:'미래적이고 모던한',en:'Futuristic & Modern',it:'Futuristico & Moderno',fr:'Futuriste & Moderne',es:'Futurista & Moderno',ja:'未来的でモダンな',zh:'未来摩登风格',ru:'Футуристичный и современный',de:'Futuristisch und modern'}},
     {id:'classic',tags:['elegant','classic','refined','sophisticated','timeless','minimal','grace','beauty','muse','feminine'],
-     labels:{ko:'클래식 & 엘레강스',en:'Classic & Elegance',it:'Classico & Eleganza',fr:'Classique & Élégance',es:'Clásico & Elegancia',ja:'クラシック＆エレガンス',zh:'经典优雅风格',ru:'Классика и элегантность'}},
+     labels:{ko:'클래식 & 엘레강스',en:'Classic & Elegance',it:'Classico & Eleganza',fr:'Classique & Élégance',es:'Clásico & Elegancia',ja:'クラシック＆エレガンス',zh:'经典优雅风格',ru:'Классика и элегантность',de:'Classic & Eleganz'}},
     {id:'surreal',tags:['surreal','dreamlike','fantasy','conceptual','whimsical','artistic','abstract','creative','imaginative'],
-     labels:{ko:'초현실적 판타지',en:'Surreal Fantasy',it:'Fantasia Surrealista',fr:'Fantaisie Surréaliste',es:'Fantasía Surrealista',ja:'シュールファンタジー',zh:'超现实幻想',ru:'Сюрреалистическая фантазия'}},
+     labels:{ko:'초현실적 판타지',en:'Surreal Fantasy',it:'Fantasia Surrealista',fr:'Fantaisie Surréaliste',es:'Fantasía Surrealista',ja:'シュールファンタジー',zh:'超现实幻想',ru:'Сюрреалистическая фантазия',de:'Surreale Fantasie'}},
     {id:'royal',tags:['royal','gothic','castle','medieval','luxurious','opulent','heritage','dramatic'],
-     labels:{ko:'로열 & 고딕',en:'Royal & Gothic',it:'Reale & Gotico',fr:'Royal & Gothique',es:'Real & Gótico',ja:'ロイヤル＆ゴシック',zh:'皇家哥特风格',ru:'Королевский и готический'}}
+     labels:{ko:'로열 & 고딕',en:'Royal & Gothic',it:'Reale & Gotico',fr:'Royal & Gothique',es:'Real & Gótico',ja:'ロイヤル＆ゴシック',zh:'皇家哥特风格',ru:'Королевский и готический',de:'Royal & Gothic'}}
   ];
 
   if(typeof edData==='undefined'||!edData||!edData.length){console.warn('AI Rec: edData not found');return;}
@@ -3117,7 +3117,7 @@ try{
         var toast=document.createElement('div');
         toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:14px 28px;font-size:11px;font-weight:600;letter-spacing:.08em;z-index:99999;font-family:Montserrat,sans-serif;background:#111;color:#fff;border:1px solid #333;text-align:center;';
         var lang=localStorage.getItem('pap-lang')||'ko';
-        var msg={ko:'이미지 다운로드는 스탠다드 및 프리미엄 회원만 이용 가능합니다',en:'IMAGE DOWNLOAD IS AVAILABLE FOR STANDARD & PREMIUM MEMBERS',it:'IL DOWNLOAD DELLE IMMAGINI È DISPONIBILE PER I MEMBRI STANDARD E PREMIUM',fr:'LE TÉLÉCHARGEMENT D\'IMAGES EST RÉSERVÉ AUX MEMBRES STANDARD ET PREMIUM',es:'LA DESCARGA DE IMÁGENES ESTÁ DISPONIBLE PARA MIEMBROS ESTÁNDAR Y PREMIUM',ja:'画像ダウンロードはスタンダード・プレミアム会員のみご利用いただけます',zh:'图片下载仅限标准及高级会员使用',ru:'СКАЧИВАНИЕ ИЗОБРАЖЕНИЙ ДОСТУПНО ДЛЯ СТАНДАРТНЫХ И ПРЕМИУМ УЧАСТНИКОВ'};
+        var msg={ko:'이미지 다운로드는 스탠다드 및 프리미엄 회원만 이용 가능합니다',en:'IMAGE DOWNLOAD IS AVAILABLE FOR STANDARD & PREMIUM MEMBERS',it:'IL DOWNLOAD DELLE IMMAGINI È DISPONIBILE PER I MEMBRI STANDARD E PREMIUM',fr:'LE TÉLÉCHARGEMENT D\'IMAGES EST RÉSERVÉ AUX MEMBRES STANDARD ET PREMIUM',es:'LA DESCARGA DE IMÁGENES ESTÁ DISPONIBLE PARA MIEMBROS ESTÁNDAR Y PREMIUM',ja:'画像ダウンロードはスタンダード・プレミアム会員のみご利用いただけます',zh:'图片下载仅限标准及高级会员使用',ru:'СКАЧИВАНИЕ ИЗОБРАЖЕНИЙ ДОСТУПНО ДЛЯ СТАНДАРТНЫХ И ПРЕМИУМ УЧАСТНИКОВ',de:'Bild-Downloads stehen nur STANDARD- und PREMIUM-Mitgliedern zur Verfügung'};
         toast.textContent=msg[lang]||msg.en;
         document.body.appendChild(toast);
         setTimeout(function(){toast.style.opacity='0';toast.style.transition='opacity .3s';setTimeout(function(){toast.remove();},300);},2500);
