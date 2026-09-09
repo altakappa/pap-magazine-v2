@@ -101,7 +101,7 @@ async function _entityCluster(data) {
     const orExpr = tags.map((t) => 'tags.cs.["' + t + '"]').join(',');
     const { data: cand, error } = await supabaseAdmin
       .from('articles')
-      .select('title, slug, id, thumbnail_url, hero_image_url, tags, published_date')
+      .select('title, title_en, slug, id, thumbnail_url, hero_image_url, tags, published_date')   // 2026-09-10 title_en — 언어판 관련 카드가 한국어 제목으로 나가던 원인(overlayRelatedTitles 가 쓸 값이 없었다)
       .eq('status', 'published').neq('id', data.id).or(orExpr)
       .order('published_date', { ascending: false }).limit(CLUSTER_POOL);
     if (error || !Array.isArray(cand) || !cand.length) return [];

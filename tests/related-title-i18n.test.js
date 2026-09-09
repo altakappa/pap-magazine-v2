@@ -54,6 +54,10 @@ ok('editorial sel 에 title_en (en 오버레이 재료)',
    /'title, title_en, slug, id, published_date, thumbnail, cover_image, og_image'/.test(R('api/seo/editorial/[slug].js')));
 ok('moreArticles sel 에 title_en',
    /'title, title_en, slug, id, published_date, thumbnail_url/.test(R('api/_lib/moreArticles.js')));
+// 2026-09-10 라이브(/en/article/apple-folded-the-iphone)에서 관련 카드 4장이 한국어 제목이었다.
+// 엔티티 클러스터 조회(_entityCluster)가 title_en 을 안 뽑아 overlayRelatedTitles 가 쓸 값이 없었다.
+ok('moreArticles 엔티티 클러스터 조회도 title_en 을 뽑는다',
+   /\.select\('title, title_en, slug, id, thumbnail_url, hero_image_url, tags, published_date'\)/.test(R('api/_lib/moreArticles.js')));
 ok('moreArticles _norm 이 title_en 을 살린다',
    /title_en: a\.title_en \|\| ''/.test(R('api/_lib/moreArticles.js')));
 
