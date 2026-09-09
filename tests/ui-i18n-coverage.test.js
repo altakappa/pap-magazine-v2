@@ -36,7 +36,7 @@ function norm(s) { return s.replace(/\s+/g, ' ').trim(); }
 const VOID = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
 // 런타임(pap-ui-i18n.js)의 skip() 과 같은 규칙으로 텍스트 노드를 뽑는다:
 // script/style/code/pre/textarea 안, data-i18n / data-i18n-html / translate="no" / data-ui-i18n-skip 요소 아래는 제외.
-function koreanTexts(html) {
+function koreanTexts(html, includeI18n) {
   let s = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<script\b[\s\S]*?<\/script>/gi, '').replace(/<style\b[\s\S]*?<\/style>/gi, '');
   const out = new Set();
   const stack = []; // {tag, skip}
@@ -56,10 +56,10 @@ function koreanTexts(html) {
     const selfClose = /\/\s*$/.test(attrs) || VOID.has(tag);
     if (skipDepth === 0) {
       const ra = /\s(placeholder|title|alt|aria-label)="([^"]*)"/g; let a;
-      while ((a = ra.exec(attrs))) { if (tag === 'input' && a[1] === 'placeholder' && /data-i18n-ph/.test(attrs)) continue; const v = norm(unescape(a[2])); if (v && HANGUL.test(v)) out.add(v); }
+      while ((a = ra.exec(attrs))) { if (!includeI18n && tag === 'input' && a[1] === 'placeholder' && /data-i18n-ph/.test(attrs)) continue; const v = norm(unescape(a[2])); if (v && HANGUL.test(v)) out.add(v); }
     }
     if (selfClose) continue;
-    const skip = ['script','style','code','pre','textarea','noscript'].includes(tag) || /\sdata-i18n(-html)?=/.test(attrs) || /\stranslate="no"/.test(attrs) || /\sdata-ui-i18n-skip/.test(attrs);
+    const skip = ['script','style','code','pre','textarea','noscript'].includes(tag) || (!includeI18n && /\sdata-i18n(-html)?=/.test(attrs)) || /\stranslate="no"/.test(attrs) || /\sdata-ui-i18n-skip/.test(attrs);
     stack.push({ tag, skip });
     if (skip) skipDepth++;
   }
@@ -101,6 +101,10 @@ for (const page of pages) {
   const texts = koreanTexts(html);
   const missing = [...texts].filter((v) => !(v in maps.en));
   t('한글 텍스트 노드 전부 사전에 있음 (' + texts.size + '개)', missing.length === 0, missing.slice(0, 6).join(' | '));
+  // v3: data-i18n 요소 아래 한글도 사전에 있어야 한다 — 페이지 사전이 로드 때 적용되지 않는 경우(마이페이지 모달·footerLegal)의 폴백
+  const texts2 = koreanTexts(html, true);
+  const missing2 = [...texts2].filter((v) => !(v in maps.en));
+  t('data-i18n 요소 아래 한글까지 사전에 있음 (' + texts2.size + '개)', missing2.length === 0, missing2.slice(0, 6).join(' | '));
 }
 
 console.log('\n=== 런타임 파일 ===');
@@ -124,6 +128,7 @@ console.log('\n=== 동적 문자열(JS·인라인·SSR·API 메시지) 커버리
 t('_shared 사전 8개 언어 존재', LANGS.every((l) => fs.existsSync(path.join(dir, '_shared.' + l + '.json'))));
 t('런타임: 공용 사전 로드', /_shared\.' \+ lang/.test(rt));
 t('런타임: 자리표시자 패턴 · 부분 일치', /patterns/.test(rt) && /subRes/.test(rt) && /function substitute/.test(rt));
+t('런타임: data-i18n 폴백(페이지 사전 → 런타임 사전) + ko 복원', /function applyDataI18n/.test(rt) && /pageDictLookup/.test(rt) && /restoreDataI18n\(\)/.test(rt));
 t('런타임: _papUIL 교체 · alert/confirm 래핑 · 속성 관찰', /window\._papUIL = uil/.test(rt) && /\['alert', 'confirm', 'prompt'\]/.test(rt) && /attributeFilter: ATTRS/.test(rt));
 t('런타임: 내가 쓴 값은 옵저버가 무시(무한루프 방지)', /function isOwnWrite/.test(rt) && /WRITTEN\.get/.test(rt));
 t('seoRenderer 셸: meta _shared + 스크립트', /<meta name="pap-ui-i18n" content="_shared"/.test(fs.readFileSync(path.join(ROOT, 'api/_lib/seoRenderer.js'), 'utf8')) && /pap-ui-i18n\.js\?v=\d+/.test(fs.readFileSync(path.join(ROOT, 'api/_lib/seoRenderer.js'), 'utf8')));

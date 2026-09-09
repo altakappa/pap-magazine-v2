@@ -133,11 +133,12 @@
     return s;
   }
 
-  function skip(el) {
+  function skip(el, force) {
     for (var e = el; e && e.nodeType === 1; e = e.parentNode) {
       var tn = e.tagName;
       if (tn === 'SCRIPT' || tn === 'STYLE' || tn === 'CODE' || tn === 'PRE' || tn === 'TEXTAREA' || tn === 'NOSCRIPT') return true;
-      if (e.hasAttribute('data-i18n') || e.hasAttribute('data-i18n-html') || e.hasAttribute('data-ui-i18n-skip')) return true;
+      if (e.hasAttribute('data-ui-i18n-skip')) return true;
+      if (!force && (e.hasAttribute('data-i18n') || e.hasAttribute('data-i18n-html'))) return true;
       if (e.getAttribute('translate') === 'no') return true;
       if (e.id === '_papUiLegalNotice') return true;
     }
@@ -149,13 +150,13 @@
     var next = lead + t + trail;
     if (node.nodeValue !== next) { WRITTEN.set(node, next); node.nodeValue = next; }
   }
-  function applyText(dict, root) {
+  function applyText(dict, root, force) {
     var walker = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT, null);
     var n, nodes = [];
     while ((n = walker.nextNode())) nodes.push(n);
     nodes.forEach(function (node) {
       var parent = node.parentNode;
-      if (!parent || skip(parent)) return;
+      if (!parent || skip(parent, force)) return;
       var orig = ORIG.get(node);
       // 내가 쓴 뒤 남이 다시 바꿨으면(예: 카운터 갱신) 그 새 값을 원문으로 본다
       if (orig !== undefined && WRITTEN.get(node) !== node.nodeValue) { orig = undefined; ORIG.delete(node); }
@@ -167,7 +168,7 @@
       setText(node, raw, t);
     });
     // <title>
-    var titleEl = document.querySelector('title');
+    var titleEl = root ? null : document.querySelector('title');
     if (titleEl && titleEl.firstChild) {
       var tn = titleEl.firstChild;
       var to = ORIG.get(tn);
@@ -199,6 +200,53 @@
     });
   }
 
+  // ── data-i18n / data-i18n-html / data-i18n-ph 요소가 여전히 한글이면 (페이지 사전이 적용되지 않은 경우 —
+  //    예: 마이페이지의 크레딧 수정 모달은 적용 스크립트보다 뒤에 있어 로드 때 안 바뀌고, 푸터 footerLegal 은
+  //    pap-i18n.js 의 setLang 을 부를 때만 바뀐다) 페이지 사전(LANG·L·T)에서 키를 찾아 넣고, 없으면 런타임 사전으로 바꾼다.
+  var ORIG_EL = new WeakMap();   // element -> { text|html|ph: original }
+  var touchedI18nEls = [];
+  function pageDictLookup(key, lang) {
+    var cands = [window.LANG, window.L, (typeof T !== 'undefined' ? T : null), window._PAP_SUBMISSION_I18N_EXT];
+    for (var i = 0; i < cands.length; i++) {
+      var d = cands[i];
+      try { if (d && d[lang] && typeof d[lang][key] === 'string' && d[lang][key]) return d[lang][key]; } catch (_) {}
+    }
+    return null;
+  }
+  function applyDataI18n(dict, lang) {
+    var sel = '[data-i18n],[data-i18n-html],[data-i18n-ph]';
+    Array.prototype.forEach.call(document.querySelectorAll(sel), function (el) {
+      if (skip(el, true)) return;
+      var st = ORIG_EL.get(el) || {};
+      if (el.hasAttribute('data-i18n-ph')) {
+        var ph = el.getAttribute('placeholder') || '';
+        if (HANGUL.test(ph)) {
+          var v = pageDictLookup(el.getAttribute('data-i18n-ph'), lang) || translate(dict, ph);
+          if (v && v !== ph) { if (st.ph === undefined) { st.ph = ph; ORIG_EL.set(el, st); touchedI18nEls.push(el); } var wr = WRITTEN_ATTR.get(el) || {}; wr.placeholder = v; WRITTEN_ATTR.set(el, wr); el.setAttribute('placeholder', v); }
+        }
+      }
+      var isHtml = el.hasAttribute('data-i18n-html');
+      if (!isHtml && !el.hasAttribute('data-i18n')) return;
+      if (!HANGUL.test(el.textContent)) return;
+      var key = el.getAttribute(isHtml ? 'data-i18n-html' : 'data-i18n');
+      var pv = pageDictLookup(key, lang);
+      if (pv) {
+        if (isHtml) { if (st.html === undefined) { st.html = el.innerHTML; ORIG_EL.set(el, st); touchedI18nEls.push(el); } if (el.innerHTML !== pv) el.innerHTML = pv; }
+        else { if (st.text === undefined) { st.text = el.textContent; ORIG_EL.set(el, st); touchedI18nEls.push(el); } if (el.textContent !== pv) el.textContent = pv; }
+      } else {
+        applyText(dict, el, true);   // 런타임 사전으로 텍스트 노드만 (원문은 ORIG 에 남아 ko 복원됨)
+      }
+    });
+  }
+  function restoreDataI18n() {
+    touchedI18nEls.forEach(function (el) {
+      var st = ORIG_EL.get(el); if (!st) return;
+      if (st.html !== undefined && el.innerHTML !== st.html) el.innerHTML = st.html;
+      if (st.text !== undefined && el.textContent !== st.text) el.textContent = st.text;
+      if (st.ph !== undefined && el.getAttribute('placeholder') !== st.ph) el.setAttribute('placeholder', st.ph);
+    });
+  }
+
   // 법률 페이지 h1 은 "이용약관 <span.subtitle>Terms of Service</span>" 꼴이라 영어로 바꾸면
   // 같은 줄이 두 번 보인다(Terms of Service / Terms of Service). 번역 결과가 부제와 같으면 부제를 숨긴다.
   function dedupeSubtitle(show) {
@@ -214,6 +262,7 @@
 
   function restoreKo() {
     dedupeSubtitle(false);
+    restoreDataI18n();
     touchedNodes.forEach(function (node) { var o = ORIG.get(node); if (o !== undefined && node.nodeValue !== o) { WRITTEN.set(node, o); node.nodeValue = o; } });
     touchedEls.forEach(function (el) {
       var store = ORIG_ATTR.get(el) || {}; var wr = WRITTEN_ATTR.get(el) || {};
@@ -257,7 +306,7 @@
     load(lang).then(function (dict) {
       if (cur() !== lang) return;
       applying = true;
-      try { applyText(dict); applyAttrs(dict); legalNotice(lang); dedupeSubtitle(true); } finally { applying = false; }
+      try { applyText(dict); applyAttrs(dict); applyDataI18n(dict, lang); legalNotice(lang); dedupeSubtitle(true); } finally { applying = false; }
     });
   }
 

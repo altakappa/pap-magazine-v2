@@ -82,7 +82,7 @@ module.exports = async function handler(req, res) {
     const html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="archive" data-v="2">
+<meta name="pap-ui-i18n" content="archive" data-v="3">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Archive — All Editorials, Articles &amp; Films | PAP Magazine</title>
@@ -129,7 +129,7 @@ ${JSON.stringify({
   footer{margin-top:89px;padding-top:21px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:rgba(255,255,255,.4)}
   footer a{color:rgba(255,255,255,.6);text-decoration:none;margin-right:13px}
 </style>
-<script src="/pap-ui-i18n.js?v=3" defer></script>
+<script src="/pap-ui-i18n.js?v=4" defer></script>
 </head>
 <body>
 <div class="wrap">

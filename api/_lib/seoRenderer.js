@@ -1819,7 +1819,7 @@ function renderSeoHtml(kind, record, opts) {
   return `<!DOCTYPE html>
 <html lang="${lang}" prefix="og: https://ogp.me/ns#">
 <head>
-<meta name="pap-ui-i18n" content="_shared" data-v="2">
+<meta name="pap-ui-i18n" content="_shared" data-v="3">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>${escText(seoTitle)}</title>
@@ -2398,7 +2398,7 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
 <script src="/pap-geo-lang.js?v=2"></script>
 <script src="/cookie-consent.js" defer></script>
 <!-- 2026-09-10 하드코딩 한글 UI(구매 칩·댓글 위젯·서버 메시지)를 9개 언어로 — pap-ui-i18n.js + /i18n/ui/_shared.<lang>.json -->
-<script src="/pap-ui-i18n.js?v=3" defer></script>
+<script src="/pap-ui-i18n.js?v=4" defer></script>
 <!-- QA(2026-07) #11 — 공통 헤더/햄버거 nav 통일. pap-header.js 는 자체 CSS·함수를
      주입하는 self-contained 스크립트라 이 SSR 페이지에서도 SPA 와 동일한 헤더를
      보여준다. (에디토리얼/필름 SSR 은 위 브릿지로 SPA 리다이렉트되지만, 기사 SSR 은
