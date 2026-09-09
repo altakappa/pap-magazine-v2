@@ -58,6 +58,8 @@ ok('moreArticles sel 에 title_en',
 // 엔티티 클러스터 조회(_entityCluster)가 title_en 을 안 뽑아 overlayRelatedTitles 가 쓸 값이 없었다.
 ok('moreArticles 엔티티 클러스터 조회도 title_en 을 뽑는다',
    /\.select\('title, title_en, slug, id, thumbnail_url, hero_image_url, tags, published_date'\)/.test(R('api/_lib/moreArticles.js')));
+ok('moreArticles 유사도 RPC 결과에 title_en 을 보강한다 (RPC 반환형에 title_en 없음)',
+   /select\('id, title_en'\)\.in\('id', _need\)/.test(R('api/_lib/moreArticles.js')));
 ok('moreArticles _norm 이 title_en 을 살린다',
    /title_en: a\.title_en \|\| ''/.test(R('api/_lib/moreArticles.js')));
 

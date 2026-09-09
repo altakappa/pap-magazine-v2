@@ -181,6 +181,17 @@ async function buildMoreArticles(data) {
       related = sim
         .filter(r => r && r.id && r.id !== data.id)
         .map(r => ({ title: r.title, title_en: r.title_en || '', slug: r.slug, id: r.id, thumbnail: r.thumbnail || '' }));
+      /* 2026-09-10 — RPC related_articles 는 title_en 을 돌려주지 않는다(반환형 id·title·slug·thumbnail·
+         similarity). 그래서 언어판(/en/article/…)의 관련 카드가 한국어 제목으로 나갔다. 반환형을 바꾸면
+         DROP 이 필요하니(147 교훈) 함수는 두고, 여기서 한 번의 조회로 title_en 을 채운다. */
+      const _need = related.filter(r => !r.title_en).map(r => r.id);
+      if (_need.length) {
+        try {
+          const { data: _te } = await supabaseAdmin.from('articles').select('id, title_en').in('id', _need);
+          const _m = {}; (_te || []).forEach(r => { if (r && r.title_en) _m[r.id] = r.title_en; });
+          related.forEach(r => { if (!r.title_en && _m[r.id]) r.title_en = _m[r.id]; });
+        } catch (_e2) { /* 제목 보강 실패는 치명적이지 않다 — ko 원제 유지 */ }
+      }
     }
   } catch (_e) { /* 폴백으로 내려간다 */ }
   if (!related || !related.length) {
