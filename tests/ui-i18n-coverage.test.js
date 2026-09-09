@@ -91,6 +91,14 @@ console.log('\n=== 런타임 파일 ===');
 const rt = fs.readFileSync(path.join(ROOT, 'frontend/pap-ui-i18n.js'), 'utf8');
 t('pap-ui-i18n.js 존재·핵심 훅', /pap:langchange/.test(rt) && /MutationObserver/.test(rt) && /data-ui-i18n-skip/.test(rt));
 t('ko 면 사전 요청 없음(LANGS 밖이면 복원만)', /LANGS\.indexOf\(lang\) === -1\) \{ restoreKo\(\); return; \}/.test(rt));
+// 법률 페이지 h1 "이용약관 <span.subtitle>Terms of Service</span>" — 영어로 바꾸면 같은 줄이 두 번 보인다.
+// 번역 결과가 부제와 같으면 부제를 숨기고(ko 복원 때 원래 display 로 되돌린다).
+t('h1 부제 중복 숨김(dedupeSubtitle) — 적용·복원 양쪽에 배선', /dedupeSubtitle\(true\)/.test(rt) && /dedupeSubtitle\(false\)/.test(rt) && /_papOrigDisplay/.test(rt));
+const legalH1 = ['terms', 'privacy', 'data-deletion'].filter((pg) => /<h1>[^<]*<span class="subtitle"/.test(fs.readFileSync(path.join(ROOT, 'frontend', pg + '.html'), 'utf8')));
+t('부제 h1 을 가진 법률 페이지 3곳 확인 (' + legalH1.join(',') + ')', legalH1.length === 3);
+// 캐시버스트: 런타임을 고치면 ?v= 를 올려야 한다. 24페이지가 같은 버전을 가리킨다.
+const vers = new Set(); for (const pg of pages) { const m = fs.readFileSync(path.join(ROOT, 'frontend', pg + '.html'), 'utf8').match(/pap-ui-i18n\.js\?v=(\d+)/); if (m) vers.add(m[1]); }
+t('24페이지가 같은 pap-ui-i18n.js 버전을 가리킨다 (v=' + [...vers].join('/') + ')', vers.size === 1);
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ ui-i18n-coverage tests FAILED'); process.exit(1); }

@@ -108,7 +108,21 @@
     });
   }
 
+  // 법률 페이지 h1 은 "이용약관 <span.subtitle>Terms of Service</span>" 꼴이라 영어로 바꾸면
+  // 같은 줄이 두 번 보인다(Terms of Service / Terms of Service). 번역 결과가 부제와 같으면 부제를 숨긴다.
+  function dedupeSubtitle(show) {
+    Array.prototype.forEach.call(document.querySelectorAll('h1 > .subtitle'), function (sub) {
+      var h = sub.parentNode, main = '';
+      Array.prototype.forEach.call(h.childNodes, function (c) { if (c.nodeType === 3) main += c.nodeValue; });
+      if (sub._papOrigDisplay === undefined) sub._papOrigDisplay = sub.style.display; // 원래 inline style(display:block) 보존
+      var same = show && norm(main).toLowerCase() === norm(sub.textContent).toLowerCase();
+      var want = same ? 'none' : sub._papOrigDisplay;
+      if (sub.style.display !== want) sub.style.display = want;
+    });
+  }
+
   function restoreKo() {
+    dedupeSubtitle(false);
     touchedNodes.forEach(function (node) { var o = ORIG.get(node); if (o !== undefined && node.nodeValue !== o) node.nodeValue = o; });
     touchedEls.forEach(function (el) {
       var store = ORIG_ATTR.get(el) || {};
@@ -151,7 +165,7 @@
     load(lang).then(function (map) {
       if (cur() !== lang) return;
       applying = true;
-      try { applyText(lang, map); applyAttrs(lang, map); legalNotice(lang); } finally { applying = false; }
+      try { applyText(lang, map); applyAttrs(lang, map); legalNotice(lang); dedupeSubtitle(true); } finally { applying = false; }
     });
   }
 
