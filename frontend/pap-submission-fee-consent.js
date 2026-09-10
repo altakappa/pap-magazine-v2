@@ -60,9 +60,11 @@
       fixLabel: '무료로 제출하려면',
       fixFewLooks: '룩을 3개 이상으로 늘려 주세요.',
       fixFewBrands: '서로 다른 의상 브랜드를 3종 이상으로 구성해 주세요.',
+      fixNoBrands: '룩의 의상(재킷·탑·셔츠·니트·드레스·팬츠·스커트·코트 등)에 패션 브랜드를 적어 주세요. SPA 브랜드(자라·H&M 등)와 Stylist\'s Own·Own Design·Vintage 같은 관용 표기는 브랜드로 세지 않습니다.',
       fixBranded: '여러 브랜드의 의상을 섞어 구성해 주세요. 한 브랜드 옷으로만 이루어진 화보는 브랜디드 콘텐츠로 봅니다.',
       whyFewLooks: '지금 룩이 {n}개입니다. 무료 게재는 룩 3개 이상부터입니다.',
       whyFewBrands: '지금 서로 다른 의상 브랜드가 {n}종입니다: <b>{brands}</b>. 무료 게재는 의상 브랜드 3종 이상부터입니다.',
+      whyNoBrands: '지금 의상 슬롯에 적힌 패션 브랜드가 0종입니다. 패션 화보는 서로 다른 의상 브랜드 3종 이상이어야 무료 게재이며, SPA 브랜드와 Stylist\'s Own 같은 관용 표기만 있으면 브랜드 0종으로 봅니다.',
       whyBrandOne: '모든 룩의 의상 크레딧이 <b>{brand}</b> 한 브랜드입니다.',
       whyBrandShared: '모든 룩에 같은 브랜드가 공통으로 들어가 있습니다: <b>{brands}</b>',
       whyBrandGeneric: '특정 브랜드 중심으로 구성된 화보입니다.',
@@ -83,9 +85,11 @@
       fixLabel: 'To submit for free',
       fixFewLooks: 'Add looks so that you have 3 or more.',
       fixFewBrands: 'Credit garments from 3 or more different clothing brands.',
+      fixNoBrands: 'Credit fashion brands on the garments in your looks (jacket, top, shirt, sweater, dress, pants, skirt, coat…). Fast-fashion (SPA) labels such as Zara or H&M and placeholders like Stylist\'s Own, Own Design or Vintage do not count as brands.',
       fixBranded: 'Mix garments from several brands. A set built entirely from one label is treated as branded content.',
       whyFewLooks: 'You currently have {n} look(s). Free publication starts at 3 looks.',
       whyFewBrands: 'Your looks credit {n} different clothing brand(s): <b>{brands}</b>. Free publication requires at least 3 different clothing brands.',
+      whyNoBrands: 'Your looks currently credit 0 fashion brands on clothing. A fashion editorial is published free only with at least 3 different clothing brands; SPA labels and placeholders such as Stylist\'s Own count as 0 brands.',
       whyBrandOne: 'Every garment credit across your looks is one brand: <b>{brand}</b>.',
       whyBrandShared: 'The same brand appears in every look: <b>{brands}</b>',
       whyBrandGeneric: 'This set is built around a single brand.',
@@ -104,11 +108,13 @@
       ifNotLabel: "Se non completi l'autorizzazione",
       ifNot: "La revisione non inizia. Non ti viene addebitato nulla e puoi completare l'autorizzazione quando vuoi da <b>MY SUBMISSIONS</b>.",
       fixLabel: 'Per inviare gratuitamente',
-      fixFewLooks: 'Aggiungi look fino ad averne almeno 4.',
+      fixFewLooks: 'Aggiungi look fino ad averne almeno 3.',
       fixFewBrands: 'Includi capi di almeno 3 marchi diversi.',
+      fixNoBrands: 'Accredita marchi di moda sui capi dei tuoi look (giacca, top, camicia, maglia, abito, pantaloni, gonna, cappotto…). Le catene fast-fashion (SPA) come Zara o H&M e diciture come Stylist\'s Own, Own Design o Vintage non contano come marchi.',
       fixBranded: 'Mescola capi di più marchi. Un servizio costruito interamente su un solo marchio è considerato branded content.',
       whyFewLooks: 'Al momento hai {n} look. La pubblicazione gratuita parte da 3 look.',
       whyFewBrands: 'I tuoi look accreditano {n} marchi d\'abbigliamento diversi: <b>{brands}</b>. La pubblicazione gratuita richiede almeno 3 marchi diversi.',
+      whyNoBrands: 'I tuoi look accreditano attualmente 0 marchi di moda sui capi. Un editoriale di moda è pubblicato gratuitamente solo con almeno 3 marchi di abbigliamento diversi; le catene SPA e le diciture come Stylist\'s Own contano come 0 marchi.',
       whyBrandOne: "Tutti i credits d'abbigliamento dei tuoi look sono di un solo marchio: <b>{brand}</b>.",
       whyBrandShared: 'Lo stesso marchio compare in ogni look: <b>{brands}</b>',
       whyBrandGeneric: 'Questo servizio è costruito attorno a un solo marchio.',
@@ -127,11 +133,13 @@
       ifNotLabel: "Si vous ne terminez pas l'autorisation",
       ifNot: "L'examen ne commence pas. Rien ne vous est facturé et vous pouvez terminer l'autorisation à tout moment depuis <b>MY SUBMISSIONS</b>.",
       fixLabel: 'Pour envoyer gratuitement',
-      fixFewLooks: "Ajoutez des looks pour en avoir au moins 4.",
+      fixFewLooks: "Ajoutez des looks pour en avoir au moins 3.",
       fixFewBrands: 'Créditez des vêtements d\'au moins 3 marques différentes.',
+      fixNoBrands: 'Créditez des marques de mode sur les vêtements de vos looks (veste, top, chemise, pull, robe, pantalon, jupe, manteau…). Les enseignes fast-fashion (SPA) comme Zara ou H&M et les mentions du type Stylist\'s Own, Own Design ou Vintage ne comptent pas comme des marques.',
       fixBranded: "Mélangez des vêtements de plusieurs marques. Une série entièrement construite autour d'une seule marque est considérée comme du contenu de marque.",
       whyFewLooks: 'Vous avez actuellement {n} look(s). La publication gratuite commence à 3 looks.',
       whyFewBrands: 'Vos looks créditent {n} marque(s) de vêtements différente(s) : <b>{brands}</b>. La publication gratuite exige au moins 3 marques différentes.',
+      whyNoBrands: 'Vos looks créditent actuellement 0 marque de mode sur les vêtements. Un éditorial mode n\'est publié gratuitement qu\'avec au moins 3 marques de vêtements différentes ; les enseignes SPA et les mentions comme Stylist\'s Own comptent pour 0 marque.',
       whyBrandOne: 'Tous les crédits vêtements de vos looks portent une seule marque : <b>{brand}</b>.',
       whyBrandShared: 'La même marque apparaît dans chaque look : <b>{brands}</b>',
       whyBrandGeneric: "Cette série est construite autour d'une seule marque.",
@@ -152,9 +160,11 @@
       fixLabel: 'Para enviar gratis',
       fixFewLooks: 'Añade looks hasta tener 3 o más.',
       fixFewBrands: 'Incluya prendas de al menos 3 marcas diferentes.',
+      fixNoBrands: 'Acredite marcas de moda en las prendas de sus looks (chaqueta, top, camisa, jersey, vestido, pantalón, falda, abrigo…). Las cadenas fast-fashion (SPA) como Zara o H&M y las menciones tipo Stylist\'s Own, Own Design o Vintage no cuentan como marcas.',
       fixBranded: 'Combina prendas de varias marcas. Un editorial construido solo con una marca se considera contenido de marca.',
       whyFewLooks: 'Ahora tienes {n} look(s). La publicación gratuita empieza en 3 looks.',
       whyFewBrands: 'Tus looks acreditan {n} marca(s) de ropa diferente(s): <b>{brands}</b>. La publicación gratuita requiere al menos 3 marcas diferentes.',
+      whyNoBrands: 'Sus looks acreditan actualmente 0 marcas de moda en la ropa. Un editorial de moda solo se publica gratis con al menos 3 marcas de ropa diferentes; las cadenas SPA y las menciones como Stylist\'s Own cuentan como 0 marcas.',
       whyBrandOne: 'Todos los créditos de ropa de tus looks son de una sola marca: <b>{brand}</b>.',
       whyBrandShared: 'La misma marca aparece en todos los looks: <b>{brands}</b>',
       whyBrandGeneric: 'Este editorial está construido en torno a una sola marca.',
@@ -173,11 +183,13 @@
       ifNotLabel: 'Wenn Sie die Autorisierung nicht abschließen',
       ifNot: 'Die Prüfung beginnt nicht. Es entstehen keine Kosten, und Sie können die Autorisierung jederzeit unter <b>MY SUBMISSIONS</b> abschließen.',
       fixLabel: 'Kostenlos einreichen',
-      fixFewLooks: 'Ergänzen Sie Looks auf mindestens 4.',
+      fixFewLooks: 'Ergänzen Sie Looks auf mindestens 3.',
       fixFewBrands: 'Verwenden Sie Kleidung von mindestens 3 verschiedenen Marken.',
+      fixNoBrands: 'Nennen Sie Modemarken für die Kleidungsstücke Ihrer Looks (Jacke, Top, Hemd, Pullover, Kleid, Hose, Rock, Mantel …). Fast-Fashion-Ketten (SPA) wie Zara oder H&M sowie Angaben wie Stylist\'s Own, Own Design oder Vintage zählen nicht als Marken.',
       fixBranded: 'Mischen Sie Kleidung mehrerer Marken. Eine Strecke ausschließlich mit einem Label gilt als Branded Content.',
       whyFewLooks: 'Sie haben derzeit {n} Look(s). Kostenlose Veröffentlichung beginnt ab 3 Looks.',
       whyFewBrands: 'Ihre Looks nennen {n} verschiedene Kleidungsmarke(n): <b>{brands}</b>. Kostenlose Veröffentlichung erfordert mindestens 3 verschiedene Marken.',
+      whyNoBrands: 'Ihre Looks nennen derzeit 0 Modemarken bei der Kleidung. Ein Mode-Editorial wird nur mit mindestens 3 verschiedenen Kleidungsmarken kostenlos veröffentlicht; SPA-Ketten und Angaben wie Stylist\'s Own zählen als 0 Marken.',
       whyBrandOne: 'Alle Kleidungs-Credits Ihrer Looks stammen von einer Marke: <b>{brand}</b>.',
       whyBrandShared: 'Dieselbe Marke erscheint in jedem Look: <b>{brands}</b>',
       whyBrandGeneric: 'Diese Strecke ist um eine einzelne Marke herum aufgebaut.',
@@ -198,9 +210,11 @@
       fixLabel: '無料で提出するには',
       fixFewLooks: 'ルックを3つ以上にしてください。',
       fixFewBrands: '3つ以上の異なる衣装ブランドを組み合わせてください。',
+      fixNoBrands: 'ルックの衣装(ジャケット・トップス・シャツ・ニット・ドレス・パンツ・スカート・コートなど)にファッションブランドを記載してください。ZARAやH&MなどのSPAブランド、Stylist\'s Own・Own Design・Vintageなどの表記はブランドとして数えません。',
       fixBranded: '複数ブランドの衣装を組み合わせてください。1ブランドのみで構成された作品はブランデッドコンテンツとみなします。',
       whyFewLooks: '現在ルックが{n}件です。無料掲載はルック3件以上からです。',
       whyFewBrands: '現在、衣装ブランドは{n}種です: <b>{brands}</b>。無料掲載には3種以上の異なる衣装ブランドが必要です。',
+      whyNoBrands: '現在、衣装に記載されたファッションブランドは0種です。ファッション・エディトリアルは異なる衣装ブランド3種以上で無料掲載となり、SPAブランドやStylist\'s Ownなどの表記のみの場合はブランド0種とみなします。',
       whyBrandOne: 'すべてのルックの衣装クレジットが<b>{brand}</b>の1ブランドです。',
       whyBrandShared: 'すべてのルックに同じブランドが含まれています：<b>{brands}</b>',
       whyBrandGeneric: '特定のブランドを中心に構成された作品です。',
@@ -221,9 +235,11 @@
       fixLabel: '免费投稿的方法',
       fixFewLooks: '请将造型增加到 3 组以上。',
       fixFewBrands: '请使用至少 3 个不同的服装品牌。',
+      fixNoBrands: '请在造型的服装(夹克、上衣、衬衫、针织、连衣裙、裤装、半裙、外套等)上标注时尚品牌。Zara、H&M 等快时尚(SPA)品牌以及 Stylist\'s Own、Own Design、Vintage 之类的标注不计入品牌。',
       fixBranded: '请混合多个品牌的服装。整组仅使用单一品牌的作品视为品牌内容。',
       whyFewLooks: '当前为 {n} 组造型。免费刊登需 3 组以上。',
       whyFewBrands: '当前服装品牌共 {n} 个: <b>{brands}</b>。免费刊登需要 3 个以上不同的服装品牌。',
+      whyNoBrands: '当前服装上标注的时尚品牌为 0 个。时尚大片需包含 3 个以上不同的服装品牌才可免费刊登；仅有 SPA 品牌或 Stylist\'s Own 之类标注时按 0 个品牌计算。',
       whyBrandOne: '所有造型的服装署名均为同一品牌：<b>{brand}</b>。',
       whyBrandShared: '每组造型中都出现同一品牌：<b>{brands}</b>',
       whyBrandGeneric: '本组作品围绕单一品牌构成。',
@@ -242,11 +258,13 @@
       ifNotLabel: 'Если не завершить авторизацию',
       ifNot: 'Рассмотрение не начнётся. Плата не взимается, и вы можете завершить авторизацию в любой момент в разделе <b>MY SUBMISSIONS</b>.',
       fixLabel: 'Чтобы подать бесплатно',
-      fixFewLooks: 'Добавьте образы, чтобы их было не менее 4.',
+      fixFewLooks: 'Добавьте образы, чтобы их было не менее 3.',
       fixFewBrands: 'Укажите одежду минимум 3 разных брендов.',
+      fixNoBrands: 'Укажите модные бренды для одежды в образах (жакет, топ, рубашка, свитер, платье, брюки, юбка, пальто…). Сети fast-fashion (SPA), такие как Zara или H&M, и пометки вроде Stylist\'s Own, Own Design или Vintage брендами не считаются.',
       fixBranded: 'Смешайте одежду нескольких брендов. Съёмка целиком из одного бренда считается брендированным контентом.',
       whyFewLooks: 'Сейчас у вас {n} образ(ов). Бесплатная публикация начинается с 3 образов.',
       whyFewBrands: 'Сейчас в ваших образах {n} бренд(а/ов) одежды: <b>{brands}</b>. Для бесплатной публикации нужно не менее 3 разных брендов.',
+      whyNoBrands: 'Сейчас в ваших образах указано 0 модных брендов одежды. Модный эдиториал публикуется бесплатно только при наличии не менее 3 разных брендов одежды; SPA-сети и пометки вроде Stylist\'s Own считаются как 0 брендов.',
       whyBrandOne: 'Все кредиты одежды во всех образах — один бренд: <b>{brand}</b>.',
       whyBrandShared: 'Один и тот же бренд есть в каждом образе: <b>{brands}</b>',
       whyBrandGeneric: 'Съёмка построена вокруг одного бренда.',
@@ -272,6 +290,8 @@
     if (r.submissionType === 'paid_few_looks') {
       // 유료 사유가 둘이다: few_looks(룩 수 부족) | few_clothing_brands(의상 브랜드 수
       // 부족, 약관 ① — 2026-08-23). 사유에 맞는 사실을 말해야 처방도 맞는다.
+      // 2026-09-10 — no_clothing_brands(의상 브랜드 0종: 미기재·SPA 만·관용 표기만). 패션 화보 €380.
+      if (r.paidReason === 'no_clothing_brands') return t('whyNoBrands');
       if (r.paidReason === 'few_clothing_brands') {
         var cb = Array.isArray(r.clothingBrands) ? r.clothingBrands : [];
         return t('whyFewBrands')
@@ -329,7 +349,8 @@
         + row(t('howLabel'), t('how'))
         + row(t('ifNotLabel'), t('ifNot'))
         + row(t('fixLabel'), esc(r.submissionType === 'paid_few_looks'
-            ? (r.paidReason === 'few_clothing_brands' ? t('fixFewBrands') : t('fixFewLooks'))
+            ? (r.paidReason === 'no_clothing_brands' ? t('fixNoBrands')
+               : r.paidReason === 'few_clothing_brands' ? t('fixFewBrands') : t('fixFewLooks'))
             : t('fixBranded')))
         + '<label style="display:flex;gap:10px;align-items:flex-start;margin:20px 0 18px;cursor:pointer">'
         + '<input type="checkbox" id="_papFeeAgree" style="margin-top:3px;width:16px;height:16px;flex:none;cursor:pointer">'

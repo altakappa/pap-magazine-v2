@@ -178,7 +178,9 @@ module.exports = async function handler(req, res) {
         return res.status(400).json(englishOnly.rejection(_nonLatin));
       }
 
-      const { submissionType } = classifySubmissionType(looks, lookImageMap);
+      // 2026-09-10 GENRE 규칙 — 장르(FASHION/BEAUTY/기타)에 따라 판정이 갈린다. submissionType.js 헤더 참조.
+      const _cls = classifySubmissionType(looks, lookImageMap, { genres: normalizedGenres });
+      const submissionType = _cls.submissionType;
       // 2026-07-21 (도메니코 지시) — 모든 룩은 최소 1개 크레딧(브랜드 또는 인스타)이
       // 있어야 제출/재제출 가능. 과거엔 강제하지 않아 룩 크레딧 없이 통과됐다(예: Marooned).
       const _missingCreditLooks = looksMissingCredit(looks);
@@ -221,6 +223,11 @@ module.exports = async function handler(req, res) {
             looks,
             lookImageMap,
             submissionType,
+            // 2026-09-10 — 판정 근거를 함께 남긴다(관리자가 "왜 €380 인지"·"왜 확인 대상인지" 볼 수 있게).
+            submissionGenreMode: _cls.genreMode,
+            submissionPaidReason: _cls.paidReason,
+            needsCreditReview: !!_cls.needsCreditReview,
+            reviewReason: _cls.reviewReason || null,
           }),
           file_urls: [...lookUrls, ...additionalUrls],
           status: 'pending',

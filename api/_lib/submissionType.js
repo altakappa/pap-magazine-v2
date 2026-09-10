@@ -31,8 +31,8 @@
  *                  looks[].length alone would always read ≥ 3).
  *
  * ASSUMPTIONS (reported to Domenico, adjustable later):
- *   • MIN_LOOKS = 4. A "look" counts only if it has ≥ 1 image (empty seeded
- *     look blocks do NOT count).
+ *   • MIN_LOOKS = 3 (2026-09-10, 4→3). A "look" counts only if it has ≥ 1 image
+ *     (empty seeded look blocks do NOT count).
  *   • Branded fires when the whole submission uses a SINGLE distinct brand
  *     (union of all real-look brands == 1) — independent of look count, so even
  *     one real look with one brand is branded — OR when ≥ 2 real looks all share
@@ -98,6 +98,25 @@
  *   0종은 제외한다. 0종은 "옷이 한 브랜드"가 아니라 "의상 슬롯을 하나도 안
  *   채웠다"는 뜻이라 판단이 불가능하다(헤어·뷰티 화보가 섞여 있다).
  *   대신 needsCreditReview=true 로 관리자에게 넘긴다.
+ *   → 2026-09-10 변경: 패션 화보의 0종은 더 이상 관리자 판단이 아니라 **유료 €380**
+ *   (paidReason 'no_clothing_brands'). 헤어·뷰티 화보는 아래 GENRE 규칙으로 갈라낸다.
+ *
+ * GENRE 규칙 (도메니코 확정 2026-09-10) ─────────────────────────────────
+ *   "뷰티 화보는 룩이 없어도 전혀 상관없음. 패션 화보만 룩 조건이 해당된다.
+ *    패션 화보에서 의상 브랜드 0종은 €380. SPA 브랜드만·Stylist's Own 만도 €380."
+ *   opts.genres = 정규화된 장르 목록(submissionCategories.normalizeGenres 결과).
+ *     · FASHION 이 하나라도 있으면          → 패션 규칙 (룩 3·의상 브랜드 3·0종 €380)
+ *     · BEAUTY 만(FASHION 없음) + 의상 브랜드 0종 → 뷰티 규칙: 무조건 무료. 룩 수·브랜드 수
+ *       안 본다. 한 뷰티 브랜드만 나와도 무료(도메니코 "무조건 무료").
+ *     · BEAUTY 만인데 의상 브랜드가 1종 이상   → 패션 규칙. "패션 화보인데 BEAUTY 를 골라
+ *       요금을 피하는" 꼼수 차단 — 옷 브랜드를 적었으면 패션 화보다. (도메니코가 고른
+ *       선택지 문구는 "3종 이상이면"이었으나 그러면 1종=€790 회피가 그대로 남아
+ *       0종 초과로 더 엄격히 잡았다. 완화하려면 BEAUTY_MAX_CLOTHING_BRANDS 만 올린다.)
+ *     · FASHION 도 BEAUTY 도 없음(ART·PORTRAIT·STREET·FASHION SHOW·BACKSTAGE·ARTICLE)
+ *       → 자동 판정 없이 free + needsCreditReview(reviewReason 'category_other').
+ *         도메니코가 보고 결정.
+ *     · opts.genres 가 없으면(구 호출·기존 행 재분류) 패션 규칙 — 종전 동작 유지.
+ *   결과의 genreMode: 'fashion' | 'beauty' | 'other'.
  */
 
 'use strict';
@@ -108,6 +127,18 @@ const MIN_LOOKS = 3;
 // 다중 브랜드 예외 임계값 — submission.html 약관 ①의 "minimum of 3 different
 // clothing brands" 와 같은 숫자. 약관을 바꾸면 여기도 같이 바꿔야 한다.
 const MIN_CLOTHING_BRANDS = 3;
+
+// GENRE 규칙(2026-09-10) — BEAUTY 만 골랐을 때 의상 브랜드가 이 수를 넘으면 패션 화보로 본다.
+const BEAUTY_MAX_CLOTHING_BRANDS = 0;
+
+/** opts.genres → 'fashion' | 'beauty' | 'other'. clothingBrandCount 는 꼼수 차단용. */
+function genreModeOf(genres, clothingBrandCount) {
+  if (!Array.isArray(genres) || genres.length === 0) return 'fashion';
+  const g = genres.map((x) => String(x || '').trim().toUpperCase());
+  if (g.includes('FASHION')) return 'fashion';
+  if (g.includes('BEAUTY')) return clothingBrandCount > BEAUTY_MAX_CLOTHING_BRANDS ? 'fashion' : 'beauty';
+  return 'other';
+}
 
 // '의상' 슬롯 화이트리스트 (frontend/submission.html 의 아이템 타입 <option> 중
 // 옷에 해당하는 것들). 여기 없는 타입(Shoes/Boots/Bag/Glasses/Sunglasses/Hat/
@@ -422,8 +453,8 @@ function classifySubmissionType(looks, lookImageMap, opts) {
   const singleClothingBrand = clothingBrandCount === 1;
   if (singleClothingBrand) branded = true;
 
-  // 의상 크레딧이 아예 없어 자동 판정이 불가능한 제출 — 관리자 확인 대상 표시.
-  const needsCreditReview = clothingBrandCount === 0 && realLookCount > 0;
+  // GENRE 규칙(2026-09-10) — 헤더 주석 참조. 뷰티/기타 장르는 아래 패션 판정을 타지 않는다.
+  const genreMode = genreModeOf(opts && opts.genres, clothingBrandCount);
 
   // FEW-CLOTHING-BRANDS (도메니코 지시 2026-08-23) ────────────────────────
   // "의상을 위한 브랜드가 3개 미만이면 유료서브미션이잖아."
@@ -442,10 +473,28 @@ function classifySubmissionType(looks, lookImageMap, opts) {
   //   · 0종  → 유료로 밀지 않는다. "옷이 적다"가 아니라 "의상 태깅을 안 했다"
   //            (헤어·뷰티 화보 실측 8/116건) — needsCreditReview 로 관리자 판단.
   const fewClothingBrands = clothingBrandCount >= 2 && clothingBrandCount < MIN_CLOTHING_BRANDS;
+  // 2026-09-10 도메니코: 패션 화보의 의상 브랜드 0종은 유료 €380 (SPA 만·Stylist's Own 만 포함 —
+  // "스파 브랜드는 패션 브랜드로 간주되지 않는다"). 종전의 needsCreditReview 처리는 폐기.
+  const noClothingBrands = clothingBrandCount === 0;
 
   let submissionType = 'free';
   let paidReason = null;
-  if (branded) submissionType = 'branded';
+  let needsCreditReview = false;
+  let reviewReason = null;
+  if (genreMode === 'beauty') {
+    // 뷰티 화보: 룩 수·브랜드 수 조건 없음. 무조건 무료 (도메니코 2026-09-10).
+    branded = false;
+  } else if (genreMode === 'other') {
+    // FASHION 도 BEAUTY 도 아닌 장르: 자동 판정 없이 관리자 확인 대상.
+    branded = false;
+    needsCreditReview = true;
+    reviewReason = 'category_other';
+  } else if (branded) submissionType = 'branded';
+  // 0종은 few_looks 보다 먼저다 — 룩을 늘려도 0종이면 여전히 €380 이라, 진짜 처방(옷 브랜드
+  // 기재)을 말해야 한다. branded 보다는 뒤다: 의상 0종이라도 한 브랜드(액세서리)가 전 룩에
+  // 돌면 종전(2026-08-10 가드)대로 branded €790 — "전부 Other 로 태깅해 브랜디드를 피하는"
+  // 우회로를 €380 으로 열어주지 않는다(실사례 BURNOUT).
+  else if (noClothingBrands) { submissionType = 'paid_few_looks'; paidReason = 'no_clothing_brands'; }
   else if (realLookCount < MIN_LOOKS) { submissionType = 'paid_few_looks'; paidReason = 'few_looks'; }
   else if (fewClothingBrands) { submissionType = 'paid_few_looks'; paidReason = 'few_clothing_brands'; }
 
@@ -460,8 +509,11 @@ function classifySubmissionType(looks, lookImageMap, opts) {
     accessoryOnlyExempt,
     singleClothingBrand,
     needsCreditReview,
+    reviewReason,  // 'category_other' | null
+    genreMode,     // 'fashion' | 'beauty' | 'other'
     fewClothingBrands,
-    paidReason,   // 'few_looks' | 'few_clothing_brands' | null — 안내 문구가 진짜 이유를 말하게
+    noClothingBrands,
+    paidReason,   // 'few_looks' | 'no_clothing_brands' | 'few_clothing_brands' | null — 안내 문구가 진짜 이유를 말하게
   };
 }
 
@@ -486,6 +538,8 @@ function looksMissingCredit(looks) {
 module.exports = {
   MIN_LOOKS,
   MIN_CLOTHING_BRANDS,
+  BEAUTY_MAX_CLOTHING_BRANDS,
+  genreModeOf,
   CLOTHING_TYPES,
   normBrand,
   normHandle,

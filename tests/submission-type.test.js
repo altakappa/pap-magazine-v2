@@ -398,8 +398,10 @@ console.log('\n=== SINGLE-CLOTHING-BRAND (2026-08-11) ===');
   ok('의상 0종 → branded 로 만들지 않는다 (판단 불가)',
      zero.singleClothingBrand === false && zero.clothingBrandCount === 0,
      JSON.stringify(zero));
-  ok('의상 0종 → needsCreditReview = true (관리자 확인 대상)',
-     zero.needsCreditReview === true, JSON.stringify(zero));
+  // 2026-09-10 도메니코: 패션 화보의 의상 0종은 관리자 판단이 아니라 €380.
+  ok('의상 0종 → paid_few_looks / no_clothing_brands (2026-09-10, 관리자 판단 폐기)',
+     zero.submissionType === 'paid_few_looks' && zero.paidReason === 'no_clothing_brands'
+     && zero.needsCreditReview === false, JSON.stringify(zero));
   ok('의상이 있으면 needsCreditReview = false',
      two.needsCreditReview === false, JSON.stringify(two));
 
@@ -488,9 +490,11 @@ console.log('\n=== FEW-CLOTHING-BRANDS (2026-08-23) ===');
     L(1, [{ type: 'Hat', brand: 'A' }]), L(2, [{ type: 'Shoes', brand: 'B' }]),
     L(3, [{ type: 'Bag', brand: 'C' }]), L(4, [{ type: 'Other', brand: 'D' }]),
   ], mapFor([1, 1, 1, 1]));
-  ok('의상 0종 + 룩 4개 → free 유지 + needsCreditReview (태깅 미비를 €380 으로 안 바꾼다)',
-     zero.submissionType === 'free' && zero.fewClothingBrands === false
-     && zero.needsCreditReview === true, JSON.stringify(zero));
+  // 2026-09-10 도메니코: "패션화보에서 의상 브랜드 0종은 380유로". 종전(8/11)의
+  // "태깅 미비는 관리자 판단" 은 폐기. 뷰티 화보는 GENRE 규칙(아래 블록)으로 따로 간다.
+  ok('의상 0종 + 룩 4개 → paid_few_looks €380, 사유 no_clothing_brands (2026-09-10)',
+     zero.submissionType === 'paid_few_looks' && zero.paidReason === 'no_clothing_brands'
+     && zero.needsCreditReview === false, JSON.stringify(zero));
 
   // 룩 수 부족이 먼저다: 룩 2개 + 의상 2종 → paidReason 은 few_looks
   const both = classifySubmissionType([
@@ -536,8 +540,8 @@ console.log('\n=== GENERIC-CREDIT 필터 (2026-08-24) ===');
      burnout.submissionType === 'branded'
      && burnout.sharedBrands.length === 1 && burnout.sharedBrands[0] === 'ginza kanematsu',
      JSON.stringify(burnout));
-  ok('BURNOUT: 의상 브랜드 0종 + needsCreditReview (관용 표기는 의상 수에도 안 셈)',
-     burnout.clothingBrandCount === 0 && burnout.needsCreditReview === true,
+  ok('BURNOUT: 의상 브랜드 0종 (관용 표기는 의상 수에도 안 셈) — branded 가 0종 규칙보다 앞선다',
+     burnout.clothingBrandCount === 0 && burnout.submissionType === 'branded',
      JSON.stringify(burnout));
 
   // 관용 표기만 있고 실브랜드가 아예 없으면 → branded 로 만들지 않는다 (union 0)
@@ -545,9 +549,10 @@ console.log('\n=== GENERIC-CREDIT 필터 (2026-08-24) ===');
     L(1, [{ type: 'Top', brand: "Stylist's Own" }]), L(2, [{ type: 'Dress', brand: 'Own Design' }]),
     L(3, [{ type: 'Pants', brand: 'Vintage' }]), L(4, [{ type: 'Coat', brand: 'Stylist' }]),
   ], mapFor([1, 1, 1, 1]));
-  ok('전부 관용 표기 → free + needsCreditReview (branded 오탐 없음)',
-     allGeneric.submissionType === 'free' && allGeneric.branded === false
-     && allGeneric.needsCreditReview === true, JSON.stringify(allGeneric));
+  // 2026-09-10 도메니코: "Stylist's Own 등만 있을 때는 380유로" — 브랜디드 오탐은 여전히 없다.
+  ok('전부 관용 표기 → paid_few_looks / no_clothing_brands (branded 오탐 없음)',
+     allGeneric.submissionType === 'paid_few_looks' && allGeneric.branded === false
+     && allGeneric.paidReason === 'no_clothing_brands', JSON.stringify(allGeneric));
 
   // 우회로 차단: 실의상 2종 + "Stylist's Own" 으로 3종을 못 채운다
   const pad = classifySubmissionType([
@@ -619,6 +624,91 @@ console.log('\n=== 클라이언트 미러 동기화 ===');
   ok('동의 모달에 fixFewBrands 9개 언어', (consent.match(/fixFewBrands:/g) || []).length === 9);
   ok('동의 모달이 few_clothing_brands 사유로 분기한다',
      consent.includes("paidReason === 'few_clothing_brands'"));
+})();
+
+
+/* ── 2026-09-10 (도메니코 확정) — GENRE 규칙 ─────────────────────────────
+ * "뷰티화보의 경우에는 룩이 없어도 전혀 상관없음. 패션화보만 룩 조건이 해당된다."
+ * "패션화보에서 의상 브랜드 0종은 380유로." "스파브랜드만·Stylist's Own 만도 380유로."
+ * 뷰티에서 한 브랜드만 나와도 "무조건 무료". FASHION 포함이면 패션 규칙.
+ * FASHION 도 BEAUTY 도 아니면 관리자 확인 대상. */
+console.log('\n=== GENRE 규칙 (2026-09-10) ===');
+(function () {
+  const L = (n, items) => ({ n, items });
+  const F = { submittedAt: new Date('2026-09-20T00:00:00Z') };
+  const cls = (looks, genres) => classifySubmissionType(looks, mapFor(looks.map(() => 1)), Object.assign({ genres }, F));
+  const beauty2 = [L(1, [{ type: 'Other', brand: 'Dior Beauty' }]), L(2, [{ type: 'Other', brand: 'Dior Beauty' }])];
+
+  const b = cls(beauty2, ['BEAUTY']);
+  ok('BEAUTY 룩 2개·한 뷰티 브랜드 → free (룩·브랜드 조건 없음, 무조건 무료)',
+     b.submissionType === 'free' && b.branded === false && b.genreMode === 'beauty'
+     && b.paidReason === null && b.needsCreditReview === false, JSON.stringify(b));
+  const b0 = classifySubmissionType(beauty2, [], Object.assign({ genres: ['BEAUTY'] }, F));
+  ok('BEAUTY 이미지 있는 룩 0개 → 그래도 free (룩이 없어도 상관없음)',
+     b0.submissionType === 'free' && b0.realLookCount === 0, JSON.stringify(b0));
+  const ba = cls(beauty2, ['BEAUTY', 'ART']);
+  ok('BEAUTY+ART (FASHION 없음) → 뷰티 규칙', ba.genreMode === 'beauty' && ba.submissionType === 'free', JSON.stringify(ba));
+
+  const fb = cls(beauty2, ['FASHION', 'BEAUTY']);
+  ok('FASHION+BEAUTY → 패션 규칙 (FASHION 포함이면 패션)', fb.genreMode === 'fashion' && fb.submissionType !== 'free', JSON.stringify(fb));
+
+  const sneak = cls([L(1, [{ type: 'Top', brand: 'Gucci' }]), L(2, [{ type: 'Other', brand: 'Dior Beauty' }])], ['BEAUTY']);
+  ok('BEAUTY 만 골랐는데 의상 브랜드 1종 기재 → 패션 규칙 → branded (꼼수 차단)',
+     sneak.genreMode === 'fashion' && sneak.submissionType === 'branded', JSON.stringify(sneak));
+  const spaB = cls([L(1, [{ type: 'Top', brand: 'Zara' }]), L(2, [{ type: 'Other', brand: 'Dior Beauty' }])], ['BEAUTY']);
+  ok('BEAUTY + SPA 옷 하나(집계 제외) → 의상 0종 → 뷰티 규칙 유지',
+     spaB.genreMode === 'beauty' && spaB.submissionType === 'free', JSON.stringify(spaB));
+
+  const f0 = cls([L(1, [{ type: 'Hat', brand: 'X' }]), L(2, [{ type: 'Shoes', brand: 'Y' }]), L(3, [{ type: 'Bag', brand: 'Z' }])], ['FASHION']);
+  ok('FASHION 룩 3개·의상 0종 → €380 no_clothing_brands',
+     f0.submissionType === 'paid_few_looks' && f0.paidReason === 'no_clothing_brands', JSON.stringify(f0));
+  const spa3 = cls([L(1, [{ type: 'Top', brand: 'Zara' }]), L(2, [{ type: 'Top', brand: 'H&M' }]), L(3, [{ type: 'Top', brand: 'Uniqlo' }])], ['FASHION']);
+  ok('FASHION SPA 3종만 → 의상 0종 → €380 (SPA 는 패션 브랜드가 아니다)',
+     spa3.submissionType === 'paid_few_looks' && spa3.paidReason === 'no_clothing_brands' && spa3.clothingBrandCount === 0, JSON.stringify(spa3));
+  const own3 = cls([L(1, [{ type: 'Top', brand: "Stylist's Own" }]), L(2, [{ type: 'Top', brand: 'Own Design' }]), L(3, [{ type: 'Top', brand: 'Vintage' }])], ['FASHION']);
+  ok("FASHION Stylist's Own 만 → €380", own3.submissionType === 'paid_few_looks' && own3.paidReason === 'no_clothing_brands', JSON.stringify(own3));
+  const f02 = cls([L(1, [{ type: 'Hat', brand: 'X' }]), L(2, [{ type: 'Shoes', brand: 'Y' }])], ['FASHION']);
+  ok('FASHION 룩 2개·의상 0종 → 사유는 no_clothing_brands (룩을 늘려도 여전히 €380 이므로 진짜 처방을 말한다)',
+     f02.submissionType === 'paid_few_looks' && f02.paidReason === 'no_clothing_brands', JSON.stringify(f02));
+
+  const other = cls([L(1, [{ type: 'Top', brand: 'Gucci' }]), L(2, [{ type: 'Top', brand: 'Gucci' }]), L(3, [{ type: 'Top', brand: 'Gucci' }])], ['PORTRAIT']);
+  ok('PORTRAIT 만 (FASHION·BEAUTY 없음) → free + needsCreditReview category_other (자동 판정 없음)',
+     other.genreMode === 'other' && other.submissionType === 'free' && other.needsCreditReview === true
+     && other.reviewReason === 'category_other' && other.branded === false, JSON.stringify(other));
+
+  const legacy = cls([L(1, [{ type: 'Hat', brand: 'X' }]), L(2, [{ type: 'Shoes', brand: 'Y' }]), L(3, [{ type: 'Bag', brand: 'Z' }])], undefined);
+  ok('genres 없음(구 호출·재분류) → 패션 규칙 (종전 동작)', legacy.genreMode === 'fashion' && legacy.paidReason === 'no_clothing_brands', JSON.stringify(legacy));
+
+  ok('BEAUTY_MAX_CLOTHING_BRANDS 는 0 (옷 브랜드를 적으면 패션 화보)', require(path.resolve(__dirname, '..', 'api', '_lib', 'submissionType')).BEAUTY_MAX_CLOTHING_BRANDS === 0);
+
+  // 프론트 미러·서버 배선 — 화면 안내와 서버 판정이 같은 규칙을 타는지
+  const fs = require('fs');
+  const html = fs.readFileSync(path.resolve(__dirname, '..', 'frontend', 'submission.html'), 'utf8');
+  ok('미러에 _papGenreMode 가 있고 BEAUTY 문턱이 0', /var _PAP_BEAUTY_MAX_CLOTHING_BRANDS=0;/.test(html) && /function _papGenreMode\(/.test(html));
+  ok('미러가 FASHION 포함 → fashion, BEAUTY → beauty/fashion, 그 외 → other 를 돌려준다',
+     /indexOf\('FASHION'\)!==-1\) return 'fashion'/.test(html) && /indexOf\('BEAUTY'\)!==-1\) return clothingCount>_PAP_BEAUTY_MAX_CLOTHING_BRANDS \? 'fashion' : 'beauty'/.test(html) && /return 'other';/.test(html));
+  ok('미러에 no_clothing_brands 사유가 있고 branded 뒤·few_looks 앞이다',
+     /else if\(branded\) type='branded';\s*else if\(noClothingBrands\)\{ type='paid_few_looks'; paidReason='no_clothing_brands'; \}\s*else if\(realLookCount<3\)/.test(html));
+  ok('미러가 뷰티는 무조건 free, 기타 장르는 needsCreditReview 로 돌린다',
+     /genreMode==='beauty'\)\{ branded=false; \}/.test(html) && /genreMode==='other'\)\{ branded=false; needsCreditReview=true; reviewReason='category_other'; \}/.test(html));
+  ok('안내 렌더러가 no_clothing_brands → submissionTypeNoBrands, other → submissionTypeOtherGenre 로 분기한다',
+     /paidReason==='no_clothing_brands' \? 'submissionTypeNoBrands'/.test(html) && /genreMode==='other' \? 'submissionTypeOtherGenre'/.test(html));
+  ok('submissionTypeNoBrands·submissionTypeOtherGenre 문구가 9개 언어에 있다',
+     (html.match(/submissionTypeNoBrands:'/g) || []).length === 9 && (html.match(/submissionTypeOtherGenre:'/g) || []).length === 9);
+  ok('장르를 바꾸면 안내를 다시 그린다 (selectGenre → _renderSubmissionTypeNotice)',
+     /function selectGenre\(el\)\{[\s\S]*?_renderSubmissionTypeNotice\(\);\s*\}/.test(html));
+  for (const f of ['index.js', '[id].js']) {
+    const src = fs.readFileSync(path.resolve(__dirname, '..', 'api', 'submissions', f), 'utf8');
+    ok('api/submissions/' + f + ' 가 장르를 분류기에 넘긴다', /classifySubmissionType\(looks, lookImageMap, \{ genres: normalizedGenres \}\)/.test(src));
+    ok('api/submissions/' + f + ' 가 판정 근거(genreMode·paidReason·needsCreditReview)를 저장한다',
+       /submissionGenreMode: _cls\.genreMode/.test(src) && /submissionPaidReason: _cls\.paidReason/.test(src) && /needsCreditReview: !!_cls\.needsCreditReview/.test(src));
+  }
+  const fee = fs.readFileSync(path.resolve(__dirname, '..', 'frontend', 'pap-submission-fee-consent.js'), 'utf8');
+  ok('게재료 모달이 no_clothing_brands 사유를 9개 언어로 설명한다',
+     (fee.match(/whyNoBrands:/g) || []).length === 9 && (fee.match(/fixNoBrands:/g) || []).length === 9
+     && /paidReason === 'no_clothing_brands'\) return t\('whyNoBrands'\)/.test(fee));
+  const terms = fs.readFileSync(path.resolve(__dirname, '..', 'frontend', 'submission-terms.js'), 'utf8');
+  ok('약관 제7조 ⑥(패션에만 적용·뷰티 면제·0종 유료)이 9개 언어에 있다', (terms.match(/⑥ /g) || []).length === 9);
 })();
 
 console.log('\n=== SUMMARY ===');
