@@ -70,4 +70,54 @@ t('마이그레이션 파일이 저장소에 남아 있다', () => {
   assert.ok((mig.match(/\('[a-z0-9._]+','/g) || []).length >= 12, '시드 12계정이 없다');
 });
 
+/* ── 조용한 죽음 회귀 (2026-09-10 추가) ──────────────────────────────
+ *
+ * 실측 사고: 이 크론은 2026-08-24 신설 이후 1,247회 실행에서 폴링 0회였다.
+ * 실패는 0건. 09-01 20:12 에 12개 계정이 전부 enabled=false 가 됐고, 그때부터
+ * 목록 조회가 빈 배열을 주니 루프가 안 돌았다. 매번 ok=true · polled 0 이다.
+ *
+ * pipeline-watch 의 checkProduction 이 "돌았는데 생산 0" 을 이미 잡는데도
+ * 못 잡은 이유는 하나다 — 이 크론이 produced/remaining 을 **신고하지 않아서**
+ * 판정 대상('미신고')에서 빠져 있었다. 감시가 없었던 게 아니라 신고가 없었다.
+ *
+ * 그래서 이 테스트가 지키는 것은 두 가지다:
+ *   ① 신고를 한다 (안 하면 다시 감시 사각지대로 돌아간다)
+ *   ② 신고한 숫자가 실제 판정기를 통과했을 때 옳은 답을 낸다 —
+ *      특히 '전부 꺼짐' 이 '완주' 로 오인되지 않을 것. 이게 핵심이다. */
+const { judgeCron, MIN_ZERO_RUNS } = require('../api/_lib/productionHealth');
+
+t('생산량을 신고한다 — 안 하면 checkProduction 의 사각지대로 돌아간다', () => {
+  assert.ok(/reportProduction/.test(CODE),
+    'reportProduction 신고가 없다 — 미신고 크론은 "모른다"로 분류돼 영원히 조용하다');
+  assert.ok(/produced: out\.queued/.test(CODE), '생산량이 큐 적재 건수가 아니다');
+  assert.ok(/remaining: unwatched/.test(CODE),
+    '잔여가 "안 보고 있는 계정 수"가 아니다 — 이 정의라야 전부 꺼진 상태가 잡힌다');
+});
+
+t('전부 비활성이면 목록이 빈 것과 구분된다 (조회에서 안 거르고 코드에서 가른다)', () => {
+  assert.ok(!/\.eq\('enabled',\s*true\)/.test(CODE),
+    "조회에서 enabled 를 걸러내면 '원래 없음'과 '전부 꺼짐'이 똑같이 빈 배열이 된다");
+  assert.ok(/unwatched\s*=\s*totalAccounts\s*-\s*accounts\.length/.test(CODE));
+});
+
+t('판정기: 전부 꺼진 상태는 막힘으로 잡힌다 (완주로 새지 않는다)', () => {
+  /* 지금 프로덕션 상태 그대로: 큐 0건이 계속되고, 안 보는 계정이 12개. */
+  const runs = Array.from({ length: MIN_ZERO_RUNS + 2 },
+    () => ({ produced: 0, remaining: 12, ok: true }));
+  assert.strictEqual(judgeCron(runs).status, '막힘',
+    '전부 비활성인데 조용하다 — 09-01 사고가 그대로 재발한다');
+});
+
+t('판정기: 정상(전부 켜짐·새 글 없음)은 조용하다 — 헛알림이 감시를 죽인다', () => {
+  const runs = Array.from({ length: MIN_ZERO_RUNS + 2 },
+    () => ({ produced: 0, remaining: 0, ok: true }));
+  assert.strictEqual(judgeCron(runs).status, '완주');
+});
+
+t('판정기: 큐를 적재하고 있으면 생산중', () => {
+  const runs = [{ produced: 2, remaining: 0, ok: true },
+    { produced: 0, remaining: 0, ok: true }];
+  assert.strictEqual(judgeCron(runs).status, '생산중');
+});
+
 console.log('\n셀럽 계정 감시: ' + n + '건 통과');

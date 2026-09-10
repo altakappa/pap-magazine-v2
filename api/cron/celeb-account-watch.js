@@ -23,7 +23,7 @@
 const { bearerOk } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
-const { withCronGuard } = require('../_lib/cronGuard');
+const { withCronGuard, reportProduction } = require('../_lib/cronGuard');
 const { discoverAccount } = require('../_lib/igDiscovery');
 const { sendTextToChatSafe } = require('../_lib/telegram');
 
@@ -52,10 +52,19 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
   const chatId = briefChatId();
   if (!chatId) return res.status(200).json({ ok: false, error: 'TELEGRAM_CHAT_ID 미설정' });
 
-  const { data: accounts, error: accErr } = await supabaseAdmin
-    .from('celeb_watch_accounts').select('*').eq('enabled', true)
+  /* 목록 전체를 읽고 enabled 를 코드에서 가른다 (2026-09-10).
+     왜 전체를 읽나 — '감시할 게 원래 없다' 와 '있는데 전부 꺼져 있다' 는
+     완전히 다른 상태인데, .eq('enabled',true) 로 걸러 오면 둘 다 빈 배열이라
+     구분할 수단이 사라진다. 아래 remaining 계산이 이 구분에 달려 있다. */
+  const { data: allAccounts, error: accErr } = await supabaseAdmin
+    .from('celeb_watch_accounts').select('*')
     .order('last_polled_at', { ascending: true, nullsFirst: true });
   if (accErr) return res.status(500).json({ ok: false, error: accErr.message });
+
+  const accounts = (allAccounts || []).filter((a) => a && a.enabled);
+  const totalAccounts = (allAccounts || []).length;
+  /* 목록에 있는데 꺼져 있어 아무도 안 보고 있는 계정 수. */
+  const unwatched = totalAccounts - accounts.length;
 
   const out = { polled: 0, baselined: 0, queued: 0, errors: [] };
   let briefBudget = MAX_BRIEFS;
@@ -135,5 +144,35 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
     }
   }
 
-  return res.status(200).json({ ok: true, dry, ...out });
+  /* ── 생산량 신고 (2026-09-10 신설) ────────────────────────────────
+   *
+   * 실측: 이 크론은 2026-08-24 신설 이후 1,247회 실행에서 **단 한 번도**
+   * 폴링한 적이 없다. 실패는 0건이다. 09-01 20:12 에 12개 계정(BTS·블랙핑크·
+   * 샤넬·디올·프라다 …)이 전부 enabled=false 가 됐고, 그 뒤로 목록 조회가
+   * 빈 배열을 주니 루프가 그냥 안 돌았다. 매번 ok=true · polled 0 이었다.
+   *
+   * 왜 아무 감시에도 안 걸렸나 — pipeline-watch 의 checkProduction 은 이미
+   * "돌았는데 생산이 0" 을 크론 이름과 무관하게 잡는다. 그런데 그 판정은
+   * produced/remaining 을 **신고한 크론만** 대상으로 한다(미신고는 '모른다'
+   * 로 빼고 부채로만 센다). 이 크론이 바로 그 미신고 쪽에 있었다.
+   * 그래서 새 감시를 만들지 않는다 — 이미 있는 감시에 신고를 시작할 뿐이다.
+   *
+   * remaining 의 뜻을 여기서는 '아직 아무도 안 보고 있는 계정 수' 로 잡는다.
+   *   · 정상(전부 켜짐, 새 글 없음) → produced 0 · remaining 0 → '완주' · 조용함
+   *   · 목록이 비어 있음           → produced 0 · remaining 0 → '완주' · 조용함
+   *   · 전부 꺼짐 (지금 상태)      → produced 0 · remaining 12 → 6회 뒤 '막힘' 경보
+   * 세 번째만 울린다. 이게 이 신고가 존재하는 이유다. */
+  const note = totalAccounts === 0
+    ? '감시 목록이 비어 있음 (등록된 계정 0개)'
+    : (accounts.length === 0
+      ? '감시 대상 0개 — 등록된 ' + totalAccounts + '개가 전부 비활성(enabled=false)'
+      : '폴링 ' + out.polled + '/' + accounts.length + '개 · 기준선 ' + out.baselined
+        + ' · 큐 적재 ' + out.queued + '건 · 오류 ' + out.errors.length + '건'
+        + (unwatched ? ' · 비활성 ' + unwatched + '개' : ''));
+  reportProduction(res, { produced: out.queued, remaining: unwatched, note });
+
+  return res.status(200).json({
+    ok: true, dry, ...out,
+    accounts: { total: totalAccounts, enabled: accounts.length, unwatched },
+  });
 });
