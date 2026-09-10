@@ -206,16 +206,20 @@ for (const lang of LANGS) {
   ok(`${lang} — 줄바꿈 토큰(\\n) 3줄 구성`, String(v).split('\\n').length === 3);
   ok(`${lang} — successMsg 에 검토기간이 명시돼 있다`,
     /1[-–~ ]?3|1 à 3|1〜3/.test(String(subDict[lang].successMsg)));
-  ok(`${lang} — 죽은 키 toastMinImages 가 제거됐다`,
-    !('toastMinImages' in subDict[lang]));
+  // 2026-09-10 도메니코: "어떤 화보든 총 이미지 갯수가 최소 4개 이상". 옛 '죽은 키' 는 되살아나
+  // 서버 MIN_TOTAL_IMAGES(4)와 같은 숫자를 말해야 한다 — 문구와 실제 하한이 다시 어긋나면 안 된다.
+  ok(`${lang} — toastMinImages 가 있고 {min}·{count} 자리표시자를 쓴다 (하한은 서버 상수에서)`,
+    typeof subDict[lang].toastMinImages === 'string' && /\{min\}/.test(subDict[lang].toastMinImages) && /\{count\}/.test(subDict[lang].toastMinImages));
 }
 
 ok('안내 문단이 data-i18n-html 로 배선됐다',
   subHtml.includes('data-i18n-html="reviewNoteBlock"'));
 ok('하드코딩 영어 스팬(reviewTimeNote)이 사라졌다',
   !subHtml.includes('reviewTimeNote'));
-ok('실제 이미지 하한(1장)과 모순되던 "최소 4장" 문구가 남아있지 않다',
-  !subHtml.includes('toastMinImages'));
+// 2026-09-10 — 하한이 4장으로 확정됐다(도메니코). 화면 상수·서버 상수·문구가 한 숫자를 본다.
+const _minSrv = require(path.join(ROOT, 'api', '_lib', 'submissionType')).MIN_TOTAL_IMAGES;
+ok('화면 MIN_TOTAL_IMAGES 가 서버 MIN_TOTAL_IMAGES 와 같다 (문구와 실제 하한이 어긋나지 않는다)',
+  new RegExp('var MIN_TOTAL_IMAGES = ' + _minSrv + ';').test(subHtml) && _minSrv === 4);
 
 // ─────────────────────────────────────────────────────────────
 // ⑥ 원문 오류 유출 차단

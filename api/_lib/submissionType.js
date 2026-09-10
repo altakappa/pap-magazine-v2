@@ -128,6 +128,11 @@ const MIN_LOOKS = 3;
 // clothing brands" 와 같은 숫자. 약관을 바꾸면 여기도 같이 바꿔야 한다.
 const MIN_CLOTHING_BRANDS = 3;
 
+// 2026-09-10 도메니코: "어떤 화보든 총 이미지 갯수가 최소 4개 이상은 되어야 해."
+// 룩 이미지 + 추가 이미지 합계. 장르·무료/유료와 무관한 절대 하한 — 미달이면 접수 자체를 거부(400 TOO_FEW_IMAGES).
+// 클라이언트(frontend/submission.html)의 MIN_TOTAL_IMAGES 와 반드시 같은 값.
+const MIN_TOTAL_IMAGES = 4;
+
 // GENRE 규칙(2026-09-10) — BEAUTY 만 골랐을 때 의상 브랜드가 이 수를 넘으면 패션 화보로 본다.
 const BEAUTY_MAX_CLOTHING_BRANDS = 0;
 
@@ -539,6 +544,7 @@ module.exports = {
   MIN_LOOKS,
   MIN_CLOTHING_BRANDS,
   BEAUTY_MAX_CLOTHING_BRANDS,
+  MIN_TOTAL_IMAGES,
   genreModeOf,
   CLOTHING_TYPES,
   normBrand,

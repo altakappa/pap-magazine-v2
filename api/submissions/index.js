@@ -15,7 +15,7 @@ const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
-const { classifySubmissionType, looksMissingCredit } = require('../_lib/submissionType');
+const { classifySubmissionType, looksMissingCredit, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
 const englishOnly = require('../_lib/submissionEnglishOnly');   // 전부 영어로 + 자동번역 방어 (POST·PUT 공용)
 const { feeForType } = require('../_lib/submissionPayment');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
@@ -118,6 +118,10 @@ module.exports = async function handler(req, res) {
 
       if (lookUrls.length + additionalUrls.length === 0) {
         return _reject400(res, user, 'NO_IMAGE_URLS', 'No valid image URLs provided');
+      }
+      // 2026-09-10 도메니코: 어떤 화보든 총 이미지 4장 이상 (룩 + 추가). 장르·요금과 무관한 절대 하한.
+      if (lookUrls.length + additionalUrls.length < MIN_TOTAL_IMAGES) {
+        return _reject400(res, user, 'TOO_FEW_IMAGES', 'At least ' + MIN_TOTAL_IMAGES + ' images are required (looks + additional)', { count: lookUrls.length + additionalUrls.length, min: MIN_TOTAL_IMAGES });
       }
 
       // Reject if any submitted URL was stripped for being out-of-scope — the

@@ -12,7 +12,7 @@ const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
-const { classifySubmissionType, looksMissingCredit } = require('../_lib/submissionType');
+const { classifySubmissionType, looksMissingCredit, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
 
 // Build the same `{SUPABASE_URL}/storage/v1/object/public/submissions/{user.id}/`
 // prefix the POST endpoint enforces — caller can only attach URLs in their
@@ -193,6 +193,10 @@ module.exports = async function handler(req, res) {
       const additionalUrls = _sanitize(body.additionalUrls);
       if (lookUrls.length + additionalUrls.length === 0) {
         return res.status(400).json({ message: 'No valid image URLs provided' });
+      }
+      // 2026-09-10 도메니코: 어떤 화보든 총 이미지 4장 이상 (룩 + 추가). 재제출도 같은 하한.
+      if (lookUrls.length + additionalUrls.length < MIN_TOTAL_IMAGES) {
+        return res.status(400).json({ code: 'TOO_FEW_IMAGES', message: 'At least ' + MIN_TOTAL_IMAGES + ' images are required (looks + additional)', count: lookUrls.length + additionalUrls.length, min: MIN_TOTAL_IMAGES });
       }
 
       // Optional video URL
