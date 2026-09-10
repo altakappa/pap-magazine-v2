@@ -31,7 +31,9 @@
 (function(){
   'use strict';
 
-  var NAME_ONLY_RE = /^[A-Za-z0-9 .'\-]*$/;
+  // 2026-09-10 도메니코: "악센트는 허용. 라틴/알파벳이 아닌 걸 넣으면 알파벳·영어로만 된다는 경고."
+  // 라틴 확장(À-ÿ · Ā-ɏ · Ḁ-ỿ)을 허용한다 — Hermès·Niño·KIMHĒKIM. 서버(latinOnly.js)도 같은 폭.
+  var NAME_ONLY_RE = /^[A-Za-z0-9\u00C0-\u024F\u1E00-\u1EFF .'\-]*$/;
   var NAME_ONLY_IDS = [
     // pullletter.html
     'phName', 'vgName', 'stName', 'contactName',
@@ -60,23 +62,23 @@
   // Translations are intentionally short — they're shown as a native
   // browser tooltip + a small caption under the input.
   var TOOLTIPS = {
-    ko: '영문/숫자/공백/. - \' 만 입력 가능',
-    en: 'Letters, digits, space, . - \' only',
-    zh: '仅可输入英文/数字/空格/. - \'',
-    ja: '英字・数字・スペース・. - \' のみ入力可',
-    it: 'Solo lettere, numeri, spazio, . - \'',
-    fr: 'Lettres, chiffres, espace, . - \' uniquement',
-    es: 'Solo letras, dígitos, espacio, . - \'',
-    ru: 'Только латиница, цифры, пробел, . - \'',
-    de: 'Nur Buchstaben, Ziffern, Leerzeichen, . - \'',
+    ko: '알파벳(영어)으로만 입력할 수 있습니다 — 영문 알파벳(악센트 포함)/숫자/공백/. - \'',
+    en: 'English (Latin alphabet) only — letters (accents OK), digits, space, . - \'',
+    zh: '仅可使用英文（拉丁字母）— 字母（可含重音）、数字、空格、. - \'',
+    ja: '英語（ラテン文字）のみ入力可 — 文字（アクセント可）・数字・スペース・. - \'',
+    it: 'Solo inglese (alfabeto latino) — lettere (accenti ok), numeri, spazio, . - \'',
+    fr: 'Anglais (alphabet latin) uniquement — lettres (accents ok), chiffres, espace, . - \'',
+    es: 'Solo inglés (alfabeto latino) — letras (acentos ok), dígitos, espacio, . - \'',
+    ru: 'Только английский (латиница) — буквы (с диакритикой), цифры, пробел, . - \'',
+    de: 'Nur Englisch (lateinisches Alphabet) — Buchstaben (Akzente ok), Ziffern, Leerzeichen, . - \'',
   };
   function _curLang(){ try{ return localStorage.getItem('pap-lang') || 'en'; }catch(_){ return 'en'; } }
   function _tooltipFor(lang){
     return TOOLTIPS[lang] || TOOLTIPS.en;
   }
   var LATIN_TOOLTIPS = {
-    ko: '영어로만 입력해 주세요 (한글·중국어·일본어 등 사용 불가)',
-    en: 'Please write in English only (no Korean/CJK/Cyrillic)',
+    ko: '알파벳(영어)으로만 입력할 수 있습니다 — 한글·중국어·일본어·키릴 글자는 지워집니다',
+    en: 'English (Latin alphabet) only — Korean/Chinese/Japanese/Cyrillic characters are removed',
     zh: '请仅用英文填写(不可使用中文/韩文/日文等)',
     ja: '英語のみで入力してください(日本語・韓国語・中国語などは不可)',
     it: 'Scrivi solo in inglese (niente coreano/CJK/cirillico)',
@@ -194,7 +196,7 @@
     // 지웠다는 사실을 알린다 — 조용히 사라지면 "타이핑이 안 된다"고 오해한다
     _markInvalid(el, true, 'latin');
     clearTimeout(el._papStripTimer);
-    el._papStripTimer = setTimeout(function(){ _validateOne(el); }, 1800);
+    el._papStripTimer = setTimeout(function(){ _validateOne(el); }, 3000);
     return true;
   }
   document.addEventListener('input', function(e){
