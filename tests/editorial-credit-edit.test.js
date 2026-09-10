@@ -250,6 +250,16 @@ async function patch(body) {
   reset();
   r = await patch({ brands: [{ name: 'Hermès' }, { name: 'Prada' }, { name: 'Loewe' }, { name: 'Miu Miu' }] });
   ok('악센트 라틴(Hermès)은 허용', r.code === 200, '받은 코드=' + r.code);
+  // 2026-09-10 도메니코 "모든 크레딧은 영어로만" — 팀 크레딧(이름·역할·핸들)도 같은 규칙 (스펙 C-11 폐기)
+  reset();
+  r = await patch({ credits: [{ name: '홍길동', roles: ['Photographer'] }], brands: FOUR });
+  ok('한글 팀 이름은 400', r.code === 400 && r.body.reason === 'non_latin_brand', '받은 코드=' + r.code);
+  reset();
+  r = await patch({ credits: [{ name: 'Kim', roles: ['摄影师'] }], brands: FOUR });
+  ok('중국어 역할은 표준 영어(Photographer)로 바뀌어 통과', r.code === 200, '받은 코드=' + r.code);
+  reset();
+  r = await patch({ credits: [{ name: 'Kim', roles: ['写真'] }], brands: FOUR });
+  ok('표준화 못 하는 비라틴 역할은 400', r.code === 400 && r.body.reason === 'non_latin_brand', '받은 코드=' + r.code);
 
   console.log('\n=== ⑥ 횟수 (스펙 0-3) ===');
   reset({ used: 2 });

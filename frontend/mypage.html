@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="mypage" data-v="3">
+<meta name="pap-ui-i18n" content="mypage" data-v="4">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP Magazine - My Page">
@@ -1235,7 +1235,17 @@ async function mpSaveCredits(){
   if(typeof window._papValidateLatinOnly === 'function'){
     for(var k = 0; k < brands.length; k++){
       if(!window._papValidateLatinOnly(brands[k].name) || !window._papValidateLatinOnly(brands[k].instagram)){
-        say(_papUIL('브랜드명과 핸들은 영문으로만 입력할 수 있습니다: ','Brand names and handles must be in English: ') + brands[k].name, true);
+        say(_papUIL('모든 크레딧(이름·역할·브랜드·핸들)은 영문으로만 입력할 수 있습니다: ','All credits (names, roles, brands, handles) must be in English: ') + brands[k].name, true);
+        return;
+      }
+    }
+    // 2026-09-10 도메니코 "모든 크레딧은 영어로만" — 팀 크레딧도. 서버(api/editorials/[id]/credits.js)와 같은 규칙.
+    for(var c2 = 0; c2 < credits.length; c2++){
+      var badVal = !window._papValidateLatinOnly(credits[c2].name) ? credits[c2].name
+        : (!window._papValidateLatinOnly(credits[c2].instagram) ? credits[c2].instagram
+        : (credits[c2].roles || []).filter(function(r){ return !window._papValidateLatinOnly(r); })[0]);
+      if(badVal){
+        say(_papUIL('모든 크레딧(이름·역할·브랜드·핸들)은 영문으로만 입력할 수 있습니다: ','All credits (names, roles, brands, handles) must be in English: ') + badVal, true);
         return;
       }
     }

@@ -82,7 +82,7 @@ module.exports = async function handler(req, res) {
     const html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="archive" data-v="3">
+<meta name="pap-ui-i18n" content="archive" data-v="4">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Archive — All Editorials, Articles &amp; Films | PAP Magazine</title>

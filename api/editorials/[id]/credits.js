@@ -20,6 +20,7 @@ const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 const { hasActivePremium } = require('../../_lib/subscriptionAccess');
 const { spaRuleApplies, isSpaBrand, isGenericCredit } = require('../../_lib/submissionType');
 const { findNonLatin } = require('../../_lib/latinOnly');
+const { normalizeRole } = require('../../_lib/creditRoles');   // 2026-09-10 역할 표준화(자동번역 방어)
 const { sendTextToTelegramSafe } = require('../../_lib/telegram');
 const { recordContentChange } = require('../../_lib/audit');
 const ce = require('../../_lib/creditEdit');
@@ -126,16 +127,27 @@ module.exports = async function handler(req, res) {
     //    옮겼다. 비라틴 이름은 isGenericCredit 의 키가 빈 문자열이 되어
     //    종류 수에서 빠지므로, 뒤에 두면 '한글은 못 쓴다'가 아니라
     //    '브랜드가 줄어든다'는 엉뚱한 안내가 나간다. 막는 강도는 같다.
+    //    2026-09-10 도메니코 "모든 크레딧은 영어로만" — 스펙 C-11(사람 이름 제외)을 뒤집는다.
+    //    팀 크레딧의 이름·역할·핸들도 같은 규칙. 역할은 저장 전에 표준 영어값으로(摄影师 → Photographer).
+    nextCredits.forEach(function (row) {
+      if (row && Array.isArray(row.roles)) row.roles = row.roles.map(function (r) { return normalizeRole(r) || r; });
+    });
     const latinEntries = [];
     nextBrands.forEach(function (row, i) {
       latinEntries.push({ label: 'brands[' + i + '].name', value: row.name });
       if (row.instagram) latinEntries.push({ label: 'brands[' + i + '].instagram', value: row.instagram });
     });
+    nextCredits.forEach(function (row, i) {
+      if (!row) return;
+      latinEntries.push({ label: 'credits[' + i + '].name', value: row.name });
+      (row.roles || []).forEach(function (r, j) { latinEntries.push({ label: 'credits[' + i + '].roles[' + j + ']', value: r }); });
+      if (row.instagram) latinEntries.push({ label: 'credits[' + i + '].instagram', value: row.instagram });
+    });
     const bad = findNonLatin(latinEntries);
     if (bad.length) {
       return res.status(400).json({
-        message: '브랜드명과 핸들은 영문(라틴 문자)으로만 입력할 수 있습니다: ' + bad.map(function (x) { return x.value; }).join(', '),
-        reason: 'non_latin_brand',
+        message: '모든 크레딧(이름·역할·브랜드·핸들)은 영문(라틴 문자)으로만 입력할 수 있습니다: ' + bad.map(function (x) { return x.value; }).join(', '),
+        reason: 'non_latin_brand',   // 이름은 그대로 둔다 — 프론트·테스트가 본다. 이제 브랜드뿐 아니라 팀 크레딧도 이 사유.
         violations: bad,
       });
     }

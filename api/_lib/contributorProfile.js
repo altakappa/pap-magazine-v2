@@ -33,7 +33,7 @@ function isPersonRole(r) {
 
 function pageShell(title, desc, canonical, jsonLd, bodyHtml) {
   return '<!DOCTYPE html>\n<html lang="ko">\n<head>\n'
-    + '<meta name="pap-ui-i18n" content="contributors" data-v="3">\n'
+    + '<meta name="pap-ui-i18n" content="contributors" data-v="4">\n'
     + '<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
     + '<title>' + escText(title) + '</title>\n'
     + '<meta name="description" content="' + escAttr(desc) + '">\n'
