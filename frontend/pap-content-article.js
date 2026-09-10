@@ -46,6 +46,13 @@ function _papCurLang(){
 // (QA #30 주석의 의도 '한국어 → 원문 제목'과 구현이 정반대였던 것.) 언어별 순서로 교정:
 //   ko     → ti18n.ko(명시 번역 있으면) → 원문(t) → en
 //   그 외  → ti18n[L] → en → 원문(t)
+/* 2026-09-10 — 화면 라벨 9개 언어. 런타임(pap-ui-i18n.js)이 _papUIL 을 사전 기반으로 설치한다.
+   아직 안 깔렸으면 한국어를 내보낸다 — 옵저버가 사전으로 바꾼다. 영어 문자열을 먼저 내보내면
+   런타임이 못 잡는다(사전 키는 한국어). 도메니코: "일본어로 바꿨는데 영어·한글로 남는 부분". */
+function _papUiL(ko,en){
+  try{ if(typeof window._papUIL==='function') return window._papUIL(ko,en); }catch(_){}
+  var L=_papCurLang(); return L==='ko' ? ko : (L==='en' ? en : ko);
+}
 function _papLocTitle(a){
   if(!a) return '';
   var L=_papCurLang();
@@ -492,19 +499,20 @@ function _renderArticleDetail(a,det){
         // QA(2026-07) #9 — SSR·다른 오버레이와 동일한 .ig-funnel 공용 컴포넌트.
         +'<aside class="ig-funnel">'
         +(function(){
-          var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
           // IG 유입 계측 (B-2) — 직링크 대신 /api/ig-out 경유로 클릭 로깅
           var _pSafe='/api/ig-out?src=article&to=post&url='+encodeURIComponent(_permalink);
-          var _body=_ko
-            ? 'PAP의 화보와 필름, 패션·셀럽 소식을<br><b>인스타그램</b>에서 편하게 만나보세요.'
-            : 'Editorials, films, fashion and celebrity news —<br>all in one place on <b>Instagram</b>.';
-          var _view=_ko ? '인스타그램에서 보기 ↗' : 'View on Instagram ↗';
-          var _share=_ko ? '이 기사 공유' : 'Share this story';
+          // 2026-09-10 — ko/en 2분기 → 9개 언어(_papUiL: 사전 → en 폴백). 영어를 먼저 내보내면 런타임이 못 바꾼다.
+          var _body=_papUiL('PAP의 화보와 필름, 패션·셀럽 소식을<br><b>인스타그램</b>에서 편하게 만나보세요.',
+                            'Editorials, films, fashion and celebrity news —<br>all in one place on <b>Instagram</b>.');
+          var _view=_papUiL('인스타그램에서 보기 ↗','View on Instagram ↗');
+          var _share=_papUiL('이 기사 공유','Share this story');
+          var _kick=_papUiL('On Instagram','On Instagram');   // 한국어 모드도 종전처럼 영어 디자인 라벨
+          var _follow=_papUiL('Follow @pap_magazine','Follow @pap_magazine');
           // 공용 .ig-funnel 클래스(igf-*)로 통일 — 인라인 스타일 제거.
-          return '<div class="igf-kicker">On Instagram</div>'
+          return '<div class="igf-kicker">'+_kick+'</div>'
             +'<div class="igf-copy">'+_body+'</div>'
             +'<a class="igf-btn" href="'+_pSafe+'" target="_blank" rel="noopener">'+_view+'</a>'
-            +'<a class="igf-btn igf-btn-ghost" href="/api/ig-out?src=article&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>'
+            +'<a class="igf-btn igf-btn-ghost" href="/api/ig-out?src=article&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">'+_follow+'</a>'
             +'<div><button class="igf-share" onclick="_papShareArticle()">'+_share+' ↗</button></div>';
           })()
         +'</aside>';
@@ -667,10 +675,13 @@ function _renderArticleDetail(a,det){
 function _renderArticleFaq(a){
   var host=document.getElementById('artFaq');
   if(!host) return;
-  var items=Array.isArray(a.faq)?a.faq.filter(function(f){return f&&f.q&&f.a;}):[];
+  // 2026-09-10 — 언어별 FAQ (도메니코: 일본어인데 FAQ 가 한국어). 순서: 그 언어 → en → ko 원문.
+  var L=_papCurLang();
+  var fi=a.faqI18n||{};
+  var src=(fi[L]) || (L!=='ko' && fi.en) || a.faq;
+  var items=Array.isArray(src)?src.filter(function(f){return f&&f.q&&f.a;}):[];
   if(!items.length){ host.innerHTML=''; host.style.display='none'; return; }
-  var ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
-  var html='<h2 style="font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin:0 0 16px;color:#fff">'+(ko?'자주 묻는 질문':'FAQ')+'</h2>';
+  var html='<h2 style="font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin:0 0 16px;color:#fff">'+_papUiL('자주 묻는 질문','FAQ')+'</h2>';
   items.forEach(function(f){
     html+='<details open style="border-bottom:1px solid rgba(255,255,255,.1);padding:12px 0">'
       +'<summary style="font-size:14.5px;font-weight:600;cursor:pointer;line-height:1.6;color:#eee">'+escapeHtml(f.q)+'</summary>'
@@ -691,22 +702,27 @@ function _renderMoreArticles(a){
   function card(e,tag){
     if(!e||!e.title||!(e.slug||e.id)) return '';
     var slug=String(e.slug||e.id);
+    // 2026-09-10 — 카드 제목도 언어별 (그 언어 → en → ko). 도메니코: 일본어인데 MORE ARTICLES 가 한국어.
+    var L=_papCurLang(); var ti=e.title_i18n||{};
+    var title=(L==='ko' ? (ti.ko||e.title) : (ti[L] || ti.en || e.title_en || e.title)) || e.title;
     return '<a data-art-slug="'+escapeHtml(slug)+'" href="/article/'+encodeURIComponent(slug)+'"'
       +' style="display:flex;align-items:center;gap:16px;padding:16px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.02);text-decoration:none;color:inherit;margin-bottom:10px">'
-      +(e.thumbnail?'<img src="'+escapeHtml(e.thumbnail)+'" alt="'+escapeHtml(e.title)+'" loading="lazy" style="width:120px;height:80px;object-fit:cover;background:#222;flex-shrink:0">':'')
+      +(e.thumbnail?'<img src="'+escapeHtml(e.thumbnail)+'" alt="'+escapeHtml(title)+'" loading="lazy" style="width:120px;height:80px;object-fit:cover;background:#222;flex-shrink:0">':'')
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(201,169,110,.9);text-transform:uppercase;margin-bottom:6px">'+tag+'</div>'
-      +'<div style="font-size:15px;font-weight:600;letter-spacing:.02em;line-height:1.4;color:#fff">'+escapeHtml(e.title)+'</div>'
+      +'<div style="font-size:15px;font-weight:600;letter-spacing:.02em;line-height:1.4;color:#fff">'+escapeHtml(title)+'</div>'
       +'</div></a>';
   }
   var html='';
   if(m){
-    html+=card(m.prev,'PREVIOUS');
-    (Array.isArray(m.related)?m.related:[]).forEach(function(e){ html+=card(e,'RELATED'); });
-    html+=card(m.next,'NEXT');
+    // 2026-09-10 — 라벨 9개 언어 (CSS 가 대문자로 만든다). 한국어 모드는 종전대로 영어 디자인 라벨이라
+    // 키도 영어다 — 런타임 사전(_shared)에 영어 키로 8개 언어를 넣었다.
+    html+=card(m.prev,_papUiL('Previous','Previous'));
+    (Array.isArray(m.related)?m.related:[]).forEach(function(e){ html+=card(e,_papUiL('Related','Related')); });
+    html+=card(m.next,_papUiL('Next','Next'));
   }
   if(!html){ host.innerHTML=''; host.style.display='none'; return; }
-  host.innerHTML='<h2 style="font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin:0 0 14px;color:#fff">More Articles</h2>'+html;
+  host.innerHTML='<h2 style="font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin:0 0 14px;color:#fff">'+_papUiL('More Articles','More Articles')+'</h2>'+html;
   host.style.display='';
   // 사이트 안에서는 전체 페이지 이동 대신 오버레이 전환. 목록에 아직 없는
   // 기사는 링크 그대로 보낸다 — /article/<slug> SSR 브릿지가 받아서 되돌아온다.
@@ -833,6 +849,7 @@ function _openArticleDetailInner(idx){
       }
       // 2026-08-08 — SSR 에만 있던 섹션의 데이터 병합 (화면 두 벌 통일).
       if(fullA.faq !== undefined) a.faq = Array.isArray(fullA.faq) ? fullA.faq : null;
+      if(fullA.faq_i18n) a.faqI18n = fullA.faq_i18n;   // 2026-09-10 — 언어별 FAQ
       if(fullA.more_articles) a._more = fullA.more_articles;
       a._extrasChecked = true;
       _renderArticleDetail(a, det);

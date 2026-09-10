@@ -315,7 +315,10 @@
     var lang = cur();
     if (lang === 'ko' || LANGS.indexOf(lang) === -1) return ko;
     var d = cache[lang];
-    if (d) { var t = translate(d, ko); if (t) return t; }
+    // 2026-09-10 — 영어 디자인 라벨(More Articles·Previous·On Instagram…)도 페이지 코드가 _papUIL 로
+    // 부르면 사전의 정확 일치 키로 바꾼다. DOM 스캔(translate)은 한글 게이트를 그대로 둔다 —
+    // 화면의 다른 "Next" 같은 영어 노드를 엉뚱한 뜻으로 바꾸지 않게. 이 경로는 호출한 코드가 뜻을 안다.
+    if (d) { var t = (d.map && d.map[norm(ko)]) || translate(d, ko); if (t) return t; }
     var tbl = window._PAP_UITR && window._PAP_UITR[ko];
     if (tbl && tbl[lang]) return tbl[lang];
     if (lang === 'en' && en) return en;

@@ -1462,8 +1462,9 @@ function _papMidIgCtaHtml(igUrl){
          + '<blockquote class="instagram-media" data-instgrm-permalink="' + permalink.replace(/"/g,'&quot;') + '" data-instgrm-version="14" style="background:#000;border:1px solid rgba(255,255,255,.16);margin:0 auto;max-width:400px;min-width:240px;width:100%"></blockquote>'
          + '</div>';
   }
-  var ko = (localStorage.getItem('pap-lang') || 'ko') === 'ko';
-  var label = ko ? '인스타그램에서 보기 ↗' : 'View on Instagram ↗';
+  // 2026-09-10 — ko/en 2분기 → 9개 언어 (런타임 _papUIL 사전, 없으면 한국어 → 옵저버가 바꾼다)
+  var label = (typeof window._papUIL==='function') ? window._papUIL('인스타그램에서 보기 ↗','View on Instagram ↗')
+            : (((localStorage.getItem('pap-lang')||'ko')==='ko') ? '인스타그램에서 보기 ↗' : 'View on Instagram ↗');
   var out = '/api/ig-out?src=editorial_mid&to=profile&url=' + encodeURIComponent('https://www.instagram.com/pap_magazine/');
   return '<div class="ed-gallery-item ed-mid-cta" style="display:flex;align-items:center;justify-content:center;padding:22px 16px;border-top:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14)">'
        + '<a href="' + out + '" target="_blank" rel="noopener" '

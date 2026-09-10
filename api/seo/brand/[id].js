@@ -195,7 +195,7 @@ ${JSON.stringify(schema)}
   footer a{color:rgba(255,255,255,.6);text-decoration:none;margin-right:14px}footer a:hover{color:#fff}
   @media(max-width:640px){h1{font-size:30px}.wrap{padding:56px 16px 80px}}
 </style>
-<script src="/pap-ui-i18n.js?v=4" defer></script>
+<script src="/pap-ui-i18n.js?v=5" defer></script>
 </head>
 <body>
 <div class="wrap">

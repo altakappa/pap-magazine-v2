@@ -51,20 +51,27 @@ module.exports = async function handler(req, res) {
       try {
         const { data: _trs } = await supabaseAdmin
           .from('seo_translations')
-          .select('lang, title, body')
+          .select('lang, title, body, faq')
           .eq('kind', 'article')
           .eq('content_id', id);
-        const _ti = {}, _ci = {};
+        const _ti = {}, _ci = {}, _fi = {};
         if (data.title) _ti.ko = data.title;
         if (data.title_en) _ti.en = data.title_en;
         if (data.content) _ci.ko = data.content;
         if (data.content_en) _ci.en = data.content_en;
+        /* 2026-09-10 — FAQ 도 언어별로 (도메니코: 일본어인데 FAQ 가 한국어). SSR 과 같은 출처:
+           ko=faq, en=faq_en(139), 그 외=seo_translations.faq. 문자열이면 JSON 파싱. */
+        const _pf = (f) => { if (typeof f === 'string') { try { f = JSON.parse(f); } catch (_) { f = null; } } return Array.isArray(f) ? f : null; };
+        if (_pf(data.faq)) _fi.ko = _pf(data.faq);
+        if (_pf(data.faq_en)) _fi.en = _pf(data.faq_en);
         for (const r of (_trs || [])) {
           if (r && r.title) _ti[r.lang] = r.title;
           if (r && r.body)  _ci[r.lang] = r.body;
+          if (r && _pf(r.faq)) _fi[r.lang] = _pf(r.faq);
         }
         data.title_i18n = _ti;
         data.content_i18n = _ci;
+        data.faq_i18n = _fi;
       } catch (_) { /* best-effort — 번역 없으면 기존 en 폴백 유지 */ }
 
       // 2026-08-08 — MORE ARTICLES (SSR 과 동일 규칙, 공용 빌더).
@@ -72,6 +79,27 @@ module.exports = async function handler(req, res) {
       if (data.status === 'published') {
         try { data.more_articles = await buildMoreArticles(data); }
         catch (_) { /* best-effort — 없으면 SPA 가 섹션을 숨긴다 */ }
+        /* 2026-09-10 — 관련 카드 제목도 언어별로 (도메니코: 일본어인데 MORE ARTICLES 가 한국어).
+           SSR([slug].js)은 lang 하나만 알지만 SPA 는 화면에서 언어를 바꾸므로 7개 언어 제목을
+           한 번의 조회로 실어 보낸다. en 은 title_en(원본 칼럼). 번역이 없는 언어는 SPA 가 en → ko 로 떨어진다. */
+        try {
+          const _mo = data.more_articles;
+          const _items = _mo ? [_mo.prev, _mo.next, ...(Array.isArray(_mo.related) ? _mo.related : [])].filter(Boolean) : [];
+          const _ids = _items.map(e => e.id).filter(Boolean);
+          if (_ids.length) {
+            const { data: _rt } = await supabaseAdmin
+              .from('seo_translations').select('content_id, lang, title')
+              .eq('kind', 'article').in('content_id', _ids);
+            const _byId = {};
+            (_rt || []).forEach(r => { if (r && r.title) { (_byId[r.content_id] = _byId[r.content_id] || {})[r.lang] = r.title; } });
+            _items.forEach(e => {
+              const t = Object.assign({}, _byId[e.id] || {});
+              if (e.title) t.ko = e.title;
+              if (e.title_en) t.en = e.title_en;
+              e.title_i18n = t;
+            });
+          }
+        } catch (_) { /* best-effort */ }
       }
 
       return res.status(200).json({ data });

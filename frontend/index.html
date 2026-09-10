@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="index" data-v="5">
+<meta name="pap-ui-i18n" content="index" data-v="6">
 <meta charset="UTF-8">
 <script>
 /* QA(모바일 Chrome 진단) — ?debug=1 (또는 localStorage.pap_debug='1') 일 때만
@@ -251,7 +251,7 @@
   *{box-shadow:none!important;text-shadow:none!important}
 }
 </style>
-<script src="/pap-ui-i18n.js?v=4" defer></script>
+<script src="/pap-ui-i18n.js?v=5" defer></script>
 </head>
 <body>
 
@@ -945,7 +945,7 @@
      (첫 화면 심볼 오버레이 제거). 되살리려면 아래 스크립트 주석 해제.
 <script src="/pap-splash-loader.js?v=3"></script>
 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=16" defer></script><script src="/pap-social.js?v=8" defer></script><script src="/pap-utils.js?v=9" defer></script><script src="/pap-i18n.js?v=10" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=5" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=83" defer></script><script src="/pap-content-film.js?v=14" defer></script><script src="/pap-content-article.js?v=51" defer></script><script src="/pap-content-creator-shorts.js?v=14" defer></script><script src="/pap-content-api-sync.js?v=125" defer></script><script src="/pap-content-seo.js?v=9" defer></script><script src="/pap-shell-bootstrap.js?v=12" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script><script src="/pap-inclick.js?v=4" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=16" defer></script><script src="/pap-social.js?v=8" defer></script><script src="/pap-utils.js?v=9" defer></script><script src="/pap-i18n.js?v=11" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=5" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=84" defer></script><script src="/pap-content-film.js?v=14" defer></script><script src="/pap-content-article.js?v=52" defer></script><script src="/pap-content-creator-shorts.js?v=14" defer></script><script src="/pap-content-api-sync.js?v=126" defer></script><script src="/pap-content-seo.js?v=9" defer></script><script src="/pap-shell-bootstrap.js?v=12" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script><script src="/pap-inclick.js?v=4" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">
@@ -1117,7 +1117,7 @@
     <aside class="ig-funnel">
       <div class="igf-kicker">PAP Magazine — Instagram</div>
       <div class="igf-copy" data-i18n-html="edIgCopyFilm">다음 필름과 비하인드 컷,<br><b>인스타그램에서 가장 먼저</b> 공개됩니다.</div>
-      <a class="igf-btn" href="/api/ig-out?src=funnel&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>
+      <a class="igf-btn" href="/api/ig-out?src=funnel&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener" data-i18n="igFollowPap">Follow @pap_magazine</a>
     </aside>
   </div>
 </div>
@@ -1232,7 +1232,7 @@
     <aside id="artIgFunnel" class="ig-funnel">
       <div class="igf-kicker">PAP Magazine — Instagram</div>
       <div class="igf-copy" data-i18n-html="edIgCopyArticle">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.</div>
-      <a class="igf-btn" href="/api/ig-out?src=article&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>
+      <a class="igf-btn" href="/api/ig-out?src=article&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener" data-i18n="igFollowPap">Follow @pap_magazine</a>
       <div><button class="igf-share" data-i18n="edIgShare" onclick="_papShareStory()">이 스토리 공유 ↗</button></div>
     </aside>
     <div id="artSocialSlot"></div>

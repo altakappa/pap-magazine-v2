@@ -658,6 +658,22 @@ const LANG_META = {
 // opts.translation: {title, description, body} — it/fr/es/ja 전용 (body 는 기사 SSR 본문 번역)
 // opts.availableLangs: hreflang 으로 선언할 언어 목록 (기본 ['ko','en'])
 /* 2026-08-17 — SSR FAQ 블록 제목 (9개 언어). 번역 FAQ 다국어 렌더와 세트. */
+/* 2026-09-10 — SSR 셸의 영어 고정 라벨 9개 언어 (도메니코: "일본어인데 영어로 남는 부분").
+   런타임 사전(_shared)은 한국어 키만 바꾸므로 영어 고정 문자열은 여기서 언어별로 낸다.
+   CSS 가 대문자로 만든다(.seo-related-tagline·.igf-kicker text-transform:uppercase). */
+const LABEL_T = {
+  // ko 는 종전대로 영어 디자인 라벨(사이트 전반의 섹션 라벨 관례 — MORE ARTICLES·SUBSCRIBE). 번역은 다른 8개 언어만.
+  ko: { onIg: 'On Instagram', papIg: 'PAP Magazine — Instagram', follow: (h) => 'Follow @' + h, moreArticles: 'More Articles', moreEditorials: 'More Editorials', prev: 'Previous', related: 'Related', next: 'Next', relatedFilms: 'Related Films', film: 'Film' },
+  en: { onIg: 'On Instagram', papIg: 'PAP Magazine — Instagram', follow: (h) => 'Follow @' + h, moreArticles: 'More Articles', moreEditorials: 'More Editorials', prev: 'Previous', related: 'Related', next: 'Next', relatedFilms: 'Related Films', film: 'Film' },
+  ja: { onIg: 'Instagramで', papIg: 'PAP Magazine — Instagram', follow: (h) => '@' + h + ' をフォロー', moreArticles: 'その他の記事', moreEditorials: 'その他のエディトリアル', prev: '前の記事', related: '関連', next: '次の記事', relatedFilms: '関連フィルム', film: 'フィルム' },
+  zh: { onIg: '在 Instagram 上', papIg: 'PAP Magazine — Instagram', follow: (h) => '关注 @' + h, moreArticles: '更多文章', moreEditorials: '更多大片', prev: '上一篇', related: '相关', next: '下一篇', relatedFilms: '相关影片', film: '影片' },
+  de: { onIg: 'Auf Instagram', papIg: 'PAP Magazine — Instagram', follow: (h) => '@' + h + ' folgen', moreArticles: 'Weitere Artikel', moreEditorials: 'Weitere Editorials', prev: 'Vorheriger', related: 'Verwandt', next: 'Nächster', relatedFilms: 'Verwandte Filme', film: 'Film' },
+  fr: { onIg: 'Sur Instagram', papIg: 'PAP Magazine — Instagram', follow: (h) => 'Suivre @' + h, moreArticles: 'Plus d\'articles', moreEditorials: 'Plus d\'éditoriaux', prev: 'Précédent', related: 'Associé', next: 'Suivant', relatedFilms: 'Films associés', film: 'Film' },
+  it: { onIg: 'Su Instagram', papIg: 'PAP Magazine — Instagram', follow: (h) => 'Segui @' + h, moreArticles: 'Altri articoli', moreEditorials: 'Altri editoriali', prev: 'Precedente', related: 'Correlato', next: 'Successivo', relatedFilms: 'Film correlati', film: 'Film' },
+  es: { onIg: 'En Instagram', papIg: 'PAP Magazine — Instagram', follow: (h) => 'Seguir a @' + h, moreArticles: 'Más artículos', moreEditorials: 'Más editoriales', prev: 'Anterior', related: 'Relacionado', next: 'Siguiente', relatedFilms: 'Películas relacionadas', film: 'Película' },
+  ru: { onIg: 'В Instagram', papIg: 'PAP Magazine — Instagram', follow: (h) => 'Подписаться на @' + h, moreArticles: 'Другие статьи', moreEditorials: 'Другие эдиториалы', prev: 'Предыдущая', related: 'Похожее', next: 'Следующая', relatedFilms: 'Похожие фильмы', film: 'Фильм' },
+};
+
 const FAQ_HEADING = {
   ko: '자주 묻는 질문', en: 'FAQ', ja: 'よくある質問', fr: 'FAQ',
   es: 'Preguntas frecuentes', it: 'Domande frequenti', de: 'Häufige Fragen',
@@ -1612,7 +1628,8 @@ function renderSeoHtml(kind, record, opts) {
      record.more_articles(/article/·"More Articles"). 둘 다 [slug].js 가 탑재. */
   const _more = record.more_editorials || record.more_articles || null;
   const _moreBase = record.more_articles ? '/article/' : '/editorial/';
-  const _moreHeading = record.more_articles ? 'More Articles' : 'More Editorials';
+  const LT = LABEL_T[lang] || LABEL_T.en;   // 2026-09-10 — 라벨 9개 언어
+  const _moreHeading = record.more_articles ? LT.moreArticles : LT.moreEditorials;
   const _edCard = (e, tag) => {
     if (!e || !e.title || !(e.slug || e.id)) return '';
     const th = e.thumbnail || e.cover_image || e.og_image || '';
@@ -1633,14 +1650,14 @@ function renderSeoHtml(kind, record, opts) {
   const moreEditorialsHtml = _more && (_more.prev || _more.next || (_more.related && _more.related.length))
     ? `<section class="seo-related"><h2>${_moreHeading}</h2>
         <div class="seo-related-films">${[
-          _edCard(_more.prev, 'PREVIOUS'),
-          ...(Array.isArray(_more.related) ? _more.related.map(e => _edCard(e, 'RELATED')) : []),
-          _edCard(_more.next, 'NEXT'),
+          _edCard(_more.prev, LT.prev),
+          ...(Array.isArray(_more.related) ? _more.related.map(e => _edCard(e, LT.related)) : []),
+          _edCard(_more.next, LT.next),
         ].join('')}</div></section>`
     : '';
 
   const relatedFilmsHtml = relFilms.length
-    ? `<section class="seo-related"><h2>Related Films</h2>
+    ? `<section class="seo-related"><h2>${escText(LT.relatedFilms)}</h2>
         <div class="seo-related-films">${relFilms.map(f => {
           const ytThumb = (f.youtube_id && /^[A-Za-z0-9_-]{11}$/.test(f.youtube_id))
             ? `https://img.youtube.com/vi/${f.youtube_id}/hqdefault.jpg` : '';
@@ -1648,7 +1665,7 @@ function renderSeoHtml(kind, record, opts) {
           return `<a class="seo-related-card" href="/film/${escAttr(f.slug || f.id)}">
             ${thumb ? `<img src="${escAttr(thumb)}"${srcsetAttrs(thumb, '120px')} alt="${escAttr(f.title)} — Cover" loading="lazy" width="240" height="160">` : ''}
             <div class="seo-related-meta">
-              <div class="seo-related-tagline">FILM</div>
+              <div class="seo-related-tagline">${escText(LT.film)}</div>
               <div class="seo-related-title">${escText(f.title)}</div>
             </div>
           </a>`;
@@ -1819,7 +1836,7 @@ function renderSeoHtml(kind, record, opts) {
   return `<!DOCTYPE html>
 <html lang="${lang}" prefix="og: https://ogp.me/ns#">
 <head>
-<meta name="pap-ui-i18n" content="_shared" data-v="4">
+<meta name="pap-ui-i18n" content="_shared" data-v="5">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>${escText(seoTitle)}</title>
@@ -2342,22 +2359,22 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
 
     ${record.source_instagram_url && /instagram\.com/.test(String(record.source_instagram_url)) ? `
     <aside class="ig-funnel" style="margin-bottom:0">
-      <div class="igf-kicker">On Instagram</div>
+      <div class="igf-kicker">${escText(LT.onIg)}</div>
       <p class="igf-copy">${FT.srcCopy}</p>
       <a class="igf-btn" href="/api/ig-out?src=${IG_SRC}&to=post&url=${encodeURIComponent(String(record.source_instagram_url).split('?')[0])}" target="_blank" rel="noopener">${FT.srcBtn}</a>
     </aside>` : ''}
 
     <aside class="ig-funnel">
-      <div class="igf-kicker">PAP Magazine — Instagram</div>
+      <div class="igf-kicker">${escText(LT.papIg)}</div>
       ${(() => {
         const nm = nicheMeta(record.category, lang);
         // 카테고리 매칭 시: 해당 니치 채널을 주 CTA 로 앞세우고 문구도 맞춤.
         if (nm) return `<p class="igf-copy">${FT.niche(nm)}</p>
-      <a class="igf-btn" href="/api/ig-out?src=ssr_niche&to=profile&url=${encodeURIComponent('https://www.instagram.com/' + nm.acct + '/')}" target="_blank" rel="noopener">Follow @${nm.acct}</a>
+      <a class="igf-btn" href="/api/ig-out?src=ssr_niche&to=profile&url=${encodeURIComponent('https://www.instagram.com/' + nm.acct + '/')}" target="_blank" rel="noopener">${escText(LT.follow(nm.acct))}</a>
       <a class="igf-btn" style="background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.25)" href="/api/ig-out?src=${IG_SRC}&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">+ @pap_magazine</a>`;
         // 매칭 없으면 기존 메인 채널 CTA.
         return `<p class="igf-copy">${FT.main}</p>
-      <a class="igf-btn" href="/api/ig-out?src=${IG_SRC}&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>`;
+      <a class="igf-btn" href="/api/ig-out?src=${IG_SRC}&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">${escText(LT.follow('pap_magazine'))}</a>`;
       })()}
       ${ogImage ? `<a class="pin-btn" href="https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(canonical)}&media=${encodeURIComponent(ogImage)}&description=${encodeURIComponent(titleMain + ' — PAP Magazine editorial')}" target="_blank" rel="noopener" data-pin-do="none">${FT.pin}</a>` : ''}
       <!-- 카카오 공유 버튼은 2026-08-07 부터 참여 블록(pap-engage.js)이 그린다.
@@ -2398,7 +2415,7 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
 <script src="/pap-geo-lang.js?v=2"></script>
 <script src="/cookie-consent.js" defer></script>
 <!-- 2026-09-10 하드코딩 한글 UI(구매 칩·댓글 위젯·서버 메시지)를 9개 언어로 — pap-ui-i18n.js + /i18n/ui/_shared.<lang>.json -->
-<script src="/pap-ui-i18n.js?v=4" defer></script>
+<script src="/pap-ui-i18n.js?v=5" defer></script>
 <!-- QA(2026-07) #11 — 공통 헤더/햄버거 nav 통일. pap-header.js 는 자체 CSS·함수를
      주입하는 self-contained 스크립트라 이 SSR 페이지에서도 SPA 와 동일한 헤더를
      보여준다. (에디토리얼/필름 SSR 은 위 브릿지로 SPA 리다이렉트되지만, 기사 SSR 은

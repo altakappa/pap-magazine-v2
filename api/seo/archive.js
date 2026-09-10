@@ -129,7 +129,7 @@ ${JSON.stringify({
   footer{margin-top:89px;padding-top:21px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:rgba(255,255,255,.4)}
   footer a{color:rgba(255,255,255,.6);text-decoration:none;margin-right:13px}
 </style>
-<script src="/pap-ui-i18n.js?v=4" defer></script>
+<script src="/pap-ui-i18n.js?v=5" defer></script>
 </head>
 <body>
 <div class="wrap">

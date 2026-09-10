@@ -354,6 +354,7 @@ window._papFilmAutoPlay = function(){
       // 목록 응답에는 faq 가 없으므로 undefined 로 남고, 상세 GET 이 채운다
       // (undefined = 아직 안 물어봄, null = 물어봤는데 없음 — 재요청 방지 구분).
       faq: (a.faq === undefined ? undefined : (Array.isArray(a.faq) ? a.faq : null)),
+      faqI18n: a.faq_i18n || undefined,   // 2026-09-10 — 언어별 FAQ (ko/en/번역)
       _more: a.more_articles || undefined,
       // Pass through any i18n fields the API exposes (varies by backend schema)
       //
