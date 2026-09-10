@@ -45,27 +45,33 @@ function looksFor(brandsPerLook) {
 const typeOf = (looks, map) => classifySubmissionType(looks, map).submissionType;
 
 console.log('\n=== constants ===');
-ok('MIN_LOOKS is 4', MIN_LOOKS === 4, String(MIN_LOOKS));
+// 2026-09-10 도메니코: 무료 문턱 4→3 (룩 3개 이상 + 의상 브랜드 3종 이상)
+ok('MIN_LOOKS is 3', MIN_LOOKS === 3, String(MIN_LOOKS));
 
 console.log('\n=== free ===');
 ok('4 looks, 4 distinct brands → free',
    typeOf(looksFor([['A'], ['B'], ['C'], ['D']]), mapFor([1, 1, 1, 1])) === 'free');
 ok('5 looks, no shared brand → free',
    typeOf(looksFor([['A'], ['B'], ['C'], ['D'], ['E']]), mapFor([2, 1, 1, 1, 3])) === 'free');
-// 2026-08-23 판정 변경: 의상 브랜드 3종(A/B/C)뿐이라 free 에서 paid_few_looks 로.
-// (약관 ① "minimum of 4 different clothing brands" 를 free 자격으로 집행)
-ok('4 looks, 의상 브랜드 3종, one look with NO brand → paid_few_looks (2026-08-23 규칙)',
-   typeOf(looksFor([['A'], ['B'], ['C'], []]), mapFor([1, 1, 1, 1])) === 'paid_few_looks');
+// 2026-08-23 판정 변경: 의상 브랜드가 문턱 미만이면 free 에서 paid_few_looks 로.
+// (약관 ① "minimum of 3 different clothing brands" 를 free 자격으로 집행)
+// 2026-09-10 문턱 4→3: 3종(A/B/C)은 이제 free, 2종(A/B)이 paid_few_looks.
+ok('4 looks, 의상 브랜드 3종, one look with NO brand → free (2026-09-10 문턱 3종)',
+   typeOf(looksFor([['A'], ['B'], ['C'], []]), mapFor([1, 1, 1, 1])) === 'free');
+ok('4 looks, 의상 브랜드 2종 → paid_few_looks (2026-08-23 규칙, 문턱 3종)',
+   typeOf(looksFor([['A'], ['B'], [], []]), mapFor([1, 1, 1, 1])) === 'paid_few_looks');
+ok('3 looks, 3 distinct brands → free (2026-09-10: 룩 3개부터 무료)',
+   typeOf(looksFor([['A'], ['B'], ['C']]), mapFor([1, 1, 1])) === 'free');
 
 console.log('\n=== paid_few_looks (€380) ===');
-ok('3 looks, distinct brands → paid_few_looks',
-   typeOf(looksFor([['A'], ['B'], ['C']]), mapFor([1, 1, 1])) === 'paid_few_looks');
+ok('2 looks, distinct brands → paid_few_looks',
+   typeOf(looksFor([['A'], ['B']]), mapFor([1, 1])) === 'paid_few_looks');
 ok('1 real look with 2+ DISTINCT brands → paid_few_looks (trigger is "one brand", not met)',
    typeOf(looksFor([['Alpha', 'Beta']]), mapFor([1])) === 'paid_few_looks');
 ok('seeded-but-empty look blocks (0 images) → paid_few_looks (realLookCount 0, union empty)',
    typeOf(looksFor([['A'], ['B'], ['C'], ['D']]), []) === 'paid_few_looks');
-ok('3 looks, distinct brands, no single/shared brand → paid_few_looks',
-   typeOf(looksFor([['Nike'], ['Adidas'], ['Puma']]), mapFor([1, 1, 1])) === 'paid_few_looks');
+ok('2 looks, distinct brands, no single/shared brand → paid_few_looks',
+   typeOf(looksFor([['Nike'], ['Adidas']]), mapFor([1, 1])) === 'paid_few_looks');
 
 console.log('\n=== branded (€790) — single-brand trigger (a), look count irrelevant ===');
 ok('1 real look, single brand → branded (NEW: single brand fires at any look count)',
@@ -84,10 +90,12 @@ console.log('\n=== branded (€790) — shared-brand trigger (b), ≥2 looks sha
 // 그래서 아래 두 케이스는 2026-08-03 다중 브랜드 예외 도입으로 판정이 바뀌었다.
 ok('4 looks, 공통 브랜드 + 의상 브랜드 5종 → 예외 발동, branded 아님',
    typeOf(looksFor([['Gucci', 'A'], ['Gucci', 'B'], ['Gucci', 'C'], ['Gucci', 'D']]), mapFor([1, 1, 1, 1])) === 'free');
-ok('3 looks, 공통 브랜드 + 의상 브랜드 4종 → 예외 발동 후 룩 수 부족 → paid_few_looks',
-   typeOf(looksFor([['Common', 'A'], ['Common', 'B'], ['Common', 'C']]), mapFor([1, 1, 1])) === 'paid_few_looks');
-ok('4 looks, 공통 브랜드 + 의상 브랜드 3종뿐 → 여전히 branded',
-   typeOf(looksFor([['Gucci', 'A'], ['Gucci', 'B'], ['Gucci', 'A'], ['Gucci', 'B']]), mapFor([1, 1, 1, 1])) === 'branded');
+ok('2 looks, 공통 브랜드 + 의상 브랜드 3종 → 예외 발동 후 룩 수 부족 → paid_few_looks',
+   typeOf(looksFor([['Common', 'A'], ['Common', 'B']]), mapFor([1, 1])) === 'paid_few_looks');
+ok('3 looks, 공통 브랜드 + 의상 브랜드 3종 → 예외 발동 + 룩 3개 → free (2026-09-10)',
+   typeOf(looksFor([['Common', 'A'], ['Common', 'B'], ['Common']]), mapFor([1, 1, 1])) === 'free');
+ok('4 looks, 공통 브랜드 + 의상 브랜드 2종뿐 → 여전히 branded',
+   typeOf(looksFor([['Gucci', 'A'], ['Gucci', 'A'], ['Gucci'], ['Gucci', 'A']]), mapFor([1, 1, 1, 1])) === 'branded');
 
 console.log('\n=== priority: branded > paid_few_looks ===');
 /* ⏰ 2026-09-03 02:53 — 이 두 줄이 **시한폭탄이었다.**
@@ -149,9 +157,10 @@ ok('lookImageMap entries with null/missing lookN are ignored',
 
 /* ── 2026-08-03 (도메니코 지시) — 다중 브랜드 예외 ──────────────────────────
  * 공통 브랜드 A가 모든 룩에 들어가 있어도, 의상 슬롯(Jacket/Top/Skirt/Pants…)에
- * 다른 브랜드들이 골고루 함께 들어가 서로 다른 의상 브랜드가 4종 이상이면
+ * 다른 브랜드들이 골고루 함께 들어가 서로 다른 의상 브랜드가 3종 이상이면
  * A의 브랜디드 콘텐츠로 볼 수 없다 → branded 해제.
- * 숫자 4 = submission.html 약관 ①("minimum of 4 different clothing brands").
+ * 숫자 3 = submission.html 약관 ①("minimum of 3 different clothing brands").
+ * (2026-09-10 도메니코: 문턱 4→3. 경계값 시험도 3/2 로 내렸다.)
  * 액세서리(Shoes/Boots/Bag/Hat/Belt/Necklace/Glasses/Scarf/Gloves/Other)는
  * 의상이 아니므로 예외 계산에서 제외 — 액세서리로는 예외를 못 만든다. */
 console.log('\n=== 다중 브랜드 예외 (2026-08-03) ===');
@@ -159,31 +168,31 @@ console.log('\n=== 다중 브랜드 예외 (2026-08-03) ===');
   const map = (counts) => mapFor(counts);
   const L = (n, items) => ({ n, items });
 
-  // 의상 브랜드 정확히 4종 → 예외 발동 (경계값 ≥ 4)
+  // 의상 브랜드 정확히 3종 → 예외 발동 (경계값 ≥ 3)
   const four = classifySubmissionType([
-    L(1, [{ type: 'Jacket', brand: 'A' }, { type: 'Top', brand: 'B' }]),
-    L(2, [{ type: 'Jacket', brand: 'A' }, { type: 'Pants', brand: 'C' }]),
-    L(3, [{ type: 'Jacket', brand: 'A' }, { type: 'Skirt', brand: 'D' }]),
-    L(4, [{ type: 'Jacket', brand: 'A' }, { type: 'Coat', brand: 'B' }]),
-  ], map([1, 1, 1, 1]));
-  ok('의상 브랜드 정확히 4종 → free (예외 발동)',
-     four.submissionType === 'free' && four.multiBrandExempt === true
-     && four.clothingBrandCount === 4,
-     JSON.stringify(four));
-  ok('예외로 해제돼도 sharedBrands 는 남는다 (관리자 참고용)',
-     four.sharedBrands.length === 1 && four.sharedBrands[0] === 'a',
-     JSON.stringify(four.sharedBrands));
-
-  // 의상 브랜드 3종 → 예외 미발동 (경계값 바로 아래)
-  const three = classifySubmissionType([
     L(1, [{ type: 'Jacket', brand: 'A' }, { type: 'Top', brand: 'B' }]),
     L(2, [{ type: 'Jacket', brand: 'A' }, { type: 'Pants', brand: 'C' }]),
     L(3, [{ type: 'Jacket', brand: 'A' }, { type: 'Skirt', brand: 'B' }]),
     L(4, [{ type: 'Jacket', brand: 'A' }, { type: 'Coat', brand: 'C' }]),
   ], map([1, 1, 1, 1]));
-  ok('의상 브랜드 3종 → branded 유지 (예외 미발동)',
+  ok('의상 브랜드 정확히 3종 → free (예외 발동, 경계값)',
+     four.submissionType === 'free' && four.multiBrandExempt === true
+     && four.clothingBrandCount === 3,
+     JSON.stringify(four));
+  ok('예외로 해제돼도 sharedBrands 는 남는다 (관리자 참고용)',
+     four.sharedBrands.length === 1 && four.sharedBrands[0] === 'a',
+     JSON.stringify(four.sharedBrands));
+
+  // 의상 브랜드 2종 → 예외 미발동 (경계값 바로 아래)
+  const three = classifySubmissionType([
+    L(1, [{ type: 'Jacket', brand: 'A' }, { type: 'Top', brand: 'B' }]),
+    L(2, [{ type: 'Jacket', brand: 'A' }, { type: 'Pants', brand: 'B' }]),
+    L(3, [{ type: 'Jacket', brand: 'A' }, { type: 'Skirt', brand: 'B' }]),
+    L(4, [{ type: 'Jacket', brand: 'A' }, { type: 'Coat', brand: 'B' }]),
+  ], map([1, 1, 1, 1]));
+  ok('의상 브랜드 2종 → branded 유지 (예외 미발동)',
      three.submissionType === 'branded' && three.multiBrandExempt === false
-     && three.clothingBrandCount === 3,
+     && three.clothingBrandCount === 2,
      JSON.stringify(three));
 
   // 액세서리는 아무리 많아도 예외를 만들지 못한다
@@ -287,9 +296,10 @@ console.log('\n=== ACCESSORY-ONLY 예외 (2026-08-10) ===');
   const inClothing = classifySubmissionType([
     L(1, [{ type: 'Dress', brand: 'A' }, { type: 'Shoes', brand: 'A' }]),
     L(2, [{ type: 'Top', brand: 'B' }, { type: 'Shoes', brand: 'A' }]),
-    L(3, [{ type: 'Pants', brand: 'C' }, { type: 'Shoes', brand: 'A' }]),
+    L(3, [{ type: 'Pants', brand: 'B' }, { type: 'Shoes', brand: 'A' }]),
     L(4, [{ type: 'Skirt', brand: 'B' }, { type: 'Shoes', brand: 'A' }]),
   ], mapFor([1, 1, 1, 1]));
+  // (의상 브랜드는 A·B 2종 — 3종이면 2026-09-10 문턱의 다중 브랜드 예외가 먼저 걸린다)
   ok('공통 브랜드가 룩1의 의상 슬롯에도 있으면 → branded 유지 (해제 안 됨)',
      inClothing.submissionType === 'branded' && inClothing.accessoryOnlyExempt === false,
      JSON.stringify(inClothing));
@@ -482,12 +492,11 @@ console.log('\n=== FEW-CLOTHING-BRANDS (2026-08-23) ===');
      zero.submissionType === 'free' && zero.fewClothingBrands === false
      && zero.needsCreditReview === true, JSON.stringify(zero));
 
-  // 룩 수 부족이 먼저다: 룩 3개 + 의상 2종 → paidReason 은 few_looks
+  // 룩 수 부족이 먼저다: 룩 2개 + 의상 2종 → paidReason 은 few_looks
   const both = classifySubmissionType([
     L(1, [{ type: 'Top', brand: 'A' }]), L(2, [{ type: 'Dress', brand: 'B' }]),
-    L(3, [{ type: 'Pants', brand: 'A' }]),
-  ], mapFor([1, 1, 1]));
-  ok('룩 3개 + 의상 2종 → paid_few_looks, 사유는 few_looks (룩 수가 먼저)',
+  ], mapFor([1, 1]));
+  ok('룩 2개 + 의상 2종 → paid_few_looks, 사유는 few_looks (룩 수가 먼저)',
      both.submissionType === 'paid_few_looks' && both.paidReason === 'few_looks',
      JSON.stringify(both));
 })();
@@ -540,13 +549,13 @@ console.log('\n=== GENERIC-CREDIT 필터 (2026-08-24) ===');
      allGeneric.submissionType === 'free' && allGeneric.branded === false
      && allGeneric.needsCreditReview === true, JSON.stringify(allGeneric));
 
-  // 우회로 차단: 실의상 3종 + "Stylist's Own" 으로 4종을 못 채운다
+  // 우회로 차단: 실의상 2종 + "Stylist's Own" 으로 3종을 못 채운다
   const pad = classifySubmissionType([
     L(1, [{ type: 'Top', brand: 'A' }]), L(2, [{ type: 'Dress', brand: 'B' }]),
-    L(3, [{ type: 'Pants', brand: 'C' }]), L(4, [{ type: 'Coat', brand: "Stylist's Own" }]),
+    L(3, [{ type: 'Pants', brand: 'A' }]), L(4, [{ type: 'Coat', brand: "Stylist's Own" }]),
   ], mapFor([1, 1, 1, 1]));
-  ok('실의상 3종 + 관용 표기 1개 → 4종 안 됨 → paid_few_looks',
-     pad.submissionType === 'paid_few_looks' && pad.clothingBrandCount === 3
+  ok('실의상 2종 + 관용 표기 1개 → 3종 안 됨 → paid_few_looks',
+     pad.submissionType === 'paid_few_looks' && pad.clothingBrandCount === 2
      && pad.paidReason === 'few_clothing_brands', JSON.stringify(pad));
 
   // 핸들 폴백에도 적용: @stylistsown 은 버리고, 관용 브랜드명 뒤의 실핸들은 살린다
@@ -596,7 +605,7 @@ console.log('\n=== 클라이언트 미러 동기화 ===');
      /singleClothingBrand\s*=\s*clothingCount\s*===\s*1/.test(html));
   ok('미러에 needsCreditReview 가 있다', html.includes('needsCreditReview'));
   // 2026-08-23 FEW-CLOTHING-BRANDS — 미러·안내 문구 동기화
-  ok('미러에 fewClothingBrands 규칙(2종 이상 4종 미만)이 있다',
+  ok('미러에 fewClothingBrands 규칙(2종 이상 3종 미만)이 있다',
      /fewClothingBrands\s*=\s*clothingCount\s*>=\s*2\s*&&\s*clothingCount\s*<\s*_PAP_MIN_CLOTHING_BRANDS/.test(html));
   ok('미러가 paidReason 을 돌려준다', html.includes("paidReason='few_clothing_brands'"));
   ok('안내 렌더러가 few_clothing_brands 사유로 문구를 분기한다',

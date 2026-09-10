@@ -181,7 +181,7 @@ console.log('=== 실행 — 유료 제출자는 반드시 막는다 ===');
   const html = body.children[body.children.length - 1].innerHTML;
   ok('few_looks 면 €380 을 보여준다', html.indexOf('€380') !== -1 && html.indexOf('€790') === -1);
   ok('룩이 몇 개인지 구체적으로 말한다', html.indexOf('2개') !== -1, '"룩이 부족합니다" 로는 뭘 고칠지 모른다');
-  ok('무료로 만드는 방법을 알려준다', html.indexOf('4개 이상') !== -1);
+  ok('무료로 만드는 방법을 알려준다', html.indexOf('3개 이상') !== -1); // 2026-09-10 문턱 4→3
 }
 
 console.log('=== 실행 — 언어별로 뜬다 ===');

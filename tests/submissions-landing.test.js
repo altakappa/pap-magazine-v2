@@ -9,7 +9,7 @@
  *  ① 색인 경로 4종이 전부 연결돼 있다 (rewrite·sitemap·SSR nav·llms.txt)
  *     — instagram-magazine 때 고아 페이지 전철 방지
  *  ② 페이지가 약속하는 규칙이 실제 서브미션 폼 규칙과 일치한다
- *     (무료 = 룩 4+ & 의상 브랜드 4종+, €380/€790, 수락 시에만 청구)
+ *     (무료 = 룩 3+ & 의상 브랜드 3종+ (2026-09-10 문턱 4→3), €380/€790, 수락 시에만 청구)
  *  ③ CTA 는 실제 제출 위치(/submission)로 간다
  *  ④ FAQ/HowTo JSON-LD 가 유효한 JSON 이다
  */
@@ -51,12 +51,14 @@ t('색인 경로 4종 연결 — rewrite·sitemap·SSR nav·llms.txt', () => {
   assert.ok(/pap-magazine\.com\/submissions\)/.test(LLMS), 'llms.txt 엔트리 없음');
 });
 
-t('무료 게재 규칙이 서브미션 폼과 일치한다 (룩 4+ & 브랜드 4종+ / €380 / €790)', () => {
-  assert.ok(/4\+ looks/.test(PAGE) && /4\+ different clothing brands/.test(PAGE), '무료 조건 명시 없음');
+t('무료 게재 규칙이 서브미션 폼과 일치한다 (룩 3+ & 브랜드 3종+ / €380 / €790)', () => {
+  assert.ok(/3\+ looks/.test(PAGE) && /3\+ different clothing brands/.test(PAGE), '무료 조건 명시 없음');
+  assert.ok(!/4\+ looks|4\+ different clothing brands|4 different clothing brands/.test(PAGE), '옛 4 문턱 문구가 남아 있다');
   assert.ok(/€380/.test(PAGE) && /€790/.test(PAGE), '유료 금액 없음');
   assert.ok(/only if your work is accepted|only if accepted/.test(PAGE), '수락 시에만 청구 문구 없음');
   // 폼 쪽 근거가 사라지면(규칙 변경) 이 페이지도 같이 고쳐야 한다
-  assert.ok(/4 different clothing brands/.test(FORM), '폼의 4브랜드 규칙이 사라짐 — 랜딩도 갱신 필요');
+  assert.ok(/3 different clothing brands/.test(FORM), '폼의 3브랜드 규칙이 사라짐 — 랜딩도 갱신 필요');
+  assert.ok(!/4 different clothing brands/.test(FORM), '폼에 옛 4브랜드 문구가 남아 있다');
   assert.ok(/€380/.test(FORM) && /€790/.test(FORM), '폼의 금액이 사라짐 — 랜딩도 갱신 필요');
 });
 

@@ -58,7 +58,7 @@ t('SPA 브랜드는 한글·비라틴 키를 담지 않는다 (브랜드명은 �
   assert.deepStrictEqual(bad, [], '비라틴 키: ' + bad.join(','));
 });
 
-t('집계: SPA 2개 + 독립 브랜드 4개 → 무료 자격(4종 유지)', () => {
+t('집계: SPA 2개 + 독립 브랜드 4개 → 무료 자격(3종 이상 유지)', () => {
   const looks = [
     { n: 1, items: [{ brand: 'Zara', type: 'Jacket' }, { brand: 'Rick Owens', type: 'Coat' }] },
     { n: 2, items: [{ brand: 'Mango', type: 'Top' }, { brand: 'Diesel', type: 'Pants' }] },
@@ -70,11 +70,12 @@ t('집계: SPA 2개 + 독립 브랜드 4개 → 무료 자격(4종 유지)', () 
   assert.strictEqual(r.submissionType, 'free', '실제: ' + r.submissionType);
 });
 
-t('집계: 독립 브랜드 3개 + SPA 2개 → 유료 (SPA 를 빼면 4종 미만)', () => {
+// 2026-09-10 문턱 4→3: 독립 2개 + SPA 2개 = SPA 를 빼면 2종 → 유료. (3개면 이제 무료)
+t('집계: 독립 브랜드 2개 + SPA 2개 → 유료 (SPA 를 빼면 3종 미만)', () => {
   const looks = [
     { n: 1, items: [{ brand: 'Zara', type: 'Jacket' }, { brand: 'Rick Owens', type: 'Coat' }] },
     { n: 2, items: [{ brand: 'Mango', type: 'Top' }, { brand: 'Diesel', type: 'Pants' }] },
-    { n: 3, items: [{ brand: 'Gucci', type: 'Dress' }] },
+    { n: 3, items: [{ brand: 'Diesel', type: 'Dress' }] },
     { n: 4, items: [{ brand: 'Rick Owens', type: 'Coat' }] },
   ];
   const map = [{ lookN: 1 }, { lookN: 2 }, { lookN: 3 }, { lookN: 4 }];
@@ -145,7 +146,7 @@ t('클라가 SPA 를 핸들로 되살리지 않는다 (@zara 우회 차단)', ()
     '핸들 폴백에 SPA 필터가 없다');
 });
 
-t('제출 화면이 왜 4종이 안 되는지 이유를 보여준다', () => {
+t('제출 화면이 왜 3종이 안 되는지 이유를 보여준다', () => {
   assert.ok(/submissionTypeSpaNote/.test(SUB_HTML), 'SPA 제외 안내 키가 없다');
   assert.ok((SUB_HTML.match(/submissionTypeSpaNote/g) || []).length >= 10,
     '9개 언어 + 사용처를 모두 채우지 않았다');

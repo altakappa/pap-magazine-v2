@@ -6,13 +6,13 @@
  * module only decides which policy bucket it falls into so the admin can follow
  * up manually.
  *
- *   'free'            — ≥ 4 looks, not brand-dominated. Standard free editorial.
- *   'paid_few_looks'  — fewer than 4 looks. Outside the free-publication policy;
+ *   'free'            — ≥ 3 looks, not brand-dominated. Standard free editorial.
+ *   'paid_few_looks'  — fewer than 3 looks. Outside the free-publication policy;
  *                       treated as a paid submission (€380, handled manually).
  *   'branded'         — a single brand overlaps across ALL looks (or every look
  *                       is the same brand). Branded content (€790, manual).
  *
- * PRIORITY: branded > paid_few_looks > free. When a submission both has < 4
+ * PRIORITY: branded > paid_few_looks > free. When a submission both has < 3
  * looks AND is brand-dominated, `branded` wins (it is the higher policy tier).
  *
  * AUTHORITATIVE SERVER RECOMPUTE: api/submissions/index.js (POST) and
@@ -27,8 +27,8 @@
  *                  uploaded image, in final file_urls order. This is the
  *                  authoritative source for "how many images does look N have"
  *                  because it reflects images that ACTUALLY made it into the
- *                  submission (the UI seeds 4 empty look blocks by default, so
- *                  looks[].length alone would always read ≥ 4).
+ *                  submission (the UI seeds 3 empty look blocks by default, so
+ *                  looks[].length alone would always read ≥ 3).
  *
  * ASSUMPTIONS (reported to Domenico, adjustable later):
  *   • MIN_LOOKS = 4. A "look" counts only if it has ≥ 1 image (empty seeded
@@ -48,8 +48,8 @@
  *   브랜디드 콘텐츠라고 볼 수 없다 → branded 해제.
  *
  *   판정: 실제 룩(이미지 ≥1)의 CLOTHING 슬롯에서 나온 서로 다른 브랜드 수가
- *   MIN_CLOTHING_BRANDS(4) 이상이면 branded 를 끈다. 숫자 4는 임의값이 아니라
- *   submission.html 약관 ①("Editorials must include a minimum of 4 different
+ *   MIN_CLOTHING_BRANDS(3) 이상이면 branded 를 끈다. 숫자 3는 임의값이 아니라
+ *   submission.html 약관 ①("Editorials must include a minimum of 3 different
  *   clothing brands")과 동일한 값이다 — 판정 근거를 크리에이터에게 그대로
  *   설명할 수 있어야 하므로 약관과 어긋나면 안 된다.
  *
@@ -57,7 +57,7 @@
  *   액세서리로 제외한다(도메니코 확정) — 액세서리는 한 브랜드로 몰리기 쉬워
  *   포함시키면 예외가 헐거워진다.
  *
- *   해제 후에는 룩 수 규칙이 그대로 다시 적용된다: 실제 룩 < 4 면
+ *   해제 후에는 룩 수 규칙이 그대로 다시 적용된다: 실제 룩 < 3 면
  *   paid_few_looks, 그 이상이면 free. 즉 예외는 "€790 → 무조건 무료"가 아니라
  *   "€790 판정만 취소"다.
  *
@@ -102,11 +102,12 @@
 
 'use strict';
 
-const MIN_LOOKS = 4;
+// 2026-09-10 도메니코: 무료 문턱 4→3 (룩 3개 이상 + 의상 브랜드 3종 이상). 접근성 확대.
+const MIN_LOOKS = 3;
 
-// 다중 브랜드 예외 임계값 — submission.html 약관 ①의 "minimum of 4 different
+// 다중 브랜드 예외 임계값 — submission.html 약관 ①의 "minimum of 3 different
 // clothing brands" 와 같은 숫자. 약관을 바꾸면 여기도 같이 바꿔야 한다.
-const MIN_CLOTHING_BRANDS = 4;
+const MIN_CLOTHING_BRANDS = 3;
 
 // '의상' 슬롯 화이트리스트 (frontend/submission.html 의 아이템 타입 <option> 중
 // 옷에 해당하는 것들). 여기 없는 타입(Shoes/Boots/Bag/Glasses/Sunglasses/Hat/
@@ -291,7 +292,7 @@ function brandSetsFromLooks(looks, opts) {
 function clothingBrandUnion(looks, realLookKeys, opts) {
   const out = new Set();
   if (!Array.isArray(looks)) return out;
-  // 2026-08-26 SPA 제외. 무료 게재 자격(의상 브랜드 4종)을 세는 곳이 바로
+  // 2026-08-26 SPA 제외. 무료 게재 자격(의상 브랜드 3종)을 세는 곳이 바로
   // 여기이므로 반드시 여기에도 걸어야 한다. brandSetsFromLooks 에만 걸면
   // 브랜디드 판정만 바뀌고 무료/유료 경계는 그대로다.
   const applySpa = spaRuleApplies(opts && opts.submittedAt);
@@ -304,7 +305,7 @@ function clothingBrandUnion(looks, realLookKeys, opts) {
       if (!it) continue;
       if (!CLOTHING_TYPES.has(normItemType(it.type))) continue;
       // 2026-08-24 — 관용 표기(Stylist's Own 등)는 의상 브랜드 수에도 넣지 않는다.
-      // 안 그러면 "Stylist's Own ×4" 로 무료 자격(4종)을 채우는 우회로가 생긴다.
+      // 안 그러면 "Stylist's Own ×4" 로 무료 자격(3종)을 채우는 우회로가 생긴다.
       const b = normBrand(it.brand);
       if (b && isGenericCredit(b)) {
         // 관용 표기 → 핸들 폴백으로 내려간다(종전 동작)
@@ -386,7 +387,7 @@ function classifySubmissionType(looks, lookImageMap, opts) {
   // 룩의 의상 슬롯에 서로 다른 브랜드가 MIN_CLOTHING_BRANDS 개 이상 들어가 있으면
   // 한 브랜드의 브랜디드 콘텐츠로 볼 수 없다 → branded 해제.
   // sharedBrands 는 남겨둔다(관리자 참고용). 해제 뒤에는 아래 룩 수 규칙이 그대로
-  // 다시 적용되므로 4룩 미만이면 free 가 아니라 paid_few_looks 로 떨어진다.
+  // 다시 적용되므로 3룩 미만이면 free 가 아니라 paid_few_looks 로 떨어진다.
   const clothingBrandSet = clothingBrandUnion(looks, realLookKeys, opts);
   const clothingBrandCount = clothingBrandSet.size;
   const multiBrandExempt = branded && clothingBrandCount >= MIN_CLOTHING_BRANDS;
@@ -425,15 +426,15 @@ function classifySubmissionType(looks, lookImageMap, opts) {
   const needsCreditReview = clothingBrandCount === 0 && realLookCount > 0;
 
   // FEW-CLOTHING-BRANDS (도메니코 지시 2026-08-23) ────────────────────────
-  // "의상을 위한 브랜드가 4개 미만이면 유료서브미션이잖아."
-  // 약관 ①("minimum of 4 different clothing brands")은 처음부터 무료 게재의
-  // 자격 조건인데, 분류기는 그 숫자(MIN_CLOTHING_BRANDS=4)를 branded 를
+  // "의상을 위한 브랜드가 3개 미만이면 유료서브미션이잖아."
+  // 약관 ①("minimum of 3 different clothing brands")은 처음부터 무료 게재의
+  // 자격 조건인데, 분류기는 그 숫자(MIN_CLOTHING_BRANDS=3)를 branded 를
   // **풀어줄 때만** 쓰고 free 자격으로는 안 쓰고 있었다 — 들어올 땐 안 세고
   // 나갈 때만 세는 비대칭.
   //
   // 실사례 "BioGenesis Human to Creature"(1250b66a, 2026-08-21): 실제 룩 6개라
   // 룩 수 규칙 통과, 의상 브랜드는 cosic fashion·paridia 2종뿐인데 free 판정.
-  // 약관대로면 무료 자격이 없다. 이제 의상 브랜드 2~3종은 paid_few_looks
+  // 약관대로면 무료 자격이 없다. 이제 의상 브랜드 2종은 paid_few_looks
   // 버킷(€380)으로 떨어진다.
   //
   // 경계 유지(기존 판례 그대로):
