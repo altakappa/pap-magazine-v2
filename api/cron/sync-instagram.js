@@ -33,6 +33,31 @@ const { pingNewContent, SITE } = require('../_lib/pingSearch');
 // 2026-08-09 — 골든아워 부스트: 새 에디토리얼 IG 게시물 감지 즉시 스레드·X 가
 // 그 게시물로 트래픽을 쏜다 (실측: 첫 3시간 좋아요 ↔ 최종 도달 corr 0.94).
 const { maybeBoostPost } = require('../_lib/goldenBoost');
+
+/* 부스트 결과를 한 곳에서 센다 (2026-09-10).
+   왜 ── 부스트 호출부가 3군데인데 셋 다 `if (b.boosted) results.boosted++` 만
+   했다. 그래서 cron_runs.note 에는 부스트가 아예 안 실렸고, 스레드가 실패해도
+   ig_boosts.threads_ok=false 한 칸뿐 사유가 없었다. 실측(9/10): 부스트 14건 중
+   스레드 성공 6건(43%) · X 13건(93%) — 스레드만 절반 넘게 죽는데 17일간 사유가
+   0건이었다. 규칙이 세 벌이면 한쪽만 고쳐진다(교훈 2) — 공용 부품 한 곳으로. */
+/* 사유는 Graph/X API 응답 본문에서 온다 — 토큰류가 섞여 들어오면 cron_runs 에
+   영구 기록된다. cronGuard 가 자동요약 경로에서 하는 것과 같은 차단을 여기서도.
+   (9/01 학습: 로그는 지우기 어렵다 — 들어가기 전에 막는다.) */
+function scrubSecret(s){
+  return String(s || '')
+    .replace(/(access_token|token|bearer|api[_-]?key|secret|password)([=:"'\s]+)[A-Za-z0-9._\-]{8,}/gi,
+             '$1$2[가림]')
+    .slice(0, 160);
+}
+
+function recordBoost(results, b){
+  if (!b || !b.boosted) return;
+  results.boosted = (results.boosted || 0) + 1;
+  results.boost_threads = results.boost_threads || [];
+  results.boost_x = results.boost_x || [];
+  results.boost_threads.push(b.threadsOk ? 'ok' : ('실패: ' + (scrubSecret(b.threadsErr) || '사유 없음')));
+  results.boost_x.push(b.xOk ? 'ok' : ('실패: ' + (scrubSecret(b.xErr) || '사유 없음')));
+}
 const { postTweet, isConfigured: xConfigured, buildThreadsParityTweet, uploadArticleMedia } = require('../_lib/xPost');
 const { postArticleToThreads } = require('../_lib/threadsAutopost');
 const {
@@ -242,7 +267,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         || (backfillMode && !ARTICLE_CATEGORIES.includes(cat));
       if (isEditorial){
         results.skipped_editorial_ai++;
-        if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode, kind: 'editorial' }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
+        if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode, kind: 'editorial' }); recordBoost(results, b); }
         return;
       }
       // IG CDN 이미지는 수일 내 만료 — Supabase Storage 영구본으로 교체.
@@ -303,7 +328,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
            필요한 게 바로 이들이다 — 부스트가 유일한 골든아워 푸시. */
         if (pubStatus !== 'published' && !backfillMode){
           const b = await maybeBoostPost(m, { backfillMode, kind: 'draft' });
-          if (b.boosted) results.boosted = (results.boosted||0)+1;
+          recordBoost(results, b);
         }
         if (h && pubStatus === 'published'){
           const artUrl = SITE + '/article/' + encodeURIComponent(h);
@@ -583,7 +608,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
            (평균 5.3 vs 영상 0.0). ig_boosts 가 신설(08-09) 이후 0건이던 이유.
            부스트 실패는 수집을 막지 않는다 (maybeBoostPost 는 전체 try/catch). */
         const b = await maybeBoostPost(m, { backfillMode, kind: 'editorial' });
-        if (b.boosted) results.boosted = (results.boosted||0)+1;
+        recordBoost(results, b);
         continue;
       }
       try { await processOne(m); }
@@ -643,7 +668,23 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         + (results.failed ? ' · 실패 ' + results.failed + '건' : '')
         + (twArr.length ? ' · X ' + (twArr.length - twFail.length) + '/' + twArr.length + '건'
             + (twFail.length ? ' [' + twFail.join('; ').slice(0, 160) + ']' : '') : '')
-        + (thArr.length ? ' · 스레드 ' + (thArr.length - thFail.length) + '/' + thArr.length + '건' : '')
+        /* 2026-09-10 — 스레드는 thFail 을 세어 놓고 사유를 버렸다 (X 만 [..] 로
+           실렸다). 성공 개수만으로는 "왜 죽었나" 를 영원히 못 본다 — X 와 같은
+           모양으로 맞춘다. */
+        + (thArr.length ? ' · 스레드 ' + (thArr.length - thFail.length) + '/' + thArr.length + '건'
+            + (thFail.length ? ' [' + thFail.join('; ').slice(0, 160) + ']' : '') : '')
+        /* 골든아워 부스트 결과 (2026-09-10 신설) — 부스트는 IG 도달을 직접
+           겨누는 장치인데 note 에 한 글자도 없었다. */
+        + (function (){
+            const T = results.boost_threads || [], X = results.boost_x || [];
+            if (!T.length) return '';
+            const tFail = T.filter((v) => v !== 'ok'), xFail = X.filter((v) => v !== 'ok');
+            return ' · 부스트 ' + T.length + '건'
+              + ' (스레드 ' + (T.length - tFail.length) + '/' + T.length
+              + (tFail.length ? ' [' + tFail.join('; ').slice(0, 160) + ']' : '')
+              + ' · X ' + (X.length - xFail.length) + '/' + X.length
+              + (xFail.length ? ' [' + xFail.join('; ').slice(0, 160) + ']' : '') + ')';
+          })()
         + (function (){
             const L = results.body_len || [];
             if (!L.length) return '';

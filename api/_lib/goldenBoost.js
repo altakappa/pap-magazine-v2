@@ -94,20 +94,36 @@ async function maybeBoostPost(m, opts) {
 
     const text = boostText(m.permalink);
     let threadsOk = false, xOk = false;
+    /* 2026-09-10 — 실패 사유를 반환값으로 돌려준다. 여태 console.warn 으로만
+       흘렸더니 ig_boosts 에는 threads_ok=false 만 남고 "왜" 가 어디에도 없었다.
+       실측: 부스트 14건 중 스레드 6건만 성공(43%)인데 사유가 0건 — 8/18 에
+       cronGuard 로 고친 것과 똑같은 구멍(실패는 보이는데 사유가 안 보인다)이
+       부스트 경로에 그대로 남아 있었다. 호출부가 cron_runs.note 에 싣는다. */
+    let threadsErr = '', xErr = '';
 
     try {
       const threads = require('./threads');
       const id = await threads.postText(text);
       threadsOk = !!id;
-    } catch (e) { console.warn('[boost] threads 실패:', (e && e.message) || e); }
+      if (!threadsOk) threadsErr = '게시 id 없음';
+    } catch (e) {
+      threadsErr = String((e && e.message) || e).slice(0, 160);
+      console.warn('[boost] threads 실패:', threadsErr);
+    }
 
     try {
       const x = require('./xPost');
       if (x.isConfigured()) {
         const r = await x.postTweet(text);
         xOk = !!(r && r.ok);
+        if (!xOk) xErr = String((r && (r.error || r.reason)) || '게시 실패').slice(0, 160);
+      } else {
+        xErr = '미설정';
       }
-    } catch (e) { console.warn('[boost] x 실패:', (e && e.message) || e); }
+    } catch (e) {
+      xErr = String((e && e.message) || e).slice(0, 160);
+      console.warn('[boost] x 실패:', xErr);
+    }
 
     /* 결과 기록 실패는 삼킨다 — 부스트 자체는 이미 나갔다 */
     try {
@@ -115,7 +131,7 @@ async function maybeBoostPost(m, opts) {
         .update({ threads_ok: threadsOk, x_ok: xOk }).eq('post_id', String(m.id));
     } catch (_) {}
 
-    return { boosted: true, threadsOk, xOk, pushSent };
+    return { boosted: true, threadsOk, xOk, pushSent, threadsErr, xErr };
   } catch (e) {
     return { boosted: false, reason: String((e && e.message) || e).slice(0, 120) };
   }

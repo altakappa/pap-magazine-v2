@@ -93,7 +93,11 @@ console.log('\n[4] sync-instagram 배선 — 자동 게시가 없는 모든 지�
   t('그 스킵 지점은 백필 블록 밖이다',
     sync.indexOf("if (cls !== 'article'){") > backfillEnd);
   t('lib 를 require 한다', /require\('\.\.\/_lib\/goldenBoost'\)/.test(sync));
-  t('부스트 수를 결과에 센다', /results\.boosted = \(results\.boosted\|\|0\)\+1/.test(sync));
+  /* 2026-09-10 — 세던 곳이 호출부 3곳에 흩어져 있어 공용 recordBoost 로 모았다.
+     세는 행위 자체는 그대로여야 한다(카운트 + 채널별 결과). */
+  t('부스트 수를 결과에 센다 (공용 recordBoost)',
+    /function recordBoost\(results, b\)\{[\s\S]*?results\.boosted = \(results\.boosted \|\| 0\) \+ 1/.test(sync)
+    && (sync.match(/(?<!function )recordBoost\(results, b\)/g) || []).length === 3);
   t('draft 지점은 발행 분기 앞에 있다 (발행 기사는 부스트 안 탐)',
     sync.indexOf("pubStatus !== 'published' && !backfillMode") < sync.indexOf("if (h && pubStatus === 'published')"));
   t('발행 기사 자동 게시는 그대로 (이중 게시 없음)', /pubStatus === 'published'/.test(sync));
