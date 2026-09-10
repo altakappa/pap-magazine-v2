@@ -70,6 +70,7 @@
     ru: 'Только латиница, цифры, пробел, . - \'',
     de: 'Nur Buchstaben, Ziffern, Leerzeichen, . - \'',
   };
+  function _curLang(){ try{ return localStorage.getItem('pap-lang') || 'en'; }catch(_){ return 'en'; } }
   function _tooltipFor(lang){
     return TOOLTIPS[lang] || TOOLTIPS.en;
   }
@@ -140,7 +141,7 @@
         }
         el.setAttribute('data-name-hint-id', hint.id);
       }
-      var _lang = localStorage.getItem('pap-lang') || 'en';
+      var _lang = _curLang();
       hint.textContent = (kind === 'latin') ? _latinTooltipFor(_lang) : _tooltipFor(_lang);
     } else if(hint){
       hint.parentNode && hint.parentNode.removeChild(hint);
@@ -149,7 +150,7 @@
   }
 
   function _markInvalid(el, on, kind){
-    var lang = localStorage.getItem('pap-lang') || 'en';
+    var lang = _curLang();
     var msg = (kind === 'latin') ? _latinTooltipFor(lang) : _tooltipFor(lang);
     if(on){
       el.style.outline = '1.5px solid rgba(255,80,80,.7)';
@@ -178,8 +179,41 @@
   }
 
   // Live validation on input
+  // 2026-09-10 도메니코: "중국어로 쓸 수 없게. 영어로만 가능하게." — 빨간 표시만으로는 약하다.
+  // 이름·크레딧·산문 칸에 한글·중국어·일본어·키릴 등 비라틴 글자가 들어오면 그 자리에서 지운다
+  // (IME 조합이 끝난 뒤 input 이벤트에서). 안내 힌트는 잠깐 띄웠다가 지운다.
+  var NON_LATIN_G = new RegExp(NON_LATIN_RE.source, 'g');
+  function _stripNonLatin(el){
+    var v = el.value || '';
+    if(!NON_LATIN_RE.test(v)) return false;
+    var pos = el.selectionStart;
+    var before = v.slice(0, pos == null ? v.length : pos);
+    var removedBefore = (before.match(NON_LATIN_G) || []).length;
+    el.value = v.replace(NON_LATIN_G, '');
+    try{ if(pos != null){ var np = pos - removedBefore; el.setSelectionRange(np, np); } }catch(_){}
+    // 지웠다는 사실을 알린다 — 조용히 사라지면 "타이핑이 안 된다"고 오해한다
+    _markInvalid(el, true, 'latin');
+    clearTimeout(el._papStripTimer);
+    el._papStripTimer = setTimeout(function(){ _validateOne(el); }, 1800);
+    return true;
+  }
   document.addEventListener('input', function(e){
-    if(_isNameOnlyField(e.target) || _isLatinOnlyField(e.target)) _validateOne(e.target);
+    var el = e.target;
+    if(!(_isNameOnlyField(el) || _isLatinOnlyField(el))) return;
+    if(e.isComposing) return;               // IME 조합 중에는 손대지 않는다 (compositionend 뒤 input 에서 지운다)
+    if(_stripNonLatin(el)) return;
+    _validateOne(el);
+  }, true);
+  document.addEventListener('compositionend', function(e){
+    var el = e.target;
+    if(!(_isNameOnlyField(el) || _isLatinOnlyField(el))) return;
+    setTimeout(function(){ if(!_stripNonLatin(el)) _validateOne(el); }, 0);
+  }, true);
+  // 붙여넣기도 같은 규칙
+  document.addEventListener('paste', function(e){
+    var el = e.target;
+    if(!(_isNameOnlyField(el) || _isLatinOnlyField(el))) return;
+    setTimeout(function(){ if(!_stripNonLatin(el)) _validateOne(el); }, 0);
   }, true);
 
   // Public: scan a scope (default document) for any invalid name-only field.
@@ -200,6 +234,7 @@
   };
 
   // 라틴 전용 검증(비라틴 문자만 차단, 문장부호 허용) — 산문·인스타 핸들용.
+  window._papStripNonLatin = function(value){ return String(value || '').replace(NON_LATIN_G, ''); };
   window._papValidateLatinOnly = function(value){
     return !NON_LATIN_RE.test(value || '');
   };
