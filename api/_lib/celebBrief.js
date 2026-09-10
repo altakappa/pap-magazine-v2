@@ -146,15 +146,24 @@ function collectMediaItems(media, opts) {
   const max = (opts && opts.max) || MAX_SLIDES;
   const out = [];
   const seen = new Set();
+  const ok = (u) => typeof u === 'string' && /^https?:\/\//i.test(u);
   const push = (m) => {
     if (!m) return;
-    const type = String(m.media_type || '').toUpperCase() === 'VIDEO' ? 'video' : 'image';
-    const url = m.media_url;
-    if (!url || typeof url !== 'string' || !/^https?:\/\//i.test(url)) return;
+    const isVideo = String(m.media_type || '').toUpperCase() === 'VIDEO';
+    const thumb = ok(m.thumbnail_url) ? m.thumbnail_url : null;
+    /* ── 커버만 있는 영상도 버리지 않는다 (2026-09-10) ─────────────
+       실측: @apple 릴스(DdFFK5vSwpG)를 business_discovery 로 조회하면
+       게시물은 잡히는데 media_url(mp4) 이 안 온다. 예전 코드는 media_url
+       이 없으면 그대로 return 해서 아이템이 0개가 됐고, 크론은
+       "쓸 수 있는 사진·영상을 못 찾았습니다" 로 죽었다. 커버 프레임만
+       있어도 **썸네일 디자인은 만들 수 있다** — 그게 이 브리프의 본체다.
+       이때는 type 을 'image' 로 낮춘다. mp4 가 없는데 video 로 두면
+       텔레그램 전송이 jpg 를 영상인 척 보내다 깨진다. */
+    const url = ok(m.media_url) ? m.media_url : thumb;
+    if (!url) return;
+    const type = isVideo && ok(m.media_url) ? 'video' : 'image';
     if (seen.has(url)) return;
     seen.add(url);
-    const thumb = (typeof m.thumbnail_url === 'string' && /^https?:\/\//i.test(m.thumbnail_url))
-      ? m.thumbnail_url : null;
     if (out.length < max) out.push({ type, url, thumb: type === 'video' ? thumb : url });
   };
   const kids = media && media.children && Array.isArray(media.children.data)

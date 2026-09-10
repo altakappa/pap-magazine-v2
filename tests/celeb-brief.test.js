@@ -362,6 +362,29 @@ t('커버로 쓸 게 하나도 없으면 사람에게 알린다', () => {
   assert.ok(/쓸 수 있는 사진·영상을 못 찾았습니다/.test(CRON), '실패 안내가 없다');
 });
 
+/* 2026-09-10 실측 — @apple 릴스(DdFFK5vSwpG). business_discovery 가 게시물은
+   돌려주는데 media_url(mp4) 을 안 준다. 예전 push() 는 그 자리에서 return 해
+   아이템 0개 → 크론이 "쓸 수 있는 사진·영상을 못 찾았습니다" 로 죽었다.
+   커버만 있어도 썸네일 디자인은 만들 수 있으므로 버리면 안 된다. */
+t('mp4 없이 커버만 오는 영상도 버리지 않는다 (type 은 image 로 낮춘다)', () => {
+  const items = cb.collectMediaItems({ media_type: 'VIDEO', thumbnail_url: 'https://cdn/t.jpg' });
+  assert.deepStrictEqual(items, [{ type: 'image', url: 'https://cdn/t.jpg', thumb: 'https://cdn/t.jpg' }],
+    'mp4 가 없으면 커버를 사진으로 쓴다 — video 로 두면 텔레그램이 jpg 를 영상으로 보낸다');
+  assert.strictEqual(cb.pickCoverUrl(items), 'https://cdn/t.jpg');
+});
+
+t('캐러셀 안의 커버만 있는 영상도 자리를 지킨다', () => {
+  const items = cb.collectMediaItems({
+    media_type: 'CAROUSEL_ALBUM',
+    children: { data: [
+      { media_type: 'IMAGE', media_url: 'https://cdn/1.jpg' },
+      { media_type: 'VIDEO', thumbnail_url: 'https://cdn/2t.jpg' },
+    ] },
+  });
+  assert.deepStrictEqual(items.map((i) => i.type), ['image', 'image']);
+  assert.strictEqual(items[1].url, 'https://cdn/2t.jpg');
+});
+
 t('큰 영상을 조용히 빼지 않는다', () => {
   assert.ok(/VIDEO_MAX_BYTES/.test(CRON_CODE), '텔레그램 50MB 상한 방어가 없다');
   assert.ok(/영상 ' \+ tooBig \+ '건은 뺐습니다/.test(CRON), '뺀 사실을 캡션에 적어야 한다');
