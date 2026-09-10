@@ -16,9 +16,7 @@ const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit } = require('../_lib/submissionType');
-const { findNonLatin } = require('../_lib/latinOnly');
-const { normalizeRole } = require('../_lib/creditRoles');
-const { normalizeItemType } = require('../_lib/itemTypes');
+const englishOnly = require('../_lib/submissionEnglishOnly');   // 전부 영어로 + 자동번역 방어 (POST·PUT 공용)
 const { feeForType } = require('../_lib/submissionPayment');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
 const { sendEmail, templates } = require('../_lib/email');
@@ -161,12 +159,7 @@ module.exports = async function handler(req, res) {
       // 2026-09-05 — 브라우저 자동번역 방어(서버쪽). 제출자가 Chrome 번역을
       // 켜면 폼 옵션 글자가 '裤子' 처럼 바뀌어 저장되던 사고(Modern Teddy).
       // 품목(type)은 표준 영어값으로 되돌려 저장한다. api/_lib/itemTypes.js 참조.
-      looks.forEach(function (lk) {
-        if (!lk || !Array.isArray(lk.items)) return;
-        lk.items.forEach(function (it) {
-          if (it && it.type) it.type = normalizeItemType(it.type);
-        });
-      });
+      // (품목 type 표준화는 아래 englishOnly.normalize 가 한다)
       const lookImageMap = Array.isArray(data.lookImageMap) ? data.lookImageMap : [];
       // Submission-type classification (2026-07-19) — DETECT + STORE only, no
       // payment/email. Recomputed AUTHORITATIVELY here from the persisted
@@ -176,30 +169,13 @@ module.exports = async function handler(req, res) {
       // and is regression-tested. 'free' | 'paid_few_looks' | 'branded'.
       // 신규 제출/수정이므로 SPA 제외는 현재 시각 기준으로 판정된다
       // (submissionType.js:spaRuleApplies — 발효일 이전 기존 행은 소급 안 됨).
-      // 브랜드명·핸들은 영문(라틴)으로만 받는다 (2026-08-26 도메니코 지시).
-      // 프론트(pap-name-validator.js)가 이미 막고 있지만 그것뿐이라, API 를
-      // 직접 호출하면 비라틴 브랜드명이 그대로 저장됐다. 브랜드 집계와
-      // 크레딧 수정이 브랜드 문자열에 의존하므로 서버가 진실원천이어야 한다.
-      // 사람 이름(team)에는 적용하지 않는다 — 이번 규칙의 대상은 브랜드다.
-      const _brandEntries = [];
-      looks.forEach(function (lk, li) {
-        const items = (lk && Array.isArray(lk.items)) ? lk.items : [];
-        items.forEach(function (it, ii) {
-          if (!it) return;
-          const label = 'Look ' + ((lk && lk.n) || (li + 1)) + ' item ' + (ii + 1);
-          if (it.brand) _brandEntries.push({ label: label + ' brand', value: it.brand });
-          if (it.instagram) _brandEntries.push({ label: label + ' handle', value: it.instagram });
-        });
-      });
-      const _nonLatin = findNonLatin(_brandEntries);
+      // 전부 영어로(라틴) — 브랜드·핸들·팀 이름·역할·모델·에이전시·제목·스테이트먼트·연락 이름.
+      // 규칙과 목록은 api/_lib/submissionEnglishOnly.js 한 곳 (재제출 PUT 도 같은 함수). 2026-09-10.
+      englishOnly.normalize(data);   // 자동번역 방어: type·role·credits 키 표준화 (9/5 Modern Teddy 사고)
+      const _nonLatin = englishOnly.violations(data);
       if (_nonLatin.length) {
         try { console.warn('[submissions] 400 BRAND_LATIN_ONLY user=%s %s', user.id, JSON.stringify(_nonLatin).slice(0, 300)); } catch (_) {}
-        return res.status(400).json({
-          code: 'BRAND_LATIN_ONLY',
-          message: 'Brand names and handles must be written in English (Latin letters): '
-            + _nonLatin.map(function (x) { return x.value; }).join(', '),
-          violations: _nonLatin,
-        });
+        return res.status(400).json(englishOnly.rejection(_nonLatin));
       }
 
       const { submissionType } = classifySubmissionType(looks, lookImageMap);
@@ -223,18 +199,7 @@ module.exports = async function handler(req, res) {
       const team = Array.isArray(data.team) ? data.team : [];
       // 2026-09-05 — 역할도 같은 이유로 표준화(摄影师 → Photographer 등).
       // 모르는 자유입력 역할은 normalizeRole 이 원본을 보존한다.
-      team.forEach(function (m) {
-        if (m && m.role) m.role = normalizeRole(m.role);
-      });
-      // data.credits 는 역할을 키로 쓰는 레거시 평면 뷰라 키도 같이 되돌린다.
-      if (data.credits && typeof data.credits === 'object' && !Array.isArray(data.credits)) {
-        const fixed = {};
-        Object.keys(data.credits).forEach(function (k) {
-          const nk = (normalizeRole(k) || k).toLowerCase().replace(/\s+/g, '_');
-          fixed[nk] = (fixed[nk] || []).concat(data.credits[k]);
-        });
-        data.credits = fixed;
-      }
+      // (역할·credits 키 표준화는 위 englishOnly.normalize 가 이미 했다)
 
       const { data: submission, error } = await supabaseAdmin
         .from('submissions')

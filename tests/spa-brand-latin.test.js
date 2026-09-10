@@ -219,10 +219,13 @@ t('약관 최종 수정일이 9개 언어 전부에서 갱신됐다', () => {
 
 // ── 서버 적용 지점 ─────────────────────────────────────────────────────
 t('제출 API 가 비라틴 브랜드명을 서버에서 막는다', () => {
+  // 2026-09-10 — 검사 목록은 api/_lib/submissionEnglishOnly.js 로 옮겼다(POST·PUT 공용). 거기서 latinOnly 를 쓴다.
   const src = fs.readFileSync(path.join(ROOT, 'api/submissions/index.js'), 'utf8');
-  assert.ok(/require\('\.\.\/_lib\/latinOnly'\)/.test(src), 'latinOnly 를 쓰지 않는다');
-  assert.ok(/BRAND_LATIN_ONLY/.test(src), '거부 코드가 없다');
-  assert.ok(/it\.brand/.test(src) && /it\.instagram/.test(src),
+  const eo = fs.readFileSync(path.join(ROOT, 'api/_lib/submissionEnglishOnly.js'), 'utf8');
+  assert.ok(/require\('\.\.\/_lib\/submissionEnglishOnly'\)/.test(src), 'englishOnly 를 쓰지 않는다');
+  assert.ok(/require\('\.\/latinOnly'\)/.test(eo), 'latinOnly 를 쓰지 않는다');
+  assert.ok(/BRAND_LATIN_ONLY/.test(eo), '거부 코드가 없다');
+  assert.ok(/it\.brand/.test(eo) && /it\.instagram/.test(eo),
     '룩 크레딧의 브랜드명과 핸들 둘 다 검사해야 한다');
 });
 

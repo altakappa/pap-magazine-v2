@@ -7,6 +7,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
+const englishOnly = require('../_lib/submissionEnglishOnly');   // 2026-09-10 재제출도 전부 영어로
 const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
@@ -212,6 +213,14 @@ module.exports = async function handler(req, res) {
       // look count or brand mix re-classifies correctly (mirror of POST path).
       // 신규 제출/수정이므로 SPA 제외는 현재 시각 기준으로 판정된다
       // (submissionType.js:spaRuleApplies — 발효일 이전 기존 행은 소급 안 됨).
+      // 2026-09-10 — 재제출에도 "전부 영어로" + 자동번역 방어. 종전엔 이 경로에 검사가 하나도 없어
+      // 수정 요청 뒤 다시 올리는 판은 한글·중국어 크레딧도 그대로 저장됐다. POST 와 같은 함수.
+      englishOnly.normalize(data);
+      const _nonLatin = englishOnly.violations(data);
+      if (_nonLatin.length) {
+        try { console.warn('[submissions] 400 BRAND_LATIN_ONLY (resubmit) user=%s %s', user.id, JSON.stringify(_nonLatin).slice(0, 300)); } catch (_) {}
+        return res.status(400).json(englishOnly.rejection(_nonLatin));
+      }
       const { submissionType } = classifySubmissionType(looks, lookImageMap);
       // 2026-07-21 (도메니코 지시) — 모든 룩은 최소 1개 크레딧(브랜드 또는 인스타)이
       // 있어야 제출/재제출 가능. 과거엔 강제하지 않아 룩 크레딧 없이 통과됐다(예: Marooned).

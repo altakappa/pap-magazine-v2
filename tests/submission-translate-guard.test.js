@@ -66,10 +66,23 @@ t('프론트가 BRAND_LATIN_ONLY 를 언어별 문구로', /code==='BRAND_LATIN_
 
 console.log('\n=== 2) 서버 저장 api/submissions/index.js ===');
 const idx = read('api/submissions/index.js');
-t('creditRoles require', /require\('\.\.\/_lib\/creditRoles'\)/.test(idx));
-t('itemTypes require', /require\('\.\.\/_lib\/itemTypes'\)/.test(idx));
-t('looks item type 정규화', /it\.type = normalizeItemType\(it\.type\)/.test(idx));
-t('team role 정규화', /m\.role = normalizeRole\(m\.role\)/.test(idx));
+// 2026-09-10 — 표준화·라틴 검사는 api/_lib/submissionEnglishOnly.js 한 곳으로 옮겼다 (POST·PUT 공용).
+const eo = read('api/_lib/submissionEnglishOnly.js');
+t('englishOnly require (POST)', /require\('\.\.\/_lib\/submissionEnglishOnly'\)/.test(idx));
+t('englishOnly: creditRoles·itemTypes 를 쓴다', /require\('\.\/creditRoles'\)/.test(eo) && /require\('\.\/itemTypes'\)/.test(eo));
+t('looks item type 정규화', /it\.type = normalizeItemType\(it\.type\)/.test(eo) && /englishOnly\.normalize\(data\)/.test(idx));
+t('team role 정규화', /m\.role = normalizeRole\(m\.role\)/.test(eo));
+const EO = require(path.join(__dirname, '..', 'api/_lib/submissionEnglishOnly.js'));
+{ const d = { looks: [{ n: 1, items: [{ type: '裤子', brand: 'Acne', instagram: '@acne' }] }], team: [{ name: 'Kim', role: '摄影师' }], credits: { '摄影师': ['Kim'] } };
+  EO.normalize(d);
+  t('normalize 동작: 裤子→Pants · 摄影师→Photographer · credits 키', d.looks[0].items[0].type === 'Pants' && d.team[0].role === 'Photographer' && Object.keys(d.credits)[0] === 'photographer'); }
+t('violations: 팀 이름 한글 잡음', EO.violations({ team: [{ name: '홍길동', role: 'Photographer' }] }).length === 1);
+t('violations: 모델 에이전시 일본어 잡음', EO.violations({ models: [{ name: 'A', agency: '東京モデル' }] }).length === 1);
+t('violations: 제목·스테이트먼트 키릴 잡음', EO.violations({ title: 'Москва', artistStatement: 'ок' }).length === 2);
+t('violations: 악센트 라틴은 통과 (Hermès · Niño · über)', EO.violations({ team: [{ name: 'Niño Hermès', role: 'Stylist' }], looks: [{ n: 1, items: [{ brand: 'über', instagram: '@x' }] }] }).length === 0);
+t('rejection 코드는 BRAND_LATIN_ONLY 유지(프론트 호환)', EO.rejection([{ label: 'x', value: 'y' }]).code === 'BRAND_LATIN_ONLY');
+const idPut = read('api/submissions/[id].js');
+t('재제출(PUT)도 같은 검사 + 표준화', /englishOnly\.normalize\(data\)/.test(idPut) && /englishOnly\.violations\(data\)/.test(idPut) && /englishOnly\.rejection\(/.test(idPut));
 
 console.log('\n=== 3) 서버 승인 api/submissions/[id]/review.js ===');
 const rev = read('api/submissions/[id]/review.js');
