@@ -190,8 +190,8 @@ console.log('\n=== GPTBot 차단 재검토 트리거 (#3) ===');
    그걸 재는 유일한 계기이고, 리포트가 스스로 재검토를 띄워야 한다. */
 t('학습 레이어가 내려가면 리포트가 재검토를 띄운다',
   /학습 레이어가 내려갔다/.test(lib) && /두 회차 연속/.test(lib));
-t('robots.txt 에 차단 후 실측이 기록돼 있다',
-  /사후 실측/.test(robots) && /차단 후/.test(robots));
+t('robots.txt 에 8/22 차단 사후 실측과 9/10 재개방 근거가 기록돼 있다',
+  /사후 실측/.test(robots) && /2026-09-10/.test(robots));
 t('robots.txt 가 재검토 계기를 지목한다 (기억이 아니라 표로 판단)',
   /aiVisibility/.test(robots));
 /* 이 블록이 지켜야 하는 것: live·index 는 계속 허용이다. */

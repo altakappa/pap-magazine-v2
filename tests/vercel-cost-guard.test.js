@@ -106,7 +106,10 @@ for (const [p, cap] of Object.entries(CAPS)) {
 }
 
 /* ── robots.txt ─────────────────────────────────────────────── */
-console.log('\n[3] robots.txt — 학습봇은 전면 차단');
+console.log('\n[3] robots.txt — 학습봇 정책 (2026-09-10 부분 재개방)');
+/* 8/22 에 학습봇 10개를 막았고 9/10 에 도메니코가 "모델이 PAP 을 아는 경로"를
+   택해 대부분 다시 열었다. 남긴 차단은 비용만 있고 얻을 게 없는 둘뿐이다.
+   열어 둔 봇은 '이름 그룹이 없어야' 한다 — 그룹이 있으면 * 규칙을 잃는다(7/28 사고). */
 
 /** User-agent 이름 → 그 그룹의 규칙 줄 배열 */
 function groups(txt) {
@@ -128,14 +131,22 @@ function groups(txt) {
 }
 const G = groups(robots);
 
-const TRAIN = ['GPTBot', 'ClaudeBot', 'anthropic-ai', 'Claude-Web', 'Amazonbot',
-  'Bytespider', 'meta-externalagent', 'CCBot'];
-for (const bot of TRAIN) {
+const TRAIN_BLOCK = ['Amazonbot', 'Bytespider'];
+for (const bot of TRAIN_BLOCK) {
   const rules = G.get(bot);
   const blocked = !!rules && rules.some((r) => /^Disallow:\s*\/$/i.test(r));
   const onlyBlock = !!rules && !rules.some((r) => /^Allow:/i.test(r));
-  t(bot + ' 전면 차단', blocked && onlyBlock, rules ? rules.join(' | ') : '그룹 없음');
+  t(bot + ' 전면 차단 (비용만 있고 인지도 가치 없음)', blocked && onlyBlock, rules ? rules.join(' | ') : '그룹 없음');
 }
+const TRAIN_OPEN = ['GPTBot', 'ClaudeBot', 'anthropic-ai', 'Claude-Web', 'CCBot',
+  'meta-externalagent', 'Meta-ExternalAgent', 'meta-externalfetcher',
+  'Google-Extended', 'Applebot-Extended'];
+for (const bot of TRAIN_OPEN) {
+  t(bot + ' 이름 그룹 없음 (학습 허용 = * 규칙 적용)', !G.has(bot), G.get(bot));
+}
+t('robots.txt 에 9/10 재개방 근거가 있다', /2026-09-10/.test(robots) && /부분 재개방/.test(robots));
+t('이름 그룹은 전부 Disallow: / 다 (Allow 로 여는 그룹 없음)',
+  [...G.entries()].every(([n, r]) => n === '*' || (r.some((x) => /^Disallow:\s*\/$/i.test(x)) && !r.some((x) => /^Allow:/i.test(x)))));
 
 console.log('\n[4] 유입을 만드는 봇에는 이름 그룹이 없다 (* 규칙을 잃지 않게)');
 const KEEP = ['ChatGPT-User', 'OAI-SearchBot', 'PerplexityBot', 'Perplexity-User',
