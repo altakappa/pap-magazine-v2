@@ -2477,7 +2477,7 @@ function _papGenreMode(genres, clothingCount){
   if(!genres||!genres.length) return 'fashion';
   if(genres.indexOf('FASHION')!==-1) return 'fashion';
   if(genres.indexOf('BEAUTY')!==-1) return clothingCount>_PAP_BEAUTY_MAX_CLOTHING_BRANDS ? 'fashion' : 'beauty';
-  return 'other';
+  return clothingCount>0 ? 'fashion' : 'other';   // 2026-09-12 옷 브랜드를 적었으면 패션 규칙 (서버 genreModeOf 와 동일)
 }
 function _renderSubmissionTypeNotice(){
   // Same classification/copy drives two boxes: the LOOK step (#lookTypeNotice,

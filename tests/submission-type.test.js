@@ -671,10 +671,18 @@ console.log('\n=== GENRE 규칙 (2026-09-10) ===');
   ok('FASHION 룩 2개·의상 0종 → 사유는 no_clothing_brands (룩을 늘려도 여전히 €380 이므로 진짜 처방을 말한다)',
      f02.submissionType === 'paid_few_looks' && f02.paidReason === 'no_clothing_brands', JSON.stringify(f02));
 
+  // 2026-09-12 도메니코 — 실사례 HOA SEN(ART·PORTRAIT, 룩 1, Mydun9 1종)이 '기타' 로 빠져 €790 을 피했다.
+  // 옷 브랜드를 적었으면 장르가 뭐든 패션 규칙. 의상 0종인 기타 장르만 관리자 확인.
   const other = cls([L(1, [{ type: 'Top', brand: 'Gucci' }]), L(2, [{ type: 'Top', brand: 'Gucci' }]), L(3, [{ type: 'Top', brand: 'Gucci' }])], ['PORTRAIT']);
-  ok('PORTRAIT 만 (FASHION·BEAUTY 없음) → free + needsCreditReview category_other (자동 판정 없음)',
-     other.genreMode === 'other' && other.submissionType === 'free' && other.needsCreditReview === true
-     && other.reviewReason === 'category_other' && other.branded === false, JSON.stringify(other));
+  ok('PORTRAIT 만이라도 의상 브랜드 1종 → 패션 규칙 → branded €790 (장르로 회피 불가)',
+     other.genreMode === 'fashion' && other.submissionType === 'branded' && other.needsCreditReview === false, JSON.stringify(other));
+  const hoasen = cls([L(1, [{ type: 'Dress', brand: 'Mydun9', instagram: '@mydun9' }, { type: 'Shoes', brand: 'Mydun9', instagram: '@mydun9' }])], ['ART', 'PORTRAIT']);
+  ok('실사례 HOA SEN: ART·PORTRAIT + 룩 1 + Dress 1종 → branded', hoasen.submissionType === 'branded' && hoasen.genreMode === 'fashion', JSON.stringify(hoasen));
+  const other0 = cls([L(1, [{ type: 'Other', brand: 'No brand used' }]), L(2, [{ type: 'Hat', brand: 'X' }])], ['ART']);
+  ok('ART + 의상 브랜드 0종 → free + needsCreditReview category_other (관리자 확인, 종전 동작)',
+     other0.genreMode === 'other' && other0.submissionType === 'free' && other0.needsCreditReview === true && other0.reviewReason === 'category_other', JSON.stringify(other0));
+  const other2 = cls([L(1, [{ type: 'Top', brand: 'A' }]), L(2, [{ type: 'Top', brand: 'B' }]), L(3, [{ type: 'Top', brand: 'B' }])], ['STREET']);
+  ok('STREET + 의상 브랜드 2종·룩 3 → 패션 규칙 → €380 few_clothing_brands', other2.genreMode === 'fashion' && other2.submissionType === 'paid_few_looks' && other2.paidReason === 'few_clothing_brands', JSON.stringify(other2));
 
   const legacy = cls([L(1, [{ type: 'Hat', brand: 'X' }]), L(2, [{ type: 'Shoes', brand: 'Y' }]), L(3, [{ type: 'Bag', brand: 'Z' }])], undefined);
   ok('genres 없음(구 호출·재분류) → 패션 규칙 (종전 동작)', legacy.genreMode === 'fashion' && legacy.paidReason === 'no_clothing_brands', JSON.stringify(legacy));
@@ -685,8 +693,8 @@ console.log('\n=== GENRE 규칙 (2026-09-10) ===');
   const fs = require('fs');
   const html = fs.readFileSync(path.resolve(__dirname, '..', 'frontend', 'submission.html'), 'utf8');
   ok('미러에 _papGenreMode 가 있고 BEAUTY 문턱이 0', /var _PAP_BEAUTY_MAX_CLOTHING_BRANDS=0;/.test(html) && /function _papGenreMode\(/.test(html));
-  ok('미러가 FASHION 포함 → fashion, BEAUTY → beauty/fashion, 그 외 → other 를 돌려준다',
-     /indexOf\('FASHION'\)!==-1\) return 'fashion'/.test(html) && /indexOf\('BEAUTY'\)!==-1\) return clothingCount>_PAP_BEAUTY_MAX_CLOTHING_BRANDS \? 'fashion' : 'beauty'/.test(html) && /return 'other';/.test(html));
+  ok('미러가 FASHION 포함 → fashion, BEAUTY → beauty/fashion, 그 외는 의상 브랜드 있으면 fashion 없으면 other',
+     /indexOf\('FASHION'\)!==-1\) return 'fashion'/.test(html) && /indexOf\('BEAUTY'\)!==-1\) return clothingCount>_PAP_BEAUTY_MAX_CLOTHING_BRANDS \? 'fashion' : 'beauty'/.test(html) && /return clothingCount>0 \? 'fashion' : 'other';/.test(html));
   ok('미러에 no_clothing_brands 사유가 있고 branded 뒤·few_looks 앞이다',
      /else if\(branded\) type='branded';\s*else if\(noClothingBrands\)\{ type='paid_few_looks'; paidReason='no_clothing_brands'; \}\s*else if\(realLookCount<3\)/.test(html));
   ok('미러가 뷰티는 무조건 free, 기타 장르는 needsCreditReview 로 돌린다',

@@ -113,8 +113,9 @@
  *       선택지 문구는 "3종 이상이면"이었으나 그러면 1종=€790 회피가 그대로 남아
  *       0종 초과로 더 엄격히 잡았다. 완화하려면 BEAUTY_MAX_CLOTHING_BRANDS 만 올린다.)
  *     · FASHION 도 BEAUTY 도 없음(ART·PORTRAIT·STREET·FASHION SHOW·BACKSTAGE·ARTICLE)
- *       → 자동 판정 없이 free + needsCreditReview(reviewReason 'category_other').
+ *       + 의상 브랜드 0종 → 자동 판정 없이 free + needsCreditReview(reviewReason 'category_other').
  *         도메니코가 보고 결정.
+ *       + 의상 브랜드 1종 이상 → 패션 규칙 (2026-09-12, 실사례 HOA SEN: ART·PORTRAIT 로 €790 회피).
  *     · opts.genres 가 없으면(구 호출·기존 행 재분류) 패션 규칙 — 종전 동작 유지.
  *   결과의 genreMode: 'fashion' | 'beauty' | 'other'.
  */
@@ -142,7 +143,10 @@ function genreModeOf(genres, clothingBrandCount) {
   const g = genres.map((x) => String(x || '').trim().toUpperCase());
   if (g.includes('FASHION')) return 'fashion';
   if (g.includes('BEAUTY')) return clothingBrandCount > BEAUTY_MAX_CLOTHING_BRANDS ? 'fashion' : 'beauty';
-  return 'other';
+  // 2026-09-12 도메니코 — 실사례 "HOA SEN": 룩 1개·의상 브랜드 1종인데 장르를 ART·PORTRAIT 로 골라 '기타'로
+  // 빠져 무료 접수됐다(FASHION 을 안 고르면 €790 을 피해 가는 구멍). BEAUTY 와 같은 논리로 막는다:
+  // 옷 브랜드를 적었으면 패션 화보다. 의상 브랜드 0종인 기타 장르만 관리자 확인 대상으로 남는다.
+  return clothingBrandCount > 0 ? 'fashion' : 'other';
 }
 
 // '의상' 슬롯 화이트리스트 (frontend/submission.html 의 아이템 타입 <option> 중
