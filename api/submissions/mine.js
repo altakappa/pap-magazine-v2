@@ -3,6 +3,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
+const { loadPlan, shapeForOwner } = require('../_lib/submissionFeedbackGate');   // 2026-09-12 피드백=스탠다드+, 대기 중 수정=프리미엄
 const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
@@ -50,8 +51,11 @@ module.exports = async function handler(req, res) {
         }
       }
     }
+    // 2026-09-12 — 등급 혜택 게이트: 무료 회원에겐 심사 피드백 본문을 비우고(feedbackLocked),
+    // 대기 중 자기 수정 가능 여부(canSelfEdit)는 서버가 계산해 내려준다(프론트가 등급을 판단하지 않는다).
+    const _plan = await loadPlan(supabaseAdmin, user.id);
     const hydrated = (submissions || []).map(s => ({
-      ...s,
+      ...shapeForOwner(s, _plan),
       linked_editorial: linkedBySubId[s.id] || null,
     }));
 

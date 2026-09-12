@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="mypage" data-v="6">
+<meta name="pap-ui-i18n" content="mypage" data-v="7">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP Magazine - My Page">
@@ -1521,6 +1521,11 @@ function _mpActionBtn(ds, s){
     return btn(_papUIL('수정하러 가기','Revise now'),
       "window.location.href='/submission?revise=" + encodeURIComponent(s.id||'') + "'");
   }
+  // 2026-09-12 도메니코 — 심사 대기 중 자기 수정은 프리미엄만. 가능 여부는 서버(canSelfEdit)가 계산한다.
+  if (ds === 'pending' && s.canSelfEdit) {
+    return btn(_papUIL('수정하기','Edit'),
+      "window.location.href='/submission?revise=" + encodeURIComponent(s.id||'') + "'");
+  }
   if (ds === 'authorization_required') {
     // 승인(돈 묶기)만 다시 연다 — 청구가 아니다. mode:'authorize' 로 간다.
     return btn(_papUIL('결제 승인 이어서 하기','Complete authorization'),
@@ -1690,7 +1695,20 @@ async function _mpRenderSubDetail(id, box){
       }
     }catch(_){}
     h += '<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px">' + L.feedback + '</div>';
-    h += '<div style="white-space:pre-line;color:' + (note ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.4)') + '">' + (note ? esc(note) : L.none) + '</div>';
+    // 2026-09-12 — 심사 피드백은 스탠다드 이상만(서버가 admin_notes 를 비우고 feedbackLocked 를 준다).
+    if(s.feedbackLocked){
+      h += '<div style="color:rgba(255,255,255,.55)">' + esc(_papUIL('심사 피드백은 스탠다드 회원부터 볼 수 있습니다.','Review feedback is available from the Standard plan.')) + ' <a href="/subscribe?utm_source=mypage_feedback&utm_medium=web" style="color:#c9a86a;text-decoration:underline">' + esc(_papUIL('플랜 보기','See plans')) + '</a></div>';
+    } else {
+      h += '<div style="white-space:pre-line;color:' + (note ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.4)') + '">' + (note ? esc(note) : L.none) + '</div>';
+    }
+    // 2026-09-12 — 심사 대기 중 자기 수정: 프리미엄은 버튼, 그 외는 안내.
+    if(s.status === 'pending'){
+      if(s.canSelfEdit){
+        h += '<button onclick="window.location.href=\'/submission?revise=' + encodeURIComponent(id) + '\'" style="margin-top:16px;background:rgba(201,168,106,.15);border:1px solid rgba(201,168,106,.5);color:#fff;padding:8px 16px;font-size:11px;font-weight:700;letter-spacing:.05em;cursor:pointer;border-radius:2px;font-family:inherit">' + esc(_papUIL('제출 내용 수정하기','Edit this submission')) + '</button>';
+      } else if(s.selfEditBlockedReason === 'not_premium'){
+        h += '<div style="margin-top:14px;font-size:11px;color:rgba(255,255,255,.5)">' + esc(_papUIL('심사 대기 중 제출 내용을 직접 수정하는 것은 프리미엄 회원만 가능합니다.','Editing a submission while it is awaiting review is a Premium member benefit.')) + ' <a href="/subscribe?utm_source=mypage_selfedit&utm_medium=web" style="color:#c9a86a;text-decoration:underline">' + esc(_papUIL('프리미엄 알아보기','Learn about Premium')) + '</a></div>';
+      }
+    }
     if(s.status === 'revision'){
       h += '<button onclick="window.location.href=\'/submission?revise=' + encodeURIComponent(id) + '\'" style="margin-top:16px;background:rgba(100,150,255,.15);border:1px solid rgba(100,150,255,.5);color:rgba(160,190,255,.95);font-size:12px;font-weight:600;letter-spacing:.06em;padding:10px 18px;cursor:pointer;border-radius:2px;font-family:inherit">' + L.resubmit + '</button>';
     }

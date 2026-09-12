@@ -17,6 +17,7 @@ const { validateCollaborators, collaboratorAlertText } = require('../_lib/collab
 const { sendTextToTelegramSafe } = require('../_lib/telegram');   // 2026-09-12 공동작업자 지정 알림
 const { isPremiumUser, resolveCoverIndex } = require('../_lib/premiumCover');   // 2026-09-12 커버 선택은 프리미엄만
 const { brandRolesIn } = require('../_lib/brandRoleGuard');   // 2026-09-12 브랜드/디자이너는 팀 크레딧 금지
+const { loadPlan, shapeForOwner, canSelfEditPending } = require('../_lib/submissionFeedbackGate');   // 2026-09-12 피드백=스탠다드+, 대기 중 수정=프리미엄
 
 // Build the same `{SUPABASE_URL}/storage/v1/object/public/submissions/{user.id}/`
 // prefix the POST endpoint enforces — caller can only attach URLs in their
@@ -157,6 +158,13 @@ module.exports = async function handler(req, res) {
         return res.status(409).json({
           message: 'This submission can no longer be edited (status: ' + submission.status + ')',
         });
+      }
+      // 2026-09-12 도메니코 — 심사 대기(pending) 중 자기 수정은 프리미엄만. 보완 요청(revision)은 누구나.
+      if (submission.status === 'pending') {
+        const _planRow = await loadPlan(supabaseAdmin, user.id);
+        if (!canSelfEditPending(_planRow)) {
+          return res.status(403).json({ code: 'SELF_EDIT_PREMIUM_ONLY', message: 'Only Premium members can edit a submission while it is awaiting review', requiresPlan: 'premium' });
+        }
       }
 
       let body = req.body;
@@ -480,9 +488,11 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // 2026-09-12 — 본인 조회(관리자 아님)면 등급 게이트를 거친다: 무료 회원은 심사 피드백 본문을 못 본다.
+    const _shaped = (isOwner && !isAdmin) ? shapeForOwner(submission, await loadPlan(supabaseAdmin, user.id)) : submission;
     return res.status(200).json({
       submission: {
-        ...submission,
+        ..._shaped,
         submitterName,
         submitterEmail,
         submitterPlan,
