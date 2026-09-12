@@ -23,14 +23,17 @@ ok('필수 자료: 사진 6장 이상 (8장 없음)', count(new RegExp("glReqBod
 ok('이용 약관: 제출 후 수정은 프리미엄만 (€100 수수료 문구 없음)', count(new RegExp("glTermsBody:'" + Q + "(프리미엄 회원만|only Premium|nur Premium|solo i membri Premium|seuls les membres Premium|solo los miembros Premium|プレミアム会員のみ|仅高级会员|только участники Premium)", 'g')) === 9 && !/€100|100 €|100 유로|100 欧元/.test(html));
 ok('이용 약관: 단일 브랜드 = 브랜디드, 제출 시 €790', count(new RegExp("glTermsBody:'" + Q + "790", 'g')) === 9);
 ok('이용 약관: 무료는 옷 브랜드 3개, 액세서리·잡화 제외', count(new RegExp("glTermsBody:'" + Q + "(액세서리|accessories|Accessoires|accessori|accessoires|accesorios|アクセサリー|配饰|аксессуары)", 'g')) === 9);
-ok('추가 옵션(유료) 섹션 → 프리미엄 혜택: 커버 이미지 선택 (€220·€110 게시일 없음)', count(new RegExp("glAddBody:'<ul><li>" + Q + "(커버|cover|Cover|copertina|couverture|portada|カバー|封面|обложк)", 'g')) === 9 && !/glAddBody:'[^']*(€220|€110|220 €|110 €)/.test(html) && !/glAddTitle:'[^']*(유료|paid|kostenpflichtig|pagamento|payantes|de pago|有料|付费|платно)/.test(html));
-ok('정적 마크업(영어 기본값)도 6장·프리미엄 커버', /<li>At least 6 high-resolution photos/.test(html) && /glAddBody"><ul><li>Premium members can choose the cover image<\/li>/.test(html));
+// 2026-09-12 도메니코 2차: 혜택 섹션에 커버 선택은 쓰지 않고, "프리미엄만 공동작업자로 추천·지정" 을 명시.
+ok('추가 옵션(유료) 섹션 → 프리미엄 혜택: 공동작업자는 프리미엄만 (커버 문구·€220·€110 없음)', count(new RegExp("glAddBody:'<ul><li>" + Q + "(공동작업자|collaborators|Collaborators|collaboratori|collaborateurs|colaboradores|コラボレーター|合作者|соавторы)", 'g')) === 9 && !new RegExp("glAddBody:'" + Q + "(커버|cover|Cover|copertina|couverture|portada|カバー|封面|обложк)").test(html) && !/glAddBody:'[^']*(€220|€110|220 €|110 €)/.test(html) && !/glAddTitle:'[^']*(유료|paid|kostenpflichtig|pagamento|payantes|de pago|有料|付费|платно)/.test(html));
+ok('이용 약관 가이드라인: 종이 잡지·오프라인 전시 사용 가능 9개 언어', count(new RegExp("glTermsBody:'" + Q + "(종이 잡지|print magazine|gedruckten|cartacea|imprimée|impresa|紙媒体|纸质杂志|печатном)", 'g')) === 9);
+ok('정적 마크업(영어 기본값)도 6장·공동작업자 혜택·종이 잡지', /<li>At least 6 high-resolution photos/.test(html) && /glAddBody"><ul><li>Only Premium members can be recommended and tagged as Instagram collaborators<\/li>/.test(html) && /glTermsBody"><ul><li>[^<]*<\/li><li>Submitted work may be published in a future PAP print magazine/.test(html));
+ok('법적 약관 제2조 ④ 종이 잡지·오프라인 전시 9개 언어 + 제목 갱신 + 캐시버스트 v=4', (terms.match(/④ (?:[^'\\]|\\.)*(종이 잡지|print magazine|gedruckten|cartacea|imprimée|impresa|紙媒体|纸质杂志|печатном)/g) || []).length === 9 && (terms.match(/(제2조|Article 2|Artikel 2|Articolo 2|Artículo 2|第2条|Статья 2)[^<]*(전시|Exhibition|Ausstellungen|Mostre|Exposition|Exposiciones|展示|展览|выставках)/g) || []).length === 9 && /submission-terms\.js\?v=4/.test(html) && /④ Submitted Works may be published in a future PAP print magazine/.test(html));
 
 console.log('\n=== 법적 약관 제3조 (submission-terms.js) ===');
 ok('제3조 ②: 프리미엄만 마이페이지에서, 수수료 없음, 비프리미엄 수정 불가 — 9개 언어', (terms.match(/② (?:[^'\\]|\\.)*(마이페이지|My Page|auf ihrer Seite|propria pagina|leur page|su página|マイページ|个人页面|своей странице)(?:[^'\\]|\\.)*<br>/g) || []).length === 9);
 ok('제3조에 €100 수정 수수료가 없다', !/100/.test(terms));
 ok('제3조 제목에서 "수수료" 제거 (9개 언어)', !/수정 수수료\)|Correction Fee\)|Korrekturgebühr\)|Tariffa di Correzione\)|Frais de Correction\)|Tarifa de Corrección\)|修正手数料\)|更正费用\)|плата за корректировку\)/.test(terms));
-ok('시행일 2026-09-12 (9개 언어) + submission-terms.js 캐시버스트 v=3', count(/termsEffective:'[^']*(9월 12일|September 12, 2026|12\. September 2026|12 settembre 2026|12 septembre 2026|12 de septiembre de 2026|9月12日|12 сентября 2026)/g) === 9 && /submission-terms\.js\?v=3/.test(html));
+ok('시행일 2026-09-12 (9개 언어) + submission-terms.js 캐시버스트 v=3', count(/termsEffective:'[^']*(9월 12일|September 12, 2026|12\. September 2026|12 settembre 2026|12 septembre 2026|12 de septiembre de 2026|9月12日|12 сентября 2026)/g) === 9 && /submission-terms\.js\?v=[4-9]/.test(html));
 ok('정적 마크업 Article 3 도 갱신', /Article 3 \(Accuracy and Correction of Credit Information\)/.test(html) && !/correction fee of €100/.test(html));
 
 console.log('\n=== 사진 하한 6장 ===');
