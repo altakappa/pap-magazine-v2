@@ -38,6 +38,8 @@ module.exports = async function handler(req, res) {
       handle,
       registered: !!hit,
       premium: !!(hit && hit.premium),
+      // 주요 활동 도시·국가 — 프리미엄 회원이 공동작업자 지정용으로 직접 등록한 값. 같은 이름의 다른 사람이 아닌지 확인하라고 보여준다.
+      location: (hit && hit.premium && hit.location) ? hit.location : '',
       max: MAX_COLLABORATORS,
     });
   } catch (err) {

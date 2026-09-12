@@ -21,7 +21,12 @@ module.exports = async function handler(req, res) {
     if (!user) return;
 
     try {
-      const { name, bio, website, location, instagram } = req.body;
+      const { name, bio, website, location, instagram, activityCountry, activityCity } = req.body;
+      // 2026-09-12 — 주요 활동 국가·도시 (공동작업자 프로필). 짧은 자유 텍스트, 제어문자 제거, 80자.
+      const _loc = (v) => (v === undefined) ? undefined : String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80);
+      const _country = _loc(activityCountry), _city = _loc(activityCity);
+      if (_country !== undefined) updates.activity_country = _country || null;
+      if (_city !== undefined) updates.activity_city = _city || null;
 
       const updates = {};
       if (name !== undefined) updates.name = name;
@@ -41,6 +46,14 @@ module.exports = async function handler(req, res) {
           const { data: taken } = await supabaseAdmin
             .from('profiles').select('id').eq('instagram', h).neq('id', user.id).limit(1);
           if (taken && taken.length) return res.status(409).json({ code: 'INSTAGRAM_TAKEN', message: 'This Instagram handle is already registered to another account' });
+          // 도메니코 2026-09-12: 아이디 외에 주요 활동 국가·도시도 적어야 한다 — 이번 요청값 또는 이미 저장된 값.
+          let _haveCountry = _country, _haveCity = _city;
+          if (_haveCountry === undefined || _haveCity === undefined) {
+            const { data: cur } = await supabaseAdmin.from('profiles').select('activity_country, activity_city').eq('id', user.id).maybeSingle();
+            if (_haveCountry === undefined) _haveCountry = (cur && cur.activity_country) || '';
+            if (_haveCity === undefined) _haveCity = (cur && cur.activity_city) || '';
+          }
+          if (!_haveCountry || !_haveCity) return res.status(400).json({ code: 'ACTIVITY_LOCATION_REQUIRED', message: 'Please enter your main country and city of activity together with your Instagram handle' });
           updates.instagram = h;
         }
       }
@@ -67,6 +80,8 @@ module.exports = async function handler(req, res) {
           website: profile.website,
           location: profile.location,
           instagram: profile.instagram,
+          activityCountry: profile.activity_country || '',
+          activityCity: profile.activity_city || '',
           avatarUrl: profile.avatar_url,
           // QA #219 — creator recognition.
           isCreator: !!profile.is_creator,
@@ -117,6 +132,8 @@ module.exports = async function handler(req, res) {
           website: profile.website,
           location: profile.location,
           instagram: profile.instagram,
+          activityCountry: profile.activity_country || '',
+          activityCity: profile.activity_city || '',
           avatarUrl: profile.avatar_url,
           createdAt: profile.created_at,
           // QA #219 — creator recognition.

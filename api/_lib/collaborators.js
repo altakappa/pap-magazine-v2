@@ -67,13 +67,13 @@ async function lookupHandles(supabaseAdmin, handles) {
   if (!hs.length) return map;
   const { data, error } = await supabaseAdmin
     .from('profiles')
-    .select('id, instagram, subscription_plan, subscription_status')
+    .select('id, instagram, subscription_plan, subscription_status, activity_country, activity_city')
     .in('instagram', hs);
   if (error) throw error;
   (data || []).forEach((p) => {
     const h = normalizeHandle(p.instagram);
     if (!h) return;
-    map[h] = { userId: p.id, premium: isPremiumProfile(p) };
+    map[h] = { userId: p.id, premium: isPremiumProfile(p), location: [p.activity_city, p.activity_country].filter(Boolean).join(', ') };
   });
   return map;
 }

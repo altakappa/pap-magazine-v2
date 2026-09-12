@@ -92,10 +92,22 @@ const fakeDb = { from: (t) => ({ select: () => ({ in: async (col, hs) => ({ data
 
   console.log('\n=== 마이페이지 / 관리자 ===');
   const mp = read('frontend/mypage.html');
-  ok('마이페이지에 인스타그램 아이디 입력·저장', /id="mpIgInput"/.test(mp) && /_mpSaveInstagram/.test(mp) && /body:JSON\.stringify\(\{instagram:v\}\)/.test(mp));
+  ok('마이페이지에 인스타그램 아이디 입력·저장', /id="mpIgInput"/.test(mp) && /_mpSaveInstagram/.test(mp) && /body:JSON\.stringify\(\{instagram:v,activityCountry:country,activityCity:city\}\)/.test(mp));
   ok('마이페이지 문구 9개 언어', ['labelInstagram', 'btnIgSave', 'igHint', 'igSaved', 'igTaken', 'igInvalid', 'igError'].every((k) => (mp.match(new RegExp(k + ":'", 'g')) || []).length === 9));
   ok('관리자 검토 모달에 공동작업자 표시', /id="reviewModalCollab"/.test(read('frontend/admin.html')) && /desc\.collaborators/.test(read('frontend/pap-admin.js')));
   ok('/submissions 랜딩이 프리미엄 공동작업자 혜택을 말한다', /tagged as Instagram collaborators/.test(read('frontend/submissions.html')));
+
+  console.log('\n=== 프리미엄 유지 중에만 · 활동 국가·도시 (도메니코 2차) ===');
+  const rv = read('api/submissions/[id]/review.js');
+  ok('승인 시 공동작업자를 다시 판정해 자격 끊긴 사람을 뺀다(collaboratorsDropped)', /lookupHandles\(supabaseAdmin, _hs\)/.test(rv) && /premium_lapsed/.test(rv) && /desc\.collaboratorsDropped/.test(rv));
+  ok('폼·마이페이지 안내에 "프리미엄 유지 중에만, 끝나면 자동 종료" 9개 언어', (html.match(/collabDesc:'(?:[^'\\]|\\.)*(자동으로 종료|ends automatically|endet automatisch|termina automaticamente|prend fin automatiquement|termina automáticamente|自動的に終了|自动结束|прекращается автоматически)/g) || []).length === 9
+    && (mp.match(/igHint:'(?:[^'\\]|\\.)*(자동으로 종료|ends automatically|endet automatisch|termina automaticamente|prend fin automatiquement|termina automáticamente|自動的に終了|自动结束|прекращается автоматически)/g) || []).length === 9);
+  ok('lookupHandles 가 활동 도시·국가를 함께 돌려주고 check 응답에 location 이 있다', /activity_country, activity_city/.test(read('api/_lib/collaborators.js')) && /location:/.test(chk));
+  ok('폼 등록 문구에 도시·국가({loc}) 9개 언어', (html.match(/collabOk:'✓ @\{h\}\{loc\}/g) || []).length === 9);
+  ok('PUT /api/auth/me: 아이디 등록엔 활동 국가·도시 필수(ACTIVITY_LOCATION_REQUIRED), 저장·반환', /ACTIVITY_LOCATION_REQUIRED/.test(me) && /updates\.activity_country/.test(me) && /activityCountry: profile\.activity_country/.test(me));
+  ok('마이페이지에 국가·도시 입력이 있고 저장 본문에 실린다', /id="mpCountryInput"/.test(mp) && /id="mpCityInput"/.test(mp) && /activityCountry:country,activityCity:city/.test(mp));
+  ok('마이페이지 국가·도시 문구 9개 언어', ['labelActivityLocation', 'phCountry', 'phCity', 'igLocationRequired'].every((k) => (mp.match(new RegExp(k + ":'", 'g')) || []).length === 9));
+  ok('마이그레이션 149: activity_country·activity_city', /activity_country TEXT/.test(read('supabase_migrations/149_profiles_activity_location.sql')) && /activity_city/.test(read('supabase_migrations/149_profiles_activity_location.sql')));
 
   console.log('\npassed: ' + passed + '   failed: ' + failed);
   if (failed) { console.log('❌ submission-collaborators FAILED'); process.exit(1); }
