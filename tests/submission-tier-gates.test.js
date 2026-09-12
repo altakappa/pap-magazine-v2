@@ -50,7 +50,7 @@ const mp = read('frontend/mypage.html');
 ok('목록: pending + canSelfEdit 일 때만 수정 버튼', /if \(ds === 'pending' && s\.canSelfEdit\)/.test(mp));
 ok('상세: feedbackLocked 면 본문 대신 스탠다드 안내 + /subscribe 링크', /if\(s\.feedbackLocked\)\{[\s\S]{0,400}utm_source=mypage_feedback/.test(mp));
 ok('상세: pending 프리미엄은 수정 버튼, 아니면 프리미엄 안내', /if\(s\.canSelfEdit\)\{[\s\S]{0,600}selfEditBlockedReason === 'not_premium'[\s\S]{0,400}utm_source=mypage_selfedit/.test(mp));
-ok('마이페이지 사전 v7 + 8개 언어 키', /content="mypage" data-v="7"/.test(mp) && ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const d = JSON.parse(read('frontend/i18n/ui/mypage.' + l + '.json')); return d['심사 피드백은 스탠다드 회원부터 볼 수 있습니다.'] && d['심사 대기 중 제출 내용을 직접 수정하는 것은 프리미엄 회원만 가능합니다.'] && d['제출 내용 수정하기']; }));
+ok('마이페이지 사전 v8 + 8개 언어 키', /content="mypage" data-v="[8-9]"/.test(mp) && ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const d = JSON.parse(read('frontend/i18n/ui/mypage.' + l + '.json')); return d['심사 피드백은 스탠다드 회원부터 볼 수 있습니다.'] && d['심사 대기 중 제출 내용을 직접 수정하는 것은 프리미엄 회원만 가능합니다.'] && d['제출 내용 수정하기']; }));
 
 console.log('\n=== 서브미션 폼 ===');
 const sub = read('frontend/submission.html');
@@ -65,6 +65,20 @@ ok('비교표: 공동작업자 자격 행 false/false/true — 9개 언어(+중�
 const featRe = /\{on:true, text:'[^']*(3회|3 times|3 раза|3× je|3 volte|3 fois|3 veces|3回|3 次)[^']*'\}/g;
 ok('프리미엄 카드: 크레딧 수정 3회 줄 — 9개 언어', (sb.match(featRe) || []).length >= 9);
 ok('프리미엄 카드: 심사 대기 중 수정 줄 — 9개 언어', (sb.match(/\{on:true, text:'[^']*(심사 대기 중|awaiting review|ожидания проверки|während der Prüfung|in attesa di revisione|en attente de révision|en revisión|審査待ち|审核等待)[^']*'\}/g) || []).length >= 9);
+
+console.log('\n=== 피드백 신청 (도메니코: 신청한 회원에게만 써준다) ===');
+const { DEFAULT_REJECTION_NOTE } = require(path.join(ROOT, 'api', '_lib', 'email'));
+ok('hasRealFeedback: 빈값·자동 반려문은 거짓, 사람이 쓴 메모는 참', !G.hasRealFeedback('') && !G.hasRealFeedback(DEFAULT_REJECTION_NOTE) && G.hasRealFeedback('구도가 좋지만…'));
+r = G.shapeForOwner({ status: 'rejected', admin_notes: DEFAULT_REJECTION_NOTE, description: '{}' }, STD);
+ok('스탠다드 + 거절 + 자동 반려문만 → 피드백 없음으로 보이고 canRequestFeedback', r.admin_notes === null && r.feedbackWritten === false && r.canRequestFeedback === true);
+r = G.shapeForOwner({ status: 'rejected', admin_notes: DEFAULT_REJECTION_NOTE, description: JSON.stringify({ feedbackRequestedAt: '2026-09-12T00:00:00Z' }) }, STD);
+ok('이미 신청한 건은 다시 신청 불가 + 신청 시각 노출', r.canRequestFeedback === false && r.feedbackRequestedAt === '2026-09-12T00:00:00Z');
+ok('사람이 쓴 피드백이 있으면 신청 버튼 없음', G.shapeForOwner({ status: 'rejected', admin_notes: '메모', description: '{}' }, STD).canRequestFeedback === false);
+ok('무료 회원은 신청 불가, pending 은 신청 불가', G.shapeForOwner({ status: 'rejected', admin_notes: '', description: '{}' }, FREE).canRequestFeedback === false && G.shapeForOwner({ status: 'pending', admin_notes: '', description: '{}' }, STD).canRequestFeedback === false);
+const fr = read('api/submissions/[id]/feedback-request.js');
+ok('API: POST 만, 본인만, 스탠다드 이상(FEEDBACK_STANDARD_ONLY), 결정 난 상태만, 이미 쓰였으면 409, 신청 시각 저장 + 텔레그램 await', /req\.method !== 'POST'/.test(fr) && /sub\.user_id !== user\.id/.test(fr) && /FEEDBACK_STANDARD_ONLY/.test(fr) && /FEEDBACK_REQUESTABLE_STATUSES\.indexOf\(sub\.status\)/.test(fr) && /FEEDBACK_ALREADY_WRITTEN/.test(fr) && /desc\.feedbackRequestedAt = new Date\(\)\.toISOString\(\)/.test(fr) && /await sendTextToTelegramSafe\(/.test(fr));
+ok('마이페이지: canRequestFeedback → 신청 버튼, 신청 후 안내, POST 배선', /if\(s\.canRequestFeedback\)\{/.test(mp) && /s\.feedbackRequestedAt && !note/.test(mp) && /\/feedback-request'/.test(mp) && /content="mypage" data-v="8"/.test(mp));
+ok('review.js: 유료 회원 반려 시 선제 알림(텔레그램 "피드백 작성 필요") 제거 — 주석만 남는다', !/sendTextToTelegramSafe\(\s*'💬 유료 회원 서브미션 반려/.test(read('api/submissions/[id]/review.js')));
 
 console.log('\npassed: ' + passed + '   failed: ' + failed);
 if (failed) { console.log('❌ submission-tier-gates FAILED'); process.exit(1); }

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="mypage" data-v="7">
+<meta name="pap-ui-i18n" content="mypage" data-v="8">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP Magazine - My Page">
@@ -1666,6 +1666,28 @@ function mpToggleSubDetail(id){
     box.style.display = 'none';
   }
 }
+// 2026-09-12 — 피드백 신청: POST /api/submissions/:id/feedback-request → 텔레그램으로 도메니코에게.
+async function _mpRequestFeedback(id){
+  var btn = document.getElementById('mpFbReq-' + id);
+  if(btn){ btn.disabled = true; btn.style.opacity = '.5'; }
+  try{
+    var token = localStorage.getItem('pap-token') || '';
+    var res = await fetch('/api/submissions/' + encodeURIComponent(id) + '/feedback-request', { method:'POST', headers:{ 'Authorization':'Bearer ' + token, 'X-Requested-With':'XMLHttpRequest' } });
+    var j = {}; try{ j = await res.json(); }catch(_){}
+    if(res.ok){
+      if(typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) PAP.ui.toast(_papUIL('피드백을 신청했습니다. 작성되면 이곳에 표시됩니다.','Feedback requested. It will appear here once written.'), 'success');
+      var box = document.getElementById('_mpSubDet_' + id); if(box){ box.dataset.loaded = ''; _mpRenderSubDetail(id, box); }
+      return;
+    }
+    var msg = (j && j.code === 'FEEDBACK_STANDARD_ONLY') ? _papUIL('심사 피드백은 스탠다드 회원부터 신청할 수 있습니다.','Feedback requests are available from the Standard plan.')
+            : (j && j.code === 'FEEDBACK_ALREADY_WRITTEN') ? _papUIL('이미 피드백이 등록되어 있습니다.','Feedback is already available.')
+            : _papUIL('피드백 신청에 실패했습니다. 잠시 후 다시 시도해 주세요.','Could not request feedback. Please try again shortly.');
+    if(typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) PAP.ui.toast(msg, 'error');
+  }catch(_){
+    if(typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) PAP.ui.toast(_papUIL('피드백 신청에 실패했습니다. 잠시 후 다시 시도해 주세요.','Could not request feedback. Please try again shortly.'), 'error');
+  }
+  if(btn){ btn.disabled = false; btn.style.opacity = ''; }
+}
 async function _mpRenderSubDetail(id, box){
   var L = _mpSubI18n();
   box.innerHTML = '<div style="padding:14px 16px;color:rgba(255,255,255,.5);font-size:12px">' + L.loading + '</div>';
@@ -1700,6 +1722,13 @@ async function _mpRenderSubDetail(id, box){
       h += '<div style="color:rgba(255,255,255,.55)">' + esc(_papUIL('심사 피드백은 스탠다드 회원부터 볼 수 있습니다.','Review feedback is available from the Standard plan.')) + ' <a href="/subscribe?utm_source=mypage_feedback&utm_medium=web" style="color:#c9a86a;text-decoration:underline">' + esc(_papUIL('플랜 보기','See plans')) + '</a></div>';
     } else {
       h += '<div style="white-space:pre-line;color:' + (note ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.4)') + '">' + (note ? esc(note) : L.none) + '</div>';
+      // 2026-09-12 도메니코 — 피드백은 신청한 회원에게만 쓴다. 자격·상태는 서버(canRequestFeedback)가 판단.
+      if(s.canRequestFeedback){
+        h += '<button id="mpFbReq-' + esc(id) + '" onclick="_mpRequestFeedback(\'' + esc(id) + '\')" style="margin-top:12px;background:transparent;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.9);padding:7px 14px;font-size:11px;font-weight:700;letter-spacing:.05em;cursor:pointer;border-radius:2px;font-family:inherit">' + esc(_papUIL('피드백 신청하기','Request feedback')) + '</button>';
+        h += '<div style="margin-top:6px;font-size:10px;color:rgba(255,255,255,.4)">' + esc(_papUIL('신청하면 에디터가 피드백을 작성해 이곳에 올립니다.','Once requested, the editor writes feedback and posts it here.')) + '</div>';
+      } else if(s.feedbackRequestedAt && !note){
+        h += '<div style="margin-top:8px;font-size:11px;color:rgba(201,168,106,.9)">' + esc(_papUIL('피드백 신청 완료 · 에디터가 작성하면 이곳에 표시됩니다.','Feedback requested · it will appear here once the editor writes it.')) + '</div>';
+      }
     }
     // 2026-09-12 — 심사 대기 중 자기 수정: 프리미엄은 버튼, 그 외는 안내.
     if(s.status === 'pending'){

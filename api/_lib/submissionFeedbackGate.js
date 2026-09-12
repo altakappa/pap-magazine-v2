@@ -11,6 +11,17 @@
  *     약관 제3조·가이드라인("제출 후 수정은 프리미엄만")과 코드를 맞춘다.
  */
 const { hasActivePlan } = require('./subscriptionAccess');
+const { DEFAULT_REJECTION_NOTE } = require('./email');
+
+/** 피드백을 신청할 수 있는 상태 — 심사 결정이 난 뒤. (pending/revision 은 아직 심사 중이라 제외) */
+const FEEDBACK_REQUESTABLE_STATUSES = ['rejected', 'approved', 'published'];
+
+/** 자동 반려문(DEFAULT_REJECTION_NOTE)이 아닌, 사람이 쓴 피드백이 있는가. */
+function hasRealFeedback(adminNotes) {
+  const n = String(adminNotes == null ? '' : adminNotes).trim();
+  if (!n) return false;
+  return n !== String(DEFAULT_REJECTION_NOTE || '').trim();
+}
 
 async function loadPlan(supabaseAdmin, userId) {
   if (!userId) return null;
@@ -33,7 +44,15 @@ function shapeForOwner(row, profile) {
   out.feedbackLocked = !seeFeedback && !!(row.admin_notes && String(row.admin_notes).trim());
   out.canSelfEdit = row.status === 'revision' || (row.status === 'pending' && canSelfEditPending(profile));
   out.selfEditBlockedReason = (row.status === 'pending' && !canSelfEditPending(profile)) ? 'not_premium' : null;
+  // 2026-09-12 — 피드백 신청(도메니코: 신청한 회원에게만 써준다). 서버가 판단해 내려준다.
+  let _desc = {};
+  try { _desc = row.description ? (typeof row.description === 'string' ? JSON.parse(row.description) : row.description) : {}; } catch (_) { _desc = {}; }
+  out.feedbackRequestedAt = (_desc && _desc.feedbackRequestedAt) || null;
+  out.feedbackWritten = hasRealFeedback(row.admin_notes);
+  out.canRequestFeedback = canSeeFeedback(profile) && FEEDBACK_REQUESTABLE_STATUSES.indexOf(row.status) !== -1 && !out.feedbackWritten && !out.feedbackRequestedAt;
+  // 자동 반려문만 있는 건 "피드백 없음" 으로 보여준다 — 그래야 신청 버튼이 의미를 가진다.
+  if (seeFeedback && !out.feedbackWritten) out.admin_notes = null;
   return out;
 }
 
-module.exports = { loadPlan, canSeeFeedback, canSelfEditPending, shapeForOwner };
+module.exports = { loadPlan, canSeeFeedback, canSelfEditPending, shapeForOwner, hasRealFeedback, FEEDBACK_REQUESTABLE_STATUSES };

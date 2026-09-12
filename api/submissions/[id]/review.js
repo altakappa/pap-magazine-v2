@@ -853,23 +853,10 @@ module.exports = async function handler(req, res) {
         .eq('id', submission.user_id)
         .single();
 
-      // 2026-07-10 — 유료 회원(Standard/Premium) 반려 시 운영자 텔레그램 알림.
-      // 등급 혜택 "서브미션 탈락 피드백 제공" 이행용: 운영자가 직접 피드백을 작성해
-      // 회신해야 하는 건을 놓치지 않도록 즉시 알린다. (알림 실패는 리뷰 저장에 무영향)
-      if (status === 'rejected' && profile) {
-        const _plan = String(profile.subscription_plan || '').toLowerCase();
-        const _paid = _plan.indexOf('standard') === 0 || _plan.indexOf('premium') === 0;
-        const _active = String(profile.subscription_status || '').toLowerCase() === 'active';
-        if (_paid && _active) {
-          await sendTextToTelegramSafe(
-            '💬 유료 회원 서브미션 반려 — 피드백 작성 필요\n'
-            + '회원: ' + (profile.display_name || '이름 없음') + ' (' + (profile.email || '') + ') · ' + _plan.toUpperCase() + '\n'
-            + '작품: ' + (submission.title || submission.id) + '\n'
-            + (reviewNote ? ('반려 메모: ' + String(reviewNote).slice(0, 300) + '\n') : '')
-            + '관리자에서 피드백 회신: https://www.pap-magazine.com/admin'
-          );
-        }
-      }
+      // 2026-07-10 — 유료 회원 반려 시 "피드백 작성 필요" 텔레그램 알림이 있었다.
+      // 2026-09-12 도메니코: "굳이 피드백을 보지 않는 회원에게까지 미리 써줄 필요는 없다" — 피드백은 회원이
+      // 마이페이지에서 **신청**했을 때만 쓴다(POST /api/submissions/:id/feedback-request 가 그때 알린다).
+      // 그래서 반려 시점의 선제 알림은 없앴다. 반려 자체는 회원에게 아래 메일로 간다.
 
       if (profile && profile.email) {
         // resolveEmailLang: email_language > language > 국가 추정 > en — 발송기·
