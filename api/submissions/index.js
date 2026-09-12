@@ -17,6 +17,7 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
 const { validateCollaborators, collaboratorAlertText } = require('../_lib/collaborators');
+const { isPremiumUser, resolveCoverIndex } = require('../_lib/premiumCover');   // 2026-09-12 커버 선택은 프리미엄만
 const englishOnly = require('../_lib/submissionEnglishOnly');   // 전부 영어로 + 자동번역 방어 (POST·PUT 공용)
 const { feeForType } = require('../_lib/submissionPayment');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
@@ -112,6 +113,8 @@ module.exports = async function handler(req, res) {
         return _reject400(res, user, 'CATEGORY_INVALID', 'At least one valid category is required', { received: data.genre });
       }
       const primaryCategory = normalizedGenres[0];
+      // 2026-09-12 도메니코 — 커버 이미지 선택은 프리미엄 회원만. 폼도 막지만 서버가 최종 판정한다.
+      const _isPremium = await isPremiumUser(supabaseAdmin, user.id);
 
       // Validate + scope URLs to the caller's own folder
       const lookUrls = sanitizeUrlList(body.lookUrls, prefix);
@@ -227,7 +230,7 @@ module.exports = async function handler(req, res) {
             credits: data.credits || {},
             team,
             models: data.models || [],
-            coverImageIndex: data.coverImageIndex || 0,
+            coverImageIndex: resolveCoverIndex(data.coverImageIndex, _isPremium),   // 2026-09-12 프리미엄만 선택 가능, 그 외 0
             contactEmail: data.contactEmail || '',
             contactName: data.contactName || '',
             photographerCredit,

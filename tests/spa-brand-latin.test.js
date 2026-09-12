@@ -195,7 +195,9 @@ t('제3조②가 크레딧 수정 무료 횟수와 같은 값을 말한다', () 
   LANGS.forEach((lg) => {
     const a3 = TERMS[lg].split('<li>')[3];
     assert.ok(a3.indexOf(NUM[lg]) !== -1, lg + ' 제3조에 무료 3회 문구가 없다');
-    assert.ok(/100|€/.test(a3), lg + ' 제3조에서 유료 정정 수수료가 사라졌다');
+    // 2026-09-12 도메니코 — 수정 수수료 폐지, 프리미엄만 수정 가능. 제3조에 €100 이 다시 나타나면 정책 역행이다.
+    assert.ok(!/100/.test(a3), lg + ' 제3조에 유료 정정 수수료(€100)가 다시 나타났다');
+    assert.ok(/프리미엄 회원이 아닌|Non-Premium|Nicht-Premium|non Premium|non Premium|no Premium|プレミアム会員でない|非高级会员|без Premium/.test(a3), lg + ' 제3조에 비프리미엄은 수정 불가 문구가 없다');
   });
 });
 

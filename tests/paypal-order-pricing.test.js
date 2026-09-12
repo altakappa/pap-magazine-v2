@@ -50,15 +50,13 @@ for (const [type, cents, label] of cases) {
 }
 
 console.log('\n=== 3. 애드온 ===');
-const addons = [['ig_images_cover', 22000], ['posting_date', 11000]];
-// 2026-09-12 도메니코 — 공동작업자 태그 애드온(ig_collab €110) 폐지. 프리미엄 회원 지정 방식으로 대체.
-t('ig_collab 애드온은 폐지됐다 (unknown_addon)',
-  (() => { try { return po.resolveAmount({}, 'submission_addon', 'ig_collab').error === 'unknown_addon'; }
-           catch (_) { return false; } })());
-for (const [k, cents] of addons) {
-  let r; try { r = po.resolveAmount({}, 'submission_addon', k); } catch (e) { r = { throwErr: e.message }; }
-  t(`${k} → ${cents}`, r && r.cents === cents, JSON.stringify(r));
+// 2026-09-12 도메니코 — 유료 애드온 전부 폐지 (ig_collab → 프리미엄 지정, ig_images_cover → 프리미엄 커버 선택 무료, posting_date → 종료).
+for (const k of ['ig_collab', 'ig_images_cover', 'posting_date']) {
+  t(k + ' 애드온은 폐지됐다 (unknown_addon)',
+    (() => { try { return po.resolveAmount({}, 'submission_addon', k).error === 'unknown_addon'; }
+             catch (_) { return false; } })());
 }
+t('애드온 가격표가 비어 있다', Object.keys(po.ADDON_FEE_CENTS).length === 0);
 t('없는 애드온은 error 를 준다 (throw 아님)',
   (() => { try { return po.resolveAmount({}, 'submission_addon', 'nope').error === 'unknown_addon'; }
            catch (_) { return false; } })());

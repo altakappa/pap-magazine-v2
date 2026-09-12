@@ -22,19 +22,15 @@ const PAYPAL_API_BASE = String(process.env.PAYPAL_ENV || '').toLowerCase() === '
   ? 'https://api-m.sandbox.paypal.com'
   : 'https://api-m.paypal.com';
 
-// 애드온 가격 (유로센트) — 2026-08-10 인상분 반영.
-// 서버 단일 소스. 프론트 표시가(€110/€220/€110)와 반드시 같이 고칠 것.
-// 2026-09-12 도메니코 — ig_collab(€110 공동작업자 태그) 애드온 폐지. 공동작업자는 이제 제출자가 폼에서
-// 고르고, 프리미엄 회원만 지정된다(api/_lib/collaborators.js). 모르는 키는 unknown_addon 으로 거부된다.
-const ADDON_FEE_CENTS = {
-  ig_images_cover: 22000,  // €220 · 지정 이미지 + 커버
-  posting_date: 11000,     // €110 · 게시일 지정
-};
+// 애드온 가격 (유로센트) — 서버 단일 소스. 모르는 키는 unknown_addon 으로 거부된다.
+// 2026-09-12 도메니코 — 유료 애드온 전부 폐지.
+//   · ig_collab(€110 공동작업자 태그): 제출자가 폼에서 프리미엄 회원을 직접 지정(api/_lib/collaborators.js).
+//   · ig_images_cover(€220 지정 이미지+커버): 커버 선택은 프리미엄 회원 혜택(폼에서 직접, 무료).
+//   · posting_date(€110 게시일 지정): 서비스 종료.
+// 표가 비어 있으므로 새 애드온 주문은 전부 unknown_addon. 과거 결제의 웹훅 기록(custom_id a|…)은 그대로 읽힌다.
+const ADDON_FEE_CENTS = {};
 
-const ADDON_LABEL = {
-  ig_images_cover: 'Specific images + cover',
-  posting_date: 'Posting date selection',
-};
+const ADDON_LABEL = {};
 
 /** 유로센트 → PayPal 이 요구하는 소수 2자리 문자열 */
 function centsToValue(cents) {

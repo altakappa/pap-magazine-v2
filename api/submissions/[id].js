@@ -15,6 +15,7 @@ const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
 const { validateCollaborators, collaboratorAlertText } = require('../_lib/collaborators');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');   // 2026-09-12 공동작업자 지정 알림
+const { isPremiumUser, resolveCoverIndex } = require('../_lib/premiumCover');   // 2026-09-12 커버 선택은 프리미엄만
 
 // Build the same `{SUPABASE_URL}/storage/v1/object/public/submissions/{user.id}/`
 // prefix the POST endpoint enforces — caller can only attach URLs in their
@@ -191,6 +192,8 @@ module.exports = async function handler(req, res) {
         }
         return out;
       }
+      // 2026-09-12 도메니코 — 커버 이미지 선택은 프리미엄 회원만. 서버가 최종 판정한다.
+      const _isPremium = await isPremiumUser(supabaseAdmin, user.id);
       const lookUrls = _sanitize(body.lookUrls);
       const additionalUrls = _sanitize(body.additionalUrls);
       if (lookUrls.length + additionalUrls.length === 0) {
@@ -269,7 +272,7 @@ module.exports = async function handler(req, res) {
             credits: data.credits || {},
             team,
             models: data.models || [],
-            coverImageIndex: data.coverImageIndex || 0,
+            coverImageIndex: resolveCoverIndex(data.coverImageIndex, _isPremium),   // 2026-09-12 프리미엄만 선택 가능, 그 외 0
             contactEmail: data.contactEmail || '',
             contactName: data.contactName || '',
             photographerCredit,
@@ -351,7 +354,9 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ message: 'At least one image must remain' });
       }
 
-      let coverIdx = (typeof body.coverImageIndex === 'number')
+      // 2026-09-12 — 커버 선택은 프리미엄만. 비프리미엄은 이미지를 지워도 커버는 첫 이미지.
+      const _isPremiumPatch = await isPremiumUser(supabaseAdmin, user.id);
+      let coverIdx = (_isPremiumPatch && typeof body.coverImageIndex === 'number')
         ? Math.max(0, Math.min(nextUrls.length - 1, body.coverImageIndex))
         : 0;
 

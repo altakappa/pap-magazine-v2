@@ -12,7 +12,7 @@ let passed = 0, failed = 0;
 function ok(label, cond, detail) { if (cond) { passed++; console.log('  ✓ ' + label); } else { failed++; console.log('  ✗ ' + label + (detail ? ' — ' + detail : '')); } }
 
 console.log('\n=== 총 이미지 하한 (2026-09-10) ===');
-ok('MIN_TOTAL_IMAGES 는 4', st.MIN_TOTAL_IMAGES === 4, String(st.MIN_TOTAL_IMAGES));
+ok('MIN_TOTAL_IMAGES 는 6 (2026-09-12 가이드라인 6장과 동일)', st.MIN_TOTAL_IMAGES === 6, String(st.MIN_TOTAL_IMAGES));
 
 const post = fs.readFileSync(path.join(ROOT, 'api', 'submissions', 'index.js'), 'utf8');
 const put = fs.readFileSync(path.join(ROOT, 'api', 'submissions', '[id].js'), 'utf8');
@@ -27,15 +27,15 @@ for (const [name, src] of [['POST index.js', post], ['PUT [id].js', put]]) {
      src.indexOf('TOO_FEW_IMAGES') < src.indexOf('classifySubmissionType(looks'));
 }
 
-ok('폼 상수 MIN_TOTAL_IMAGES = 4 (서버와 동일)', /var MIN_TOTAL_IMAGES = 4;/.test(html));
+ok('폼 상수 MIN_TOTAL_IMAGES = 6 (서버와 동일)', /var MIN_TOTAL_IMAGES = 6;/.test(html));
 ok('폼이 4단계 검증에서 총 이미지를 센다', /_papTotalImageCount\(\);\s*if\(_audit\.blocks\.length>0 && _audit\.emptyLooks\.length===0 && _tot<MIN_TOTAL_IMAGES\)/.test(html));
 ok('폼이 제출 직전에도 막는다 (단계 건너뛰기 방지)', /if\(totalAllImages<MIN_TOTAL_IMAGES\)\{/.test(html));
 ok('서버 TOO_FEW_IMAGES 를 언어별 문구로 바꾼다', /code==='TOO_FEW_IMAGES'/.test(html) && /tooFewImages:\{ko:/.test(html));
 ok('toastMinImages 문구가 9개 언어에 있다', (html.match(/toastMinImages:'/g) || []).length === 9);
 const errBlock = html.match(/tooFewImages:\{([^\n]*)\}/);
 ok('tooFewImages 오류 문구가 9개 언어에 있다', !!errBlock && ['ko','en','de','it','fr','es','ja','zh','ru'].every((l) => new RegExp("(^|,)" + l + ":'").test(errBlock[1])));
-ok('룩 단계 안내(lookCreditsDesc)가 4장 하한을 9개 언어로 말한다', (html.match(/lookCreditsDesc:'[^']*4[^']*'/g) || []).length === 9);
-ok('/submissions 랜딩·JSON-LD 가 4장 하한을 말한다', /4 images in total/.test(landing) && (landing.match(/At least 4 images in total/g) || []).length >= 1);
+ok('룩 단계 안내(lookCreditsDesc)가 6장 하한을 9개 언어로 말한다', (html.match(/lookCreditsDesc:'[^']*6[^']*'/g) || []).length === 9);
+ok('/submissions 랜딩·JSON-LD 가 6장 하한을 말한다', /6 images in total/.test(landing) && (landing.match(/At least 6 images in total/g) || []).length >= 1);
 
 console.log('\npassed: ' + passed + '   failed: ' + failed);
 if (failed) { console.log('❌ submission-min-images tests FAILED'); process.exit(1); }

@@ -59,6 +59,50 @@ for (const f of fs.readdirSync(path.join(ROOT, 'frontend')).filter((x) => x.ends
 ok('공개 페이지 전부에 안내창 스크립트 배선, 제외 페이지엔 없음 (' + wired + '개)', wired >= 25 && skipped.length === 0, skipped.join(','));
 ok('SSR 셸(기사·화보·기여자·파트너·브랜드·아카이브)에도 배선', ['api/_lib/seoRenderer.js', 'api/_lib/contributorProfile.js', 'api/seo/brand/[id].js', 'api/seo/partners.js', 'api/seo/archive.js'].every((f) => /pap-profile-prompt\.js\?v=\d/.test(read(f))));
 
-console.log('\npassed: ' + passed + '   failed: ' + failed);
-if (failed) { console.log('❌ profile-location FAILED'); process.exit(1); }
-console.log('✅ profile-location passed');
+console.log('\n=== PUT /api/auth/me 를 실제로 돌린다 (2026-09-12 사고: updates 선언 전 사용 → 국가·도시 실린 PUT 전부 500) ===');
+(async () => {
+  const Module = require('module');
+  // 체인형 가짜 supabase: update().eq().select().single() 은 저장값을 되돌려주고, select 체인은 빈 결과.
+  function chain(kind, u) {
+    const c = {};
+    ['eq', 'neq', 'limit', 'select', 'update'].forEach((m) => { c[m] = (a) => (m === 'update' ? chain('update', a) : c); });
+    c.single = async () => ({ data: Object.assign({ id: 'u1', email: 'a@b', subscription_plan: 'free' }, u || {}), error: null });
+    c.maybeSingle = async () => ({ data: null, error: null });
+    c.then = (fn) => Promise.resolve({ data: [], error: null }).then(fn);   // await .limit(1)
+    return c;
+  }
+  const stubs = {
+    '_lib/supabase': { supabaseAdmin: { from: () => chain('select') } },
+    '_lib/auth': { requireAuth: () => ({ id: 'u1' }), requireAuthStrict: async () => ({ id: 'u1' }) },
+    '_lib/cors': { handleCors: () => false },
+    '_lib/rateLimit': { rateLimit: () => false, RATE_LIMITS: { api: {} } },
+    '_lib/emailLocale': { countryFromRequest: () => '' },
+  };
+  const origLoad = Module._load;
+  Module._load = function (request, parent, ...rest) {
+    for (const k of Object.keys(stubs)) if (request.endsWith(k)) return stubs[k];
+    return origLoad.call(this, request, parent, ...rest);
+  };
+  let handler;
+  try { handler = require(path.join(ROOT, 'api', 'auth', 'me.js')); } finally { Module._load = origLoad; }
+  function run(body) {
+    return new Promise((resolve) => {
+      const res = { _s: 200, status(c) { this._s = c; return this; }, json(j) { resolve({ status: this._s, body: j }); }, setHeader() {} };
+      handler({ method: 'PUT', body, headers: {} }, res).catch((e) => resolve({ status: 'threw', body: String(e) }));
+    });
+  }
+  let r = await run({ activityCountry: 'Italy', activityCity: 'milan' });
+  ok('국가·도시만 보내면 200 + 코드·정리된 도시 (500 이 아니다)', r.status === 200 && r.body.user && r.body.user.activityCountry === 'IT' && r.body.user.activityCity === 'Milan', JSON.stringify(r));
+  r = await run({ activityCountry: 'Narnia' });
+  ok('모르는 국가 → 400 COUNTRY_INVALID', r.status === 400 && r.body.code === 'COUNTRY_INVALID', JSON.stringify(r));
+  r = await run({ instagram: '@Pap_Magazine', activityCountry: 'KR', activityCity: 'seoul' });
+  ok('아이디+국가+도시 → 200, 아이디 정규화', r.status === 200 && r.body.user.instagram === 'pap_magazine', JSON.stringify(r));
+  r = await run({ instagram: '@x' });
+  ok('아이디만 → 400 ACTIVITY_LOCATION_REQUIRED', r.status === 400 && r.body.code === 'ACTIVITY_LOCATION_REQUIRED', JSON.stringify(r));
+  const src = read('api/auth/me.js');
+  ok('updates 선언이 첫 사용보다 앞에 있다', src.indexOf('const updates = {}') < src.indexOf('updates.activity_country'));
+
+  console.log('\npassed: ' + passed + '   failed: ' + failed);
+  if (failed) { console.log('❌ profile-location FAILED'); process.exit(1); }
+  console.log('✅ profile-location passed');
+})();

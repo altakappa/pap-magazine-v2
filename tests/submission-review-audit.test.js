@@ -219,7 +219,7 @@ ok('하드코딩 영어 스팬(reviewTimeNote)이 사라졌다',
 // 2026-09-10 — 하한이 4장으로 확정됐다(도메니코). 화면 상수·서버 상수·문구가 한 숫자를 본다.
 const _minSrv = require(path.join(ROOT, 'api', '_lib', 'submissionType')).MIN_TOTAL_IMAGES;
 ok('화면 MIN_TOTAL_IMAGES 가 서버 MIN_TOTAL_IMAGES 와 같다 (문구와 실제 하한이 어긋나지 않는다)',
-  new RegExp('var MIN_TOTAL_IMAGES = ' + _minSrv + ';').test(subHtml) && _minSrv === 4);
+  new RegExp('var MIN_TOTAL_IMAGES = ' + _minSrv + ';').test(subHtml) && _minSrv === 6);
 
 // ─────────────────────────────────────────────────────────────
 // ⑥ 원문 오류 유출 차단

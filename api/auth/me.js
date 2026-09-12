@@ -30,10 +30,12 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ code: 'COUNTRY_INVALID', message: 'Unknown country — please pick one from the list' });
       }
       const _city = (activityCity === undefined) ? undefined : normalizeCity(activityCity);
+
+      // 2026-09-12 사고: updates 를 선언(아래 const)보다 먼저 써서 국가·도시가 실린 모든 PUT 이
+      // ReferenceError(TDZ) → 500 이었다. 선언을 위로 올렸다. tests/profile-location 이 핸들러를 실제로 돌려 잡는다.
+      const updates = {};
       if (_country !== undefined) updates.activity_country = _country || null;
       if (_city !== undefined) updates.activity_city = _city || null;
-
-      const updates = {};
       if (name !== undefined) updates.name = name;
       if (bio !== undefined) updates.bio = bio;
       if (website !== undefined) updates.website = website;
