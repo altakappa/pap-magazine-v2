@@ -63,8 +63,24 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
 
   const accounts = (allAccounts || []).filter((a) => a && a.enabled);
   const totalAccounts = (allAccounts || []).length;
-  /* 목록에 있는데 꺼져 있어 아무도 안 보고 있는 계정 수. */
-  const unwatched = totalAccounts - accounts.length;
+
+  /* ── 꺼진 계정을 두 갈래로 나눈다 (2026-09-12, 마이그레이션 150) ──────
+     이 크론은 09-11 에 "생산 0 · 잔여 12" 로 18회 연속 경보를 울렸다.
+     파본 건 없었다. 12개가 09-01 에 전부 꺼졌을 뿐이고, 그건 **옳은 결정**
+     이었다(자동감시 브리프 126건 → 발행 0건, 하루 14건 텔레그램 알림).
+     경보가 틀린 게 아니라 시스템이 그 결정을 모르고 있었다.
+
+     그래서 이유가 적힌 비활성과 설명 없는 비활성을 가른다.
+       · disabled_reason 있음 → 사람이 알고 끈 것. 경보하지 않는다.
+       · disabled_reason 없음 → 아무도 모르게 꺼진 것. 계속 경보한다.
+     경보를 없애는 게 아니라 **울릴 이유가 있을 때만 울리게** 하는 것이다.
+     계정을 끌 때 사유를 안 적으면 여전히 시끄럽다. 그게 의도다. */
+  const offAccounts = (allAccounts || []).filter((a) => a && !a.enabled);
+  const offExplained = offAccounts.filter(
+    (a) => typeof a.disabled_reason === 'string' && a.disabled_reason.trim() !== '').length;
+  /* 설명 없이 꺼져 있어 **아무도 안 보고 있는 줄도 모르는** 계정 수.
+     remaining 은 '밀린 일' 이라는 뜻이다. 의도적으로 끈 계정은 밀린 일이 아니다. */
+  const unwatched = offAccounts.length - offExplained;
 
   const out = { polled: 0, baselined: 0, queued: 0, errors: [] };
   let briefBudget = MAX_BRIEFS;
@@ -160,19 +176,34 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
    * remaining 의 뜻을 여기서는 '아직 아무도 안 보고 있는 계정 수' 로 잡는다.
    *   · 정상(전부 켜짐, 새 글 없음) → produced 0 · remaining 0 → '완주' · 조용함
    *   · 목록이 비어 있음           → produced 0 · remaining 0 → '완주' · 조용함
-   *   · 전부 꺼짐 (지금 상태)      → produced 0 · remaining 12 → 6회 뒤 '막힘' 경보
-   * 세 번째만 울린다. 이게 이 신고가 존재하는 이유다. */
+   *   · 사유 적고 꺼둠             → produced 0 · remaining 0 → '완주' · 조용함
+   *   · 사유 없이 꺼져 있음        → produced 0 · remaining N → 6회 뒤 '막힘' 경보
+   * 마지막 것만 울린다. 이게 이 신고가 존재하는 이유다.
+   *
+   * ── 2026-09-12 정정 ─────────────────────────────────────────────
+   * 원래는 '전부 꺼짐' 자체를 울렸다. 그래서 09-11 에 18회 연속 울렸는데,
+   * 파본 건 없었다 — 09-01 에 사람이 일부러 끈 것이었고 그건 옳은 결정이었다
+   * (자동감시 126건 → 발행 0건). 경보가 정보를 다 준 뒤에도 계속 울리면
+   * 그때부터는 헛알림이다(09-05·09-06 에 두 번 잡았던 그 병).
+   * 그래서 판정 기준을 '꺼짐' 에서 '설명 없이 꺼짐' 으로 옮겼다.
+   * 마이그레이션 150 의 disabled_reason 이 그 설명을 담는다. */
+  /* 꺼진 계정 설명은 켜진 경우·꺼진 경우 양쪽에 같은 문장으로 붙인다.
+     "의도적 비활성 12개" 가 보이면 사람이 로그만 보고도 상태를 안다. */
+  const offNote = (offExplained ? ' · 의도적 비활성 ' + offExplained + '개' : '')
+    + (unwatched ? ' · ⚠️ 사유 없는 비활성 ' + unwatched + '개' : '');
   const note = totalAccounts === 0
     ? '감시 목록이 비어 있음 (등록된 계정 0개)'
     : (accounts.length === 0
-      ? '감시 대상 0개 — 등록된 ' + totalAccounts + '개가 전부 비활성(enabled=false)'
+      ? '감시 대상 0개 — 등록된 ' + totalAccounts + '개가 전부 비활성' + offNote
       : '폴링 ' + out.polled + '/' + accounts.length + '개 · 기준선 ' + out.baselined
-        + ' · 큐 적재 ' + out.queued + '건 · 오류 ' + out.errors.length + '건'
-        + (unwatched ? ' · 비활성 ' + unwatched + '개' : ''));
+        + ' · 큐 적재 ' + out.queued + '건 · 오류 ' + out.errors.length + '건' + offNote);
   reportProduction(res, { produced: out.queued, remaining: unwatched, note });
 
   return res.status(200).json({
     ok: true, dry, ...out,
-    accounts: { total: totalAccounts, enabled: accounts.length, unwatched },
+    accounts: {
+      total: totalAccounts, enabled: accounts.length,
+      disabledExplained: offExplained, unwatched,
+    },
   });
 });

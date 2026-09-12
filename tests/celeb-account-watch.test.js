@@ -97,15 +97,54 @@ t('생산량을 신고한다 — 안 하면 checkProduction 의 사각지대로 
 t('전부 비활성이면 목록이 빈 것과 구분된다 (조회에서 안 거르고 코드에서 가른다)', () => {
   assert.ok(!/\.eq\('enabled',\s*true\)/.test(CODE),
     "조회에서 enabled 를 걸러내면 '원래 없음'과 '전부 꺼짐'이 똑같이 빈 배열이 된다");
-  assert.ok(/unwatched\s*=\s*totalAccounts\s*-\s*accounts\.length/.test(CODE));
+  assert.ok(/offAccounts\s*=/.test(CODE) && /unwatched\s*=\s*offAccounts\.length\s*-\s*offExplained/.test(CODE),
+    '잔여가 "설명 없이 꺼진 계정 수"가 아니다');
 });
 
-t('판정기: 전부 꺼진 상태는 막힘으로 잡힌다 (완주로 새지 않는다)', () => {
-  /* 지금 프로덕션 상태 그대로: 큐 0건이 계속되고, 안 보는 계정이 12개. */
+/* ── 2026-09-12 — 헛알림과 진짜 경보를 가른다 ────────────────────────
+   09-11 에 이 크론이 18회 연속 "생산 0 · 잔여 12" 로 울렸다. 파본 건 없었다.
+   09-01 에 사람이 12개를 일부러 껐고, 그건 옳은 결정이었다
+   (자동감시 브리프 126건 → 발행 0건 · 하루 평균 14건 텔레그램 알림).
+   경보가 틀린 게 아니라 시스템이 그 결정을 모르고 있었다.
+   판정 기준을 '꺼짐' 에서 '설명 없이 꺼짐' 으로 옮긴다(마이그레이션 150).
+   아래 두 테스트가 그 경계를 고정한다 — 한쪽만 있으면 다시 무너진다. */
+t('사유를 적고 끈 계정은 잔여로 세지 않는다 (헛알림 차단)', () => {
+  assert.ok(/disabled_reason/.test(CODE),
+    'disabled_reason 을 안 본다 — 의도적 비활성과 몰래 꺼진 상태를 구분 못 한다');
+  assert.ok(/offExplained\s*=/.test(CODE), '설명 있는 비활성을 따로 세지 않는다');
+  assert.ok(/\.trim\(\)\s*!==\s*''/.test(CODE),
+    '공백 문자열이 사유로 통과한다 — 빈칸 하나로 경보를 끌 수 있으면 안 된다');
+});
+
+t('사유가 없으면 여전히 잔여로 센다 (경보를 없앤 게 아니다)', () => {
+  /* remaining 이 offAccounts - offExplained 이므로, 사유 없는 비활성이 남으면
+     그 수만큼 remaining 에 남고 판정기가 막힘으로 잡는다. */
+  const runs = Array.from({ length: MIN_ZERO_RUNS + 2 },
+    () => ({ produced: 0, remaining: 3, ok: true }));
+  assert.strictEqual(judgeCron(runs).status, '막힘',
+    '사유 없이 꺼진 계정이 조용하면 09-01 사고가 그대로 재발한다');
+});
+
+t('상태가 로그 문장에 드러난다 (DB 안 열어도 읽힌다)', () => {
+  assert.ok(/의도적 비활성/.test(SRC), 'note 에 의도적 비활성 건수가 안 적힌다');
+  assert.ok(/사유 없는 비활성/.test(SRC), 'note 에 사유 없는 비활성 건수가 안 적힌다');
+});
+
+t('마이그레이션 150 이 칸과 소급 사유를 함께 넣는다', () => {
+  const mig = R('supabase_migrations/150_celeb_watch_disabled_reason.sql');
+  assert.ok(/add column if not exists disabled_reason/.test(mig), '칸 추가가 없다');
+  assert.ok(/update celeb_watch_accounts/.test(mig), '09-01 건에 사유 소급 기입이 없다');
+  assert.ok(/disabled_reason is null/.test(mig),
+    '이미 사유가 있는 행을 덮어쓴다 — 나중에 적은 사유가 지워진다');
+  assert.ok(/126건/.test(mig) && /발행 0건/.test(mig),
+    '왜 껐는지 숫자가 마이그레이션에 안 남아 있다 — 다음 사람이 또 되살린다');
+});
+
+t('판정기: 사유 없이 꺼진 계정이 쌓이면 막힘으로 잡힌다 (완주로 새지 않는다)', () => {
   const runs = Array.from({ length: MIN_ZERO_RUNS + 2 },
     () => ({ produced: 0, remaining: 12, ok: true }));
   assert.strictEqual(judgeCron(runs).status, '막힘',
-    '전부 비활성인데 조용하다 — 09-01 사고가 그대로 재발한다');
+    '설명 없는 비활성이 조용하다 — 09-01 사고가 그대로 재발한다');
 });
 
 t('판정기: 정상(전부 켜짐·새 글 없음)은 조용하다 — 헛알림이 감시를 죽인다', () => {
