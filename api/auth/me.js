@@ -9,6 +9,7 @@ const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { countryFromRequest } = require('../_lib/emailLocale');
 const { normalizeHandle } = require('../_lib/collaborators');
+const { normalizeCountryCode, normalizeCity } = require('../_lib/countries');   // 2026-09-12 자동 매치용 코드 저장
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -23,8 +24,12 @@ module.exports = async function handler(req, res) {
     try {
       const { name, bio, website, location, instagram, activityCountry, activityCity } = req.body;
       // 2026-09-12 — 주요 활동 국가·도시 (공동작업자 프로필). 짧은 자유 텍스트, 제어문자 제거, 80자.
-      const _loc = (v) => (v === undefined) ? undefined : String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80);
-      const _country = _loc(activityCountry), _city = _loc(activityCity);
+      // 국가는 ISO 3166-1 alpha-2 코드로만 저장(Italy/Italia/이탈리아 → IT). 모르는 값은 400. 도시는 공백·대소문자 정리.
+      const _country = (activityCountry === undefined) ? undefined : (String(activityCountry || '').trim() === '' ? '' : normalizeCountryCode(activityCountry));
+      if (_country === '' && activityCountry !== undefined && String(activityCountry || '').trim() !== '') {
+        return res.status(400).json({ code: 'COUNTRY_INVALID', message: 'Unknown country — please pick one from the list' });
+      }
+      const _city = (activityCity === undefined) ? undefined : normalizeCity(activityCity);
       if (_country !== undefined) updates.activity_country = _country || null;
       if (_city !== undefined) updates.activity_city = _city || null;
 

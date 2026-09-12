@@ -65,7 +65,8 @@ function pageShell(title, desc, canonical, jsonLd, bodyHtml) {
     + '.row .r{font-size:12px;color:rgba(255,255,255,.5)}\n'
     + '.row .c{font-size:12px;color:rgba(255,255,255,.65);white-space:nowrap}\n'
     + '.foot{margin-top:80px;padding-top:24px;border-top:1px solid rgba(255,255,255,.12);font-size:12px;color:rgba(255,255,255,.45);line-height:1.9}\n'
-    + '</style>\n<script src="/pap-ui-i18n.js?v=5" defer></script>\n</head>\n<body>\n<div class="wrap">\n'
+    + '</style>\n<script src="/pap-ui-i18n.js?v=5" defer></script>
+<script src="/pap-profile-prompt.js?v=1" defer></script>\n</head>\n<body>\n<div class="wrap">\n'
     + '<div class="logo"><a href="/">PAP MAGAZINE</a></div>\n'
     + bodyHtml
     + '\n</div>\n</body>\n</html>';

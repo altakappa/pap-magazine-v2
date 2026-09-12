@@ -196,6 +196,7 @@ ${JSON.stringify(schema)}
   @media(max-width:640px){h1{font-size:30px}.wrap{padding:56px 16px 80px}}
 </style>
 <script src="/pap-ui-i18n.js?v=5" defer></script>
+<script src="/pap-profile-prompt.js?v=1" defer></script>
 </head>
 <body>
 <div class="wrap">

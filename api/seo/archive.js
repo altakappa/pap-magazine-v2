@@ -130,6 +130,7 @@ ${JSON.stringify({
   footer a{color:rgba(255,255,255,.6);text-decoration:none;margin-right:13px}
 </style>
 <script src="/pap-ui-i18n.js?v=5" defer></script>
+<script src="/pap-profile-prompt.js?v=1" defer></script>
 </head>
 <body>
 <div class="wrap">

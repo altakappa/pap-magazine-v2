@@ -15,6 +15,8 @@
  * 거부하는 일이 생긴다.
  */
 
+const { countryName } = require('./countries');
+
 const MAX_COLLABORATORS = 3;   // 인스타그램 공동 게시 초대 상한과 맞춘 값
 
 /**
@@ -73,7 +75,7 @@ async function lookupHandles(supabaseAdmin, handles) {
   (data || []).forEach((p) => {
     const h = normalizeHandle(p.instagram);
     if (!h) return;
-    map[h] = { userId: p.id, premium: isPremiumProfile(p), location: [p.activity_city, p.activity_country].filter(Boolean).join(', ') };
+    map[h] = { userId: p.id, premium: isPremiumProfile(p), location: [p.activity_city, countryName(p.activity_country) || p.activity_country].filter(Boolean).join(', ') };
   });
   return map;
 }
