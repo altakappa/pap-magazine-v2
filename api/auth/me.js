@@ -8,6 +8,7 @@ const { requireAuth, requireAuthStrict } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { countryFromRequest } = require('../_lib/emailLocale');
+const { normalizeHandle } = require('../_lib/collaborators');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -27,7 +28,22 @@ module.exports = async function handler(req, res) {
       if (bio !== undefined) updates.bio = bio;
       if (website !== undefined) updates.website = website;
       if (location !== undefined) updates.location = location;
-      if (instagram !== undefined) updates.instagram = instagram;
+      // 2026-09-12 — 인스타그램 아이디는 공동작업자 지정의 열쇠다(도메니코: 프리미엄 회원만 지정 가능).
+      // 정규화(소문자·@ 제거·URL 벗김)해서 저장하고, 다른 계정이 이미 쓰는 아이디는 거부한다 —
+      // 한 아이디가 두 계정에 걸리면 누가 프리미엄인지 판정할 수 없다.
+      if (instagram !== undefined) {
+        const raw = String(instagram == null ? '' : instagram).trim();
+        if (raw === '') {
+          updates.instagram = null;
+        } else {
+          const h = normalizeHandle(raw);
+          if (!h) return res.status(400).json({ code: 'INSTAGRAM_INVALID', message: 'Invalid Instagram handle' });
+          const { data: taken } = await supabaseAdmin
+            .from('profiles').select('id').eq('instagram', h).neq('id', user.id).limit(1);
+          if (taken && taken.length) return res.status(409).json({ code: 'INSTAGRAM_TAKEN', message: 'This Instagram handle is already registered to another account' });
+          updates.instagram = h;
+        }
+      }
 
       const { data: profile, error } = await supabaseAdmin
         .from('profiles')

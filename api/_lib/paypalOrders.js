@@ -24,14 +24,14 @@ const PAYPAL_API_BASE = String(process.env.PAYPAL_ENV || '').toLowerCase() === '
 
 // 애드온 가격 (유로센트) — 2026-08-10 인상분 반영.
 // 서버 단일 소스. 프론트 표시가(€110/€220/€110)와 반드시 같이 고칠 것.
+// 2026-09-12 도메니코 — ig_collab(€110 공동작업자 태그) 애드온 폐지. 공동작업자는 이제 제출자가 폼에서
+// 고르고, 프리미엄 회원만 지정된다(api/_lib/collaborators.js). 모르는 키는 unknown_addon 으로 거부된다.
 const ADDON_FEE_CENTS = {
-  ig_collab: 11000,        // €110 · Instagram Collaborators
   ig_images_cover: 22000,  // €220 · 지정 이미지 + 커버
   posting_date: 11000,     // €110 · 게시일 지정
 };
 
 const ADDON_LABEL = {
-  ig_collab: 'Instagram Collaborators',
   ig_images_cover: 'Specific images + cover',
   posting_date: 'Posting date selection',
 };

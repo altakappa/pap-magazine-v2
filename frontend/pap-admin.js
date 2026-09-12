@@ -1623,6 +1623,14 @@ function populateReviewModal(submission){
     videoEl.textContent='—';
   }
 
+  // 2026-09-12 — 인스타그램 공동작업자 (제출자가 고른 프리미엄 회원, 서버가 검증해 [{handle,userId}] 로 저장)
+  var collabEl=document.getElementById('reviewModalCollab');
+  if(collabEl){
+    var cl=Array.isArray(desc.collaborators)?desc.collaborators:[];
+    var ch=cl.map(function(c){ var h=(c&&typeof c==='object')?c.handle:c; return h?'@'+String(h).replace(/^@/,''):''; }).filter(Boolean);
+    collabEl.textContent=ch.length?ch.join('  '):'— (미지정: 임의 지정 또는 없음)';
+  }
+
   // Production (compact submitter info — name + email + plan)
   document.getElementById('reviewModalProduction').textContent=submitterName+(submitterEmail?' · '+submitterEmail:'')+plan;
 

@@ -13,6 +13,7 @@ const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
+const { validateCollaborators } = require('../_lib/collaborators');
 
 // Build the same `{SUPABASE_URL}/storage/v1/object/public/submissions/{user.id}/`
 // prefix the POST endpoint enforces — caller can only attach URLs in their
@@ -225,6 +226,13 @@ module.exports = async function handler(req, res) {
         try { console.warn('[submissions] 400 BRAND_LATIN_ONLY (resubmit) user=%s %s', user.id, JSON.stringify(_nonLatin).slice(0, 300)); } catch (_) {}
         return res.status(400).json(englishOnly.rejection(_nonLatin));
       }
+      // 2026-09-12 도메니코 — 인스타그램 공동작업자: 제출자가 아이디로 고르고, 프리미엄 회원만 지정 가능.
+      // 폼의 실시간 확인과 같은 lib(collaborators.js). 통과하면 [{handle,userId}] 로 저장.
+      const _cv = await validateCollaborators(supabaseAdmin, data.collaborators);
+      if (!_cv.ok) {
+        return res.status(400).json({ code: _cv.code, message: _cv.message, handles: _cv.handles });
+      }
+      const collaborators = _cv.collaborators;
       // 2026-09-10 GENRE 규칙 — 장르(FASHION/BEAUTY/기타)에 따라 판정이 갈린다. submissionType.js 헤더 참조.
       const _cls = classifySubmissionType(looks, lookImageMap, { genres: normalizedGenres });
       const submissionType = _cls.submissionType;
@@ -265,6 +273,7 @@ module.exports = async function handler(req, res) {
             contactName: data.contactName || '',
             photographerCredit,
             videoUrl,
+            collaborators,   // 2026-09-12 — [{handle,userId}] 프리미엄 회원만 (비어 있으면 임의 지정 또는 미지정)
             looks,
             lookImageMap,
             submissionType,

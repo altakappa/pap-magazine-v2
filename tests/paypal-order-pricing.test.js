@@ -50,7 +50,11 @@ for (const [type, cents, label] of cases) {
 }
 
 console.log('\n=== 3. 애드온 ===');
-const addons = [['ig_collab', 11000], ['ig_images_cover', 22000], ['posting_date', 11000]];
+const addons = [['ig_images_cover', 22000], ['posting_date', 11000]];
+// 2026-09-12 도메니코 — 공동작업자 태그 애드온(ig_collab €110) 폐지. 프리미엄 회원 지정 방식으로 대체.
+t('ig_collab 애드온은 폐지됐다 (unknown_addon)',
+  (() => { try { return po.resolveAmount({}, 'submission_addon', 'ig_collab').error === 'unknown_addon'; }
+           catch (_) { return false; } })());
 for (const [k, cents] of addons) {
   let r; try { r = po.resolveAmount({}, 'submission_addon', k); } catch (e) { r = { throwErr: e.message }; }
   t(`${k} → ${cents}`, r && r.cents === cents, JSON.stringify(r));
