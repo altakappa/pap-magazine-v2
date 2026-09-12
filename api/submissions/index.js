@@ -16,7 +16,7 @@ const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
-const { validateCollaborators } = require('../_lib/collaborators');
+const { validateCollaborators, collaboratorAlertText } = require('../_lib/collaborators');
 const englishOnly = require('../_lib/submissionEnglishOnly');   // 전부 영어로 + 자동번역 방어 (POST·PUT 공용)
 const { feeForType } = require('../_lib/submissionPayment');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
@@ -277,6 +277,12 @@ module.exports = async function handler(req, res) {
         }
       } catch (_e) {
         console.error('[submissions] 접수 메일 실패(접수는 저장됨):', (_e && _e.message) || _e);
+      }
+
+      // 2026-09-12 도메니코 — 공동작업자가 지정되면 텔레그램으로 알린다(관리자가 인스타그램에서 초대를 보내야 하므로).
+      // ★ await — 서버리스 프리즈로 fire-and-forget 은 안 나간다. 실패해도 접수는 막지 않는다.
+      if (collaborators && collaborators.length) {
+        try { await sendTextToTelegramSafe(collaboratorAlertText('new', submission, collaborators, (data.contactName || data.studio || user.email || user.id))); } catch (_) {}
       }
 
       return res.status(201).json({ submission });

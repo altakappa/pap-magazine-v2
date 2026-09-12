@@ -13,7 +13,8 @@ const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
-const { validateCollaborators } = require('../_lib/collaborators');
+const { validateCollaborators, collaboratorAlertText } = require('../_lib/collaborators');
+const { sendTextToTelegramSafe } = require('../_lib/telegram');   // 2026-09-12 공동작업자 지정 알림
 
 // Build the same `{SUPABASE_URL}/storage/v1/object/public/submissions/{user.id}/`
 // prefix the POST endpoint enforces — caller can only attach URLs in their
@@ -300,6 +301,11 @@ module.exports = async function handler(req, res) {
         // A-3 — 원문 DB 메시지는 서버 로그에만
         console.error('Resubmit update failed:', updateErr);
         return res.status(500).json({ message: 'Failed to resubmit', code: 'resubmit_failed' });
+      }
+
+      // 2026-09-12 도메니코 — 재제출에서도 공동작업자가 지정돼 있으면 텔레그램으로 알린다. 실패해도 재제출은 막지 않는다.
+      if (collaborators && collaborators.length) {
+        try { await sendTextToTelegramSafe(collaboratorAlertText('resubmit', updated, collaborators, (data.contactName || data.studio || user.email || user.id))); } catch (_) {}
       }
 
       return res.status(200).json({ submission: updated });

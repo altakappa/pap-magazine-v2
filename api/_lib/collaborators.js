@@ -17,7 +17,7 @@
 
 const { countryName } = require('./countries');
 
-const MAX_COLLABORATORS = 3;   // 인스타그램 공동 게시 초대 상한과 맞춘 값
+const MAX_COLLABORATORS = 4;   // 도메니코 2026-09-12: 최대 4명 (처음 3명 → 4명으로 변경)
 
 /**
  * 인스타그램 아이디 정규화. '@', 앞뒤 공백, 프로필 URL(instagram.com/xxx/) 을 벗기고 소문자로.
@@ -60,7 +60,8 @@ function parseCollaboratorInput(list) {
 }
 
 /**
- * 아이디 목록 → { handle: { userId, premium } }. 등록된 회원이 없으면 그 아이디는 결과에 없다.
+ * 아이디 목록 → { handle: { userId, premium, location } }. 등록된 회원이 없으면 그 아이디는 결과에 없다.
+ * (location 은 관리자 참고용. 인스타그램 아이디는 유일하므로 회원 구분에는 쓰지 않는다 — 도메니코 2026-09-12.)
  * profiles.instagram 은 PUT /api/auth/me 가 정규화해 저장하므로 소문자 정확 일치로 찾는다.
  */
 async function lookupHandles(supabaseAdmin, handles) {
@@ -101,4 +102,16 @@ async function validateCollaborators(supabaseAdmin, list) {
   return { ok: true, collaborators: handles.map((h) => ({ handle: h, userId: found[h].userId })) };
 }
 
-module.exports = { MAX_COLLABORATORS, normalizeHandle, isPremiumProfile, parseCollaboratorInput, lookupHandles, validateCollaborators };
+/** 텔레그램 알림 본문 — 제출·재제출에서 공동작업자가 지정됐을 때 (도메니코 2026-09-12: "지정되면 텔레그램으로 알려줘"). */
+function collaboratorAlertText(kind, sub, collaborators, submitter) {
+  const hs = (collaborators || []).map((c) => '@' + ((c && c.handle) || c)).filter((h) => h !== '@');
+  if (!hs.length) return '';
+  return '🤝 인스타그램 공동작업자 지정 (' + (kind === 'resubmit' ? '재제출' : '신규 제출') + ')\n'
+    + '제목: ' + String((sub && sub.title) || '').slice(0, 80) + '\n'
+    + '제출자: ' + String(submitter || '').slice(0, 80) + '\n'
+    + '공동작업자(' + hs.length + '/' + MAX_COLLABORATORS + '): ' + hs.join(' ') + '\n'
+    + '※ 게재 승인 시 프리미엄 자격을 다시 확인해 끊긴 사람은 자동 제외됩니다.'
+    + (sub && sub.id ? '\nsubmission=' + sub.id : '');
+}
+
+module.exports = { collaboratorAlertText, MAX_COLLABORATORS, normalizeHandle, isPremiumProfile, parseCollaboratorInput, lookupHandles, validateCollaborators };

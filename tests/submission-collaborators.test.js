@@ -23,8 +23,8 @@ ok('빈값 → 빈문자열', C.normalizeHandle('') === '' && C.normalizeHandle(
 
 console.log('\n=== parseCollaboratorInput ===');
 const pi = C.parseCollaboratorInput(['@A', 'a', { handle: '@b' }, '', 'c', 'd', 'e', '한글']);
-ok('중복 제거·상한 3·무효 분리', pi.handles.join(',') === 'a,b,c' && pi.invalid.join(',') === '한글', JSON.stringify(pi));
-ok('MAX_COLLABORATORS = 3', C.MAX_COLLABORATORS === 3);
+ok('중복 제거·상한 4·무효 분리', pi.handles.join(',') === 'a,b,c,d' && pi.invalid.join(',') === '한글', JSON.stringify(pi));
+ok('MAX_COLLABORATORS = 4 (도메니코 2026-09-12: 3명 → 4명)', C.MAX_COLLABORATORS === 4);
 
 console.log('\n=== isPremiumProfile ===');
 ok('premium + active 만 참', C.isPremiumProfile({ subscription_plan: 'premium', subscription_status: 'active' })
@@ -78,7 +78,9 @@ const fakeDb = { from: (t) => ({ select: () => ({ in: async (col, hs) => ({ data
 
   console.log('\n=== 폼 ===');
   ok('공동작업자 섹션·입력·추가 버튼', /id="collabSection"/.test(html) && /class="team-input collab-input"/.test(html) && /onclick="addCollabRow\(\)"/.test(html));
-  ok('폼 상한 MAX_COLLABORATORS=3 (서버와 동일)', /var MAX_COLLABORATORS=3;/.test(html));
+  ok('폼 상한 MAX_COLLABORATORS=4 (서버와 동일)', /var MAX_COLLABORATORS=4;/.test(html));
+  ok('폼 안내 문구의 "최대 4명" 9개 언어 (3 은 어디에도 없다)', (html.match(/collabDesc:'(?:[^'\\]|\\.)*(최대 4명|up to 4|bis zu 4|massimo 4|4 maximum|hasta 4|最大4名|最多 4 位|до 4)/g) || []).length === 9
+    && !/collabDesc:'(?:[^'\\]|\\.)*(최대 3명|up to 3|bis zu 3|massimo 3|3 maximum|hasta 3|最大3名|最多 3 位|до 3)/.test(html));
   ok('입력 시 /api/submissions/collaborator-check 로 프리미엄 확인', /\/api\/submissions\/collaborator-check\?handle=/.test(html));
   ok('프리미엄이면 등록, 아니면 경고 문구', /_t\('collabOk'/.test(html) && /_t\('collabNotPremium'/.test(html));
   ok('payload 에 data.collaborators', /data\.collaborators=_collabHandles\(\);/.test(html));
@@ -102,12 +104,24 @@ const fakeDb = { from: (t) => ({ select: () => ({ in: async (col, hs) => ({ data
   ok('승인 시 공동작업자를 다시 판정해 자격 끊긴 사람을 뺀다(collaboratorsDropped)', /lookupHandles\(supabaseAdmin, _hs\)/.test(rv) && /premium_lapsed/.test(rv) && /desc\.collaboratorsDropped/.test(rv));
   ok('폼·마이페이지 안내에 "프리미엄 유지 중에만, 끝나면 자동 종료" 9개 언어', (html.match(/collabDesc:'(?:[^'\\]|\\.)*(자동으로 종료|ends automatically|endet automatisch|termina automaticamente|prend fin automatiquement|termina automáticamente|自動的に終了|自动结束|прекращается автоматически)/g) || []).length === 9
     && (mp.match(/igHint:'(?:[^'\\]|\\.)*(자동으로 종료|ends automatically|endet automatisch|termina automaticamente|prend fin automatiquement|termina automáticamente|自動的に終了|自动结束|прекращается автоматически)/g) || []).length === 9);
-  ok('lookupHandles 가 활동 도시·국가를 함께 돌려주고 check 응답에 location 이 있다', /activity_country, activity_city/.test(read('api/_lib/collaborators.js')) && /location:/.test(chk));
-  ok('폼 등록 문구에 도시·국가({loc}) 9개 언어', (html.match(/collabOk:'✓ @\{h\}\{loc\}/g) || []).length === 9);
+  ok('check 응답·폼 등록 문구에 도시·국가를 노출하지 않는다 (아이디는 유일하므로 구분 불필요 — 도메니코 2026-09-12)', !/location:/.test(chk) && (html.match(/collabOk:'✓ @\{h\} /g) || []).length === 9 && !/\{loc\}/.test(html));
   ok('PUT /api/auth/me: 아이디 등록엔 활동 국가·도시 필수(ACTIVITY_LOCATION_REQUIRED), 저장·반환', /ACTIVITY_LOCATION_REQUIRED/.test(me) && /updates\.activity_country/.test(me) && /activityCountry: profile\.activity_country/.test(me));
   ok('마이페이지에 국가·도시 입력이 있고 저장 본문에 실린다', /id="mpCountryInput"/.test(mp) && /id="mpCityInput"/.test(mp) && /activityCountry:country,activityCity:city/.test(mp));
   ok('마이페이지 국가·도시 문구 9개 언어', ['labelActivityLocation', 'phCountry', 'phCity', 'igLocationRequired'].every((k) => (mp.match(new RegExp(k + ":'", 'g')) || []).length === 9));
   ok('마이그레이션 149: activity_country·activity_city', /activity_country TEXT/.test(read('supabase_migrations/149_profiles_activity_location.sql')) && /activity_city/.test(read('supabase_migrations/149_profiles_activity_location.sql')));
+
+  console.log('\n=== 텔레그램 알림 (도메니코 2026-09-12: 지정되면 알려줘) ===');
+  const lib = read('api/_lib/collaborators.js');
+  ok('collaboratorAlertText 가 내보내지고 아이디·제출자·건수를 담는다', typeof C.collaboratorAlertText === 'function'
+    && /@prem @std/.test(C.collaboratorAlertText('new', { id: 's1', title: 'T' }, [{ handle: 'prem' }, { handle: 'std' }], 'me'))
+    && /2\/4/.test(C.collaboratorAlertText('new', { id: 's1', title: 'T' }, [{ handle: 'prem' }, 'std'], 'me'))
+    && /재제출/.test(C.collaboratorAlertText('resubmit', { id: 's1', title: 'T' }, ['a'], 'me'))
+    && C.collaboratorAlertText('new', { id: 's1' }, [], 'me') === '');
+  ok('제출·재제출 API 가 공동작업자 있을 때만 sendTextToTelegramSafe 를 await 한다', ['api/submissions/index.js', 'api/submissions/[id].js'].every((f) => {
+    const src = read(f);
+    return /collaboratorAlertText/.test(src) && /if \(collaborators && collaborators\.length\) \{[\s\S]{0,200}await sendTextToTelegramSafe\(collaboratorAlertText\(/.test(src);
+  }));
+  ok('lib 의 lookupHandles 는 여전히 활동 국가·도시를 읽는다(관리자 참고용)', /activity_country, activity_city/.test(lib));
 
   console.log('\npassed: ' + passed + '   failed: ' + failed);
   if (failed) { console.log('❌ submission-collaborators FAILED'); process.exit(1); }
