@@ -18,6 +18,7 @@ const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
 const { validateCollaborators, collaboratorAlertText } = require('../_lib/collaborators');
 const { isPremiumUser, resolveCoverIndex } = require('../_lib/premiumCover');   // 2026-09-12 커버 선택은 프리미엄만
+const { brandRolesIn } = require('../_lib/brandRoleGuard');   // 2026-09-12 브랜드/디자이너는 팀 크레딧 금지
 const englishOnly = require('../_lib/submissionEnglishOnly');   // 전부 영어로 + 자동번역 방어 (POST·PUT 공용)
 const { feeForType } = require('../_lib/submissionPayment');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
@@ -214,6 +215,11 @@ module.exports = async function handler(req, res) {
       // .credits in its native shape ({roles[], name, instagram, website})
       // without re-parsing "Name (@handle)" strings.
       const team = Array.isArray(data.team) ? data.team : [];
+      // 2026-09-12 도메니코 — 의상·잡화·주얼리 디자이너/브랜드는 팀 크레딧이 아니라 룩별 의상 크레딧에만.
+      const _brandRoles = brandRolesIn(team);
+      if (_brandRoles.length) {
+        return _reject400(res, user, 'TEAM_ROLE_BRAND', 'Designers and brands (clothing, accessories, jewelry) belong in the look credits, not the team credits: ' + _brandRoles.join(', '), { roles: _brandRoles });
+      }
       // 2026-09-05 — 역할도 같은 이유로 표준화(摄影师 → Photographer 등).
       // 모르는 자유입력 역할은 normalizeRole 이 원본을 보존한다.
       // (역할·credits 키 표준화는 위 englishOnly.normalize 가 이미 했다)

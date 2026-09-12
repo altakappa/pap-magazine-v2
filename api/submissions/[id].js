@@ -16,6 +16,7 @@ const { classifySubmissionType, looksMissingCredit, MIN_TOTAL_IMAGES } = require
 const { validateCollaborators, collaboratorAlertText } = require('../_lib/collaborators');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');   // 2026-09-12 공동작업자 지정 알림
 const { isPremiumUser, resolveCoverIndex } = require('../_lib/premiumCover');   // 2026-09-12 커버 선택은 프리미엄만
+const { brandRolesIn } = require('../_lib/brandRoleGuard');   // 2026-09-12 브랜드/디자이너는 팀 크레딧 금지
 
 // Build the same `{SUPABASE_URL}/storage/v1/object/public/submissions/{user.id}/`
 // prefix the POST endpoint enforces — caller can only attach URLs in their
@@ -260,6 +261,11 @@ module.exports = async function handler(req, res) {
 
       // QA #168 — persist structured team array (mirror of POST path)
       const team = Array.isArray(data.team) ? data.team : [];
+      // 2026-09-12 도메니코 — 의상·잡화·주얼리 디자이너/브랜드는 팀 크레딧이 아니라 룩별 의상 크레딧에만.
+      const _brandRoles = brandRolesIn(team);
+      if (_brandRoles.length) {
+        return res.status(400).json({ code: 'TEAM_ROLE_BRAND', message: 'Designers and brands (clothing, accessories, jewelry) belong in the look credits, not the team credits: ' + _brandRoles.join(', '), roles: _brandRoles });
+      }
 
       const { data: updated, error: updateErr } = await supabaseAdmin
         .from('submissions')
