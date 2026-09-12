@@ -62,6 +62,9 @@
 const { bearerOk } = require('../_lib/secretCompare');
 const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { runBackfillBatch, remainingFor, normalizeBatch, LANG_NAMES, KINDS } = require('../_lib/seoTranslateBackfill');
+/* '처리 대상 없음' 문구는 pipeline-watch 가 분모에서 빼는 데 쓴다.
+   복사하면 규칙이 두 벌이 된다 → 한 곳에서 가져온다 (2026-09-12). */
+const { IDLE_NOTE } = require('../_lib/translateHealth');
 
 /* 숫자형 환경변수 읽기 (2026-08-02 신설).
  *
@@ -707,7 +710,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
       + (v.repaired ? '/복구' + v.repaired : '')
       + (v.err ? ' ERR ' + v.err : '')),
     ...notes,
-  ].join(' · ') || '처리 대상 없음';
+  ].join(' · ') || IDLE_NOTE;
   res.locals.cronNote = comboNote.slice(0, 500 - timingNote.length - 3) + ' · ' + timingNote;
 
   /* 조합별 최신 잔량 합계. 전 조합을 한 번이라도 확인했을 때만 '완주' 판정한다 —

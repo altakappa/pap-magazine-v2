@@ -22,6 +22,11 @@
    우연히 낮을 수 있고, 그걸 장애로 부르면 헛알림이 된다. */
 const MIN_RUNS_TO_JUDGE = 10;
 
+/* 크론이 '할 일이 없었다' 고 남기는 문구. 단일 진실원천 (2026-09-12).
+   backfill-translations 가 note 에 쓰고, pipeline-watch 가 세는 데 쓴다.
+   두 곳에 문자열을 복사하면 한쪽만 고쳐지고 분모가 조용히 틀어진다. */
+const IDLE_NOTE = '처리 대상 없음';
+
 /**
  * @param {object}  o
  * @param {number}  o.remaining     남은 번역 건수(전 언어 합)
@@ -35,6 +40,10 @@ function judgeTranslateHealth(o) {
   const produced = Math.max(0, Number(o && o.producedInWindow) || 0);
   const hours = Math.max(0.25, Number(o && o.windowHours) || 3);
   const runs = o && o.runsInWindow == null ? null : Number(o.runsInWindow);
+  /* 할 일이 없어서 그냥 끝난 실행 수. 분모에서 빼야 한다 (2026-09-12). */
+  const idle = o && o.idleRunsInWindow == null ? 0 : Math.max(0, Number(o.idleRunsInWindow) || 0);
+  /* 실제로 번역할 게 있었던 실행 수. '실행당 생산량' 의 옳은 분모다. */
+  const workingRuns = runs == null ? null : Math.max(0, runs - idle);
 
   const perHour = Math.round((produced / hours) * 10) / 10;
   const etaHours = perHour > 0 ? Math.ceil(remaining / perHour) : null;
@@ -57,11 +66,23 @@ function judgeTranslateHealth(o) {
    * 2026-08-02 실측 — 이 구멍 때문에 또 놓쳤다: 3시간 90회 실행에 저장 8건.
    * 사실상 멈춘 상태였는데 '생산 > 0' 이라는 이유로 slow 로 분류돼 조용했다.
    * 한 번 실행해서 한 건도 못 만드는 게 대부분이면 장애로 본다 — 배치가
-   * 타임아웃에 걸려 통째로 버려질 때 정확히 이 모습이 된다. */
-  if (runs != null && runs >= MIN_RUNS_TO_JUDGE && produced < runs) {
+   * 타임아웃에 걸려 통째로 버려질 때 정확히 이 모습이 된다.
+   *
+   * ── 2026-09-12 정정: 분모에 '할 일 없던 실행' 을 넣고 있었다 ──────────
+   * 실측. 7일간 672회 실행 중 589회(88%)가 '처리 대상 없음' 이었다. 이 크론은
+   * 새 기사가 들어올 때만 일하므로 **대기가 정상 상태**다. 그런데 위 규칙이
+   * 그 589회를 전부 분모에 넣어 "실행당 1건도 못 만든다" 고 울렸다.
+   * 09-12 실측: 12회 실행 중 10회가 대기, 실제 작업 2회에 13건 저장 — 정상인데
+   * 정체로 잡혔다. 번역물도 다 있었다(7개 언어 전부, 같은 분에 저장 완료).
+   *
+   * 2026-08-02 의 진짜 사고는 분모를 좁혀도 그대로 잡힌다 — 그때 90회는
+   * 배치 타임아웃이라 **일이 있었는데** 못 만든 것이었다. 즉 좁히는 것이
+   * 감시를 약하게 만들지 않는다. 헛알림만 걷어낸다. */
+  if (workingRuns != null && workingRuns >= MIN_RUNS_TO_JUDGE && produced < workingRuns) {
     return {
       status: 'stalled', remaining, perHour, etaHours,
-      reason: `최근 ${hours}시간 ${runs}회 실행에 저장 ${produced}건 — 실행당 1건도 못 만들고 있다. 잔량 ${remaining}건.`,
+      reason: `최근 ${hours}시간 일감 있던 ${workingRuns}회 실행에 저장 ${produced}건`
+        + `(대기 ${idle}회 제외) — 실행당 1건도 못 만들고 있다. 잔량 ${remaining}건.`,
     };
   }
 
@@ -97,4 +118,4 @@ function buildTranslateAlert(d, site) {
   };
 }
 
-module.exports = { judgeTranslateHealth, buildTranslateAlert };
+module.exports = { judgeTranslateHealth, buildTranslateAlert, IDLE_NOTE, MIN_RUNS_TO_JUDGE };

@@ -27,7 +27,7 @@ const { pushAlert } = require('../_lib/pushAlert');
 const tkd = require('../_lib/tiktokDrive');
 const { listRecentMedia, isLikelyEditorialCaption, _extractShortcode } = require('../_lib/instagramImport');
 const { diagnoseBackfill, buildBackfillAlert } = require('../_lib/backfillHealth');
-const { judgeTranslateHealth, buildTranslateAlert } = require('../_lib/translateHealth');
+const { judgeTranslateHealth, buildTranslateAlert, IDLE_NOTE } = require('../_lib/translateHealth');
 /* 2026-09-03 — 크론 종류를 가리지 않는 생산량 감시. 위 세 검사(backfill·
    translate·faq)는 전부 **그 크론 전용**이고 note 문자열을 정규식으로 판다.
    이건 크론이 신고한 숫자(cron_runs.produced/remaining)만 보므로 전 크론에
@@ -557,15 +557,23 @@ async function checkTranslate(opts) {
     const row = Array.isArray(data) ? data[0] : data;
     if (!row) return { skipped: 'no stats' };
 
-    const { count: runs } = await supabaseAdmin
-      .from('cron_runs').select('*', { count: 'exact', head: true })
+    /* note 까지 읽는다 — '할 일이 없어서 끝난 실행' 을 분모에서 빼야 한다.
+       count 만 세면 대기 실행이 분모에 섞여 정상을 정체로 읽는다
+       (2026-09-12 실측: 7일 672회 중 589회가 대기였다). */
+    const { data: runRows } = await supabaseAdmin
+      .from('cron_runs').select('note')
       .eq('cron_name', 'backfill-translations').gte('ran_at', since);
+    const runs = Array.isArray(runRows) ? runRows.length : null;
+    const idleRuns = Array.isArray(runRows)
+      ? runRows.filter((r) => String((r && r.note) || '').includes(IDLE_NOTE)).length
+      : 0;
 
     const d = judgeTranslateHealth({
       remaining: Number(row.remaining) || 0,
       producedInWindow: Number(row.produced) || 0,
       windowHours: WINDOW_H,
-      runsInWindow: typeof runs === 'number' ? runs : null,
+      runsInWindow: runs,
+      idleRunsInWindow: idleRuns,
     });
     if (opts && opts.dry) return { dry: true, ...d };
 
