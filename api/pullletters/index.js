@@ -90,6 +90,27 @@ module.exports = async function handler(req, res) {
     // 체험 중인지 판정 (조회 실패해도 접수 자체는 막지 않는다 — null 이면 평소대로).
     try { trialInfo = await trialInfoForUser(supabaseAdmin, user.id); } catch (_) { trialInfo = null; }
 
+    // ── 미제출 풀레터가 있으면 새 요청 불가 (도메니코 2026-09-13: "제출을 하지 않으면 추가 풀레터 발급 불가") ──
+    // 발급된(issued/approved/accepted + PDF) 풀레터 중 완성 에디토리얼이 아직 연결되지 않은 건이 하나라도 있으면 409.
+    try {
+      const { data: openPl } = await supabaseAdmin
+        .from('pullletters')
+        .select('id, title, status, pull_letter_url, submission_id, issued_at')
+        .eq('user_id', user.id)
+        .in('status', ['issued', 'approved', 'accepted'])
+        .is('submission_id', null)
+        .not('pull_letter_url', 'is', null)
+        .limit(1);
+      if (openPl && openPl.length) {
+        return res.status(409).json({
+          message: 'Please submit the finished editorial for your previous pull-letter before requesting a new one.',
+          code: 'pending_editorial',
+          pullLetterId: openPl[0].id,
+          pullLetterTitle: openPl[0].title || '',
+        });
+      }
+    } catch (_e) { console.error('[pullletters] pending-editorial check failed (continuing):', (_e && _e.message) || _e); }
+
     // ── 월 1건 상한 ──────────────────────────────────────────────
     // 한국 달력 기준 '이번 달'에 이미 접수한 건이 있으면 거절한다.
     // 거절(rejected)된 건은 횟수로 세지 않는다 — 회원 잘못이 아닐 수 있어서.

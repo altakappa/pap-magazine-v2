@@ -63,6 +63,35 @@ function db(row, cap) {
   ok('발급 메일 9개 언어에 후속 절차 한 줄', ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => /PULL-LETTERS/.test(em.templates.pullletterIssued({ name: 'A' }, '', l).html)));
   ok('관리자: 풀레터 목록 배지 + 검토 모달 Pull-Letter 줄', /발급 완료 · 에디토리얼 제출됨/.test(read('frontend/pap-admin.js')) && /id="reviewModalPullLetter"/.test(read('frontend/admin.html')) && /pap-admin\.js\?v=157/.test(read('frontend/admin.html')));
 
+  console.log('\n=== 4주 독촉 크론 + 미제출 시 새 요청 불가 (도메니코 2026-09-13) ===');
+  // supabase 클라이언트만 가짜로 — 순수 함수(isDue)와 배선만 본다.
+  const Module = require('module'); const _origLoad = Module._load;
+  Module._load = function (req) {
+    if (req === './supabase' || req === '../_lib/supabase') return { supabaseAdmin: {} };
+    if (req === '@supabase/supabase-js') return { createClient: () => ({}) };
+    return _origLoad.apply(this, arguments);
+  };
+  let cron; try { cron = require(path.join(ROOT, 'api', 'cron', 'pullletter-editorial-reminder')); } finally { Module._load = _origLoad; }
+  const D = 86400000; const now = Date.now();
+  const base = { status: 'issued', pull_letter_url: 'x.pdf', submission_id: null, editorial_reminder_sent_at: null, issued_at: new Date(now - 29 * D).toISOString() };
+  ok('REMIND_AFTER_DAYS = 28 (4주)', cron.REMIND_AFTER_DAYS === 28);
+  ok('발급 29일 · 미제출 · 미독촉 → 대상', cron.isDue(base, now) === true);
+  ok('발급 27일 → 아직 아님', cron.isDue(Object.assign({}, base, { issued_at: new Date(now - 27 * D).toISOString() }), now) === false);
+  ok('제출 연결됨 → 아님', cron.isDue(Object.assign({}, base, { submission_id: 's1' }), now) === false);
+  ok('이미 독촉함 → 아님 (한 풀레터에 한 번)', cron.isDue(Object.assign({}, base, { editorial_reminder_sent_at: '2026-09-01' }), now) === false);
+  ok('발급 전(pending, PDF 없음) → 아님', cron.isDue(Object.assign({}, base, { status: 'pending', pull_letter_url: null }), now) === false);
+  ok('issued_at 없으면 reviewed_at → created_at 순으로 판정', cron.isDue(Object.assign({}, base, { issued_at: null, reviewed_at: null, created_at: new Date(now - 40 * D).toISOString() }), now) === true);
+  const csrc = read('api/cron/pullletter-editorial-reminder.js');
+  ok('크론: CRON_SECRET 게이트 + withCronGuard + 회원 메일 await + 독촉 시각 기록 + 텔레그램 await', /safeEqual\(got, expected\)/.test(csrc) && /withCronGuard\(CRON_NAME/.test(csrc) && /await sendEmail\(profile\.email, templates\.pullletterEditorialReminder/.test(csrc) && /update\(\{ editorial_reminder_sent_at: new Date\(\)\.toISOString\(\) \}\)/.test(csrc) && /await sendTextToTelegramSafe\('⏰ 풀레터 발급 4주 경과/.test(csrc));
+  const vj = JSON.parse(read('vercel.json'));
+  ok('vercel.json 에 매일 1회 예약', (vj.crons || []).some((c) => c.path === '/api/cron/pullletter-editorial-reminder' && /^\d+ \d+ \* \* \*$/.test(c.schedule)));
+  ok('마이그레이션 153: editorial_reminder_sent_at', /editorial_reminder_sent_at timestamptz/.test(read('supabase_migrations/153_pullletter_editorial_reminder.sql')));
+  ok('독촉 메일 템플릿 9개 언어에 PULL-LETTERS 경로 + "새 요청 불가" 안내', ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const h = em.templates.pullletterEditorialReminder({ name: 'A' }, l).html; return /PULL-LETTERS/.test(h) && /(새 Pull-Letter|new Pull-Letter|nuova Pull-Letter|nouvelle Pull-Letter|nueva Pull-Letter|新しい Pull-Letter|新的 Pull-Letter|Новый Pull-Letter|neue Pull-Letter)/.test(h); }));
+  const plIdx = read('api/pullletters/index.js');
+  ok('POST /api/pullletters: 미제출 발급 건이 있으면 409 pending_editorial (월 상한 검사보다 앞)', /code: 'pending_editorial'/.test(plIdx) && plIdx.indexOf("code: 'pending_editorial'") < plIdx.indexOf('── 월 1건 상한') && /\.is\('submission_id', null\)[\s\S]{0,80}\.not\('pull_letter_url', 'is', null\)/.test(plIdx));
+  const plHtml = read('frontend/pullletter.html');
+  ok('요청 페이지: pending_editorial 을 9개 언어 문구로', /_code === 'pending_editorial'/.test(plHtml) && /pendingEditorial:\{ko:'[^']+',en:'[^']+',it:'(?:[^'\\]|\\.)+',fr:'(?:[^'\\]|\\.)+',es:'[^']+',ja:'[^']+',zh:'[^']+',ru:'[^']+',de:'[^']+'\}/.test(plHtml));
+
   console.log('\npassed: ' + passed + '   failed: ' + failed);
   if (failed) { console.log('❌ pullletter-editorial-submission FAILED'); process.exit(1); }
   console.log('✅ pullletter-editorial-submission passed');

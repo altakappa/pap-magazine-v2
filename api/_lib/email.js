@@ -672,6 +672,19 @@ const TRIAL_ENDING_I18N = {
   }
 };
 
+// 풀레터 발급 4주 뒤 미제출 독촉 (2026-09-13 도메니코: "발급 후 4주가 지나도 제출이 없으면 알림. 제출하지 않으면 추가 발급 불가")
+const PULLLETTER_EDITORIAL_REMINDER_I18N = {
+  ko: { subject: 'Pull-Letter 후속 에디토리얼 제출 안내', heading: '완성 에디토리얼을 제출해 주세요', body: 'Pull-Letter를 발급받은 지 4주가 지났습니다. 촬영을 마치셨다면 마이페이지 → PULL-LETTERS의 "완성된 에디토리얼 제출하기"로 완성 에디토리얼을 제출해 주세요. 이 제출이 완료되기 전에는 새 Pull-Letter를 요청할 수 없습니다.', cta: '에디토리얼 제출하기' },
+  en: { subject: 'Your Pull-Letter editorial is due', heading: 'Please submit the finished editorial', body: 'It has been 4 weeks since your Pull-Letter was issued. If the shoot is done, submit the finished editorial via My Page → PULL-LETTERS → "Submit finished editorial". A new Pull-Letter cannot be requested until this submission is in.', cta: 'SUBMIT EDITORIAL' },
+  it: { subject: 'L\'editoriale della tua Pull-Letter è atteso', heading: 'Invia l\'editoriale finito', body: 'Sono passate 4 settimane dall\'emissione della tua Pull-Letter. A shooting concluso, invia l\'editoriale finito da My Page → PULL-LETTERS → "Invia l\'editoriale finito". Non è possibile richiedere una nuova Pull-Letter finché questo invio non è completato.', cta: 'INVIA EDITORIALE' },
+  fr: { subject: 'L\'éditorial de votre Pull-Letter est attendu', heading: 'Soumettez l\'éditorial final', body: 'Cela fait 4 semaines que votre Pull-Letter a été émise. Si le shooting est terminé, soumettez l\'éditorial final via My Page → PULL-LETTERS → « Soumettre l\'éditorial final ». Aucune nouvelle Pull-Letter ne peut être demandée tant que cette soumission n\'est pas faite.', cta: 'SOUMETTRE L\'ÉDITORIAL' },
+  es: { subject: 'El editorial de tu Pull-Letter está pendiente', heading: 'Envía el editorial terminado', body: 'Han pasado 4 semanas desde que se emitió tu Pull-Letter. Si la sesión ha terminado, envía el editorial terminado desde My Page → PULL-LETTERS → "Enviar el editorial terminado". No se puede solicitar una nueva Pull-Letter hasta completar este envío.', cta: 'ENVIAR EDITORIAL' },
+  ja: { subject: 'Pull-Letter の後続エディトリアル提出のご案内', heading: '完成エディトリアルを提出してください', body: 'Pull-Letter の発行から4週間が経ちました。撮影が終わっていれば、マイページ → PULL-LETTERS の「完成エディトリアルを提出」から提出してください。この提出が完了するまで新しい Pull-Letter は申請できません。', cta: 'エディトリアルを提出' },
+  zh: { subject: '您的 Pull-Letter 后续作品待提交', heading: '请提交完整作品', body: '您的 Pull-Letter 已签发 4 周。若拍摄已完成，请通过“我的页面 → PULL-LETTERS → 提交完整作品”提交。在完成此提交之前无法申请新的 Pull-Letter。', cta: '提交作品' },
+  ru: { subject: 'Ожидается эдиториал по вашему Pull-Letter', heading: 'Отправьте готовый эдиториал', body: 'С момента выписки вашего Pull-Letter прошло 4 недели. Если съёмка завершена, отправьте готовый эдиториал через My Page → PULL-LETTERS → «Отправить готовый эдиториал». Новый Pull-Letter нельзя запросить, пока эта заявка не отправлена.', cta: 'ОТПРАВИТЬ ЭДИТОРИАЛ' },
+  de: { subject: 'Das Editorial zu Ihrer Pull-Letter steht aus', heading: 'Bitte reichen Sie das fertige Editorial ein', body: 'Seit der Ausstellung Ihrer Pull-Letter sind 4 Wochen vergangen. Wenn das Shooting abgeschlossen ist, reichen Sie das fertige Editorial über My Page → PULL-LETTERS → „Fertiges Editorial einreichen“ ein. Eine neue Pull-Letter kann erst nach dieser Einreichung angefordert werden.', cta: 'EDITORIAL EINREICHEN' },
+};
+
 const PULLLETTER_ISSUED_I18N = {
   ko: { subject: 'Pull-Letter가 발급되었습니다', heading: 'Pull-Letter 발급 완료', body: '요청하신 Pull-Letter가 발급되었습니다. 마이페이지에서 PDF를 다운로드하실 수 있습니다. 촬영을 마치면 마이페이지 → PULL-LETTERS 의 "완성된 에디토리얼 제출하기"로 완성 에디토리얼을 제출해 주세요. 일반 서브미션과 같은 절차로 심사됩니다.', cta: 'PDF 다운로드' },
   en: { subject: 'Your Pull-Letter Has Been Issued', heading: 'Pull-Letter Issued', body: 'Your pull-letter has been issued. You can download the PDF from your My Page. Once the shoot is done, submit the finished editorial via My Page → PULL-LETTERS → "Submit finished editorial". It goes through the same review as a regular submission.', cta: 'DOWNLOAD PDF' },
@@ -970,6 +983,17 @@ const templates = {
       + '<p>' + greet + '</p>'
       + '<p>' + L.body + '</p>'
       + noteHtml
+      + '<a href="' + FRONTEND_URL + '/mypage#mp-pullletters" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">' + L.cta + '</a>';
+    return { subject: L.subject, html: wrapHtml(html, lang) };
+  },
+
+  // 7d. 풀레터 발급 4주 뒤 미제출 독촉 (2026-09-13)
+  pullletterEditorialReminder(user, lang) {
+    var L = PULLLETTER_EDITORIAL_REMINDER_I18N[lang] || PULLLETTER_EDITORIAL_REMINDER_I18N.en;
+    var greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
+    var html = '<h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">' + L.heading + '</h2>'
+      + '<p>' + greet + '</p>'
+      + '<p>' + L.body + '</p>'
       + '<a href="' + FRONTEND_URL + '/mypage#mp-pullletters" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">' + L.cta + '</a>';
     return { subject: L.subject, html: wrapHtml(html, lang) };
   },

@@ -36,6 +36,10 @@
       "schedule": "10 18 * * *"
     },
     {
+      "path": "/api/cron/pullletter-editorial-reminder",
+      "schedule": "20 0 * * *"
+    },
+    {
       "path": "/api/cron/release-due-scheduled",
       "schedule": "*/10 * * * *"
     },
