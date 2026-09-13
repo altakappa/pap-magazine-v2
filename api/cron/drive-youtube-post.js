@@ -43,7 +43,7 @@ const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const MAX_BYTES = 100 * 1024 * 1024;   // Vercel 120초·1GB 안에서 다룰 수 있는 선
-const ART_COLS = 'id, title, slug, custom_url, content, category, tags, source_media_type, published_date';
+const ART_COLS = 'id, title, slug, custom_url, content, category, tags, source_media_type, published_date, instagram_caption';
 const LOOKBACK_DAYS = Number(process.env.DRIVE_MATCH_LOOKBACK_DAYS || 21);
 
 // 조기 반환마다 흔적을 남긴다. (틱톡 21일 침묵의 원인이 이거였다)

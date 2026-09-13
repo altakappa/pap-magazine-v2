@@ -229,6 +229,65 @@ const MARGIN = 0.20;      // 2등과 이만큼 벌어져야 확신
    "스트레이 키즈 창빈, 오트리와 협업 런칭 파티 호스트로 나서다").
    **이건 설계대로 옳은 거부다.** 어느 기사에 붙일지는 사람이 정해야 한다. */
 
+/* ── 0단계: 캡션 첫 줄 정확 일치 (2026-09-13) ─────────────────────────
+   도메니코: "현재 영상의 제목은 캡션 내 최상단의 타이틀로 매칭해서 넣고 있어."
+   즉 에디터가 파일명을 지을 때 쓰는 원본이 **인스타 캡션 첫 줄**이다. 그런데
+   지금까지 우리는 기사 **제목**하고만 비교했다. 기사 제목은 PAP 이 웹용으로
+   다시 쓴 것이라 캡션과 글자가 다르다. 그래서 토큰 유사도가 문턱을 못 넘었다.
+
+   실측 (2026-09-13, 매칭 실패 16건 중 파일명 13개를 DB 와 대조):
+     파일명                                   기사 제목(비교 대상)                  캡션 첫 줄
+     바네사브루노의 서른 번째 챕터            30년의 옷이 한 방에 걸렸다            **글자 그대로 같음**
+     차갑고 강렬한 맛, 실리카겔               플레이리스트에서 폭발로, …            **같음**
+     성수의 밤을 가장 혁오답게 채운 순간      성수에 나타난 혁오, 새 곡의 첫 라이브  **같음**
+     몬엑의 다음 페이즈는 그저 MAGIC 입니다   몬스타엑스, 2년 만에 완전체로…        **같음**
+     민호 보고 놀란 가슴 민호 보고…           샤이니 민호, 두 번째 미니 앨범…       **같음**
+     악뮤와 떼창으로 마무리한 매들리 메들리   2일간의 열기를 두 남매의…             같음 + 뒤에 @태그
+   제목만 보면 이 6건은 영원히 안 붙는다. 캡션 첫 줄을 보면 6건 전부 붙는다.
+
+   왜 이게 토큰 점수보다 안전한가 — 유사도가 아니라 **동일성**이다. 에디터가
+   캡션에서 복사해 파일명으로 쓴 문자열이 그 캡션과 같은지만 본다. 닮음을
+   추정하지 않으니 '엉뚱한 영상이 공개 유튜브에 올라가는' 위험이 없다.
+
+   그래도 두 개의 안전핀을 남긴다:
+     · 일치 기사가 **정확히 1건일 때만** 확정한다. 2건 이상이면 기존처럼 거부한다.
+     · 접두 일치(캡션 뒤에 @태그·해시태그가 붙는 경우)는 파일명이 squash 후
+       8자 이상일 때만 인정한다. '포핸즈'(3자) 같은 짧은 이름이 긴 캡션의 머리에
+       우연히 걸리는 사고를 막는다. 정확 일치는 4자 이상. */
+
+/** 파일명에서 날짜 접두사(0911_ · 260907_)와 확장자를 떼고 squash 한다. */
+function fileCore(filename) {
+  let s = String(filename || '').replace(/\.[a-z0-9]{2,4}$/i, '');
+  s = s.replace(/^\d{4,8}[_\-\s]+/, '');
+  return squash(s);
+}
+
+/** 기사의 인스타 캡션 첫 줄을 squash 한다 (\r·뒤 공백 포함 정리). */
+function captionHead(art) {
+  const cap = (art && art.instagram_caption) || '';
+  const line = String(cap).split(/\r?\n/)[0] || '';
+  return squash(line);
+}
+
+const CAPTION_EXACT_MIN = 4;    // squash 후 이보다 짧으면 정확 일치도 안 믿는다
+const CAPTION_PREFIX_MIN = 8;   // 접두 일치는 더 길어야 한다
+
+/** 캡션 첫 줄이 파일명과 같은 기사들. 정확 일치가 있으면 그것만 돌려준다. */
+function captionMatches(filename, articles) {
+  const core = fileCore(filename);
+  if (core.length < CAPTION_EXACT_MIN) return { hits: [], core, kind: null };
+  const exact = [], prefix = [];
+  for (const a of articles || []) {
+    const head = captionHead(a);
+    if (!head) continue;
+    if (head === core) exact.push(a);
+    else if (core.length >= CAPTION_PREFIX_MIN && head.indexOf(core) === 0) prefix.push(a);
+  }
+  if (exact.length) return { hits: exact, core, kind: '정확' };
+  if (prefix.length) return { hits: prefix, core, kind: '접두' };
+  return { hits: [], core, kind: null };
+}
+
 /** 이 토큰이 후보 기사 중 하나라도 건드리나. 아니면 판별력이 0 이다. */
 function tokenIsLive(token, articles) {
   for (const a of articles || []) { if (tokenHit(token, a) > 0) return true; }
@@ -239,6 +298,20 @@ function matchArticle(filename, articles, opts) {
   const o = opts || {};
   const threshold = o.threshold != null ? o.threshold : THRESHOLD;
   const margin = o.margin != null ? o.margin : MARGIN;
+
+  /* 0단계 — 캡션 첫 줄이 파일명과 같으면 그게 답이다 (위 주석 참고).
+     유사도 추정이 아니라 동일성이므로 토큰 경로보다 먼저 본다. */
+  const cap = captionMatches(filename, articles);
+  if (cap.hits.length === 1) {
+    return { matched: cap.hits[0], score: 1, runnerUp: 0, ranked: [], viaCaption: cap.kind,
+      reason: '캡션 첫 줄 ' + cap.kind + ' 일치' };
+  }
+  if (cap.hits.length > 1) {
+    return { matched: null, score: 1, runnerUp: 1, ranked: [], viaCaption: cap.kind,
+      reason: '캡션 첫 줄이 같은 기사가 ' + cap.hits.length + '편 — 사람이 골라야 한다: '
+        + cap.hits.slice(0, 3).map((a) => a && a.title).join(' / ') };
+  }
+
   const tokens = fileTokens(filename);
 
   if (!tokens.length) {
@@ -322,6 +395,7 @@ function groupUnmatched(unmatched) {
 }
 
 module.exports = {
+  captionMatches, fileCore, captionHead,
   groupUnmatched,
   romanize, phon, dice, fileTokens, squash,
   tokenHit, tokenIsLive, scoreArticle, matchArticle, hitAtWordStart, squashMap,

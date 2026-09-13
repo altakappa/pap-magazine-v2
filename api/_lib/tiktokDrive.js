@@ -50,7 +50,7 @@ const drive = require('./driveVideos');
 const MAX_BYTES = Number(process.env.TIKTOK_DRIVE_MAX_BYTES || 50 * 1024 * 1024);
 
 const LOOKBACK_DAYS = Number(process.env.DRIVE_MATCH_LOOKBACK_DAYS || 21);
-const ART_COLS = 'id, title, slug, custom_url, content, category, tags, published_date';
+const ART_COLS = 'id, title, slug, custom_url, content, category, tags, published_date, instagram_caption';
 
 /**
  * 드라이브 파일에서 틱톡에 올릴 수 있는 것만 고른다 — 순수 함수.
