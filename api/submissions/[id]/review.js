@@ -15,6 +15,7 @@ const { handleCors } = require('../../_lib/cors');
 const { sendEmail, templates, DEFAULT_REJECTION_NOTE } = require('../../_lib/email');
 const { mergeAdminNotes } = require('../../_lib/adminNotes');
 const { feeForType } = require('../../_lib/submissionPayment');
+const { hasActivePlan } = require('../../_lib/subscriptionAccess');   // 2026-09-13 승인 메일 프리미엄 업셀 판정
 const { getOptimizedHero } = require('../../_lib/imageOptimize');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 // 크레딧 역할 표준화 — 서브미션 라벨('Photo')을 관리자 기준값('Photographer')으로.
@@ -866,12 +867,15 @@ module.exports = async function handler(req, res) {
         // 금액은 서버 단일 소스(feeForType)로 산출 — 유형별 euro-cents(€380/€790).
         // free/그 외 유형은 null → 메일에 결제 블록 미표시.
         let _feeCents = null;
-        if (status === 'approved') {
+        // 2026-09-13 — 연간 프리미엄 면제(waived) 건은 청구가 없다 → 결제 블록 없음.
+        if (status === 'approved' && String(submission.payment_status || '') !== 'waived') {
           try {
             const _d = submission.description ? JSON.parse(submission.description) : {};
             _feeCents = feeForType(_d && _d.submissionType);
           } catch (_) { _feeCents = null; }
         }
+        // 2026-09-13 도메니코 — 승인 메일에 프리미엄 업셀(비프리미엄에게만). 템플릿이 isPremium 을 보고 블록을 넣는다.
+        const _recipientPremium = hasActivePlan(profile, 'premium');
         const tpl = templates.submissionReviewComplete(
           { name: profile.display_name || '' },
           { title: submission.title },
@@ -881,7 +885,7 @@ module.exports = async function handler(req, res) {
           // feeCents 만 주입 → 유료/브랜디드 승인 메일에 결제요청 블록이 뜬다.
           // editorialSlug: Ⅳ-41 링크 킷 — 승인 메일에 게재 페이지 링크+배지 임베드 코드.
           // slug 미확정(비승인 상태 등)이면 템플릿이 킷 블록을 생략한다.
-          { feeCents: _feeCents, editorialSlug: stagedEditorialSlug || '' }
+          { feeCents: _feeCents, editorialSlug: stagedEditorialSlug || '', isPremium: _recipientPremium }
         );
         // ★ 반드시 await 한다. 예전엔 fire-and-forget(.then)이라 Vercel 서버리스가
         // res 반환 직후 함수를 얼려 전송이 실제로 나가지 않았다(실측: approval_email_sent_at

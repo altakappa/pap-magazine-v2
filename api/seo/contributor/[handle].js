@@ -8,7 +8,8 @@
 
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
-const { MIN_EDITORIALS, SITE, escText, escAttr, normHandle, isPersonRole, pageShell } =
+const { MIN_EDITORIALS, MIN_EDITORIALS_PREMIUM, SITE, escText, escAttr, normHandle, isPersonRole, pageShell,
+  findPremiumCreator, locationLabel, premiumBadgeHtml, contactHtml } =
   require('../../_lib/contributorProfile');
 
 module.exports = async function handler(req, res) {
@@ -39,25 +40,32 @@ module.exports = async function handler(req, res) {
     }
     const eds = Array.from(byId.values());
     const roles = Array.from(roleSet).slice(0, 6);
+    /* 2026-09-13 도메니코(5번 장치) — 프로필 인스타 아이디가 활성 프리미엄 회원이면:
+       첫 화보부터 프로필 · 인증 배지 · 활동 도시/국가 · 참여 화보 전체(30편 제한 해제) · 연락 버튼. */
+    const premium = await findPremiumCreator(supabaseAdmin, handle);
+    const minEds = premium ? MIN_EDITORIALS_PREMIUM : MIN_EDITORIALS;
+    if (premium && !name) name = String(premium.display_name || '');
     /* 관문: 인물 역할이 하나도 없으면(브랜드 크레딧) 또는 편수 미달이면 404 */
-    if (!eds.length || eds.length < MIN_EDITORIALS || !roles.length) {
+    if (!eds.length || eds.length < minEds || !roles.length) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'public, s-maxage=600');
       return res.status(404).send('<!DOCTYPE html><title>Not found</title>Not found');
     }
 
     const canonical = SITE + '/contributor/' + handle;
+    const shown = premium ? eds : eds.slice(0, 30);
+    const loc = premium ? locationLabel(premium) : '';
     const jsonLd = {
       '@context': 'https://schema.org',
       '@type': 'ProfilePage',
-      mainEntity: {
+      mainEntity: Object.assign({
         '@type': 'Person',
         name: name || handle,
         jobTitle: roles.join(', '),
         sameAs: ['https://www.instagram.com/' + handle + '/'],
         url: canonical,
-      },
-      hasPart: eds.slice(0, 30).map(e => ({
+      }, loc ? { homeLocation: { '@type': 'Place', name: loc } } : {}),
+      hasPart: shown.map(e => ({
         '@type': 'CreativeWork', name: e.title,
         url: SITE + '/editorial/' + encodeURIComponent(e.slug),
       })),
@@ -65,13 +73,17 @@ module.exports = async function handler(req, res) {
 
     const body =
       '<div class="eyebrow">Contributor</div>\n'
+      + (premium ? premiumBadgeHtml() : '')
       + '<h1>' + escText(name || handle) + '</h1>\n'
       + '<p class="sub">' + escText(roles.join(' · ')) + ' — PAP MAGAZINE 발행 화보 '
       + eds.length + '편 참여.</p>\n'
+      + (loc ? '<span class="loc">활동 지역 · ' + escText(loc) + '</span>\n' : '')
       + '<a class="ig" href="https://www.instagram.com/' + escAttr(handle)
       + '/" target="_blank" rel="noopener noreferrer">@' + escText(handle) + ' ↗</a>\n'
+      + (premium && premium.bio ? '<p class="bio" translate="no">' + escText(String(premium.bio).slice(0, 600)) + '</p>\n' : '')
+      + (premium ? contactHtml(handle) : '')
       + '<div class="grid">\n'
-      + eds.slice(0, 30).map(e =>
+      + shown.map(e =>
           '<a class="card" href="/editorial/' + escAttr(encodeURIComponent(e.slug)) + '">'
           + (e.img ? '<img src="' + escAttr(e.img) + '" alt="' + escAttr(e.title) + '" loading="lazy">' : '')
           + '<div class="t">' + escText(e.title) + '</div>'

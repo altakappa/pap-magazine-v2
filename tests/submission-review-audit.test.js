@@ -205,7 +205,7 @@ for (const lang of LANGS) {
   ok(`${lang} — MY SUBMISSIONS 안내 포함`, /MY SUBMISSIONS/.test(String(v)));
   ok(`${lang} — 줄바꿈 토큰(\\n) 3줄 구성`, String(v).split('\\n').length === 3);
   ok(`${lang} — successMsg 에 검토기간이 명시돼 있다`,
-    /1[-–~ ]?3|1 à 3|1〜3/.test(String(subDict[lang].successMsg)));
+    /7/.test(String(subDict[lang].successMsg)) && /2/.test(String(subDict[lang].successMsg)));   // 2026-09-13: 최대 7영업일 · 프리미엄 2영업일
   // 2026-09-10 도메니코: "어떤 화보든 총 이미지 갯수가 최소 4개 이상". 옛 '죽은 키' 는 되살아나
   // 서버 MIN_TOTAL_IMAGES(4)와 같은 숫자를 말해야 한다 — 문구와 실제 하한이 다시 어긋나면 안 된다.
   ok(`${lang} — toastMinImages 가 있고 {min}·{count} 자리표시자를 쓴다 (하한은 서버 상수에서)`,

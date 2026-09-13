@@ -29,7 +29,7 @@ t('핸들 검증 정규식 (URL 인젝션 방지)', /HANDLE_RE = \/\^\[A-Za-z0-9
 t('브랜드성 역할 제외 (fashion by·brand·agency)',
   /fashion by/.test(lib) && /agency/.test(lib) && /isPersonRole/.test(prof) && /isPersonRole/.test(idx));
 t('프로필 관문 — 미달·비인물이면 404 (씬페이지 방지)',
-  /eds\.length < MIN_EDITORIALS \|\| !roles\.length/.test(prof) && /status\(404\)/.test(prof));
+  /eds\.length < minEds \|\| !roles\.length/.test(prof) && /const minEds = premium \? MIN_EDITORIALS_PREMIUM : MIN_EDITORIALS/.test(prof) && /status\(404\)/.test(prof));
 t('RPC 사용 (전량 스캔 아님)',
   /rpc\('top_contributors'/.test(idx) && /rpc\('contributor_editorials'/.test(prof));
 t('Person JSON-LD + sameAs 인스타그램',

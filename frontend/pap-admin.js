@@ -276,6 +276,19 @@ function updateMemberStats(){
 }
 
 function _getMemberPlan(m){return m.subscriptionPlan||m.subscription_plan||'free';}
+// 2026-09-13 — 프리미엄 우선 심사 정렬. pending(보완 완료 포함) + 프리미엄 등급 → 맨 위(오래된 순), 나머지는 원래 순서.
+function _premiumFirst(list){
+  if(!Array.isArray(list)) return list;
+  var top=[], rest=[];
+  list.forEach(function(s){
+    var plan=String((s&&(s.submitterGrade||s.submitterPlan))||'').toLowerCase();
+    var isPrem=plan.indexOf('premium')>-1;
+    var pending=(s&&s.status==='pending') && s.payment_status!=='awaiting_authorization';
+    (isPrem&&pending?top:rest).push(s);
+  });
+  top.sort(function(a,b){ return String(a.created_at||'').localeCompare(String(b.created_at||'')); });
+  return top.concat(rest);
+}
 function _getMemberStatus(m){return m.subscriptionStatus||m.subscription_status||'inactive';}
 function _getMemberRole(m){return m.role||'member';}
 
@@ -1516,6 +1529,11 @@ function _paymentStatusBadge(paymentStatus, paidAmount, submissionType, authoriz
     return _span('rgba(255,255,255,.05)','rgba(255,255,255,.16)','rgba(255,255,255,.5)','승인 취소 · 청구 없음',
       '결제 승인이 해제되었습니다. 청구되지 않았습니다.');
   }
+  // 2026-09-13 — 연간 프리미엄 €380 1회 면제(서버 판정). 청구 없이 게재 진행. 승인 게이트도 막지 않는다.
+  if(paymentStatus==='waived'){
+    return _span('rgba(201,168,106,.14)','rgba(201,168,106,.5)','rgba(230,200,140,.98)','\uD83C\uDF81 \u20ac380 면제 · 연간 프리미엄',
+      '연간 프리미엄 회원 혜택으로 유료 게재료가 면제된 건입니다. 청구 없이 게재를 진행합니다.');
+  }
   if(paymentStatus==='paid'){
     var cents=Number(paidAmount); var label='결제완료 · 게재대기';
     if(isFinite(cents) && cents>0){ label='결제완료 · \u20ac'+Math.round(cents/100)+' · 게재대기'; }
@@ -2054,7 +2072,7 @@ async function doReview(status){
   // 점프하지 않고 결제 대기 상태로 둔다. closeModal 이 currentReviewSubmission 을
   // 비우므로 여기서 미리 판정값을 확보한다. (결제 완료 시 편집으로 진행)
   var _feeReqApproval = _isFeeRequiredType(_submissionTypeOf(currentReviewSubmission))
-    && currentReviewSubmission.payment_status !== 'paid';
+    && currentReviewSubmission.payment_status !== 'paid' && currentReviewSubmission.payment_status !== 'waived';   // 2026-09-13 면제 건 제외
   var note=document.getElementById('reviewNote').value;
   var labels={approved:'승인',rejected:'거절',revision:'보완 요청'};
 
@@ -2325,6 +2343,10 @@ async function loadSubmissions(statusFilter, opts){
       return;
     }
     tb.innerHTML='';
+    // 2026-09-13 도메니코 — 프리미엄 우선 심사(2영업일 이내 결과 약속). 심사 대기 중인 프리미엄 회원 건을
+    // 목록 맨 위로 올린다(그 안에서는 오래된 순 — 마감이 먼저 오는 것부터). 나머지는 서버 순서(최신순) 그대로.
+    // 순수 정렬: 같은 배열을 새로 만들 뿐 서버 응답을 바꾸지 않는다.
+    submissions = _premiumFirst(submissions);
     submissions.forEach(function(s){
       // QA #179 — server-derived display_status covers all five workflow
       // stages (대기중 / 보완요청 / 최종승인 / 업로드완료 / 거절) plus the
@@ -2340,7 +2362,7 @@ async function loadSubmissions(statusFilter, opts){
       // 유료/브랜디드 승인 건은 결제 전까지 '최종 승인' 대신 '결제 대기'로 표기한다
       // (승인=청구). payment_status='paid' 가 되면 자동으로 '최종 승인' 으로 복귀.
       // 이미 게재(uploaded)된 건은 제외.
-      if (ds === 'final_approved' && s.payment_status !== 'paid' && _isFeeRequiredType(_submissionTypeOf(s))) {
+      if (ds === 'final_approved' && s.payment_status !== 'paid' && s.payment_status !== 'waived' && _isFeeRequiredType(_submissionTypeOf(s))) {
         ds = 'awaiting_payment';
       }
       // QA #183 — every stage gets its own colour so the table can be
@@ -2378,7 +2400,7 @@ async function loadSubmissions(statusFilter, opts){
         // 최종승인 (still draft) → "에디토리얼 편집" (work in progress).
         var btnLabel = ds === 'uploaded' ? '에디토리얼 보기' : '에디토리얼 편집';
         // 게재료 미결제 게이트 (정책 A, 2026-07-21 QA) — 유료/브랜디드 미결제면 편집 진입에 경고
-        var _unpaidFee = _isFeeRequiredType(_submissionTypeOf(s)) && s.payment_status !== 'paid';
+        var _unpaidFee = _isFeeRequiredType(_submissionTypeOf(s)) && s.payment_status !== 'paid' && s.payment_status !== 'waived';   // 2026-09-13 면제 건 제외
         if(ds !== 'uploaded' && _unpaidFee){
         actionBtns += ' <button class="btn btn-sm btn-primary" style="border-color:#dc2626;color:#fca5a5" onclick="openEditorialEditorGuarded(\''+editorialId+'\')" title="게재료 미결제 — 클릭 시 경고 후 진행">\u26a0 '+btnLabel+'</button>';
         } else {
@@ -5480,7 +5502,7 @@ async function loadDashboardStats(){
           // 확인되면 자동으로 '최종 승인' 으로 돌아온다.
           var _st=(s.status||'pending');
           var _isAwaitingPay = (_st==='approved')
-            && s.payment_status!=='paid'
+            && s.payment_status!=='paid' && s.payment_status!=='waived'
             && (typeof _isFeeRequiredType==='function' && typeof _submissionTypeOf==='function'
                 ? _isFeeRequiredType(_submissionTypeOf(s)) : false);
           var _map={ pending:'대기 중', approved:'최종 승인', revision:'보완 요청', rejected:'거절' };

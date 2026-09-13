@@ -61,7 +61,7 @@ function db(row, cap) {
   ok('마이페이지 사전 v9 + 8개 언어 키', /content="mypage" data-v="9"/.test(mp) && ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const d = JSON.parse(read('frontend/i18n/ui/mypage.' + l + '.json')); return d['완성된 에디토리얼 제출하기'] && d['완성 에디토리얼 제출 완료 · 심사 중입니다.']; }));
   const em = require(path.join(ROOT, 'api', '_lib', 'email'));
   ok('발급 메일 9개 언어에 후속 절차 한 줄', ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => /PULL-LETTERS/.test(em.templates.pullletterIssued({ name: 'A' }, '', l).html)));
-  ok('관리자: 풀레터 목록 배지 + 검토 모달 Pull-Letter 줄', /발급 완료 · 에디토리얼 제출됨/.test(read('frontend/pap-admin.js')) && /id="reviewModalPullLetter"/.test(read('frontend/admin.html')) && /pap-admin\.js\?v=157/.test(read('frontend/admin.html')));
+  ok('관리자: 풀레터 목록 배지 + 검토 모달 Pull-Letter 줄', /발급 완료 · 에디토리얼 제출됨/.test(read('frontend/pap-admin.js')) && /id="reviewModalPullLetter"/.test(read('frontend/admin.html')) && /pap-admin\.js\?v=(15[7-9]|1[6-9]\d)/.test(read('frontend/admin.html')));
 
   console.log('\n=== 4주 독촉 크론 + 미제출 시 새 요청 불가 (도메니코 2026-09-13) ===');
   // supabase 클라이언트만 가짜로 — 순수 함수(isDue)와 배선만 본다.

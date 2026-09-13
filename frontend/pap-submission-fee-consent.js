@@ -71,6 +71,9 @@
       agree: '위 내용을 읽고 이해했습니다. 지금 {fee} 결제 승인을 진행하고, PAP 가 수락하면 청구되는 데 동의합니다.',
       back: '돌아가서 수정',
       go: '동의하고 제출',
+      waivedTitle: '연간 프리미엄 혜택 — 이번 게재료(€380)는 면제됩니다',
+      waivedBody: '이 제출은 유료 유형(€380)이지만, 연간 프리미엄 회원 혜택으로 <b>이번 1회는 면제</b>됩니다. 결제 승인 없이 바로 접수되고, 수락돼도 <b>청구되지 않습니다.</b> 면제는 구독 연도당 1회입니다.',
+      waivedAgree: '위 내용을 이해했습니다. 이번 제출에 연간 프리미엄 면제 1회를 사용하는 데 동의합니다.',
     },
     en: {
       title: 'Before you submit — a publication fee may apply',
@@ -96,6 +99,9 @@
       agree: 'I have read and understood the above. I authorize a hold of {fee} now, to be charged only if PAP accepts my submission.',
       back: 'Go back and edit',
       go: 'Agree and submit',
+      waivedTitle: 'Yearly Premium benefit — this publication fee (€380) is waived',
+      waivedBody: 'This submission is a paid type (€380), but as a Yearly Premium member <b>this one is waived</b>. It is accepted for review with no payment authorization, and <b>nothing is charged</b> even if accepted. One waiver per subscription year.',
+      waivedAgree: 'I understand the above. I agree to use my one Yearly Premium waiver on this submission.',
     },
     it: {
       title: 'Prima di inviare — potrebbe essere previsto un costo di pubblicazione',
@@ -121,6 +127,9 @@
       agree: 'Ho letto e compreso quanto sopra. Autorizzo ora un blocco di {fee}, che sarà addebitato solo se PAP accetta il mio invio.',
       back: 'Torna e modifica',
       go: 'Accetto e invio',
+      waivedTitle: 'Vantaggio Premium annuale — la quota di pubblicazione (€380) è esonerata',
+      waivedBody: 'Questa candidatura è a pagamento (€380), ma come membro Premium annuale <b>questa volta è esonerata</b>. Viene accettata senza autorizzazione di pagamento e <b>non viene addebitato nulla</b> anche se accettata. Un esonero per anno di abbonamento.',
+      waivedAgree: 'Ho capito quanto sopra. Accetto di usare il mio esonero Premium annuale per questa candidatura.',
     },
     fr: {
       title: "Avant d'envoyer — des frais de publication peuvent s'appliquer",
@@ -146,6 +155,9 @@
       agree: "J'ai lu et compris ce qui précède. J'autorise dès maintenant un blocage de {fee}, débité uniquement si PAP accepte mon envoi.",
       back: 'Revenir et modifier',
       go: "J'accepte et j'envoie",
+      waivedTitle: 'Avantage Premium annuel — ces frais de publication (€380) sont offerts',
+      waivedBody: 'Cette soumission est payante (€380), mais en tant que membre Premium annuel <b>celle-ci est offerte</b>. Elle est acceptée sans autorisation de paiement et <b>rien n’est prélevé</b> même si elle est retenue. Une exonération par année d’abonnement.',
+      waivedAgree: 'J’ai compris ce qui précède. J’accepte d’utiliser mon exonération Premium annuelle pour cette soumission.',
     },
     es: {
       title: 'Antes de enviar — puede aplicarse una tarifa de publicación',
@@ -171,6 +183,9 @@
       agree: 'He leído y entendido lo anterior. Autorizo ahora una retención de {fee}, que se cobrará solo si PAP acepta mi envío.',
       back: 'Volver y editar',
       go: 'Acepto y envío',
+      waivedTitle: 'Ventaja Premium anual — esta tarifa de publicación (€380) queda exenta',
+      waivedBody: 'Esta propuesta es de pago (€380), pero como miembro Premium anual <b>esta vez queda exenta</b>. Se acepta sin autorización de pago y <b>no se cobra nada</b> aunque sea aceptada. Una exención por año de suscripción.',
+      waivedAgree: 'He entendido lo anterior. Acepto usar mi exención Premium anual en esta propuesta.',
     },
     de: {
       title: 'Vor dem Einreichen — es kann eine Veröffentlichungsgebühr anfallen',
@@ -196,6 +211,9 @@
       agree: 'Ich habe das Obige gelesen und verstanden. Ich autorisiere jetzt eine Reservierung von {fee}, die nur bei Annahme durch PAP abgebucht wird.',
       back: 'Zurück und bearbeiten',
       go: 'Zustimmen und einreichen',
+      waivedTitle: 'Premium-Jahresvorteil — diese Gebühr (€380) wird erlassen',
+      waivedBody: 'Diese Einreichung ist kostenpflichtig (€380), aber als Premium-Jahresmitglied <b>wird sie diesmal erlassen</b>. Sie wird ohne Zahlungsautorisierung angenommen und <b>nichts wird berechnet</b>, auch bei Annahme. Ein Erlass pro Abojahr.',
+      waivedAgree: 'Ich habe das Obige verstanden. Ich stimme zu, meinen Premium-Jahreserlass für diese Einreichung zu nutzen.',
     },
     ja: {
       title: '送信前のご確認 — 掲載料が発生する場合があります',
@@ -221,6 +239,9 @@
       agree: '上記を読み、理解しました。いま {fee} の承認（確保）を行い、PAP が受理した場合にのみ請求されることに同意します。',
       back: '戻って修正',
       go: '同意して送信',
+      waivedTitle: '年間プレミアム特典 — 今回の掲載料（€380）は免除されます',
+      waivedBody: 'この応募は有料区分（€380）ですが、年間プレミアム会員特典により<b>今回は免除</b>されます。決済承認なしで受付され、採用されても<b>請求はありません。</b>免除は契約年ごとに1回です。',
+      waivedAgree: '上記を理解しました。この応募に年間プレミアム免除1回を使用することに同意します。',
     },
     zh: {
       title: '提交前确认 — 可能产生刊登费',
@@ -246,6 +267,9 @@
       agree: '我已阅读并理解以上内容。我同意现在冻结 {fee}，仅在 PAP 录用时扣款。',
       back: '返回修改',
       go: '同意并提交',
+      waivedTitle: '年付高级会员权益 — 本次刊登费（€380）免除',
+      waivedBody: '本次投稿属于付费类型（€380），但作为年付高级会员，<b>本次免除</b>。无需付款授权即可受理，即使通过审核也<b>不会收费</b>。每订阅年免除1次。',
+      waivedAgree: '我已了解以上内容。同意在本次投稿中使用年付高级会员免除1次。',
     },
     ru: {
       title: 'Перед отправкой — может взиматься плата за публикацию',
@@ -271,6 +295,9 @@
       agree: 'Я прочитал(а) и понял(а) изложенное выше. Я разрешаю зарезервировать {fee} сейчас; списание произойдёт только если PAP примет мою заявку.',
       back: 'Вернуться и изменить',
       go: 'Согласен и отправить',
+      waivedTitle: 'Преимущество годового Premium — этот сбор (€380) не взимается',
+      waivedBody: 'Эта заявка платная (€380), но как участник годового Premium <b>в этот раз вы освобождены</b>. Она принимается без авторизации оплаты, и <b>ничего не списывается</b> даже при принятии. Одно освобождение за год подписки.',
+      waivedAgree: 'Я понимаю изложенное выше. Согласен(на) использовать своё освобождение годового Premium для этой заявки.',
     },
   };
 
@@ -328,6 +355,11 @@
       return Promise.resolve(true);
     }
     var fee = FEE[r.submissionType] || '';
+    // 2026-09-13 — 연간 프리미엄 €380 1회 면제: submission.html 이 GET /api/submissions/fee-waiver 로 받아
+    // window._papFeeWaiver 에 둔다. 소룩(€380) 이고 면제 자격이 있으면 결제 승인 대신 면제 동의 모달.
+    // 최종 판정은 서버(POST)가 다시 한다 — 여기서 잘못 보여도 돈은 서버 판정대로 움직인다.
+    var waived = false;
+    try { waived = r.submissionType === 'paid_few_looks' && !!(window._papFeeWaiver && window._papFeeWaiver.eligible); } catch (_) { waived = false; }
 
     return new Promise(function (resolve) {
       var back = document.createElement('div');
@@ -340,14 +372,16 @@
       back.innerHTML =
         '<div style="max-width:560px;width:100%;background:#0d0d0d;border:1px solid rgba(255,179,71,.45);'
         + 'border-radius:3px;padding:28px 26px;box-shadow:0 24px 80px rgba(0,0,0,.7)">'
-        + '<div style="font-size:15px;font-weight:700;letter-spacing:.02em;color:#ffb347;margin-bottom:6px">'
-        + esc(t('title')) + '</div>'
+        + '<div style="font-size:15px;font-weight:700;letter-spacing:.02em;color:' + (waived ? '#c9a86a' : '#ffb347') + ';margin-bottom:6px">'
+        + esc(waived ? t('waivedTitle') : t('title')) + '</div>'
         + '<div style="font-size:30px;font-weight:700;color:#fff;letter-spacing:.02em;margin:10px 0 20px">'
-        + esc(fee) + '</div>'
+        + (waived ? '<s style="color:rgba(255,255,255,.4)">' + esc(fee) + '</s> €0' : esc(fee)) + '</div>'
         + row(t('whyLabel'), whyText(r))
-        + row(t('whenLabel'), t('when'))
-        + row(t('howLabel'), t('how'))
-        + row(t('ifNotLabel'), t('ifNot'))
+        + (waived
+            ? row(t('howLabel'), t('waivedBody'))
+            : (row(t('whenLabel'), t('when'))
+               + row(t('howLabel'), t('how'))
+               + row(t('ifNotLabel'), t('ifNot'))))
         + row(t('fixLabel'), esc(r.submissionType === 'paid_few_looks'
             ? (r.paidReason === 'no_clothing_brands' ? t('fixNoBrands')
                : r.paidReason === 'few_clothing_brands' ? t('fixFewBrands') : t('fixFewLooks'))
@@ -355,7 +389,7 @@
         + '<label style="display:flex;gap:10px;align-items:flex-start;margin:20px 0 18px;cursor:pointer">'
         + '<input type="checkbox" id="_papFeeAgree" style="margin-top:3px;width:16px;height:16px;flex:none;cursor:pointer">'
         + '<span style="font-size:13px;line-height:1.6;color:#fff">'
-        + esc(t('agree').replace('{fee}', fee)) + '</span></label>'
+        + esc(waived ? t('waivedAgree') : t('agree').replace('{fee}', fee)) + '</span></label>'
         + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
         + '<button type="button" id="_papFeeBack" style="flex:1;min-width:150px;padding:13px;background:none;'
         + 'border:1px solid rgba(255,255,255,.32);color:#fff;font-size:12px;letter-spacing:.1em;cursor:pointer">'

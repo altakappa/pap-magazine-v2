@@ -22,6 +22,8 @@ const { brandRolesIn } = require('../_lib/brandRoleGuard');   // 2026-09-12 브�
 const { checkPullLetterForSubmission, linkPullLetterToSubmission } = require('../_lib/pullLetterLink');   // 2026-09-13 풀레터 후속 제출
 const englishOnly = require('../_lib/submissionEnglishOnly');   // 전부 영어로 + 자동번역 방어 (POST·PUT 공용)
 const { feeForType } = require('../_lib/submissionPayment');
+const { checkFeeWaiver, waiverRecord, WAIVED_STATUS } = require('../_lib/premiumFeeWaiver');
+const { premiumSubmissionAlertText } = require('../_lib/premiumReviewSla');   // 2026-09-13 프리미엄 우선 심사(2영업일)   // 2026-09-13 연간 프리미엄 €380 1회 면제
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
 const { sendEmail, templates } = require('../_lib/email');
 const { resolveEmailLang } = require('../_lib/emailLocale');
@@ -228,6 +230,13 @@ module.exports = async function handler(req, res) {
       if (_brandRoles.length) {
         return _reject400(res, user, 'TEAM_ROLE_BRAND', 'Designers and brands (clothing, accessories, jewelry) belong in the look credits, not the team credits: ' + _brandRoles.join(', '), { roles: _brandRoles });
       }
+      // 2026-09-13 도메니코 — 연간 프리미엄 회원은 €380(소룩) 서브미션 1회 면제(구독 연도당). €790 브랜디드는 제외.
+      // 서버가 판정하고 payment_status='waived' 로 저장 → PayPal 승인 단계를 건너뛴다. 폼은 응답의 feeWaived 를 본다.
+      let _feeWaiver = null;
+      if (feeForType(submissionType) === 38000) {
+        const _fw = await checkFeeWaiver(supabaseAdmin, user.id, submissionType);
+        if (_fw && _fw.eligible) _feeWaiver = _fw;
+      }
       // 2026-09-05 — 역할도 같은 이유로 표준화(摄影师 → Photographer 등).
       // 모르는 자유입력 역할은 normalizeRole 이 원본을 보존한다.
       // (역할·credits 키 표준화는 위 englishOnly.normalize 가 이미 했다)
@@ -260,6 +269,7 @@ module.exports = async function handler(req, res) {
             submissionPaidReason: _cls.paidReason,
             needsCreditReview: !!_cls.needsCreditReview,
             reviewReason: _cls.reviewReason || null,
+            feeWaiver: _feeWaiver ? waiverRecord(_feeWaiver) : null,   // 2026-09-13 연간 프리미엄 €380 면제 기록
           }),
           file_urls: [...lookUrls, ...additionalUrls],
           status: 'pending',
@@ -267,7 +277,8 @@ module.exports = async function handler(req, res) {
           // 무료 유형은 청구 대상이 아니므로 'none' 그대로: 결제 API 가 닿지 않는다.
           // 'awaiting_authorization' 은 review.js 가 승인을 막는 신호이기도 하다
           // (승인 없이 게재되면 €790 을 영영 못 받는다).
-          payment_status: feeForType(submissionType) ? 'awaiting_authorization' : 'none',
+          // 2026-09-13 — 연간 프리미엄 면제 건은 'waived': 승인 게이트 통과, 청구 없음.
+          payment_status: _feeWaiver ? WAIVED_STATUS : (feeForType(submissionType) ? 'awaiting_authorization' : 'none'),
         })
         .select()
         .single();
@@ -292,7 +303,7 @@ module.exports = async function handler(req, res) {
         if (_prof && _prof.email) {
           const _lang = resolveEmailLang(_prof);
           await sendEmail(_prof.email, templates.submissionReceived(
-            { name: _prof.display_name || '' }, { title: submission.title }, _lang));
+            { name: _prof.display_name || '' }, { title: submission.title }, _lang, { isPremium: _isPremium }));   // 2026-09-13 프리미엄은 2영업일
         }
       } catch (_e) {
         console.error('[submissions] 접수 메일 실패(접수는 저장됨):', (_e && _e.message) || _e);
@@ -315,7 +326,22 @@ module.exports = async function handler(req, res) {
             + '\nsubmission=' + submission.id + ' pullletter=' + _pullLetter.id);
         } catch (_) {}
       }
-      return res.status(201).json({ submission });
+      // 2026-09-13 도메니코 — 프리미엄 회원은 우선 심사(2영업일 이내 결과 약속). 운영자가 바로 알아야 지킨다.
+      if (_isPremium) {
+        try {
+          await sendTextToTelegramSafe(premiumSubmissionAlertText(submission, (data.contactName || data.studio || user.email || user.id)));
+        } catch (_) {}
+      }
+      // 2026-09-13 — 면제 적용 시 운영자에게도 알린다(승인 시 청구가 없다는 걸 미리 알아야 한다).
+      if (_feeWaiver) {
+        try {
+          await sendTextToTelegramSafe('🎁 연간 프리미엄 €380 면제 적용\n제목: ' + String(submission.title || '').slice(0, 80)
+            + '\n제출자: ' + (data.contactName || data.studio || user.email || user.id)
+            + '\n구독 기간: ' + String(_feeWaiver.periodStart || '').slice(0, 10) + ' ~ ' + String(_feeWaiver.periodEnd || '').slice(0, 10)
+            + '\nsubmission=' + submission.id);
+        } catch (_) {}
+      }
+      return res.status(201).json({ submission, feeWaived: !!_feeWaiver });
     } catch (error) {
       try {
         console.error('Create submission error:', {

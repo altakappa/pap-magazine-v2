@@ -22,7 +22,7 @@ t('NULL 행 보호 (is.null 을 or 로 함께)',
 t('필터가 status 분기보다 앞(기본 쿼리)에 걸린다',
   gets.indexOf('payment_status.not.in') < gets.indexOf("status === 'resubmitted'"));
 t('POST(생성) 쪽 payment_status 로직은 그대로다',
-  /payment_status: feeForType\(submissionType\) \? 'awaiting_authorization' : 'none'/.test(src));
+  /payment_status: _feeWaiver \? WAIVED_STATUS : \(feeForType\(submissionType\) \? 'awaiting_authorization' : 'none'\)/.test(src));   // 2026-09-13 연간 프리미엄 면제(waived) 분기 추가
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ submission-list-unpaid tests FAILED'); process.exit(1); }

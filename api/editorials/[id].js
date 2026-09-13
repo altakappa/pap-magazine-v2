@@ -15,7 +15,9 @@ const { embedAndStoreEditorial } = require('../_lib/embeddings');
 const { sendEmail, templates } = require('../_lib/email');
 const { feeForType } = require('../_lib/submissionPayment');
 const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
-const { sendEditorialToTelegramSafe } = require('../_lib/telegram');
+const { sendEditorialToTelegramSafe, sendTextToTelegramSafe } = require('../_lib/telegram');
+const { hasActivePlan } = require('../_lib/subscriptionAccess');   // 2026-09-13 프리미엄 판정(업셀·IG 보장 알림)
+const { premiumPublishAlertText } = require('../_lib/premiumPublishAlert');   // 2026-09-13 프리미엄 에디토리얼 = IG 피드+스토리 보장
 const { sanitizeInstaLogoSettings } = require('../_lib/instaLogoSettings');  // 2026-07-28
 // 2026-08-07 — 유니크 제약 위반을 사람이 읽는 안내로 (발행 8연속 실패 사고)
 const { describePgError } = require('../_lib/pgError');
@@ -67,7 +69,7 @@ async function _maybeSendApprovalEmail(editorialRow, opts) {
 
     // 유료/브랜디드 미결제 건은 재발송에도 게재료 결제요청 블록을 포함(승인 메일과 동일).
     let _feeCents = null;
-    if (submission.payment_status !== 'paid') {
+    if (submission.payment_status !== 'paid' && submission.payment_status !== 'waived') {   // 2026-09-13 면제 건은 청구 없음
       try {
         const _d = submission.description ? JSON.parse(submission.description) : {};
         _feeCents = feeForType(_d && _d.submissionType);
@@ -76,7 +78,7 @@ async function _maybeSendApprovalEmail(editorialRow, opts) {
 
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('email, display_name, language, email_language, country')
+      .select('email, display_name, language, email_language, country, subscription_plan, subscription_status')
       .eq('id', submission.user_id)
       .single();
     if (!profile || !profile.email) return;
@@ -91,6 +93,7 @@ async function _maybeSendApprovalEmail(editorialRow, opts) {
       'approved',
       { approvalDay: opts.approvalDay || '', approvalMonth: opts.approvalMonth || '',
         feeCents: _feeCents,
+        isPremium: hasActivePlan(profile, 'premium'),   // 2026-09-13 비프리미엄에게만 업셀 블록
         // Ⅳ-41 게재 링크 킷 — 이 경로는 에디토리얼이 이미 존재하므로 slug 확정
         editorialSlug: editorialRow.slug || '' }
     );
@@ -440,6 +443,22 @@ module.exports = async function handler(req, res) {
       // (env TELEGRAM_BOT_TOKEN/CHAT_ID 미설정 시 즉시 skip.)
       if (becomingPublished) {
         await sendEditorialToTelegramSafe(data);
+        // 2026-09-13 도메니코 — 프리미엄 회원의 에디토리얼은 인스타그램 피드 + 스토리 포스팅을 보장한다.
+        // 포스팅은 사람이 한다 → 게재 순간 운영자에게 "보장 대상" 이라고 못 박아 둔다. 실패해도 발행은 막지 않는다.
+        try {
+          if (data.source_submission_id) {
+            const { data: _sub } = await supabaseAdmin
+              .from('submissions').select('user_id').eq('id', data.source_submission_id).maybeSingle();
+            if (_sub && _sub.user_id) {
+              const { data: _prof } = await supabaseAdmin
+                .from('profiles').select('instagram, display_name, email, subscription_plan, subscription_status')
+                .eq('id', _sub.user_id).maybeSingle();
+              if (hasActivePlan(_prof, 'premium')) {
+                await sendTextToTelegramSafe(premiumPublishAlertText(data, _prof));   // ★ await — 서버리스 동결
+              }
+            }
+          }
+        } catch (e) { console.warn('[editorial PUT] premium publish alert failed', e && e.message); }
       }
 
       // QA #172 — fire the approval email when the admin ticked the

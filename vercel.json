@@ -40,6 +40,10 @@
       "schedule": "20 0 * * *"
     },
     {
+      "path": "/api/cron/premium-review-sla",
+      "schedule": "30 0 * * *"
+    },
+    {
       "path": "/api/cron/release-due-scheduled",
       "schedule": "*/10 * * * *"
     },
@@ -1630,8 +1634,14 @@
       "maxDuration": 300,
       "memory": 1024
     },
-    "api/cron/backfill-editorial-faq.js": { "maxDuration": 300, "memory": 1024 },
-    "api/cron/backfill-faq.js": { "maxDuration": 300, "memory": 1024 },
+    "api/cron/backfill-editorial-faq.js": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "api/cron/backfill-faq.js": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
     "api/cron/celeb-brief.js": {
       "maxDuration": 300,
       "memory": 1024,

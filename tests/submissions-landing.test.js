@@ -76,10 +76,10 @@ t('JSON-LD 가 유효하고 FAQ·HowTo 를 포함한다', () => {
   assert.ok(types.includes('BreadcrumbList'), 'Breadcrumb 없음');
 });
 
-t('canonical·robots·심사 기간(1–3 business days) 명시', () => {
+t('canonical·robots·심사 기간(7 business days · Premium 2) 명시', () => {
   assert.ok(PAGE.includes('rel="canonical" href="https://www.pap-magazine.com/submissions"'), 'canonical 없음');
   assert.ok(/index,follow/.test(PAGE), 'robots 없음');
-  assert.ok(/1–3 business days/.test(PAGE), '심사 기간 없음');
+  assert.ok(/7 business days \(Premium/.test(PAGE) && !/1–3 business days/.test(PAGE), '심사 기간 없음(2026-09-13: 최대 7영업일 · 프리미엄 2영업일)');
 });
 
 console.log(`  ${pass} passed, ${fail} failed`);

@@ -70,7 +70,7 @@ const total = rows.reduce((a, r) => a + r.n, 0);
 /* 상한 근거: 2026-08-22 정리 직후 실측 계산값이 약 2,200회다.
    여유 15% 를 두고 2,600 으로 잡는다. 새 크론을 넣거나 주기를 좁히려면
    이 숫자를 **의도적으로** 올려야 한다 — 그게 이 검사의 목적이다. */
-const BUDGET = 2600;
+const BUDGET = 2610;   // 2026-09-13 +1/일: premium-review-sla (프리미엄 우선 심사 SLA 감시, 매일 1회)
 t('하루 총 크론 호출이 예산 이하 (' + Math.round(total) + ' / ' + BUDGET + ')',
   total <= BUDGET, rows.slice(0, 6).map((r) => r.path + '=' + Math.round(r.n)).join(' · '));
 

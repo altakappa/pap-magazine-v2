@@ -143,6 +143,13 @@ const SUBMISSION_REVIEW_I18N = {
     kitTitle: 'PAP 게재 링크 킷',
     kitBody: '작품이 공개되면 아래 페이지 링크와 "Featured in PAP" 배지를 포트폴리오·웹사이트·인스타그램 바이오에 자유롭게 사용하실 수 있습니다. 링크를 걸어주시면 작품이 검색과 AI 추천에 더 잘 노출됩니다.',
     kitBadgeLabel: '배지 임베드 코드',
+    upTitle: '프리미엄 회원이라면 이 다음이 달라집니다',
+    upBody: '다음 서브미션부터 프리미엄 회원은 아래 혜택을 받습니다.',
+    upB1: '우선 심사 — 2영업일 이내 결과 (일반 최대 7영업일)',
+    upB2: '게재 시 인스타그램 피드 + 스토리 포스팅 보장',
+    upB3: 'PAP 인증 크리에이터 프로필 — 배지 · 활동 도시 · 연락 버튼 · 첫 게재부터 공개',
+    upB4: '연간 프리미엄: 유료 서브미션(€380) 1회 면제 + 심사 대기 중 제출 수정 · 크레딧 수정 · 공동작업자 지정',
+    upCta: '프리미엄 혜택 보기',
   },
   en: {
     subject: 'Your submission review is complete — "{title}"',
@@ -162,6 +169,13 @@ const SUBMISSION_REVIEW_I18N = {
     kitTitle: 'PAP Publication Link Kit',
     kitBody: 'Once your work is live, feel free to use the page link and the "Featured in PAP" badge on your portfolio, website or Instagram bio. Linking back helps your work surface in search and AI recommendations.',
     kitBadgeLabel: 'Badge embed code',
+    upTitle: 'What changes when you are a Premium member',
+    upBody: 'From your next submission, Premium members get:',
+    upB1: 'Priority review — result within 2 business days (up to 7 for others)',
+    upB2: 'Guaranteed Instagram feed + story posting when published',
+    upB3: 'PAP Verified creator profile — badge, city, contact button, live from your first editorial',
+    upB4: 'Yearly Premium: one paid submission (€380) waived, plus edit while pending, credit edits and collaborator tagging',
+    upCta: 'SEE PREMIUM BENEFITS',
   },
   it: {
     subject: 'La tua revisione è completa — "{title}"',
@@ -181,6 +195,13 @@ const SUBMISSION_REVIEW_I18N = {
     kitTitle: 'Link kit di pubblicazione PAP',
     kitBody: 'Quando il lavoro sarà online, potrai usare liberamente il link della pagina e il badge "Featured in PAP" su portfolio, sito o bio Instagram. Il link aiuta il tuo lavoro a emergere nelle ricerche e nei consigli AI.',
     kitBadgeLabel: 'Codice embed del badge',
+    upTitle: 'Cosa cambia con l’abbonamento Premium',
+    upBody: 'Dalla prossima candidatura, i membri Premium ottengono:',
+    upB1: 'Revisione prioritaria — esito entro 2 giorni lavorativi (fino a 7 per gli altri)',
+    upB2: 'Pubblicazione garantita su feed + storie Instagram all’uscita',
+    upB3: 'Profilo creativo verificato PAP — badge, città, pulsante contatto, attivo dal primo editoriale',
+    upB4: 'Premium annuale: una candidatura a pagamento (€380) esonerata, più modifica in attesa, modifica crediti e tag collaboratori',
+    upCta: 'VEDI I VANTAGGI PREMIUM',
   },
   fr: {
     subject: 'Votre soumission a été examinée — "{title}"',
@@ -200,6 +221,13 @@ const SUBMISSION_REVIEW_I18N = {
     kitTitle: 'Kit de liens de publication PAP',
     kitBody: 'Une fois votre travail en ligne, utilisez librement le lien de la page et le badge "Featured in PAP" sur votre portfolio, site ou bio Instagram. Le lien aide votre travail à ressortir dans les recherches et les recommandations IA.',
     kitBadgeLabel: 'Code d\'intégration du badge',
+    upTitle: 'Ce qui change avec l’abonnement Premium',
+    upBody: 'Dès votre prochaine soumission, les membres Premium bénéficient de :',
+    upB1: 'Examen prioritaire — réponse sous 2 jours ouvrés (jusqu’à 7 pour les autres)',
+    upB2: 'Publication garantie en feed + story Instagram à la parution',
+    upB3: 'Profil créatif certifié PAP — badge, ville, bouton contact, actif dès le premier éditorial',
+    upB4: 'Premium annuel : une soumission payante (€380) offerte, plus modification en attente, correction des crédits et tag des collaborateurs',
+    upCta: 'VOIR LES AVANTAGES PREMIUM',
   },
   es: {
     subject: 'Tu envío ha sido revisado — "{title}"',
@@ -219,6 +247,13 @@ const SUBMISSION_REVIEW_I18N = {
     kitTitle: 'Kit de enlaces de publicación PAP',
     kitBody: 'Cuando tu trabajo esté publicado, puedes usar libremente el enlace de la página y la insignia "Featured in PAP" en tu portfolio, web o bio de Instagram. Enlazar ayuda a que tu trabajo aparezca en búsquedas y recomendaciones de IA.',
     kitBadgeLabel: 'Código de inserción de la insignia',
+    upTitle: 'Lo que cambia si eres miembro Premium',
+    upBody: 'Desde tu próxima propuesta, los miembros Premium reciben:',
+    upB1: 'Revisión prioritaria — resultado en 2 días hábiles (hasta 7 para el resto)',
+    upB2: 'Publicación garantizada en feed + historias de Instagram al salir',
+    upB3: 'Perfil de creador verificado por PAP — insignia, ciudad, botón de contacto, activo desde el primer editorial',
+    upB4: 'Premium anual: una propuesta de pago (€380) exenta, más edición en espera, corrección de créditos y etiquetado de colaboradores',
+    upCta: 'VER VENTAJAS PREMIUM',
   },
   ja: {
     subject: '審査が完了しました — "{title}"',
@@ -238,6 +273,13 @@ const SUBMISSION_REVIEW_I18N = {
     kitTitle: 'PAP掲載リンクキット',
     kitBody: '作品が公開されたら、ページのリンクと「Featured in PAP」バッジをポートフォリオ・ウェブサイト・Instagramのプロフィールで自由にご利用ください。リンクを貼ると検索やAIレコメンドで作品が見つかりやすくなります。',
     kitBadgeLabel: 'バッジ埋め込みコード',
+    upTitle: 'プレミアム会員になると変わること',
+    upBody: '次回の応募から、プレミアム会員には以下が適用されます。',
+    upB1: '優先審査 — 営業日2日以内に結果（通常は最大7営業日）',
+    upB2: '掲載時にInstagramフィード＋ストーリーズ投稿を保証',
+    upB3: 'PAP認証クリエイタープロフィール — バッジ・活動都市・連絡ボタン、初掲載から公開',
+    upB4: '年間プレミアム：有料応募（€380）1回免除、審査中の編集・クレジット修正・共同作業者指定',
+    upCta: 'プレミアム特典を見る',
   },
   zh: {
     subject: '您的投稿审核已完成 — "{title}"',
@@ -257,6 +299,13 @@ const SUBMISSION_REVIEW_I18N = {
     kitTitle: 'PAP 刊登链接工具包',
     kitBody: '作品上线后，欢迎在作品集、网站或 Instagram 主页自由使用页面链接和 "Featured in PAP" 徽章。添加链接有助于作品在搜索和 AI 推荐中被发现。',
     kitBadgeLabel: '徽章嵌入代码',
+    upTitle: '成为高级会员后有何不同',
+    upBody: '从下一次投稿起，高级会员将获得：',
+    upB1: '优先审核 — 2个工作日内出结果（其他最多7个工作日）',
+    upB2: '发布时保证Instagram动态＋快拍推送',
+    upB3: 'PAP认证创作者主页 — 徽章、活动城市、联系按钮，首次刊登即公开',
+    upB4: '年付高级会员：免除1次付费投稿（€380），并可在待审时修改、修改署名、指定合作者',
+    upCta: '查看高级会员权益',
   },
   ru: {
     subject: 'Рассмотрение вашей заявки завершено — "{title}"',
@@ -276,6 +325,13 @@ const SUBMISSION_REVIEW_I18N = {
     kitTitle: 'Линк-кит публикации PAP',
     kitBody: 'Когда работа выйдет, свободно используйте ссылку на страницу и бейдж "Featured in PAP" в портфолио, на сайте или в био Instagram. Ссылка помогает работе появляться в поиске и рекомендациях ИИ.',
     kitBadgeLabel: 'Код вставки бейджа',
+    upTitle: 'Что меняется для участников Premium',
+    upBody: 'Со следующей заявки участники Premium получают:',
+    upB1: 'Приоритетное рассмотрение — результат в течение 2 рабочих дней (у остальных до 7)',
+    upB2: 'Гарантированная публикация в ленте и сторис Instagram при выходе',
+    upB3: 'Верифицированный профиль автора PAP — бейдж, город, кнопка связи, доступен с первой публикации',
+    upB4: 'Годовой Premium: одна платная заявка (€380) без оплаты, плюс правка в ожидании, правка кредитов и указание соавторов',
+    upCta: 'СМОТРЕТЬ ПРЕИМУЩЕСТВА PREMIUM',
   },
   de: {
     subject: 'Die Prüfung deiner Einreichung ist abgeschlossen — "{title}"',
@@ -295,6 +351,13 @@ const SUBMISSION_REVIEW_I18N = {
     kitTitle: 'PAP Publikations-Link-Kit',
     kitBody: 'Sobald deine Arbeit online ist, kannst du den Seitenlink und das "Featured in PAP"-Badge frei in Portfolio, Website oder Instagram-Bio verwenden. Ein Link hilft deiner Arbeit, in Suche und KI-Empfehlungen aufzutauchen.',
     kitBadgeLabel: 'Badge-Embed-Code',
+    upTitle: 'Was sich als Premium-Mitglied ändert',
+    upBody: 'Ab Ihrer nächsten Einreichung erhalten Premium-Mitglieder:',
+    upB1: 'Vorrangige Prüfung — Ergebnis innerhalb von 2 Werktagen (sonst bis zu 7)',
+    upB2: 'Garantierte Instagram-Feed- + Story-Veröffentlichung bei Erscheinen',
+    upB3: 'PAP-verifiziertes Creator-Profil — Badge, Stadt, Kontaktbutton, ab dem ersten Editorial öffentlich',
+    upB4: 'Premium jährlich: eine kostenpflichtige Einreichung (€380) erlassen, dazu Bearbeiten während der Prüfung, Credit-Korrekturen und Mitwirkende markieren',
+    upCta: 'PREMIUM-VORTEILE ANSEHEN',
   },
 };
 
@@ -673,6 +736,21 @@ const TRIAL_ENDING_I18N = {
 };
 
 // 풀레터 발급 4주 뒤 미제출 독촉 (2026-09-13 도메니코: "발급 후 4주가 지나도 제출이 없으면 알림. 제출하지 않으면 추가 발급 불가")
+/* ── 기여자 프로필 연락 버튼 전달 메일 (2026-09-13, 도메니코 5번 장치) ─────────────
+   로그인 회원이 /contributor/:handle 에서 쓴 메시지를 프리미엄 크리에이터에게 전달한다.
+   보낸 사람의 이메일은 reply-to 로만 실린다(크리에이터가 바로 답할 수 있게). 크리에이터 주소는 발신자에게 안 보인다. */
+const CONTRIBUTOR_CONTACT_I18N = {
+  ko: { subject: 'PAP 프로필로 온 협업 문의 — {sender}', heading: '협업 문의가 도착했습니다', body1: '{sender} 님이 회원님의 PAP 크리에이터 프로필(@{handle})의 연락 버튼으로 메시지를 보냈습니다.', msgLabel: '메시지', body2: '이 메일에 회신하면 보낸 분에게 바로 답장이 갑니다. PAP 는 내용을 중계만 하며, 협업 조건은 당사자끼리 정합니다.', foot: '프리미엄 회원 혜택(인증 프로필·연락 버튼)으로 전달된 메일입니다. 원치 않으면 마이페이지에서 인스타그램 아이디를 비우면 프로필 연락 버튼이 사라집니다.' },
+  en: { subject: 'Collaboration inquiry via your PAP profile — {sender}', heading: 'You have a collaboration inquiry', body1: '{sender} sent you a message through the contact button on your PAP creator profile (@{handle}).', msgLabel: 'Message', body2: 'Reply to this email to answer the sender directly. PAP only relays the message; collaboration terms are between you and the sender.', foot: 'Delivered as part of your Premium benefits (verified profile + contact button). To stop receiving these, clear your Instagram handle in My Page.' },
+  it: { subject: 'Richiesta di collaborazione dal tuo profilo PAP — {sender}', heading: 'Hai una richiesta di collaborazione', body1: '{sender} ti ha scritto tramite il pulsante contatto del tuo profilo creativo PAP (@{handle}).', msgLabel: 'Messaggio', body2: 'Rispondi a questa email per scrivere direttamente al mittente. PAP inoltra soltanto il messaggio; le condizioni le decidete tra voi.', foot: 'Inviato come parte dei vantaggi Premium (profilo verificato + pulsante contatto). Per non riceverne più, svuota il tuo handle Instagram nella tua pagina.' },
+  fr: { subject: 'Demande de collaboration via votre profil PAP — {sender}', heading: 'Vous avez une demande de collaboration', body1: '{sender} vous a écrit via le bouton contact de votre profil créatif PAP (@{handle}).', msgLabel: 'Message', body2: 'Répondez à cet e-mail pour écrire directement à l’expéditeur. PAP ne fait que transmettre ; les conditions se règlent entre vous.', foot: 'Envoyé dans le cadre de vos avantages Premium (profil certifié + bouton contact). Pour ne plus en recevoir, effacez votre identifiant Instagram dans Ma page.' },
+  es: { subject: 'Solicitud de colaboración desde tu perfil PAP — {sender}', heading: 'Tienes una solicitud de colaboración', body1: '{sender} te ha escrito mediante el botón de contacto de tu perfil de creador PAP (@{handle}).', msgLabel: 'Mensaje', body2: 'Responde a este correo para contestar directamente al remitente. PAP solo reenvía el mensaje; las condiciones las acordáis entre vosotros.', foot: 'Enviado como parte de tus ventajas Premium (perfil verificado + botón de contacto). Para dejar de recibirlos, borra tu usuario de Instagram en Mi página.' },
+  ja: { subject: 'PAPプロフィール経由のコラボ問い合わせ — {sender}', heading: 'コラボレーションの問い合わせが届きました', body1: '{sender} さんが、あなたのPAPクリエイタープロフィール（@{handle}）の連絡ボタンからメッセージを送りました。', msgLabel: 'メッセージ', body2: 'このメールに返信すると送信者に直接届きます。PAPはメッセージを取り次ぐのみで、条件は当事者間で決めてください。', foot: 'プレミアム特典（認証プロフィール・連絡ボタン）として届いたメールです。受け取りたくない場合はマイページでInstagram IDを空にしてください。' },
+  zh: { subject: '通过PAP主页收到的合作咨询 — {sender}', heading: '您收到一条合作咨询', body1: '{sender} 通过您的PAP创作者主页（@{handle}）的联系按钮给您留言。', msgLabel: '留言内容', body2: '直接回复此邮件即可联系对方。PAP仅转达消息，合作条件由双方自行商定。', foot: '此邮件为高级会员权益（认证主页＋联系按钮）的一部分。如不想再收到，请在“我的页面”清空Instagram账号。' },
+  ru: { subject: 'Запрос о сотрудничестве через профиль PAP — {sender}', heading: 'Вам пришёл запрос о сотрудничестве', body1: '{sender} написал(а) вам через кнопку связи в вашем профиле автора PAP (@{handle}).', msgLabel: 'Сообщение', body2: 'Ответьте на это письмо, чтобы написать отправителю напрямую. PAP лишь передаёт сообщение; условия вы обсуждаете между собой.', foot: 'Отправлено в рамках преимуществ Premium (верифицированный профиль + кнопка связи). Чтобы больше не получать, очистите Instagram в личном кабинете.' },
+  de: { subject: 'Kooperationsanfrage über Ihr PAP-Profil — {sender}', heading: 'Sie haben eine Kooperationsanfrage', body1: '{sender} hat Ihnen über den Kontaktbutton Ihres PAP-Creator-Profils (@{handle}) geschrieben.', msgLabel: 'Nachricht', body2: 'Antworten Sie auf diese E-Mail, um direkt zu antworten. PAP leitet nur weiter; die Bedingungen klären Sie untereinander.', foot: 'Zugestellt als Teil Ihrer Premium-Vorteile (verifiziertes Profil + Kontaktbutton). Um keine mehr zu erhalten, leeren Sie Ihren Instagram-Namen in Mein Bereich.' },
+};
+
 const PULLLETTER_EDITORIAL_REMINDER_I18N = {
   ko: { subject: 'Pull-Letter 후속 에디토리얼 제출 안내', heading: '완성 에디토리얼을 제출해 주세요', body: 'Pull-Letter를 발급받은 지 4주가 지났습니다. 촬영을 마치셨다면 마이페이지 → PULL-LETTERS의 "완성된 에디토리얼 제출하기"로 완성 에디토리얼을 제출해 주세요. 이 제출이 완료되기 전에는 새 Pull-Letter를 요청할 수 없습니다.', cta: '에디토리얼 제출하기' },
   en: { subject: 'Your Pull-Letter editorial is due', heading: 'Please submit the finished editorial', body: 'It has been 4 weeks since your Pull-Letter was issued. If the shoot is done, submit the finished editorial via My Page → PULL-LETTERS → "Submit finished editorial". A new Pull-Letter cannot be requested until this submission is in.', cta: 'SUBMIT EDITORIAL' },
@@ -703,15 +781,15 @@ const PULLLETTER_ISSUED_I18N = {
    않았다), welcome 도 영어 고정에 fire-and-forget 이라 서버리스 프리즈로
    실제 발송이 보장되지 않았다. 둘 다 9개 언어 + 호출부 await 로 고친다. */
 const SUBMISSION_RECEIVED_I18N = {
-  ko: { subject: '서브미션 접수: {title}', heading: '서브미션 접수 완료', body1: '보내주신 에디토리얼 서브미션 {title}이(가) 접수되었습니다.', statusLabel: '상태', statusValue: '심사 중', etaLabel: '예상 회신', etaValue: '영업일 1~3일', body2: '에디토리얼 팀이 꼼꼼히 검토한 뒤 결과를 이메일로 알려드립니다.', cta: '내 서브미션 보기', premKicker: '크리에이티브 팀을 위해', premBody: '다음 촬영에 브랜드 의상 대여가 필요하신가요? 프리미엄 멤버는 PAP 명의의 공식 Pull-Letter를 월 1건 요청할 수 있고, 전체 에디토리얼 아카이브를 열람할 수 있습니다.', premCta: '프리미엄 알아보기 →' },
-  en: { subject: 'Submission Received: {title}', heading: 'Submission Received', body1: 'We’ve received your editorial submission {title}.', statusLabel: 'Status', statusValue: 'Under Review', etaLabel: 'Expected Response', etaValue: '1–3 business days', body2: 'Our editorial team will review your work carefully. You’ll receive an email once a decision has been made.', cta: 'VIEW MY SUBMISSIONS', premKicker: 'For creative teams', premBody: 'Need garment loans for your next shoot? Premium members can request one official PAP Pull-Letter per month and browse the full editorial archive.', premCta: 'EXPLORE PREMIUM →' },
-  it: { subject: 'Candidatura ricevuta: {title}', heading: 'Candidatura ricevuta', body1: 'Abbiamo ricevuto il tuo editoriale {title}.', statusLabel: 'Stato', statusValue: 'In revisione', etaLabel: 'Risposta prevista', etaValue: '1–3 giorni lavorativi', body2: 'Il team editoriale esaminerà il tuo lavoro con attenzione. Riceverai un’email con l’esito.', cta: 'LE MIE CANDIDATURE', premKicker: 'Per i team creativi', premBody: 'Ti servono capi in prestito per il prossimo shooting? I membri Premium possono richiedere una Pull-Letter ufficiale PAP al mese e consultare l’intero archivio editoriale.', premCta: 'SCOPRI PREMIUM →' },
-  fr: { subject: 'Soumission reçue : {title}', heading: 'Soumission reçue', body1: 'Nous avons bien reçu votre éditorial {title}.', statusLabel: 'Statut', statusValue: 'En cours d’examen', etaLabel: 'Réponse prévue', etaValue: '1 à 3 jours ouvrés', body2: 'Notre équipe éditoriale examinera votre travail avec soin. Vous recevrez un e-mail dès qu’une décision sera prise.', cta: 'MES SOUMISSIONS', premKicker: 'Pour les équipes créatives', premBody: 'Besoin d’emprunter des vêtements pour votre prochain shooting ? Les membres Premium peuvent demander une Pull-Letter officielle PAP par mois et consulter toutes les archives éditoriales.', premCta: 'DÉCOUVRIR PREMIUM →' },
-  es: { subject: 'Propuesta recibida: {title}', heading: 'Propuesta recibida', body1: 'Hemos recibido tu editorial {title}.', statusLabel: 'Estado', statusValue: 'En revisión', etaLabel: 'Respuesta estimada', etaValue: '1–3 días hábiles', body2: 'Nuestro equipo editorial revisará tu trabajo con atención. Recibirás un correo cuando haya una decisión.', cta: 'MIS PROPUESTAS', premKicker: 'Para equipos creativos', premBody: '¿Necesitas préstamo de prendas para tu próxima sesión? Los miembros Premium pueden solicitar una Pull-Letter oficial de PAP al mes y consultar todo el archivo editorial.', premCta: 'DESCUBRE PREMIUM →' },
-  ja: { subject: '応募受付: {title}', heading: '応募を受け付けました', body1: 'エディトリアル応募 {title} を受け付けました。', statusLabel: 'ステータス', statusValue: '審査中', etaLabel: '回答目安', etaValue: '営業日1～3日', body2: '編集チームが丁寧に拝見し、結果をメールでお知らせします。', cta: '応募履歴を見る', premKicker: 'クリエイティブチームの皆様へ', premBody: '次の撮影で衣装リースが必要ですか？プレミアム会員は毎月1件、PAP名義の公式Pull-Letterをリクエストでき、全エディトリアルアーカイブを閲覧できます。', premCta: 'プレミアムを見る →' },
-  zh: { subject: '投稿已收到：{title}', heading: '投稿已收到', body1: '我们已收到您的编辑大片投稿 {title}。', statusLabel: '状态', statusValue: '审核中', etaLabel: '预计回复', etaValue: '1–3 个工作日', body2: '编辑团队将仔细审阅您的作品，结果将通过邮件通知您。', cta: '查看我的投稿', premKicker: '致创意团队', premBody: '下次拍摄需要借用服装？高级会员每月可申请一份 PAP 官方 Pull-Letter，并可浏览全部编辑档案。', premCta: '了解高级会员 →' },
-  ru: { subject: 'Заявка получена: {title}', heading: 'Заявка получена', body1: 'Мы получили ваш редакционный материал {title}.', statusLabel: 'Статус', statusValue: 'На рассмотрении', etaLabel: 'Ответ', etaValue: '1–3 рабочих дня', body2: 'Редакция внимательно изучит вашу работу. Решение придёт на почту.', cta: 'МОИ ЗАЯВКИ', premKicker: 'Для креативных команд', premBody: 'Нужна одежда для следующей съёмки? Участники Premium могут раз в месяц запросить официальный Pull-Letter PAP и пользоваться всем архивом.', premCta: 'ПОДРОБНЕЕ О PREMIUM →' },
-  de: { subject: 'Einreichung erhalten: {title}', heading: 'Einreichung erhalten', body1: 'Wir haben Ihr Editorial {title} erhalten.', statusLabel: 'Status', statusValue: 'In Prüfung', etaLabel: 'Antwort voraussichtlich', etaValue: '1–3 Werktage', body2: 'Unser Redaktionsteam prüft Ihre Arbeit sorgfältig. Sie erhalten eine E-Mail, sobald eine Entscheidung vorliegt.', cta: 'MEINE EINREICHUNGEN', premKicker: 'Für Kreativteams', premBody: 'Benötigen Sie Leihgaben für Ihr nächstes Shooting? Premium-Mitglieder können monatlich eine offizielle PAP Pull-Letter anfragen und das gesamte Editorial-Archiv einsehen.', premCta: 'PREMIUM ENTDECKEN →' },
+  ko: { subject: '서브미션 접수: {title}', heading: '서브미션 접수 완료', body1: '보내주신 에디토리얼 서브미션 {title}이(가) 접수되었습니다.', statusLabel: '상태', statusValue: '심사 중', etaLabel: '예상 회신', etaValue: '최대 7영업일', etaValuePremium: '2영업일 이내 — 프리미엄 우선 심사', body2: '에디토리얼 팀이 꼼꼼히 검토한 뒤 결과를 이메일로 알려드립니다.', cta: '내 서브미션 보기', premKicker: '크리에이티브 팀을 위해', premBody: '다음 촬영에 브랜드 의상 대여가 필요하신가요? 프리미엄 멤버는 PAP 명의의 공식 Pull-Letter를 월 1건 요청할 수 있고, 전체 에디토리얼 아카이브를 열람할 수 있습니다.', premCta: '프리미엄 알아보기 →' },
+  en: { subject: 'Submission Received: {title}', heading: 'Submission Received', body1: 'We’ve received your editorial submission {title}.', statusLabel: 'Status', statusValue: 'Under Review', etaLabel: 'Expected Response', etaValue: 'Up to 7 business days', etaValuePremium: 'Within 2 business days — Premium priority review', body2: 'Our editorial team will review your work carefully. You’ll receive an email once a decision has been made.', cta: 'VIEW MY SUBMISSIONS', premKicker: 'For creative teams', premBody: 'Need garment loans for your next shoot? Premium members can request one official PAP Pull-Letter per month and browse the full editorial archive.', premCta: 'EXPLORE PREMIUM →' },
+  it: { subject: 'Candidatura ricevuta: {title}', heading: 'Candidatura ricevuta', body1: 'Abbiamo ricevuto il tuo editoriale {title}.', statusLabel: 'Stato', statusValue: 'In revisione', etaLabel: 'Risposta prevista', etaValue: 'Fino a 7 giorni lavorativi', etaValuePremium: 'Entro 2 giorni lavorativi — revisione prioritaria Premium', body2: 'Il team editoriale esaminerà il tuo lavoro con attenzione. Riceverai un’email con l’esito.', cta: 'LE MIE CANDIDATURE', premKicker: 'Per i team creativi', premBody: 'Ti servono capi in prestito per il prossimo shooting? I membri Premium possono richiedere una Pull-Letter ufficiale PAP al mese e consultare l’intero archivio editoriale.', premCta: 'SCOPRI PREMIUM →' },
+  fr: { subject: 'Soumission reçue : {title}', heading: 'Soumission reçue', body1: 'Nous avons bien reçu votre éditorial {title}.', statusLabel: 'Statut', statusValue: 'En cours d’examen', etaLabel: 'Réponse prévue', etaValue: 'Jusqu’à 7 jours ouvrés', etaValuePremium: 'Sous 2 jours ouvrés — examen prioritaire Premium', body2: 'Notre équipe éditoriale examinera votre travail avec soin. Vous recevrez un e-mail dès qu’une décision sera prise.', cta: 'MES SOUMISSIONS', premKicker: 'Pour les équipes créatives', premBody: 'Besoin d’emprunter des vêtements pour votre prochain shooting ? Les membres Premium peuvent demander une Pull-Letter officielle PAP par mois et consulter toutes les archives éditoriales.', premCta: 'DÉCOUVRIR PREMIUM →' },
+  es: { subject: 'Propuesta recibida: {title}', heading: 'Propuesta recibida', body1: 'Hemos recibido tu editorial {title}.', statusLabel: 'Estado', statusValue: 'En revisión', etaLabel: 'Respuesta estimada', etaValue: 'Hasta 7 días hábiles', etaValuePremium: 'En 2 días hábiles — revisión prioritaria Premium', body2: 'Nuestro equipo editorial revisará tu trabajo con atención. Recibirás un correo cuando haya una decisión.', cta: 'MIS PROPUESTAS', premKicker: 'Para equipos creativos', premBody: '¿Necesitas préstamo de prendas para tu próxima sesión? Los miembros Premium pueden solicitar una Pull-Letter oficial de PAP al mes y consultar todo el archivo editorial.', premCta: 'DESCUBRE PREMIUM →' },
+  ja: { subject: '応募受付: {title}', heading: '応募を受け付けました', body1: 'エディトリアル応募 {title} を受け付けました。', statusLabel: 'ステータス', statusValue: '審査中', etaLabel: '回答目安', etaValue: '最大7営業日', etaValuePremium: '営業日2日以内 — プレミアム優先審査', body2: '編集チームが丁寧に拝見し、結果をメールでお知らせします。', cta: '応募履歴を見る', premKicker: 'クリエイティブチームの皆様へ', premBody: '次の撮影で衣装リースが必要ですか？プレミアム会員は毎月1件、PAP名義の公式Pull-Letterをリクエストでき、全エディトリアルアーカイブを閲覧できます。', premCta: 'プレミアムを見る →' },
+  zh: { subject: '投稿已收到：{title}', heading: '投稿已收到', body1: '我们已收到您的编辑大片投稿 {title}。', statusLabel: '状态', statusValue: '审核中', etaLabel: '预计回复', etaValue: '最多 7 个工作日', etaValuePremium: '2 个工作日内 — 高级会员优先审核', body2: '编辑团队将仔细审阅您的作品，结果将通过邮件通知您。', cta: '查看我的投稿', premKicker: '致创意团队', premBody: '下次拍摄需要借用服装？高级会员每月可申请一份 PAP 官方 Pull-Letter，并可浏览全部编辑档案。', premCta: '了解高级会员 →' },
+  ru: { subject: 'Заявка получена: {title}', heading: 'Заявка получена', body1: 'Мы получили ваш редакционный материал {title}.', statusLabel: 'Статус', statusValue: 'На рассмотрении', etaLabel: 'Ответ', etaValue: 'До 7 рабочих дней', etaValuePremium: 'В течение 2 рабочих дней — приоритет Premium', body2: 'Редакция внимательно изучит вашу работу. Решение придёт на почту.', cta: 'МОИ ЗАЯВКИ', premKicker: 'Для креативных команд', premBody: 'Нужна одежда для следующей съёмки? Участники Premium могут раз в месяц запросить официальный Pull-Letter PAP и пользоваться всем архивом.', premCta: 'ПОДРОБНЕЕ О PREMIUM →' },
+  de: { subject: 'Einreichung erhalten: {title}', heading: 'Einreichung erhalten', body1: 'Wir haben Ihr Editorial {title} erhalten.', statusLabel: 'Status', statusValue: 'In Prüfung', etaLabel: 'Antwort voraussichtlich', etaValue: 'Bis zu 7 Werktage', etaValuePremium: 'Innerhalb von 2 Werktagen — Premium-Vorrangprüfung', body2: 'Unser Redaktionsteam prüft Ihre Arbeit sorgfältig. Sie erhalten eine E-Mail, sobald eine Entscheidung vorliegt.', cta: 'MEINE EINREICHUNGEN', premKicker: 'Für Kreativteams', premBody: 'Benötigen Sie Leihgaben für Ihr nächstes Shooting? Premium-Mitglieder können monatlich eine offizielle PAP Pull-Letter anfragen und das gesamte Editorial-Archiv einsehen.', premCta: 'PREMIUM ENTDECKEN →' },
 };
 
 const WELCOME_I18N = {
@@ -769,8 +847,10 @@ const templates = {
   },
 
   // 2. Submission received confirmation
-  submissionReceived(user, submission, lang) {
+  // 2026-09-13 — opts.isPremium 이면 예상 회신을 "2영업일 이내(우선 심사)" 로, 아니면 "최대 7영업일".
+  submissionReceived(user, submission, lang, opts) {
     const L = SUBMISSION_RECEIVED_I18N[lang] || SUBMISSION_RECEIVED_I18N.en;
+    const _eta = (opts && opts.isPremium && L.etaValuePremium) ? L.etaValuePremium : L.etaValue;
     const greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
     const titleStrong = `<strong style="color:#fff;">"${(submission && submission.title) || '—'}"</strong>`;
     return {
@@ -789,7 +869,7 @@ const templates = {
           <tr>
             <td style="padding:12px 16px;background:#1a1a1a;border-left:3px solid #333;">
               <span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.etaLabel}</span><br>
-              <span style="color:#fff;font-size:14px;">${L.etaValue}</span>
+              <span style="color:#fff;font-size:14px;">${_eta}</span>
             </td>
           </tr>
         </table>
@@ -886,6 +966,20 @@ const templates = {
         })()
       : '';
 
+    /* 2026-09-13 도메니코 — 승인 메일에 프리미엄 업셀(8번 장치). 비프리미엄 수신자에게만, 승인일 때만.
+       적용된 혜택만 적는다(우선 심사·피드+스토리 보장·인증 프로필·연간 €380 면제 + 기존 혜택).
+       미적용 장치(성과 숫자·재도전권·에디터스 픽)는 쓰지 않는다. 결제 URL 이 아니라 /subscribe 로 보낸다. */
+    const _upsellBlock = (_isApproved && !(_opts && _opts.isPremium) && L.upTitle)
+      ? `<div style="margin:24px 0;padding:18px;border:1px solid #3a3223;background:#121212;">
+           <span style="color:#c9a86a;font-size:10px;text-transform:uppercase;letter-spacing:2px;font-weight:700;">${L.upTitle}</span><br>
+           <span style="color:#ccc;font-size:13px;line-height:1.7;">${L.upBody}</span>
+           <ul style="margin:10px 0 0;padding-left:18px;color:#ddd;font-size:13px;line-height:1.8;">
+             <li>${L.upB1}</li><li>${L.upB2}</li><li>${L.upB3}</li><li>${L.upB4}</li>
+           </ul>
+           <a href="${FRONTEND_URL}/subscribe?utm_source=submission_approved_email&utm_medium=email&utm_campaign=premium_upsell" style="display:inline-block;background:#c9a86a;color:#000;padding:12px 28px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:14px;">${L.upCta}</a>
+         </div>`
+      : '';
+
     return {
       subject: _subject,
       html: wrapHtml(`
@@ -896,6 +990,7 @@ const templates = {
         ${_payBlock}
         ${_kitBlock}
         <a href="${ctaUrl}" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+        ${_upsellBlock}
         <p style="font-size:12px;color:#888;margin-top:24px;">${L.footer}</p>
       `, lang),
     };
@@ -985,6 +1080,21 @@ const templates = {
       + noteHtml
       + '<a href="' + FRONTEND_URL + '/mypage#mp-pullletters" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">' + L.cta + '</a>';
     return { subject: L.subject, html: wrapHtml(html, lang) };
+  },
+
+  // 7e. 기여자 프로필 연락 버튼 → 크리에이터에게 전달 (2026-09-13)
+  contributorContact(creator, sender, handle, message, lang) {
+    var L = CONTRIBUTOR_CONTACT_I18N[lang] || CONTRIBUTOR_CONTACT_I18N.en;
+    var greet = emailUiStrings(lang).greeting.replace('{name}', (creator && creator.name) || 'there');
+    var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+    var senderName = esc((sender && sender.name) || (sender && sender.email) || 'PAP member');
+    var html = '<h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">' + L.heading + '</h2>'
+      + '<p>' + greet + '</p>'
+      + '<p>' + L.body1.replace('{sender}', '<strong style="color:#fff;">' + senderName + '</strong>').replace('{handle}', esc(handle)) + '</p>'
+      + '<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #c9a86a;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">' + L.msgLabel + '</span><br><span style="color:#eee;font-size:14px;line-height:1.7;white-space:pre-line;">' + esc(message) + '</span></div>'
+      + '<p>' + L.body2 + '</p>'
+      + '<p style="font-size:12px;color:#888;margin-top:24px;">' + L.foot + '</p>';
+    return { subject: L.subject.replace('{sender}', (sender && sender.name) || (sender && sender.email) || 'PAP member'), html: wrapHtml(html, lang), replyTo: (sender && sender.email) || undefined };
   },
 
   // 7d. 풀레터 발급 4주 뒤 미제출 독촉 (2026-09-13)
@@ -1437,12 +1547,12 @@ async function sendEmail(to, template) {
   }
 
   try {
-    const info = await getTransporter().sendMail({
+    const info = await getTransporter().sendMail(Object.assign({
       from: FROM,
       to,
       subject: template.subject,
       html: template.html,
-    });
+    }, template.replyTo ? { replyTo: template.replyTo } : {}));   // 2026-09-13 연락 전달 메일은 보낸 회원에게 답장이 가게
     console.log('[EMAIL] Sent:', template.subject, 'to:', to, 'id:', info.messageId);
     return { sent: true, messageId: info.messageId };
   } catch (error) {
