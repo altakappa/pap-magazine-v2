@@ -27,13 +27,13 @@ ok('이용 약관: 무료는 옷 브랜드 3개, 액세서리·잡화 제외', c
 ok('추가 옵션(유료) 섹션 → 프리미엄 혜택: 공동작업자는 프리미엄만 (커버 문구·€220·€110 없음)', count(new RegExp("glAddBody:'<ul><li>" + Q + "(공동작업자|collaborators|Collaborators|collaboratori|collaborateurs|colaboradores|コラボレーター|合作者|соавторы)", 'g')) === 9 && !new RegExp("glAddBody:'" + Q + "(커버|cover|Cover|copertina|couverture|portada|カバー|封面|обложк)").test(html) && !/glAddBody:'[^']*(€220|€110|220 €|110 €)/.test(html) && !/glAddTitle:'[^']*(유료|paid|kostenpflichtig|pagamento|payantes|de pago|有料|付费|платно)/.test(html));
 ok('이용 약관 가이드라인: 종이 잡지·오프라인 전시 사용 가능 9개 언어', count(new RegExp("glTermsBody:'" + Q + "(종이 잡지|print magazine|gedruckten|cartacea|imprimée|impresa|紙媒体|纸质杂志|печатном)", 'g')) === 9);
 ok('정적 마크업(영어 기본값)도 6장·공동작업자 혜택·종이 잡지', /<li>At least 6 high-resolution photos/.test(html) && /glAddBody"><ul><li>Only Premium members can be recommended and tagged as Instagram collaborators<\/li>/.test(html) && /glTermsBody"><ul><li>[^<]*<\/li><li>Submitted work may be published in a future PAP print magazine/.test(html));
-ok('법적 약관 제2조 ④ 종이 잡지·오프라인 전시 9개 언어 + 제목 갱신 + 캐시버스트 v=4', (terms.match(/④ (?:[^'\\]|\\.)*(종이 잡지|print magazine|gedruckten|cartacea|imprimée|impresa|紙媒体|纸质杂志|печатном)/g) || []).length === 9 && (terms.match(/(제2조|Article 2|Artikel 2|Articolo 2|Artículo 2|第2条|Статья 2)[^<]*(전시|Exhibition|Ausstellungen|Mostre|Exposition|Exposiciones|展示|展览|выставках)/g) || []).length === 9 && /submission-terms\.js\?v=4/.test(html) && /④ Submitted Works may be published in a future PAP print magazine/.test(html));
+ok('법적 약관 제2조 ④ 종이 잡지·오프라인 전시 9개 언어 + 제목 갱신 + 캐시버스트 v=4', (terms.match(/④ (?:[^'\\]|\\.)*(종이 잡지|print magazine|gedruckten|cartacea|imprimée|impresa|紙媒体|纸质杂志|печатном)/g) || []).length === 9 && (terms.match(/(제2조|Article 2|Artikel 2|Articolo 2|Artículo 2|第2条|Статья 2)[^<]*(전시|Exhibition|Ausstellungen|Mostre|Exposition|Exposiciones|展示|展览|выставках)/g) || []).length === 9 && /submission-terms\.js\?v=[4-9]/.test(html) && /④ Submitted Works may be published in a future PAP print magazine/.test(html));
 
 console.log('\n=== 법적 약관 제3조 (submission-terms.js) ===');
 ok('제3조 ②: 프리미엄만 마이페이지에서, 수수료 없음, 비프리미엄 수정 불가 — 9개 언어', (terms.match(/② (?:[^'\\]|\\.)*(마이페이지|My Page|auf ihrer Seite|propria pagina|leur page|su página|マイページ|个人页面|своей странице)(?:[^'\\]|\\.)*<br>/g) || []).length === 9);
 ok('제3조에 €100 수정 수수료가 없다', !/100/.test(terms));
 ok('제3조 제목에서 "수수료" 제거 (9개 언어)', !/수정 수수료\)|Correction Fee\)|Korrekturgebühr\)|Tariffa di Correzione\)|Frais de Correction\)|Tarifa de Corrección\)|修正手数料\)|更正费用\)|плата за корректировку\)/.test(terms));
-ok('시행일 2026-09-12 (9개 언어) + submission-terms.js 캐시버스트 v=3', count(/termsEffective:'[^']*(9월 12일|September 12, 2026|12\. September 2026|12 settembre 2026|12 septembre 2026|12 de septiembre de 2026|9月12日|12 сентября 2026)/g) === 9 && /submission-terms\.js\?v=[4-9]/.test(html));
+ok('시행일 2026-09-12 이후 (9개 언어) + submission-terms.js 캐시버스트 v=3', count(/termsEffective:'[^']*(9월 1[2-9]일|September 1[2-9], 2026|1[2-9]\. September 2026|1[2-9] settembre 2026|1[2-9] septembre 2026|1[2-9] de septiembre de 2026|9月1[2-9]日|1[2-9] сентября 2026)/g) === 9 && /submission-terms\.js\?v=[4-9]/.test(html));
 ok('정적 마크업 Article 3 도 갱신', /Article 3 \(Accuracy and Correction of Credit Information\)/.test(html) && !/correction fee of €100/.test(html));
 
 console.log('\n=== 사진 하한 6장 ===');
@@ -75,7 +75,12 @@ ok('resolveCoverIndex: 프리미엄 아니면 0, 프리미엄이면 요청값', 
   ok('동의 문구 glAgreeLabel·glAgreeHint 9개 언어', count(/glAgreeLabel:'/g) === 9 && count(/glAgreeHint:'/g) === 9);
   ok('5단계의 법적 약관 체크박스는 그대로 남아 있다', /<input type="checkbox" id="termsAgree">/.test(html));
 
-  console.log('\npassed: ' + passed + '   failed: ' + failed);
+  console.log('\n=== 제7조 ⑦ 무료 조건·유료 부과 (도메니코 2026-09-13) ===');
+ok('제7조 ⑦: 옷 브랜드 3개·룩 3개, 잡화 제외, 미충족 시 €380·단일 브랜드 €790 — 9개 언어', (terms.match(/⑦ (?:[^'\\]|\\.)*380(?:[^'\\]|\\.)*<\/li>'/g) || []).length === 9 && (terms.match(/⑦ (?:[^'\\]|\\.)*(액세서리|accessories|Accessoires|accessori|accessoires|accesorios|アクセサリー|配饰|аксессуаров)/g) || []).length === 9);
+ok('제7조 ③: 브랜디드 서비스료 €790 명시(사전 협의 문구 제거) — 9개 언어', (terms.match(/③ (?:[^'\\]|\\.)*790/g) || []).length === 9 && !/사전 협의를 통해 결정|prior consultation with PAP/.test(terms));
+ok('정적 마크업 Article 7 도 ③ €790 + ⑦, 약관 v5', /③ Branded Content is subject to a service fee of €790/.test(html) && /⑦ A free submission must include at least 3 different clothing brands/.test(html) && /submission-terms\.js\?v=[5-9]/.test(html));
+
+console.log('\npassed: ' + passed + '   failed: ' + failed);
   if (failed) { console.log('❌ submission-guidelines-premium-cover FAILED'); process.exit(1); }
   console.log('✅ submission-guidelines-premium-cover passed');
 })();
