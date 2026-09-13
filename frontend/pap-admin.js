@@ -1625,6 +1625,9 @@ function populateReviewModal(submission){
 
   // 2026-09-12 — 인스타그램 공동작업자 (제출자가 고른 프리미엄 회원, 서버가 검증해 [{handle,userId}] 로 저장)
   var collabEl=document.getElementById('reviewModalCollab');
+  // 2026-09-13 — 풀레터 기반 서브미션 표시
+  var plEl=document.getElementById('reviewModalPullLetter');
+  if(plEl){ var _plid=(submission&&submission.pullletter_id)||(desc&&desc.pullLetterId)||''; plEl.textContent=_plid?('풀레터 후속 제출 · '+_plid):'— (일반 서브미션)'; }
   if(collabEl){
     var cl=Array.isArray(desc.collaborators)?desc.collaborators:[];
     var ch=cl.map(function(c){ var h=(c&&typeof c==='object')?c.handle:c; return h?'@'+String(h).replace(/^@/,''):''; }).filter(Boolean);
@@ -2576,6 +2579,8 @@ async function loadPullLetters(statusFilter){
         revision: { cls:'b-onhold',   label:'수정 요청 중' },
       };
       var s = statusMap[pl.status] || statusMap.pending;
+      // 2026-09-13 — 풀레터 후속 제출이 들어오면 배지에 표시(pullletters.submission_id).
+      if(pl.submission_id) s = { cls:'b-approved', label:'발급 완료 · 에디토리얼 제출됨' };
       // Title: moodboard title (community flow) or first line of request_text (legacy)
       var title = pl.moodBoardTitle || ((pl.request_text||'').slice(0,60) + ((pl.request_text||'').length>60?'…':''));
       // Detail: shoot_purpose (community) or file count (legacy)

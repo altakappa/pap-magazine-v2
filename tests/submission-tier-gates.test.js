@@ -77,7 +77,7 @@ ok('사람이 쓴 피드백이 있으면 신청 버튼 없음', G.shapeForOwner(
 ok('무료 회원은 신청 불가, pending 은 신청 불가', G.shapeForOwner({ status: 'rejected', admin_notes: '', description: '{}' }, FREE).canRequestFeedback === false && G.shapeForOwner({ status: 'pending', admin_notes: '', description: '{}' }, STD).canRequestFeedback === false);
 const fr = read('api/submissions/[id]/feedback-request.js');
 ok('API: POST 만, 본인만, 스탠다드 이상(FEEDBACK_STANDARD_ONLY), 결정 난 상태만, 이미 쓰였으면 409, 신청 시각 저장 + 텔레그램 await', /req\.method !== 'POST'/.test(fr) && /sub\.user_id !== user\.id/.test(fr) && /FEEDBACK_STANDARD_ONLY/.test(fr) && /FEEDBACK_REQUESTABLE_STATUSES\.indexOf\(sub\.status\)/.test(fr) && /FEEDBACK_ALREADY_WRITTEN/.test(fr) && /desc\.feedbackRequestedAt = new Date\(\)\.toISOString\(\)/.test(fr) && /await sendTextToTelegramSafe\(/.test(fr));
-ok('마이페이지: canRequestFeedback → 신청 버튼, 신청 후 안내, POST 배선', /if\(s\.canRequestFeedback\)\{/.test(mp) && /s\.feedbackRequestedAt && !note/.test(mp) && /\/feedback-request'/.test(mp) && /content="mypage" data-v="8"/.test(mp));
+ok('마이페이지: canRequestFeedback → 신청 버튼, 신청 후 안내, POST 배선', /if\(s\.canRequestFeedback\)\{/.test(mp) && /s\.feedbackRequestedAt && !note/.test(mp) && /\/feedback-request'/.test(mp) && /content="mypage" data-v="(?:8|9|[1-9][0-9])"/.test(mp));
 ok('review.js: 유료 회원 반려 시 선제 알림(텔레그램 "피드백 작성 필요") 제거 — 주석만 남는다', !/sendTextToTelegramSafe\(\s*'💬 유료 회원 서브미션 반려/.test(read('api/submissions/[id]/review.js')));
 
 console.log('\npassed: ' + passed + '   failed: ' + failed);

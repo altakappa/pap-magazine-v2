@@ -1686,6 +1686,8 @@ var _ERR_I18N = {
   retry:{ko:'다시 시도',en:'Try again',de:'Erneut versuchen',it:'Riprova',fr:'Réessayer',es:'Reintentar',ja:'再試行',zh:'重试',ru:'Повторить'},
   // 2026-07-26 — 사전을 우회해 화면에 나가던 하드코딩 문구 2건을 여기로 이전.
   photoCreditLocked:{ko:'포토그래퍼 크레딧은 삭제할 수 없습니다',en:'The photographer credit cannot be removed',de:'Der Fotografen-Credit kann nicht entfernt werden',it:'Il credito del fotografo non può essere rimosso',fr:'Le crédit du photographe ne peut pas être supprimé',es:'El crédito del fotógrafo no se puede eliminar',ja:'フォトグラファーのクレジットは削除できません',zh:'摄影师署名无法删除',ru:'Кредит фотографа нельзя удалить'},
+  pullLetterPrefill:{ko:'풀레터 후속 제출입니다. 이 풀레터로 촬영한 완성 에디토리얼을 일반 서브미션과 같은 절차로 제출하세요. 제목·포토그래퍼·스타일리스트가 자동 입력되었어요.',en:'Pull-letter follow-up. Submit the finished editorial you shot with this pull-letter through the same process as a regular submission. Title, photographer and stylist were filled in automatically.',de:'Pull-Letter-Folgeeinreichung. Reichen Sie das mit dieser Pull-Letter fotografierte Editorial über denselben Prozess wie eine normale Einreichung ein. Titel, Fotograf und Stylist wurden automatisch ausgefüllt.',it:'Submission successiva alla pull-letter. Invia l\'editoriale realizzato con questa pull-letter seguendo la stessa procedura di una submission normale. Titolo, fotografo e stylist sono stati compilati automaticamente.',fr:'Suite de pull-letter. Soumettez l\'éditorial réalisé avec cette pull-letter via la même procédure qu\'une soumission classique. Titre, photographe et styliste ont été remplis automatiquement.',es:'Envío posterior a la pull-letter. Envía el editorial realizado con esta pull-letter siguiendo el mismo proceso que un envío normal. Título, fotógrafo y estilista se rellenaron automáticamente.',ja:'Pull-Letter の後続提出です。この Pull-Letter で撮影した完成エディトリアルを通常のサブミッションと同じ手順で提出してください。タイトル・フォトグラファー・スタイリストは自動入力されました。',zh:'Pull-Letter 后续投稿。请按与普通投稿相同的流程提交使用此 Pull-Letter 拍摄的完整作品。标题、摄影师和造型师已自动填写。',ru:'Продолжение по pull-letter. Отправьте готовый эдиториал, снятый по этому pull-letter, через ту же процедуру, что и обычную заявку. Название, фотограф и стилист заполнены автоматически.'},
+  pullLetterIneligible:{ko:'이 풀레터로는 제출할 수 없습니다 (발급 전이거나, 이미 에디토리얼이 제출되었거나, 본인 것이 아닙니다). 일반 서브미션으로 진행됩니다.',en:'This pull-letter cannot be used (not issued yet, already used for an editorial, or not yours). Continuing as a regular submission.',de:'Diese Pull-Letter kann nicht verwendet werden (noch nicht ausgestellt, bereits für ein Editorial verwendet oder nicht Ihre). Es geht als normale Einreichung weiter.',it:'Questa pull-letter non può essere usata (non ancora emessa, già usata per un editoriale o non tua). Si prosegue come submission normale.',fr:'Cette pull-letter ne peut pas être utilisée (pas encore émise, déjà utilisée pour un éditorial ou pas la vôtre). Poursuite en soumission classique.',es:'Esta pull-letter no puede usarse (aún no emitida, ya usada para un editorial o no es tuya). Se continúa como envío normal.',ja:'この Pull-Letter は使用できません(未発行、すでにエディトリアルが提出済み、または本人のものではありません)。通常のサブミッションとして進みます。',zh:'无法使用此 Pull-Letter(尚未签发、已用于投稿或并非您的)。将作为普通投稿继续。',ru:'Этот pull-letter нельзя использовать (ещё не выписан, уже использован для эдиториала или не ваш). Продолжаем как обычную заявку.'},
   moodboardPrefill:{ko:'무드보드를 기반으로 제안 중입니다. 제목과 컨셉이 자동 입력되었어요.',en:'mood board is being used as the basis for this submission. The title and concept were filled in automatically.',de:'Mood Board dient als Grundlage für diese Einreichung. Titel und Konzept wurden automatisch übernommen.',it:'mood board è la base di questa submission. Titolo e concept sono stati compilati automaticamente.',fr:'mood board sert de base à cette soumission. Le titre et le concept ont été remplis automatiquement.',es:'mood board es la base de esta submission. El título y el concepto se han rellenado automáticamente.',ja:'ムードボードを基にした提案です。タイトルとコンセプトが自動入力されました。',zh:'正在以该情绪板为基础提交。标题与概念已自动填入。',ru:'мудборд использован как основа этой заявки. Название и концепция заполнены автоматически.'},
   // 2026-07-29 — 업로드 상한 초과. 예전에는 서버가 code 없이 400 만 내려서
   // 회원 화면에 "제출 실패" 만 떴고(다나에 알라르콘 건, 400 × 8회), 무엇을
@@ -1736,6 +1738,7 @@ function _localizeApiError(e, fallbackKey){
   }
   // 2026-09-12 — 공동작업자: 프리미엄 회원만 (서버 api/_lib/collaborators.js 의 코드)
   if(code==='SELF_EDIT_PREMIUM_ONLY'){ return _errT('selfEditPremiumOnly'); }
+  if(code==='PULL_LETTER_INVALID'||code==='PULL_LETTER_NOT_FOUND'||code==='PULL_LETTER_NOT_YOURS'||code==='PULL_LETTER_NOT_ISSUED'||code==='PULL_LETTER_ALREADY_SUBMITTED'){ return _errT('pullLetterIneligible'); }
   if(code==='TEAM_ROLE_BRAND'){ var _br=(e&&e.payload&&Array.isArray(e.payload.roles))?e.payload.roles.join(', '):''; return _errT('teamRoleBrand',{role:_br}); }
   if(code==='COLLAB_NOT_PREMIUM' || code==='COLLAB_HANDLE_INVALID'){ var _ch=(e&&e.payload&&Array.isArray(e.payload.handles))?e.payload.handles.map(function(x){return '@'+String(x).replace(/^@/,'');}).join(', '):''; return _errT('collabNotPremiumApi',{list:_ch}); }
   // 2026-07-29 — upload-url 의 검증 400 3종. 서버가 code 를 붙여주므로 여기서
@@ -3516,6 +3519,7 @@ function _showAuthPendingScreen(submissionId){
 
   // 2026-09-12 — 인스타그램 공동작업자(프리미엄 회원만). 서버가 같은 규칙으로 다시 검사한다.
   data.collaborators=_collabHandles();
+  if(PULL_LETTER_ID) data.pullLetterId=PULL_LETTER_ID;   // 2026-09-13 풀레터 후속 제출
 
   // Collect models
   data.models=[];
@@ -4151,6 +4155,58 @@ document.addEventListener('DOMContentLoaded', function(){
 // When the user lands on submission.html?moodboard=<id>, fetch the board
 // detail and prefill title + artist statement so they don't re-enter context
 // they already captured in the moodboard. Inserts a small notice banner.
+// 2026-09-13 도메니코 — 풀레터 후속 절차. "풀레터를 받아간 사람은 웹사이트 내에서 완성된 에디토리얼 제출하기를
+// 통해 서브미션처럼 똑같은 제출 과정을 거쳐 최종 제출". /submission?pullletter=<id> 로 들어오면 본인 풀레터를
+// 확인하고 제목·포토그래퍼·스타일리스트를 채운다. 서버(POST data.pullLetterId)가 최종 검증·연결한다.
+var PULL_LETTER_ID = null;
+function _setTeamRowByRole(role, name, instagram){
+  try{
+    var rows = document.querySelectorAll('#teamList .team-row');
+    for(var i=0;i<rows.length;i++){
+      var r = rows[i].querySelector('.team-role');
+      if(!r || String(r.getAttribute('data-role')||'').toLowerCase() !== role.toLowerCase()) continue;
+      var nameInp = rows[i].querySelector('.team-input:not(.team-link-input)');
+      var linkInp = rows[i].querySelector('.team-link-input');
+      if(nameInp && !nameInp.value && name) nameInp.value = name;
+      if(linkInp && !linkInp.value && instagram){ var h=String(instagram).trim(); linkInp.value = h.charAt(0)==='@' ? h : '@'+h; }
+      return;
+    }
+  }catch(_){}
+}
+function _prefillFromPullLetter(){
+  try{
+    var p = new URLSearchParams(window.location.search);
+    var plId = p.get('pullletter');
+    if(!plId) return;
+    var tok = localStorage.getItem('pap-token') || '';
+    fetch('/api/pullletters/mine', { headers: tok ? {'Authorization':'Bearer '+tok} : {} })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var list = (j && j.pullLetters) || [];
+        var pl = null;
+        for(var i=0;i<list.length;i++){ if(String(list[i].id) === String(plId)){ pl = list[i]; break; } }
+        var okStatus = pl && ['issued','approved','accepted'].indexOf(String(pl.status||'').toLowerCase()) !== -1 && !!pl.pull_letter_url;
+        if(!pl || !okStatus || pl.submission_id){
+          if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_errT('pullLetterIneligible'),'error');
+          return;
+        }
+        PULL_LETTER_ID = pl.id;
+        var titleEl = document.getElementById('editorialTitle');
+        if(titleEl && !titleEl.value && pl.title) titleEl.value = pl.title;
+        var ti = pl.team_info || {};
+        if(ti.photographer) _setTeamRowByRole('Photographer', ti.photographer.name, ti.photographer.instagram);
+        if(ti.stylist) _setTeamRowByRole('Stylist', ti.stylist.name, ti.stylist.instagram);
+        var formArea = document.getElementById('formArea');
+        if(formArea && !document.getElementById('plBridgeNotice')){
+          var notice = document.createElement('div');
+          notice.id = 'plBridgeNotice';
+          notice.style.cssText = 'background:rgba(201,168,106,.08);border:1px solid rgba(201,168,106,.5);padding:14px 18px;margin-bottom:24px;font-size:13px;color:rgba(255,255,255,.85);line-height:1.6';
+          notice.innerHTML = '📄 <strong>PULL-LETTER · '+ PAP.sanitize(pl.title||'') + '</strong> ' + _errT('pullLetterPrefill');
+          formArea.insertBefore(notice, formArea.firstChild);
+        }
+      }).catch(function(){});
+  }catch(e){}
+}
 function _prefillFromMoodboard(){
   try{
     var p = new URLSearchParams(window.location.search);
@@ -4231,6 +4287,7 @@ document.addEventListener('DOMContentLoaded',function(){
     // 목록을 로드하지 않고, 안내 링크만 남긴다(_showManageLink).
     _showManageLink();
     _prefillFromMoodboard();
+    _prefillFromPullLetter();   // 2026-09-13 풀레터 후속 제출
     // 저장된 초안이 있으면 상단에 이어쓰기/삭제 배너 표시 (2026-07-28)
     _showDraftBanner();
     // 2026-09-12 — 가이드라인 먼저, 동의 체크 후 폼. 등급은 서버 기준으로 새로 받아 커버 선택 잠금을 맞춘다.

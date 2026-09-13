@@ -19,6 +19,7 @@ const { classifySubmissionType, looksMissingCredit, MIN_TOTAL_IMAGES } = require
 const { validateCollaborators, collaboratorAlertText } = require('../_lib/collaborators');
 const { isPremiumUser, resolveCoverIndex } = require('../_lib/premiumCover');   // 2026-09-12 커버 선택은 프리미엄만
 const { brandRolesIn } = require('../_lib/brandRoleGuard');   // 2026-09-12 브랜드/디자이너는 팀 크레딧 금지
+const { checkPullLetterForSubmission, linkPullLetterToSubmission } = require('../_lib/pullLetterLink');   // 2026-09-13 풀레터 후속 제출
 const englishOnly = require('../_lib/submissionEnglishOnly');   // 전부 영어로 + 자동번역 방어 (POST·PUT 공용)
 const { feeForType } = require('../_lib/submissionPayment');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
@@ -116,6 +117,13 @@ module.exports = async function handler(req, res) {
       const primaryCategory = normalizedGenres[0];
       // 2026-09-12 도메니코 — 커버 이미지 선택은 프리미엄 회원만. 폼도 막지만 서버가 최종 판정한다.
       const _isPremium = await isPremiumUser(supabaseAdmin, user.id);
+      // 2026-09-13 도메니코 — 풀레터 후속 제출: 발급된 본인 풀레터만, 한 풀레터에 한 건.
+      let _pullLetter = null;
+      if (data.pullLetterId) {
+        const _plc = await checkPullLetterForSubmission(supabaseAdmin, user.id, data.pullLetterId);
+        if (!_plc.ok) return _reject400(res, user, _plc.code, _plc.message, _plc.submissionId ? { submissionId: _plc.submissionId } : undefined);
+        _pullLetter = _plc.pullLetter;
+      }
 
       // Validate + scope URLs to the caller's own folder
       const lookUrls = sanitizeUrlList(body.lookUrls, prefix);
@@ -230,6 +238,7 @@ module.exports = async function handler(req, res) {
           user_id: user.id,
           title: data.title || 'Untitled',
           category: primaryCategory,
+          pullletter_id: _pullLetter ? _pullLetter.id : null,   // 2026-09-13 풀레터 후속 제출이면 연결
           description: JSON.stringify({
             genre: normalizedGenres,
             artistStatement: data.artistStatement || '',
@@ -237,6 +246,7 @@ module.exports = async function handler(req, res) {
             team,
             models: data.models || [],
             coverImageIndex: resolveCoverIndex(data.coverImageIndex, _isPremium),   // 2026-09-12 프리미엄만 선택 가능, 그 외 0
+            pullLetterId: _pullLetter ? _pullLetter.id : null,   // 2026-09-13
             contactEmail: data.contactEmail || '',
             contactName: data.contactName || '',
             photographerCredit,
@@ -294,6 +304,17 @@ module.exports = async function handler(req, res) {
         try { await sendTextToTelegramSafe(collaboratorAlertText('new', submission, collaborators, (data.contactName || data.studio || user.email || user.id))); } catch (_) {}
       }
 
+      // 2026-09-13 — 풀레터 쪽에도 연결을 남기고 운영자에게 알린다(await — 서버리스 동결).
+      if (_pullLetter) {
+        try { await linkPullLetterToSubmission(supabaseAdmin, _pullLetter.id, submission.id); }
+        catch (e) { console.error('[submissions] pull-letter link failed (submission kept):', e && e.message); }
+        try {
+          await sendTextToTelegramSafe('📩 풀레터 후속 에디토리얼 제출\n제목: ' + String(submission.title || '').slice(0, 80)
+            + '\n풀레터: ' + String(_pullLetter.title || _pullLetter.id).slice(0, 80)
+            + '\n제출자: ' + (data.contactName || data.studio || user.email || user.id)
+            + '\nsubmission=' + submission.id + ' pullletter=' + _pullLetter.id);
+        } catch (_) {}
+      }
       return res.status(201).json({ submission });
     } catch (error) {
       try {

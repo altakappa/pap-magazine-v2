@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="mypage" data-v="8">
+<meta name="pap-ui-i18n" content="mypage" data-v="9">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP Magazine - My Page">
@@ -1041,6 +1041,16 @@ function loadPullletterRequests(){
         }
         if(r.pullLetterSignedUrl){
           html += '<a class="mp-sub-cta" style="margin-top:10px;display:inline-block;padding:8px 14px;font-size:10px;background:#c9a86a;color:#000;font-weight:700" href="' + safeUrl(r.pullLetterSignedUrl) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">' + (_papUIL('풀레터 PDF 다운로드','Download Pull-Letter PDF')) + '</a>';
+        }
+        // 2026-09-13 도메니코 — 풀레터 후속 절차: 발급된 풀레터로 촬영한 완성 에디토리얼을 서브미션으로 제출.
+        var _plIssued = ['issued','approved','accepted'].indexOf(String(r.status||'').toLowerCase()) !== -1 && !!r.pullLetterSignedUrl;
+        if(r.submission_id){
+          html += '<div style="margin-top:10px;font-size:11px;color:rgba(120,220,160,.95)">' + esc(_papUIL('완성 에디토리얼 제출 완료 · 심사 중입니다.','Finished editorial submitted · under review.')) + ' <a href="#mp-submissions" onclick="event.stopPropagation()" style="color:#c9a86a;text-decoration:underline">' + esc(_papUIL('제출 현황 보기','View submission')) + '</a></div>';
+        } else if(_plIssued){
+          html += '<div style="margin-top:12px;padding:12px;border:1px dashed rgba(201,168,106,.5)" onclick="event.stopPropagation()">'
+            + '<div style="font-size:11px;color:rgba(255,255,255,.75);margin-bottom:8px;line-height:1.6">' + esc(_papUIL('촬영을 마쳤다면 이 풀레터로 만든 완성 에디토리얼을 제출해 주세요. 일반 서브미션과 같은 절차로 심사됩니다.','Once the shoot is done, submit the finished editorial made with this pull-letter. It goes through the same review as a regular submission.')) + '</div>'
+            + '<a class="mp-sub-cta" style="display:inline-block;padding:8px 14px;font-size:10px;background:#fff;color:#000;font-weight:700;text-decoration:none" href="/submission?pullletter=' + encodeURIComponent(r.id||'') + '">' + esc(_papUIL('완성된 에디토리얼 제출하기','Submit finished editorial')) + '</a>'
+            + '</div>';
         }
         // B-2 (2026-07-26 감사) — 신청자 철회. 서버가 pending + 발급 PDF 없음을
         // 다시 검사하므로, 화면 상태가 낡아 있어도 검토가 진행된 건은 지워지지 않는다.

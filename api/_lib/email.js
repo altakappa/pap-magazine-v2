@@ -673,15 +673,15 @@ const TRIAL_ENDING_I18N = {
 };
 
 const PULLLETTER_ISSUED_I18N = {
-  ko: { subject: 'Pull-Letter가 발급되었습니다', heading: 'Pull-Letter 발급 완료', body: '요청하신 Pull-Letter가 발급되었습니다. 마이페이지에서 PDF를 다운로드하실 수 있습니다.', cta: 'PDF 다운로드' },
-  en: { subject: 'Your Pull-Letter Has Been Issued', heading: 'Pull-Letter Issued', body: 'Your pull-letter has been issued. You can download the PDF from your My Page.', cta: 'DOWNLOAD PDF' },
-  it: { subject: 'La tua Pull-Letter è stata emessa', heading: 'Pull-Letter emessa', body: 'La tua pull-letter è stata emessa. Puoi scaricare il PDF dalla tua My Page.', cta: 'SCARICA PDF' },
-  fr: { subject: 'Votre Pull-Letter a été émise', heading: 'Pull-Letter émise', body: 'Votre pull-letter a été émise. Vous pouvez télécharger le PDF depuis votre My Page.', cta: 'TÉLÉCHARGER LE PDF' },
-  es: { subject: 'Tu Pull-Letter ha sido emitida', heading: 'Pull-Letter emitida', body: 'Tu pull-letter ha sido emitida. Puedes descargar el PDF desde tu My Page.', cta: 'DESCARGAR PDF' },
-  ja: { subject: 'Pull-Letterが発行されました', heading: 'Pull-Letter 発行完了', body: 'Pull-Letterが発行されました。マイページからPDFをダウンロードできます。', cta: 'PDFをダウンロード' },
-  zh: { subject: '您的 Pull-Letter 已签发', heading: 'Pull-Letter 已签发', body: '您的 pull-letter 已签发。您可以在“我的页面”下载 PDF。', cta: '下载 PDF' },
-  ru: { subject: 'Ваш Pull-Letter выписан', heading: 'Pull-Letter выписан', body: 'Ваш pull-letter выписан. Вы можете скачать PDF в личном кабинете (My Page).', cta: 'СКАЧАТЬ PDF' },
-  de: { subject: 'Ihre Pull-Letter wurde ausgestellt', heading: 'Pull-Letter ausgestellt', body: 'Ihre Pull-Letter wurde ausgestellt. Sie können das PDF in Ihrer My Page herunterladen.', cta: 'PDF HERUNTERLADEN' },
+  ko: { subject: 'Pull-Letter가 발급되었습니다', heading: 'Pull-Letter 발급 완료', body: '요청하신 Pull-Letter가 발급되었습니다. 마이페이지에서 PDF를 다운로드하실 수 있습니다. 촬영을 마치면 마이페이지 → PULL-LETTERS 의 "완성된 에디토리얼 제출하기"로 완성 에디토리얼을 제출해 주세요. 일반 서브미션과 같은 절차로 심사됩니다.', cta: 'PDF 다운로드' },
+  en: { subject: 'Your Pull-Letter Has Been Issued', heading: 'Pull-Letter Issued', body: 'Your pull-letter has been issued. You can download the PDF from your My Page. Once the shoot is done, submit the finished editorial via My Page → PULL-LETTERS → "Submit finished editorial". It goes through the same review as a regular submission.', cta: 'DOWNLOAD PDF' },
+  it: { subject: 'La tua Pull-Letter è stata emessa', heading: 'Pull-Letter emessa', body: 'La tua pull-letter è stata emessa. Puoi scaricare il PDF dalla tua My Page. A shooting concluso, invia l\'editoriale finito da My Page → PULL-LETTERS → "Invia l\'editoriale finito". Segue la stessa revisione di una submission normale.', cta: 'SCARICA PDF' },
+  fr: { subject: 'Votre Pull-Letter a été émise', heading: 'Pull-Letter émise', body: 'Votre pull-letter a été émise. Vous pouvez télécharger le PDF depuis votre My Page. Une fois le shooting terminé, soumettez l\'éditorial final via My Page → PULL-LETTERS → « Soumettre l\'éditorial final ». Il suit la même révision qu\'une soumission classique.', cta: 'TÉLÉCHARGER LE PDF' },
+  es: { subject: 'Tu Pull-Letter ha sido emitida', heading: 'Pull-Letter emitida', body: 'Tu pull-letter ha sido emitida. Puedes descargar el PDF desde tu My Page. Cuando termine la sesión, envía el editorial terminado desde My Page → PULL-LETTERS → "Enviar el editorial terminado". Pasa por la misma revisión que un envío normal.', cta: 'DESCARGAR PDF' },
+  ja: { subject: 'Pull-Letterが発行されました', heading: 'Pull-Letter 発行完了', body: 'Pull-Letterが発行されました。マイページからPDFをダウンロードできます。 撮影が終わったら、マイページ → PULL-LETTERS の「完成エディトリアルを提出」から完成エディトリアルを提出してください。通常のサブミッションと同じ審査を受けます。', cta: 'PDFをダウンロード' },
+  zh: { subject: '您的 Pull-Letter 已签发', heading: 'Pull-Letter 已签发', body: '您的 pull-letter 已签发。您可以在“我的页面”下载 PDF。 拍摄完成后，请通过“我的页面 → PULL-LETTERS → 提交完整作品”提交完整作品。将按与普通投稿相同的流程审核。', cta: '下载 PDF' },
+  ru: { subject: 'Ваш Pull-Letter выписан', heading: 'Pull-Letter выписан', body: 'Ваш pull-letter выписан. Вы можете скачать PDF в личном кабинете (My Page). Когда съёмка завершена, отправьте готовый эдиториал через My Page → PULL-LETTERS → «Отправить готовый эдиториал». Он проходит ту же проверку, что и обычная заявка.', cta: 'СКАЧАТЬ PDF' },
+  de: { subject: 'Ihre Pull-Letter wurde ausgestellt', heading: 'Pull-Letter ausgestellt', body: 'Ihre Pull-Letter wurde ausgestellt. Sie können das PDF in Ihrer My Page herunterladen. Wenn das Shooting abgeschlossen ist, reichen Sie das fertige Editorial über My Page → PULL-LETTERS → „Fertiges Editorial einreichen“ ein. Es durchläuft dieselbe Prüfung wie eine normale Einreichung.', cta: 'PDF HERUNTERLADEN' },
 };
 
 /* ── 접수 확인·환영 메일 i18n (2026-08-26) ─────────────────────────
