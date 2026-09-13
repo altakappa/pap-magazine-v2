@@ -46,6 +46,9 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const MAX_BYTES = 100 * 1024 * 1024;   // Vercel 120초·1GB 안에서 다룰 수 있는 선
 const ART_COLS = 'id, title, slug, custom_url, content, category, tags, source_media_type, published_date, instagram_caption';
 const LOOKBACK_DAYS = Number(process.env.DRIVE_MATCH_LOOKBACK_DAYS || 21);
+/* drive-story-shorts 와 **같은 값을 읽는다.** 여기 문자열을 따로 박으면 한쪽만
+   바뀌는 날이 오고, 알림이 없는 폴더를 가리키게 된다. */
+const STORY_FOLDER_NAME = process.env.DRIVE_STORY_FOLDER_NAME || '스토리쇼츠';
 
 // 조기 반환마다 흔적을 남긴다. (틱톡 21일 침묵의 원인이 이거였다)
 function note(res, msg) {
@@ -191,10 +194,18 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
              '기사 없음'     = 붙일 기사가 아예 없다             → 기다리거나 빼면 된다
            사유별로 묶어 찍고, 빼는 방법도 한 줄 붙인다. 12일째 같은 이름이
            반복되던 이유는 그걸 아무도 몰라서였다. */
+        /* 2026-09-13 ③ — 알림이 **빼는 법만** 알려주고 있었다.
+           도메니코: "웹 기사가 없더라도 폴더 안에 영상이 들어있지 않나?"
+           맞다. 기사 없이 올리는 경로가 이미 있다 — drive-story-shorts(2026-08-21)가
+           '스토리쇼츠' 하위 폴더를 훑어 **파일명을 그대로 제목으로** 올린다
+           (article_id=null, 중복은 drive_file_id 기준). 실제로 18건이 그렇게 올라갔다.
+           그런데 이 알림은 그 길을 한 번도 말하지 않아서, 붙일 기사가 없는 영상이
+           3주째(0822_포핸즈) 최상위 폴더에 그대로 있었다. 빼는 법 옆에 올리는 법을 둔다. */
         note: note(res, '매칭 실패 ' + unmatched.length + '건 — '
           + groupUnmatched(unmatched).slice(0, 1500)
           + subHint
-          + ' · 목록에서 빼려면 파일명 앞에 _ 를 붙이거나 이름에 완료 를 넣으세요 (지우지 않아도 됩니다)'),
+          + ' · 웹 기사 없이 올리려면 ' + STORY_FOLDER_NAME + ' 폴더로 옮기세요 (파일명이 그대로 제목이 됩니다)'
+          + ' · 아예 빼려면 파일명 앞에 _ 를 붙이거나 이름에 완료 를 넣으세요 (지우지 않아도 됩니다)'),
       });
     }
 

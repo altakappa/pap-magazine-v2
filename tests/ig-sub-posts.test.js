@@ -89,6 +89,17 @@ t('drive-youtube-post 가 부계정 힌트를 붙인다',
 t('힌트가 실패해도 알림은 나간다 (try/catch)', /catch \(_e\) \{ \/\* 힌트는 곁다리다/.test(yt));
 t('힌트가 "웹 기사는 없음" 을 분명히 말한다', /웹 기사는 없음/.test(yt));
 
+/* 2026-09-13 ③ — 도메니코: "웹기사가 없더라도 폴더안에 영상이 들어있지 않나?"
+   맞다. drive-story-shorts(2026-08-21)가 '스토리쇼츠' 폴더를 훑어 기사 없이
+   파일명 그대로 올린다(실제 18건 업로드됨). 그런데 이 알림은 '빼는 법'만
+   말하고 그 길을 한 번도 말하지 않아 0822_포핸즈가 3주를 그대로 있었다. */
+t('알림이 스토리쇼츠 폴더 경로를 알려준다',
+  /웹 기사 없이 올리려면/.test(yt) && /STORY_FOLDER_NAME/.test(yt));
+t('폴더 이름을 drive-story-shorts 와 같은 env 로 읽는다 (한쪽만 바뀌는 사고 방지)',
+  /const STORY_FOLDER_NAME = process\.env\.DRIVE_STORY_FOLDER_NAME \|\| '스토리쇼츠'/.test(yt)
+  && /const FOLDER_NAME = process\.env\.DRIVE_STORY_FOLDER_NAME \|\| '스토리쇼츠'/.test(R('api/cron/drive-story-shorts.js')));
+t('빼는 법도 그대로 남아 있다 (둘 다 필요하다)', /아예 빼려면/.test(yt));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ ig-sub-posts tests FAILED'); process.exit(1); }
 console.log('✅ ig-sub-posts tests passed');
