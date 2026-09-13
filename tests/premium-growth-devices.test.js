@@ -110,7 +110,8 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   const profs = { prem: { email: 'k@x', subscription_plan: 'premium', subscription_status: 'active' }, free: { subscription_plan: 'free', subscription_status: 'inactive' } };
   const od = cron.pickOverdue(rows, profs, now);
   ok('크론: 프리미엄 + pending + 결제 승인 대기 아님 + 2영업일 초과 → 1건(p1)', od.length === 1 && od[0].id === 'p1' && od[0].label === 'k@x');
-  ok('vercel.json 에 매일 09:30 KST 크론', /"path": "\/api\/cron\/premium-review-sla",\n\s+"schedule": "30 0 \* \* \*"/.test(read('vercel.json')));
+  // 문자열 정규식이 아니라 JSON 으로 본다 — 1419515 는 맥에서 초록이었는데 Vercel 관문에서 이 줄만 빨갰다(줄바꿈/공백 차이).
+  ok('vercel.json 에 매일 09:30 KST 크론', (JSON.parse(read('vercel.json')).crons || []).some((c) => c.path === '/api/cron/premium-review-sla' && c.schedule === '30 0 * * *'));
   ok('크론: CRON_SECRET safeEqual + withCronGuard + reportProduction', /withCronGuard\(CRON_NAME/.test(read('api/cron/premium-review-sla.js')) && /safeEqual\(got, expected\)/.test(read('api/cron/premium-review-sla.js')) && /reportProduction\(res/.test(read('api/cron/premium-review-sla.js')));
 
   console.log('\n=== 1. 문구 통일 (7영업일 / 프리미엄 2영업일) ===');
@@ -164,7 +165,7 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
     return origLoad.call(this, req, ...rest);
   };
   let CT; try { CT = require(path.join(ROOT, 'api', 'contributors', 'contact')); } finally { Module._load = origLoad; }
-  ok('contact: 제어문자 제거 · 2000자 컷 · 하루 3건', CT.cleanMessage('a bc ') === 'abc' && CT.cleanMessage('x'.repeat(3000)).length === 2000 && CT.DAILY_LIMIT === 3);
+  ok('contact: 제어문자 제거 · 2000자 컷 · 하루 3건', CT.cleanMessage('a\u0000b\u0007c ') === 'abc' && CT.cleanMessage('x'.repeat(3000)).length === 2000 && CT.DAILY_LIMIT === 3);
   const cs = read('api/contributors/contact.js');
   ok('contact: requireAuthStrict · 프리미엄 크리에이터만(findPremiumCreator) · 자기 자신 금지 · 429 · 메일 await · 502 on fail', /requireAuthStrict\(req, res\)/.test(cs) && /findPremiumCreator\(supabaseAdmin, handle\)/.test(cs) && /creator\.id === user\.id/.test(cs) && /status\(429\)/.test(cs) && /await sendEmail\(creator\.email, tpl\)/.test(cs) && /status\(502\)/.test(cs));
   const ct = E.templates.contributorContact({ name: 'K' }, { name: 'Dom', email: 'd@x.com' }, 'kate', '<b>hi</b> there', 'en');
