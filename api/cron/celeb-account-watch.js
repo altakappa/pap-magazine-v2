@@ -25,6 +25,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard, reportProduction } = require('../_lib/cronGuard');
 const { discoverAccount } = require('../_lib/igDiscovery');
+const { collectSubPosts } = require('../_lib/igSubPosts');
 const { sendTextToChatSafe } = require('../_lib/telegram');
 
 const FRESH_MS = 24 * 3600 * 1000;   // ② 게시 24시간 이내만
@@ -197,7 +198,23 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
       ? '감시 대상 0개 — 등록된 ' + totalAccounts + '개가 전부 비활성' + offNote
       : '폴링 ' + out.polled + '/' + accounts.length + '개 · 기준선 ' + out.baselined
         + ' · 큐 적재 ' + out.queued + '건 · 오류 ' + out.errors.length + '건' + offNote);
-  reportProduction(res, { produced: out.queued, remaining: unwatched, note });
+  /* 2026-09-13 — 부계정 피드 참조 수집을 여기에 얹는다 (api/_lib/igSubPosts.js).
+     이유는 그 파일 머리말 참고: 크론 호출 예산이 2,599/2,600 이라 새 크론을 못 만든다.
+     이 크론은 하루 72회 · 평균 94ms 로 가장 가볍고, 성격도 '계정 감시' 라 맞는다.
+     STALE_MS(2시간) 게이트가 있어 실제 수집은 하루 12회다.
+     **곁다리 일이 본 일을 망치면 안 된다** — 여기서 던져도 위 감시 결과는 그대로 낸다. */
+  let sub = { saved: 0, note: '부계정 수집 건너뜀', failures: [] };
+  if (!dry) {
+    try {
+      sub = await collectSubPosts(supabaseAdmin);
+    } catch (e) {
+      sub = { saved: 0, failures: [String((e && e.message) || e).slice(0, 120)],
+        note: '부계정 수집 실패 — ' + String((e && e.message) || e).slice(0, 60) };
+    }
+  }
+
+  reportProduction(res, { produced: out.queued, remaining: unwatched,
+    note: note + ' · ' + sub.note });
 
   return res.status(200).json({
     ok: true, dry, ...out,
@@ -205,5 +222,6 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
       total: totalAccounts, enabled: accounts.length,
       disabledExplained: offExplained, unwatched,
     },
+    subPosts: { saved: sub.saved, skipped: !!sub.skipped, failures: (sub.failures || []).slice(0, 2) },
   });
 });

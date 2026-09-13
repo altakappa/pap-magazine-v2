@@ -38,7 +38,8 @@ const { uploadVideo } = require('../_lib/youtube');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { buildTitle, buildHashtags, buildTagList } = require('../_lib/youtubeMeta');
 const drive = require('../_lib/driveVideos');
-const { matchArticle, groupUnmatched } = require('../_lib/koMatch');
+const { matchArticle, groupUnmatched, fileCore } = require('../_lib/koMatch');
+const { loadSubPosts, findSubPost } = require('../_lib/igSubPosts');
 const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim');
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
@@ -152,6 +153,29 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
     }
 
     if (!pick) {
+      /* 2026-09-13 — 부계정 힌트 (마이그레이션 154 · _lib/igSubPosts).
+         '기사 없음' 으로 3주째 멈춰 있던 영상들(0822_포핸즈 등)은 pap_magazine
+         스토리에만 올라가고 papfashion_·papbeauty_·pap_celeb·pap_object 피드로
+         나간 것들이다. 웹 기사가 없으니 **여전히 못 올린다** — 바뀌는 건 알림이다.
+         "기사 없음" 대신 "@papfashion_ 8/28 게시물" 이라고 말해 주면 도메니코가
+         기사를 낼지 영상을 뺄지 판단할 수 있다. 실패해도 알림 자체는 나간다. */
+      let subHint = '';
+      try {
+        const subs = await loadSubPosts(supabaseAdmin);
+        const hits = [];
+        for (const u of unmatched) {
+          const sp = findSubPost(fileCore(u.name), subs);
+          if (sp) {
+            hits.push(String(u.name).replace(/\.[a-z0-9]{2,4}$/i, '')
+              + ' = @' + sp.account + ' ' + String(sp.posted_at || '').slice(5, 10));
+          }
+        }
+        if (hits.length) {
+          subHint = ' · 부계정에서 찾음(웹 기사는 없음) ' + hits.length + '건: '
+            + hits.slice(0, 10).join(' · ');
+        }
+      } catch (_e) { /* 힌트는 곁다리다 — 못 붙여도 알림은 나간다 */ }
+
       // 붙일 수 없는 것들은 조용히 두지 않는다 — 사람이 봐야 한다.
       // note 를 반환문 '안'에 두는 건 스타일이 아니라 규칙이다:
       // 테스트가 200 반환문마다 note(res,…) 를 강제해 침묵 재발을 막는다.
@@ -169,6 +193,7 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
            반복되던 이유는 그걸 아무도 몰라서였다. */
         note: note(res, '매칭 실패 ' + unmatched.length + '건 — '
           + groupUnmatched(unmatched).slice(0, 1500)
+          + subHint
           + ' · 목록에서 빼려면 파일명 앞에 _ 를 붙이거나 이름에 완료 를 넣으세요 (지우지 않아도 됩니다)'),
       });
     }
