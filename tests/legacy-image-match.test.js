@@ -167,6 +167,36 @@ console.log('=== 적용 단계 안전 규약 (2026-07-31 도메니코 승인) ==
   t('스캔은 published_date 를 대상 행에 싣는다 (창 판정 입력)', /select\('id, title, published_date'\)/.test(scan));
 })();
 
+/* ── 2026-09-14 재스캔: 창을 넣어도 22편 중 절반이 또 틀렸다 ───────────────────
+   HEAVEN ← ‘There’s no heaven’, SILVIA ← ‘A Visitor of The Night’(본문에 Silvia), ILLUSION ← ‘Illusory’,
+   ENIGMA ← ‘Birds of a Feather’ … 제목 글자가 캡션 어딘가에 있기만 하면 붙었다.
+   PAP 캡션은 첫 줄에 ‘제목’ 을 따옴표로 쓴다. 그 자리에서만 맞춘다. */
+(function () {
+  console.log('\n=== 제목은 캡션의 따옴표 자리에서만 (titleMatchesCaption) ===');
+  const M = require('../api/_lib/legacyImageMatch');
+  const T = M.titleMatchesCaption;
+  t('quotedTitle: 첫 줄의 ‘…’ 를 뽑는다', M.quotedTitle("‘Release’🏜 exclusive for @pap_magazine\n\nPhotographer @x") === 'Release');
+  t('quotedTitle: 곧은따옴표 " " 도', M.quotedTitle('"TAKE A CHANCE" for PAP') === 'TAKE A CHANCE');
+  t("quotedTitle: 안쪽 어포스트로피(God's)는 닫는 따옴표가 아니다", M.quotedTitle("‘God’s Empathy’ exclusive for @pap_magazine") === 'God’s Empathy');
+  t('quotedTitle: 따옴표가 없으면 빈 문자열', M.quotedTitle('Birds of a Feather. Photographer @x') === '');
+  t('실사례 true: RELEASE ↔ ‘Release’', T('RELEASE', "‘Release’🏜 exclusive for @pap_magazine"));
+  t('실사례 true: TAKE A CHANCE ↔ "TAKE A CHANCE"', T('TAKE A CHANCE', '"TAKE A CHANCE" exclusive for @pap_magazine'));
+  t("실사례 true: TASTED MY REVENGE. IT'S SWEET ↔ 따옴표 제목(문장부호 무시)", T("TASTED MY REVENGE. IT'S SWEET", REAL_CAPTION));
+  t("실사례 true: God's Empathy-Michelle ↔ ‘God’s Empathy’ (제목이 따옴표 제목으로 시작)", T("God's Empathy-Michelle", "‘God’s Empathy’ exclusive for @pap_magazine"));
+  t('실사례 true: FEMME FATALE ↔ ‘Femme Fatale’', T('FEMME FATALE', "‘Femme Fatale’ exclusive for @pap_magazine"));
+  t('실사례 false: HEAVEN ↔ ‘There’s no heaven’ (따옴표 제목이 다르다)', !T('HEAVEN', "‘There’s no heaven’ exclusive for @pap_magazine"));
+  t('실사례 false: ILLUSION ↔ ‘Illusory’', !T('ILLUSION', "‘Illusory’ exclusive for @pap_magazine"));
+  t('실사례 false: SILVIA ↔ ‘A Visitor of The Night’ (본문에만 Silvia)', !T('SILVIA', "‘A Visitor of The Night’ exclusive for @pap_magazine\n\nModel Silvia @silvia"));
+  t('실사례 false: EMPATHY(2022) ↔ ‘God’s Empathy’ (따옴표 제목이 더 길고 시작이 다르다)', !T('EMPATHY', "‘God’s Empathy’ exclusive for @pap_magazine"));
+  t('따옴표가 없는 캡션은 첫 줄에서만 찾는다 (본문 언급은 거부)', T('BLOSSOM', 'BLOSSOM exclusive for @pap_magazine\n\nPhotographer @x') && !T('BLOSSOM', 'Resonance exclusive for @pap_magazine\n\nblossom of the season'));
+  t('짧은 제목은 여전히 판정하지 않는다', !T('MUSE', "‘Muse’ exclusive"));
+  t('따옴표 조각이 짧으면(‘Bo’) 긴 제목(BOHEMIA)에 붙이지 않는다', !T('BOHEMIA', "‘Bo’ exclusive for @pap_magazine"));
+  t('matchOne 이 새 규칙을 쓴다 (본문 substring 만으로는 none)',
+    M.matchOne({ title: 'HEAVEN', published_date: '2022-03-08' }, [{ caption: "‘There’s no heaven’ exclusive for @pap_magazine", timestamp: '2022-03-10T00:00:00Z' }]).status === 'none');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/legacyImageMatch.js'), 'utf8');
+  t('matchOne 필터가 titleMatchesCaption && withinDateWindow', /filter\(m => m && titleMatchesCaption\(row\.title, m\.caption\) && withinDateWindow\(row, m\)\)/.test(src));
+})();
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ legacy-image-match tests FAILED'); process.exit(1); }
 console.log('✅ legacy-image-match tests passed');

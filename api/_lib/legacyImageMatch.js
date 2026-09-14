@@ -66,8 +66,38 @@ function titleInCaption(title, caption) {
  * 재게시본일 수 있고, 잘못 붙이면 남의 사진이 남의 화보에 실린다 —
  * 되돌리기 어려운 종류의 오류라 사람이 보게 남긴다.
  */
+/* ── 제목 자리 매칭 (2026-09-14, 재스캔 결과를 보고 추가) ────────────────────────
+ * 게시일 창만 넣고 다시 훑었더니 22편이 matched 로 나왔는데 절반이 또 틀렸다:
+ *   SILVIA ← 'A Visitor of The Night'(캡션 본문에 모델 이름 silvia) · ENIGMA ← 'Birds of a Feather'
+ *   BLOSSOM ← 'Resonance' · GODDESS ← 'Planet Aoife' · HEAVEN ← 'There's no heaven' · ILLUSION ← 'Illusory' 본문
+ * 제목이 캡션 **아무 데나** 들어 있으면 붙였기 때문이다. PAP 캡션은 첫 줄에 제목을 따옴표로 쓴다:
+ *   "‘Release’🏜 Photography by …" · "‘Take A Chance’ exclusive for @pap_magazine …"
+ * 그래서 따옴표 안 제목과 비교한다. 정규화한 뒤 한쪽이 다른 쪽으로 시작해야 한다
+ * (DB 제목이 잘려 있거나 캡션이 부제를 덧붙인 경우: 'Tasted my Revenge. It's sweet.' ↔ TASTED MY REVENGE).
+ * "heaven" ↔ "theresnoheaven" 처럼 안에만 들어 있는 건 거부. 따옴표 제목이 없는 캡션은 첫 줄에서만 찾는다.
+ */
+// 여는 따옴표 뒤 2~80자, 닫는 따옴표는 뒤에 글자가 안 오는 것("‘There’s no heaven’" 의 ’s 는 닫힘이 아니다).
+const QUOTED_RE = /[‘'"“「『]([^\n]{2,80}?)[’'"”」』](?![\p{L}\p{N}])/u;
+
+function quotedTitle(caption) {
+  const head = String(caption || '').slice(0, 160);
+  const m = head.match(QUOTED_RE);
+  return m ? m[1] : '';
+}
+
+function titleMatchesCaption(title, caption) {
+  const t = normalize(title);
+  const min = /[가-힣]/.test(t) ? MIN_TITLE_LEN_CJK : MIN_TITLE_LEN;
+  if (t.length < min) return false;
+  const qRaw = quotedTitle(caption);
+  const q = normalize(qRaw);
+  if (qRaw) return q.length >= min && (q.startsWith(t) || t.startsWith(q));   // 따옴표 제목이 있으면 그것만 본다 (짧은 따옴표 조각 'Bo' 로 BOHEMIA 를 붙이지 않게 같은 최소 길이)
+  const firstLine = String(caption || '').split('\n')[0];
+  return normalize(firstLine).includes(t);
+}
+
 function matchOne(row, media) {
-  const hits = (media || []).filter(m => m && titleInCaption(row.title, m.caption) && withinDateWindow(row, m));
+  const hits = (media || []).filter(m => m && titleMatchesCaption(row.title, m.caption) && withinDateWindow(row, m));
   if (!hits.length) return { status: 'none', count: 0 };
   if (hits.length > 1) return { status: 'ambiguous', count: hits.length, media: hits[0] };
   return { status: 'matched', count: 1, media: hits[0] };
@@ -106,4 +136,4 @@ function extractHandles(caption) {
   return out;
 }
 
-module.exports = { normalize, titleInCaption, matchOne, withinDateWindow, extractHandles, MIN_TITLE_LEN, MIN_TITLE_LEN_CJK, MAX_LAG_DAYS, MAX_LEAD_DAYS };
+module.exports = { normalize, titleInCaption, titleMatchesCaption, quotedTitle, matchOne, withinDateWindow, extractHandles, MIN_TITLE_LEN, MIN_TITLE_LEN_CJK, MAX_LAG_DAYS, MAX_LEAD_DAYS };
