@@ -131,7 +131,9 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   const PA = require(path.join(ROOT, 'api', '_lib', 'premiumPublishAlert'));
   const txt = PA.premiumPublishAlertText({ title: 'X', slug: 'x-y' }, { instagram: 'kate', display_name: 'Kate' });
   ok('알림 문구: 피드 + 스토리 · 릴스 제외 · 페이지 링크 · @핸들', /피드 \+ 스토리/.test(txt) && /릴스는 보장 대상 아님/.test(txt) && /\/editorial\/x-y/.test(txt) && /@kate/.test(txt));
-  ok('가이드라인 절차: "모든 에디토리얼 IG 게시" → 프리미엄 보장/그 외 재량 (9개 언어)', !/모든 에디토리얼은 인스타그램에도 게시됩니다|Every editorial is also posted on Instagram/.test(sub) && (sub.match(/glProcBody:'(?:\\.|[^'])*?(피드 \+ 스토리|feed post \+ story|Feed-Post \+ Story|feed \+ storia|feed \+ story|feed \+ historia|フィード投稿＋ストーリーズ|动态＋快拍|ленте \+ сторис)/g) || []).length === 9);
+  // 2026-09-14 도메니코: 절차 섹션의 "인스타그램 게시: 프리미엄 보장/그 외 재량" 줄은 삭제. 보장 문구는 프리미엄 혜택(glAddBody)에만 남는다.
+  ok('가이드라인 절차: IG 게시 줄 없음 (옛 "모든 에디토리얼 IG 게시" 도, 프리미엄 보장/재량 줄도) — 9개 언어', !/모든 에디토리얼은 인스타그램에도 게시됩니다|Every editorial is also posted on Instagram/.test(sub) && (sub.match(/glProcBody:'(?:\\.|[^'])*?(피드 \+ 스토리|feed post \+ story|Feed-Post \+ Story|feed \+ storia|feed \+ story|feed \+ historia|フィード投稿＋ストーリーズ|动态＋快拍|ленте \+ сторис)/g) || []).length === 0 && (sub.match(/glProcBody:'/g) || []).length === 9);
+  ok('프리미엄 혜택(glAddBody)의 피드 + 스토리 보장 문구는 그대로 (9개 언어)', (sub.match(/glAddBody:'(?:\\.|[^'])*?(피드 \+ 스토리|feed post \+ story|Feed-Post \+ Story|feed \+ storia|feed \+ story|feed \+ historia|フィード投稿＋ストーリーズ|动态＋快拍|ленте \+ сторис)/g) || []).length === 9);
 
   console.log('\n=== 5. 크리에이터 공개 프로필 ===');
   const CP = require(path.join(ROOT, 'api', '_lib', 'contributorProfile'));   // 9999a3d 회귀: 여기서 SyntaxError 면 실패
