@@ -56,6 +56,9 @@ function isShrinkable(contentType) {
 /**
  * 이미지 버퍼를 줄인다. 실패하면 원본을 그대로 돌려준다 — 절대 throw 하지 않는다.
  *
+ * opts.keepFormat=true 면 형식을 바꾸지 않는다 (PNG 는 PNG 로). 이미 올라간 파일을
+ * **같은 경로에 되올릴 때** 쓴다. 경로의 확장자와 실제 형식이 어긋나면 안 되기 때문이다.
+ *
  * @returns {Promise<{buf: Buffer, contentType: string, shrunk: boolean,
  *                    from: number, to: number, reason: string}>}
  */
@@ -82,8 +85,10 @@ async function shrinkImageBuffer(buf, contentType, opts) {
       pipeline = pipeline.resize({ width: maxDim, height: maxDim, fit: 'inside', withoutEnlargement: true });
     }
 
+    /* keepFormat: 원래 형식을 유지한다. 같은 경로에 되올릴 때 확장자가 어긋나면 안 된다. */
+    const keepPng = opts.keepFormat && /png/i.test(String(contentType));
     let nextType;
-    if (hasAlpha) {
+    if (hasAlpha || keepPng) {
       /* 투명이 있으면 PNG 로 남긴다. JPEG 로 바꾸면 투명한 곳이 검게 된다. */
       pipeline = pipeline.png({ compressionLevel: 9, palette: true });
       nextType = 'image/png';
