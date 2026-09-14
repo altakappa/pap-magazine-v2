@@ -30,7 +30,7 @@ const {
   generateEditorialDescriptions: _generateEditorialDescriptions,
   _guessLanguage: _guessLang,
 } = require('../../_lib/editorialAi');
-const { buildPapIgCaption } = require('../../_lib/igCaption');
+const { buildPapIgCaption, mergeCreditLines } = require('../../_lib/igCaption');
 const { settleSubmissionAuthorization } = require('../../_lib/settleAuthorization');
 const { sendTextToTelegramSafe } = require('../../_lib/telegram');
 
@@ -280,8 +280,9 @@ function _buildInstagramCaption(desc, title, opts) {
   const descEn = (opts && opts.descEn) || '';
   const descIt = (opts && opts.descIt) || '';
 
-  // 크레딧 — 한 줄에 하나 ("Role @handle")
-  const creditLines = [];
+  // 크레딧 — 한 줄에 하나 ("Role @handle"). 같은 인스타그램이 여러 크레딧에 나오면 한 줄로 묶는다
+  // (2026-09-14 도메니코: "Photographer, Art Director & Stylist @kamo06167 이런 식으로") — mergeCreditLines.
+  const creditEntries = [];
   if (Array.isArray(desc.team) && desc.team.length) {
     desc.team.forEach((m) => {
       if (!m || !m.name) return;
@@ -289,10 +290,10 @@ function _buildInstagramCaption(desc, title, opts) {
       if (!handle) return;
       // QA #302 — m.role 이 array (다중 역할) 형태로 들어올 수도 있어 모두 합침.
       const rolesArr = Array.isArray(m.role) ? m.role : (m.role ? [m.role] : []);
-      const label = rolesArr.length
-        ? rolesArr.map(function (r) { return _normalizeRoleLabel(r); }).filter(Boolean).join(' & ')
-        : _normalizeRoleLabel('');
-      creditLines.push(`${label} ${handle}`);
+      const labels = rolesArr.length
+        ? rolesArr.map(function (r) { return _normalizeRoleLabel(r); }).filter(Boolean)
+        : [_normalizeRoleLabel('')];
+      creditEntries.push({ roles: labels, handle });
     });
   } else if (desc.credits && typeof desc.credits === 'object') {
     // Legacy {photographer: ["Name (@handle)"]} shape — parse back.
@@ -305,10 +306,11 @@ function _buildInstagramCaption(desc, title, opts) {
         if (!m) return;
         const handle = _normalizeIgHandle(m[1]);
         if (!handle) return;
-        creditLines.push(`${_normalizeRoleLabel(roleKey)} ${handle}`);
+        creditEntries.push({ roles: [_normalizeRoleLabel(roleKey)], handle });
       });
     });
   }
+  const creditLines = mergeCreditLines(creditEntries);
 
   // Starring — "@model @agency …"
   const starring = [];

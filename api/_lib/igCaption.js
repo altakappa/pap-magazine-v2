@@ -120,4 +120,36 @@ function buildPapIgCaption(p) {
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-module.exports = { buildPapIgCaption };
+/** 역할 목록 → "Photographer, Art Director & Stylist" (2개면 "A & B", 1개면 그대로). */
+function joinRoles(roles) {
+  const r = (Array.isArray(roles) ? roles : []).map((x) => String(x || '').trim()).filter(Boolean);
+  if (r.length <= 1) return r[0] || '';
+  return r.slice(0, -1).join(', ') + ' & ' + r[r.length - 1];
+}
+
+/**
+ * 같은 인스타그램이 여러 크레딧에 나오면 한 줄로 묶는다 (2026-09-14 도메니코:
+ * "한 인스타그램이 여러 개의 크레딧에 포함될 때 Photographer, Art Director & Stylist @kamo06167 이런 식으로").
+ * @param {Array<{roles:string[], handle:string}>} entries  크레딧 순서대로. handle 은 '@…' 정규화된 값.
+ * @returns {string[]} ['Photographer, Art Director & Stylist @kamo06167', …] — 첫 등장 순서 유지, 핸들 대소문자 무시,
+ *                     같은 역할이 두 번 나오면 한 번만.
+ */
+function mergeCreditLines(entries) {
+  const order = [];
+  const map = new Map();
+  (Array.isArray(entries) ? entries : []).forEach((e) => {
+    if (!e || !e.handle) return;
+    const key = String(e.handle).toLowerCase();
+    if (!map.has(key)) { map.set(key, { handle: e.handle, roles: [] }); order.push(key); }
+    const rec = map.get(key);
+    (Array.isArray(e.roles) ? e.roles : [e.roles]).forEach((r) => {
+      const label = String(r || '').trim();
+      if (!label) return;
+      if (rec.roles.some((x) => x.toLowerCase() === label.toLowerCase())) return;
+      rec.roles.push(label);
+    });
+  });
+  return order.map((k) => { const rec = map.get(k); return (joinRoles(rec.roles) || 'Credit') + ' ' + rec.handle; });
+}
+
+module.exports = { buildPapIgCaption, mergeCreditLines, joinRoles };

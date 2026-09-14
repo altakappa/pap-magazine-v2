@@ -144,5 +144,28 @@ console.log('\n=== [5] 어드민 미러가 같은 구조 표지를 갖는다 ===
     '형식 변경 시 어드민도 함께 고치라는 안내가 사라지면 재발한다');
 })();
 
+/* 2026-09-14 도메니코 — "한 인스타그램이 여러 개의 크레딧에 포함될 때 Photographer, Art Director & Stylist @kamo06167
+   이런 식으로 묶어서". 서버(review.js → mergeCreditLines)와 어드민 미러(_buildIgCaptionFromEditorial) 둘 다. */
+(function () {
+  console.log('\n=== 같은 핸들 크레딧 병합 (2026-09-14) ===');
+  const { mergeCreditLines, joinRoles } = require('../api/_lib/igCaption');
+  t('3역할 → "A, B & C @handle"', joinRoles(['Photographer', 'Art Director', 'Stylist']) === 'Photographer, Art Director & Stylist');
+  t('2역할 → "A & B" (종전 형식 유지) · 1역할 그대로', joinRoles(['Make Up', 'Hair']) === 'Make Up & Hair' && joinRoles(['Photographer']) === 'Photographer');
+  const merged = mergeCreditLines([
+    { roles: ['Photographer'], handle: '@kamo06167' },
+    { roles: ['Make Up & Hair'], handle: '@lina_m_u_a_' },
+    { roles: ['Art Director'], handle: '@KAMO06167' },
+    { roles: ['Stylist'], handle: '@kamo06167' },
+    { roles: ['Photographer'], handle: '@kamo06167' },
+  ]);
+  t('같은 핸들(대소문자 무시) 3개 크레딧 → 한 줄, 첫 등장 순서, 중복 역할 1회', merged.length === 2 && merged[0] === 'Photographer, Art Director & Stylist @kamo06167' && merged[1] === 'Make Up & Hair @lina_m_u_a_', JSON.stringify(merged));
+  t('역할이 비면 Credit', mergeCreditLines([{ roles: [], handle: '@x' }])[0] === 'Credit @x');
+  const rv = R('api/submissions/[id]/review.js');
+  t('review.js 가 creditEntries → mergeCreditLines 로 크레딧 줄을 만든다', /const creditLines = mergeCreditLines\(creditEntries\);/.test(rv) && /require\('\.\.\/\.\.\/_lib\/igCaption'\)/.test(rv) && /mergeCreditLines \} = require/.test(rv));
+  const adm2 = R('frontend/pap-admin.js');
+  t('어드민 미러도 핸들별 병합 + "A, B & C" 형식', /_mergeMap\[key\] = \{ handle: handle, roles: \[\] \}/.test(adm2) && /r\.slice\(0, -1\)\.join\(', '\) \+ ' & ' \+ r\[r\.length - 1\]/.test(adm2));
+  t('캐시버스트 pap-admin.js ≥160', /pap-admin\.js\?v=(16\d|1[7-9]\d)/.test(R('frontend/admin.html')));
+})();
+
 console.log(`\n${fail === 0 ? '✅' : '❌'} ig-caption-mirror: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

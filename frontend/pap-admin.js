@@ -6652,6 +6652,9 @@ function _buildIgCaptionFromEditorial(ed){
   var credits = Array.isArray(ed.credits) ? ed.credits : [];
   var creditLines = [];
   var modelParts = [];
+  // 2026-09-14 도메니코 — 같은 인스타그램이 여러 크레딧에 나오면 한 줄로 묶는다
+  // ("Photographer, Art Director & Stylist @kamo06167"). 서버 api/_lib/igCaption.js mergeCreditLines 미러.
+  var _mergeOrder = [], _mergeMap = {};
   credits.forEach(function(c){
     if(!c) return;
     var handle = _igNormalizeHandle(c.instagram || c.website || '');
@@ -6662,11 +6665,23 @@ function _buildIgCaptionFromEditorial(ed){
     var labels = rolesArr.map(function(r){ return _igRoleLabel(r); }).filter(Boolean);
     var isModel = labels.some(function(l){ return l === 'Starring' || /^Model$/i.test(l); });
     if(isModel){
-      modelParts.push(handle);
+      if(modelParts.indexOf(handle) === -1) modelParts.push(handle);
     }else{
-      var label = labels.join(' & ') || _igRoleLabel(rolesArr[0]) || 'Credit';
-      creditLines.push(label + ' ' + handle);
+      var key = handle.toLowerCase();
+      if(!_mergeMap[key]){ _mergeMap[key] = { handle: handle, roles: [] }; _mergeOrder.push(key); }
+      var rec = _mergeMap[key];
+      (labels.length ? labels : [_igRoleLabel(rolesArr[0]) || 'Credit']).forEach(function(l){
+        if(!l) return;
+        if(rec.roles.some(function(x){ return x.toLowerCase() === l.toLowerCase(); })) return;
+        rec.roles.push(l);
+      });
     }
+  });
+  _mergeOrder.forEach(function(k){
+    var rec = _mergeMap[k];
+    var r = rec.roles;
+    var label = r.length <= 1 ? (r[0] || 'Credit') : (r.slice(0, -1).join(', ') + ' & ' + r[r.length - 1]);
+    creditLines.push(label + ' ' + rec.handle);
   });
 
   // ── Brands ──
