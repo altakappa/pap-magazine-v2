@@ -59,8 +59,46 @@ function group(name) { console.log(`\n${name}`); }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+/* ── 우리 방화벽이 우리 검사를 막는다 (2026-09-14) ────────────────────────
+ *
+ * 실측. 이 파일은 헤더를 하나도 안 보내고 `fetch` 만 했다. 그 결과
+ *   attempt 1..60: fetch error: HTTP 429 /pap-i18n.js?v=1
+ * 5분 내내 429 만 받고 타임아웃으로 죽었다 (런 #1261·#1262·#1263).
+ *
+ * 마커가 없어서가 아니다. **파일을 아예 못 받았다.** 같은 시각 브라우저로
+ * https://www.pap-magazine.com/pap-i18n.js 를 열면 마커가 멀쩡히 있었다.
+ * 배포는 정상이었다.
+ *
+ * 429 를 낸 건 레이트리밋이 아니라 **Vercel 봇 보호의 챌린지**다:
+ *   Rate Limit 규칙 0/40 · 실제 Rate Limited 없음 · Attack Mode 꺼짐
+ *   Bot Protection Active · 지난 하루 Challenged 2.3k (실패 시각에 스파이크)
+ * 봇 챌린지는 JS 를 풀어야 통과한다. 깃허브 러너는 브라우저가 아니라 못 푼다.
+ * 데이터센터 IP + 브라우저 아닌 클라이언트 + 같은 URL 60회 = 봇으로 보인다.
+ *
+ * 해결: 브라우저인 척하지 않는다. **우리라고 밝힌다.**
+ * 전용 비밀 헤더를 보내고, Vercel 방화벽에 그 헤더면 봇 검사를 건너뛰는
+ * System Bypass 규칙을 하나 둔다. 봇 보호 자체는 그대로 살아 있다.
+ *   · 값은 GitHub Secret `PAP_SMOKE_TOKEN` (도메니코가 직접 등록)
+ *   · 워크플로가 같은 이름의 env 로 넘긴다 (.github/workflows/test.yml)
+ *
+ * 토큰이 없으면 조용히 브라우저 흉내로 떨어지지 않는다 — 5분을 기다렸다가
+ * 알 수 없는 이유로 죽는 게 제일 나쁘다. 시작하자마자 크게 경고한다. */
+const SMOKE_TOKEN = (process.env.PAP_SMOKE_TOKEN || '').trim();
+const SMOKE_HEADER = 'x-pap-smoke';
+
+function smokeHeaders() {
+  return SMOKE_TOKEN ? { [SMOKE_HEADER]: SMOKE_TOKEN } : {};
+}
+
+function warnIfNoToken() {
+  if (SMOKE_TOKEN) return;
+  console.log(`\n⚠  ${SMOKE_HEADER} 토큰이 없다 (env PAP_SMOKE_TOKEN 미설정).`);
+  console.log('   봇 보호가 이 검사를 챌린지해서 429 로 막을 수 있다.');
+  console.log('   GitHub Secret 등록 + Vercel System Bypass 규칙을 확인할 것.');
+}
+
 async function getText(path) {
-  const res = await fetch(`${PROD}${path}`, { redirect: 'follow' });
+  const res = await fetch(`${PROD}${path}`, { redirect: 'follow', headers: smokeHeaders() });
   if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
   return res.text();
 }
@@ -138,7 +176,7 @@ async function checkAPIEndpoints() {
   // /api/auth/google should 302 straight to Google (자체 처리 전환, 8883c16 —
   // 동의 화면에 pap-magazine.com 표시. Supabase authorize 경유는 폐기됨)
   try {
-    const res = await fetch(`${PROD}/api/auth/google`, { redirect: 'manual' });
+    const res = await fetch(`${PROD}/api/auth/google`, { redirect: 'manual', headers: smokeHeaders() });
     const loc = res.headers.get('location') || '';
     const looksRight = res.status === 302 &&
       loc.includes('accounts.google.com/o/oauth2/v2/auth') &&
@@ -150,7 +188,7 @@ async function checkAPIEndpoints() {
   }
   // / should 200
   try {
-    const res = await fetch(`${PROD}/`, { redirect: 'follow' });
+    const res = await fetch(`${PROD}/`, { redirect: 'follow', headers: smokeHeaders() });
     ok('/ (homepage) → 200', res.status === 200, `status=${res.status}`);
   } catch (e) {
     ok('/ reachable', false, e.message);
@@ -159,6 +197,7 @@ async function checkAPIEndpoints() {
 
 (async () => {
   console.log(`Production smoke test — ${PROD}`);
+  warnIfNoToken();
   await waitForDeploy();
   await checkModules();
   await checkScriptOrder();

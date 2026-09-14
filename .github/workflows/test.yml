@@ -65,4 +65,10 @@ jobs:
         with:
           node-version: '20'
       - name: wait for Vercel deploy + verify production
+        # 2026-09-14 — 우리 봇 보호가 이 잡을 챌린지해서 429 로 막았다
+        # (런 #1261~#1263, 5분 내내 429). 브라우저인 척하지 않고 우리라고
+        # 밝힌다: 이 토큰이 Vercel System Bypass 규칙의 열쇠다.
+        # 값은 GitHub Secret. 없으면 스모크가 시작하자마자 경고를 찍는다.
+        env:
+          PAP_SMOKE_TOKEN: ${{ secrets.PAP_SMOKE_TOKEN }}
         run: npm run smoke
