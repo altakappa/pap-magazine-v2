@@ -47,15 +47,16 @@ t('형식을 유지한다 (keepFormat)', /shrinkImageBuffer\(buf, ct, \{ keepFor
 t('왜 URL 을 안 건드리는지 적혀 있다', /갈아끼울 것이 없다/.test(S));
 
 console.log('\n=== 대상 고르기 ===');
-t('originals/ 아래는 대상에서 뺀다', /\.not\('name', 'like', ORIGINALS_PREFIX \+ '%'\)/.test(S));
-t('1MB 초과만 집는다', /MIN_BYTES/.test(S) && /\.gt\('size_bytes', MIN_BYTES\)/.test(S));
-t('DB 쪽에서도 이미지만 고른다 (mp4 8.1GB 가 숫자를 부풀리면 안 된다)', /IMAGE_LIKE/.test(S) && /\.or\(IMAGE_LIKE\)/.test(S));
-t('scan 과 run 이 같은 기준을 쓴다 (targetQuery 공용)', /function targetQuery\(/.test(S) && (S.match(/targetQuery\(/g) || []).length >= 4);
-t('targetQuery 가 select 를 먼저 건다 (2026-09-14 500 사고)', /\.select\(columns, selectOpts\)[\s\S]{0,80}\.eq\('bucket_id'/.test(S));
+t('대상 판별은 DB(뷰)가 한다 — 코드가 거르면 헛돈다 (2026-09-14 사고)',
+  /const TARGETS_VIEW = 'image_shrink_targets'/.test(S) && /\.from\(TARGETS_VIEW\)/.test(S));
+t('pickTargets 가 진행 표를 다시 거르지 않는다', !/from\(PROGRESS\)\.select\('name'\)\.in\('name', names\)/.test(S));
+t('scan 과 run 이 같은 뷰를 쓴다', (S.match(/targetQuery\(/g) || []).length >= 4);
+t('targetQuery 가 select 를 먼저 건다 (2026-09-14 500 사고)', /\.from\(TARGETS_VIEW\)\s*\n\s*\.select\(columns, selectOpts\)/.test(S));
 t('개수는 count 로 센다 (select 로 세면 5,000 에서 거짓말한다)', /count: 'exact', head: true \}\)/.test(S) && /행 상한/.test(S));
 t('용량은 페이지로 나눠 더한다', /\.range\(from, from \+ 999\)/.test(S));
+t('왜 헛돌았는지 주석에 적혀 있다 (PNG 는 20% 만 준다)', /165번 호출하는 동안 한 장도/.test(S));
 t('jpg·png 만 집는다 (gif 애니메이션 보호)', /\\\.\(jpe\?g\|png\)\$/.test(S));
-t('이미 처리한 것은 progress 표로 거른다', /from\(PROGRESS\)\.select\('name'\)\.in\('name', names\)/.test(S));
+t('이미 처리한 것은 뷰가 뺀다 (코드가 아니라 DB 가 판별)', /\.from\(TARGETS_VIEW\)/.test(S));
 t('큰 것부터 집는다', /order\('size_bytes', \{ ascending: false \}\)/.test(S));
 
 console.log('\n=== 한 번에 다 하지 않는다 ===');
@@ -69,6 +70,14 @@ t('관리자만 부를 수 있다', /const user = await requireAdmin\(req, res\)
 
 console.log('\n=== 마이그레이션 156 ===');
 t('media_objects 뷰를 만든다', /create or replace view public\.media_objects/.test(M));
+{
+  const M2 = fs.readFileSync(path.join(ROOT, 'supabase_migrations', '157_image_shrink_targets.sql'), 'utf8');
+  t('157: 남은 것만 주는 뷰가 있다', /create or replace view public\.image_shrink_targets/.test(M2));
+  t('157: 진행 표를 LEFT JOIN 으로 뺀다', /left join public\.image_shrink_progress/.test(M2) && /p\.name is null/.test(M2));
+  t('157: originals\/ 와 mp4 를 뺀다', /not like 'originals\/%'/.test(M2) && /ilike '%\.jpg'/.test(M2));
+  t('157: anon 권한을 회수한다', /revoke all on public\.image_shrink_targets from anon, authenticated/.test(M2));
+  t('157: 왜 만들었는지 적혀 있다', /헛돌/.test(M2) && M2.includes('2026-09-14'));
+}
 t('뷰에 파일 내용이 안 담긴다 (이름·크기만)', !/metadata\s*$/m.test(M) && /size_bytes/.test(M));
 t('anon·authenticated 권한을 회수한다', /revoke all on public\.media_objects from anon, authenticated/.test(M));
 t('진행 표에 RLS 를 켠다', /alter table public\.image_shrink_progress enable row level security/.test(M));

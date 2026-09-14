@@ -65,6 +65,7 @@ console.log('\n=== 사고 지점이 제대로 고쳐져 있다 ===');
 {
   const s = fs.readFileSync(path.join(ROOT, 'api', 'admin', 'image-shrink-backfill.js'), 'utf8');
   t('targetQuery 가 select 를 먼저 건다', /function targetQuery\(columns, selectOpts\) \{[\s\S]{0,200}\.select\(columns, selectOpts\)/.test(s));
+  void 0;
   t('왜 그런지 주석에 적혀 있다', /반드시 \.select\(\) 가 먼저/.test(s));
 }
 

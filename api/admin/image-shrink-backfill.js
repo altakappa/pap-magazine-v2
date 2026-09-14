@@ -61,45 +61,36 @@ function isImageName(name) {
   return /\.(jpe?g|png)$/i.test(String(name || ''));
 }
 
-/* PostgREST 쪽에서도 이미지만 고른다. 안 걸면 mp4(1,993개 8.1GB)까지 끌어와
-   "남은 후보" 숫자가 부풀고, 행 상한에 영상이 자리를 차지한다. */
-const IMAGE_LIKE = 'name.ilike.%.jpg,name.ilike.%.jpeg,name.ilike.%.png';
-
-/* 이미지만, originals/ 제외, 1MB 초과 — scan 과 run 이 같은 기준을 쓰게 한다.
+/* 남은 대상은 **DB 가 판별한다** (마이그레이션 157, 뷰 image_shrink_targets).
  *
- * 2026-09-14 — supabase-js 는 .from() 다음에 **반드시 .select() 가 먼저** 와야
- * 필터(.eq/.gt/.not/.or)를 붙일 수 있다. 필터를 먼저 붙이면 런타임에
- * "supabaseAdmin.from(...).eq is not a function" 으로 죽는다. 실제로 그렇게
- * 배포해 500 을 냈다. 그래서 컬럼을 인자로 받아 select 를 먼저 건다. */
+ * 2026-09-14 백필 헛돌기 사고 — 종전에는 "크기 큰 순 상위 96장" 을 가져온 뒤
+ * 코드가 진행 표로 걸러냈다. 그런데 PNG 는 형식을 유지하며 줄이면 20% 밖에
+ * 안 줄어(2,003KB → 1,611KB) 처리 후에도 1MB 를 넘는다. media 버킷의 PNG 는
+ * 8,212개 6.7GB 라 목록 위쪽을 점령했고, 걸러내면 빈 배열이 나왔다.
+ * **165번 호출하는 동안 한 장도 처리하지 못했고 오류는 한 건도 없었다.**
+ *
+ * 뷰가 진행 표를 미리 빼주면 위쪽이 무엇으로 채워지든 항상 진짜 남은 것이 나온다. */
+const TARGETS_VIEW = 'image_shrink_targets';
+
+/* supabase-js 는 .from() 다음에 **반드시 .select() 가 먼저** 와야 한다.
+   필터를 먼저 붙이면 "from(...).eq is not a function" 으로 실행 중에 죽는다.
+   2026-09-14 에 실제로 그렇게 배포해 500 을 냈다. tests/supabase-query-shape.test.js 가 지킨다. */
 function targetQuery(columns, selectOpts) {
   return supabaseAdmin
-    .from('media_objects')
-    .select(columns, selectOpts)
-    .eq('bucket_id', BUCKET)
-    .gt('size_bytes', MIN_BYTES)
-    .not('name', 'like', ORIGINALS_PREFIX + '%')
-    .or(IMAGE_LIKE);
+    .from(TARGETS_VIEW)
+    .select(columns, selectOpts);
 }
 
 /* 대상 후보를 크기 큰 순으로 가져온다.
-   - originals/ 아래는 제외한다 (우리가 피신시켜 둔 원본이다)
-   - 이미 처리한 것은 progress 표로 걸러낸다 */
+   뷰(157)가 originals/ 제외 · mp4 제외 · 1MB 초과 · 진행 표에 없는 것을 이미 골라 준다. */
 async function pickTargets(limit) {
+  /* 뷰가 이미 '진행 표에 없는 것' 만 준다. 코드가 또 거르지 않는다 —
+     그게 헛돌기의 원인이었다. */
   const { data: rows, error } = await targetQuery('name, size_bytes, mimetype')
     .order('size_bytes', { ascending: false })
-    .limit(Math.min(limit * 8, 500));
-  if (error) throw new Error('media_objects: ' + error.message);
-
-  const names = (rows || []).filter(r => isImageName(r.name)).map(r => r.name);
-  if (!names.length) return [];
-
-  const { data: done } = await supabaseAdmin
-    .from(PROGRESS).select('name').in('name', names);
-  const seen = new Set((done || []).map(d => d.name));
-
-  return (rows || [])
-    .filter(r => isImageName(r.name) && !seen.has(r.name))
-    .slice(0, limit);
+    .limit(limit);
+  if (error) throw new Error(TARGETS_VIEW + ': ' + error.message);
+  return (rows || []).filter(r => isImageName(r.name)).slice(0, limit);
 }
 
 async function record(row) {
@@ -205,7 +196,7 @@ module.exports = async function handler(req, res) {
 
       return res.status(200).json({
         ok: true,
-        기준: Math.round(MIN_BYTES / 1024) + 'KB 초과 이미지 (jpg·png, mp4 제외)',
+        기준: Math.round(MIN_BYTES / 1024) + 'KB 초과 이미지 (jpg·png, mp4 제외, 이미 한 것 뺀 수)',
         남은_후보: total || 0,
         남은_용량_MB: Math.round(bytes / 1048576),
         용량_집계한_장수: counted,
