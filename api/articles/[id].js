@@ -16,6 +16,9 @@ const { describePgError } = require('../_lib/pgError');
 // 같은 이전/다음/관련 기사를 받는다. 없으면 사이트 안에서 클릭해 들어온
 // 사람에게는 이 섹션이 존재하지 않았다(도메니코의 "화면이 두 벌" 지적).
 const { buildMoreArticles } = require('../_lib/moreArticles');
+// 2026-09-14 — select('*') 는 렌더에 안 쓰는 embedding(19KB, 한 줄의 74%)까지
+// 브라우저에까지 실어 보냈다. 전송량 초과 사고 뒤 쓰는 열만 고른다 (_lib/articleCols.js).
+const { ARTICLE_SELECT } = require('../_lib/articleCols');
 
 // QA #202 — fields tracked in the audit diff for articles.
 const ARTICLE_AUDIT_FIELDS = [
@@ -35,7 +38,7 @@ module.exports = async function handler(req, res) {
     try {
       const { data, error } = await supabaseAdmin
         .from('articles')
-        .select('*')
+        .select(ARTICLE_SELECT)
         .eq('id', id)
         .single();
 
@@ -152,7 +155,7 @@ module.exports = async function handler(req, res) {
       {
         const { data: prior } = await supabaseAdmin
           .from('articles')
-          .select('*')
+          .select(ARTICLE_SELECT)
           .eq('id', id)
           .single();
         priorRow = prior || null;

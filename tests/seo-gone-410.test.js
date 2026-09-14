@@ -76,11 +76,14 @@ console.log('\n[3] 공백 낀 슬러그 — 301 정규화');
 console.log('\n[4] 공개 조회 필터는 느슨해지지 않았다');
 {
   /* 410 작업이 공개 lookup 의 published 필터를 건드렸다면 draft 유출이다. */
-  const pubLookups = (s) => (s.match(/select\('\*'\)[\s\S]{0,120}?\.eq\('status', 'published'\)/g) || []).length;
+  /* 2026-09-14 — 기사 SSR 은 select('*') 대신 ARTICLE_SELECT(embedding 뺀 열 목록)을 쓴다.
+     세는 대상은 '열 목록이 무엇이냐' 가 아니라 '공개 필터가 붙어 있느냐' 다. */
+  const SEL = "select\\((?:'\\*'|ARTICLE_SELECT)\\)";
+  const pubLookups = (s) => (s.match(new RegExp(SEL + "[\\s\\S]{0,120}?\\.eq\\('status', 'published'\\)", 'g')) || []).length;
   t('기사 공개 lookup 전부 published 필터 유지 (' + pubLookups(art) + '개)', pubLookups(art) >= 7);
   t('에디토리얼 공개 lookup 전부 published 필터 유지 (' + pubLookups(ed) + '개)', pubLookups(ed) >= 7);
-  t("기사에 select('*') + neq(published) 조합이 없다 (gone 판별은 id 만 뽑는다)",
-    !/select\('\*'\)[\s\S]{0,120}?\.neq\('status', 'published'\)/.test(art));
+  t("기사에 전체 열 조회 + neq(published) 조합이 없다 (gone 판별은 id 만 뽑는다)",
+    !new RegExp(SEL + "[\\s\\S]{0,120}?\\.neq\\('status', 'published'\\)").test(art));
 }
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);

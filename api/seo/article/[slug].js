@@ -10,6 +10,9 @@
 
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { anyOutage, sendOutage } = require('../../_lib/dbOutage');
+// 2026-09-14 — select('*') 를 쓰면 렌더에 안 쓰는 embedding(19KB, 한 줄의 74%)까지
+// 끌어온다. 전송량 초과로 사이트가 멈춘 뒤 렌더에 쓰는 열만 고른다 (_lib/articleCols.js).
+const { ARTICLE_SELECT } = require('../../_lib/articleCols');
 const { handleCors } = require('../../_lib/cors');
 const { renderSeoHtml, renderNotFoundHtml } = require('../../_lib/seoRenderer');
 const { logSocialInclick } = require('../../_lib/socialInclick');
@@ -51,13 +54,13 @@ module.exports = async function handler(req, res) {
     let data = null;
 
     /* 1) custom_url match (articles use custom_url for SEO slugs) */
-    let r = await supabaseAdmin.from('articles').select('*')
+    let r = await supabaseAdmin.from('articles').select(ARTICLE_SELECT)
       .eq('custom_url', slug).eq('status', 'published').limit(1).maybeSingle();
     data = r.data;
 
     /* 2) decoded custom_url */
     if (!data && decoded !== slug) {
-      r = await supabaseAdmin.from('articles').select('*')
+      r = await supabaseAdmin.from('articles').select(ARTICLE_SELECT)
         .eq('custom_url', decoded).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
@@ -69,12 +72,12 @@ module.exports = async function handler(req, res) {
          error 를 안 보면 '전송량 초과로 잠김' 과 '그런 글 없음' 이 같은 404 가 되고,
          구글은 그걸 '페이지가 사라졌다' 로 읽어 색인에서 뺀다. */
       if (anyOutage(r)) return sendOutage(res, 'article ' + slug);
-      r = await supabaseAdmin.from('articles').select('*')
+      r = await supabaseAdmin.from('articles').select(ARTICLE_SELECT)
         .eq('slug', decoded).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
     if (!data && dehyphenated !== decoded) {
-      r = await supabaseAdmin.from('articles').select('*')
+      r = await supabaseAdmin.from('articles').select(ARTICLE_SELECT)
         .eq('slug', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
@@ -83,14 +86,14 @@ module.exports = async function handler(req, res) {
     if (!data) {
       /* 장애면 404 로 넘기지 않는다 (2026-09-14, _lib/dbOutage.js) */
       if (anyOutage(r)) return sendOutage(res, 'article ' + slug);
-      r = await supabaseAdmin.from('articles').select('*')
+      r = await supabaseAdmin.from('articles').select(ARTICLE_SELECT)
         .eq('title', decoded).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
 
     /* 3b) title match with hyphens stripped — QA #222 */
     if (!data && dehyphenated !== decoded) {
-      r = await supabaseAdmin.from('articles').select('*')
+      r = await supabaseAdmin.from('articles').select(ARTICLE_SELECT)
         .eq('title', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
@@ -98,14 +101,14 @@ module.exports = async function handler(req, res) {
     /* 3c) title ilike (forgiving of trailing punctuation / whitespace) — QA #222 */
     if (!data && dehyphenated.length >= 3) {
       const safe = dehyphenated.replace(/[\\%_]/g, ch => '\\' + ch);
-      r = await supabaseAdmin.from('articles').select('*')
+      r = await supabaseAdmin.from('articles').select(ARTICLE_SELECT)
         .ilike('title', safe).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
 
     /* 4) UUID id (legacy /article/<id>) */
     if (!data && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
-      r = await supabaseAdmin.from('articles').select('*')
+      r = await supabaseAdmin.from('articles').select(ARTICLE_SELECT)
         .eq('id', slug).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
@@ -119,11 +122,11 @@ module.exports = async function handler(req, res) {
       /* 장애면 404 로 넘기지 않는다 (2026-09-14, _lib/dbOutage.js) */
       if (anyOutage(r)) return sendOutage(res, 'article ' + slug);
       try {
-        r = await supabaseAdmin.from('articles').select('*')
+        r = await supabaseAdmin.from('articles').select(ARTICLE_SELECT)
           .contains('redirect_from', [slug]).eq('status', 'published').limit(1).maybeSingle();
         if (r && r.data) data = r.data;
         if (!data && decoded !== slug) {
-          r = await supabaseAdmin.from('articles').select('*')
+          r = await supabaseAdmin.from('articles').select(ARTICLE_SELECT)
             .contains('redirect_from', [decoded]).eq('status', 'published').limit(1).maybeSingle();
           if (r && r.data) data = r.data;
         }
