@@ -14,6 +14,7 @@
  */
 
 const { supabaseAdmin } = require('./_lib/supabase');
+const { sendOutageXml } = require('./_lib/dbOutage');
 const { handleCors } = require('./_lib/cors');
 const { fetchAllRows } = require('./_lib/fetchAllRows');
 const { isRealImage } = require('./_lib/realImage');
@@ -159,6 +160,9 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     console.error('[sitemap-editorials] error', err);
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    return res.status(200).send('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>\n');
+    /* 2026-09-14 — 빈 <urlset> 을 200 으로 주면 구글은 "기사가 0편" 으로 읽는다.
+       장애 중에 그러면 사이트맵에 있던 URL 을 전부 지워도 된다는 신호가 된다.
+       503 이면 직전 사이트맵을 그대로 들고 있는다. (_lib/dbOutage.js 머리말) */
+    return sendOutageXml(res, 'sitemap-editorials: ' + String((err && err.message) || err));
   }
 };

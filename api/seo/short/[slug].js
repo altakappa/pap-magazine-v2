@@ -7,6 +7,7 @@
  */
 
 const { supabaseAdmin } = require('../../_lib/supabase');
+const { anyOutage, sendOutage } = require('../../_lib/dbOutage');
 const { handleCors } = require('../../_lib/cors');
 const { renderSeoHtml, renderNotFoundHtml } = require('../../_lib/seoRenderer');
 
@@ -50,6 +51,11 @@ module.exports = async function handler(req, res) {
     }
 
     if (!data) {
+      /* 2026-09-14 — DB 장애를 404 로 말하지 않는다 (_lib/dbOutage.js 머리말).
+         supabase-js 는 실패를 throw 하지 않고 { data:null, error } 로 준다.
+         error 를 안 보면 '전송량 초과로 잠김' 과 '그런 글 없음' 이 같은 404 가 되고,
+         구글은 그걸 '페이지가 사라졌다' 로 읽어 색인에서 뺀다. */
+      if (anyOutage(r)) return sendOutage(res, 'short ' + slug);
       r = await supabaseAdmin.from('shorts').select('*')
         .eq('youtube_id', slug).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
@@ -62,6 +68,8 @@ module.exports = async function handler(req, res) {
     }
 
     if (!data) {
+      /* 장애면 404 로 넘기지 않는다 (2026-09-14, _lib/dbOutage.js) */
+      if (anyOutage(r)) return sendOutage(res, 'short ' + slug);
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
       return res.status(404).send(renderNotFoundHtml('short', slug));

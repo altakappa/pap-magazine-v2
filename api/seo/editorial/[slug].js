@@ -11,6 +11,7 @@
  */
 
 const { supabaseAdmin } = require('../../_lib/supabase');
+const { anyOutage, sendOutage } = require('../../_lib/dbOutage');
 const { handleCors } = require('../../_lib/cors');
 const { renderSeoHtml, renderNotFoundHtml } = require('../../_lib/seoRenderer');
 const edAccess = require('../../_lib/editorialAccess');
@@ -97,6 +98,11 @@ module.exports = async function handler(req, res) {
 
     /* 3) title (legacy URLs that used title in the path slot) */
     if (!data) {
+      /* 2026-09-14 — DB 장애를 404 로 말하지 않는다 (_lib/dbOutage.js 머리말).
+         supabase-js 는 실패를 throw 하지 않고 { data:null, error } 로 준다.
+         error 를 안 보면 '전송량 초과로 잠김' 과 '그런 글 없음' 이 같은 404 가 되고,
+         구글은 그걸 '페이지가 사라졌다' 로 읽어 색인에서 뺀다. */
+      if (anyOutage(r)) return sendOutage(res, 'editorial ' + slug);
       r = await supabaseAdmin.from('editorials').select('*')
         .eq('title', decoded).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
@@ -135,6 +141,8 @@ module.exports = async function handler(req, res) {
        타므로 함께 해결된다.
        컬럼 미생성 환경에서도 안전: 쿼리 에러면 catch 로 흡수하고 404 로 진행. */
     if (!data) {
+      /* 장애면 404 로 넘기지 않는다 (2026-09-14, _lib/dbOutage.js) */
+      if (anyOutage(r)) return sendOutage(res, 'editorial ' + slug);
       try {
         let rf = await supabaseAdmin.from('editorials').select('slug')
           .contains('redirect_from', [slug]).eq('status', 'published').limit(1).maybeSingle();
@@ -237,6 +245,8 @@ module.exports = async function handler(req, res) {
     }
 
     if (!data) {
+      /* 장애면 404 로 넘기지 않는다 (2026-09-14, _lib/dbOutage.js) */
+      if (anyOutage(r)) return sendOutage(res, 'editorial ' + slug);
       /* 2026-08-08 — 내려간 화보는 404 가 아니라 410 Gone (기사와 동일 결정,
          GSC '찾을 수 없음' 839건 — draft 화보 213편이 큰 몫). 존재한 적
          없는 URL 은 그대로 404. */
