@@ -184,6 +184,7 @@ console.log('=== 적용 단계 안전 규약 (2026-07-31 도메니코 승인) ==
   t("실사례 true: TASTED MY REVENGE. IT'S SWEET ↔ 따옴표 제목(문장부호 무시)", T("TASTED MY REVENGE. IT'S SWEET", REAL_CAPTION));
   t("실사례 true: God's Empathy-Michelle ↔ ‘God’s Empathy’ (제목이 따옴표 제목으로 시작)", T("God's Empathy-Michelle", "‘God’s Empathy’ exclusive for @pap_magazine"));
   t('실사례 true: FEMME FATALE ↔ ‘Femme Fatale’', T('FEMME FATALE', "‘Femme Fatale’ exclusive for @pap_magazine"));
+  t('캡션 오타(‘Femme Fatal’)는 단어가 달라 자동으로 안 붙인다 — 사람이 붙일 몫', !T('FEMME FATALE', "‘Femme Fatal’ exclusive for @pap_magazine"));
   t('실사례 false: HEAVEN ↔ ‘There’s no heaven’ (따옴표 제목이 다르다)', !T('HEAVEN', "‘There’s no heaven’ exclusive for @pap_magazine"));
   t('실사례 false: ILLUSION ↔ ‘Illusory’', !T('ILLUSION', "‘Illusory’ exclusive for @pap_magazine"));
   t('실사례 false: SILVIA ↔ ‘A Visitor of The Night’ (본문에만 Silvia)', !T('SILVIA', "‘A Visitor of The Night’ exclusive for @pap_magazine\n\nModel Silvia @silvia"));
@@ -194,7 +195,27 @@ console.log('=== 적용 단계 안전 규약 (2026-07-31 도메니코 승인) ==
   t('matchOne 이 새 규칙을 쓴다 (본문 substring 만으로는 none)',
     M.matchOne({ title: 'HEAVEN', published_date: '2022-03-08' }, [{ caption: "‘There’s no heaven’ exclusive for @pap_magazine", timestamp: '2022-03-10T00:00:00Z' }]).status === 'none');
   const src = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/legacyImageMatch.js'), 'utf8');
-  t('matchOne 필터가 titleMatchesCaption && withinDateWindow', /filter\(m => m && titleMatchesCaption\(row\.title, m\.caption\) && withinDateWindow\(row, m\)\)/.test(src));
+  t('matchOne 필터가 !isVideoMedia && titleMatchesCaption && withinDateWindow', /filter\(m => m && !isVideoMedia\(m\) && titleMatchesCaption\(row\.title, m\.caption\) && withinDateWindow\(row, m\)\)/.test(src));
+})();
+
+/* ── 2026-09-14 3차 재스캔: 글자 접두도 틀렸다 ──────────────────────────────
+   HEAVEN ← ‘Heavenly body’, CHROMATIC ← ‘Chroma’ (글자로는 접두, 단어로는 아님). SILVIA ← IGTV 첫 줄 중간의 이름.
+   HEROES ← BTS 릴스: 영상이라 썸네일 1장이 커버로 붙었다. */
+(function () {
+  console.log('\n=== 단어 접두 · 첫 줄 시작 · 영상 제외 ===');
+  const M = require('../api/_lib/legacyImageMatch');
+  const T = M.titleMatchesCaption;
+  t('실사례 false: HEAVEN ↔ ‘Heavenly body’ (heaven ≠ heavenly)', !T('HEAVEN', "‘Heavenly body’ exclusive for @pap_magazine"));
+  t('실사례 false: CHROMATIC ↔ ‘Chroma’', !T('CHROMATIC', "‘Chroma’ exclusive for @pap_magazine"));
+  t('실사례 true: ALTERNATIVE ↔ ‘Alternative Futures’ (단어 접두)', T('ALTERNATIVE', "‘Alternative Futures’ exclusive for @pap_magazine"));
+  t("실사례 true: MINAMI'S HAIR ↔ BTS ‘Minami’s Hair’ (어포스트로피 무시)", T("MINAMI'S HAIR", "BTS ‘Minami’s Hair’ exclusive for @pap_magazine"));
+  t('실사례 false: SILVIA ↔ 따옴표 없는 IGTV 첫 줄 중간의 이름', !T('SILVIA', 'Photography by @toad_studio ㅡ Model Silvia @silvia'));
+  t('따옴표 없는 캡션은 첫 줄이 제목으로 시작해야 한다', T('BLOSSOM', 'BLOSSOM exclusive for @pap_magazine') && !T('BLOSSOM', 'New editorial BLOSSOM exclusive'));
+  t('isVideoMedia: media_type VIDEO 또는 /reel/ /tv/ 링크', M.isVideoMedia({ media_type: 'VIDEO' }) && M.isVideoMedia({ permalink: 'https://www.instagram.com/reel/x/' }) && M.isVideoMedia({ permalink: 'https://www.instagram.com/tv/x/' }) && !M.isVideoMedia({ media_type: 'CAROUSEL_ALBUM', permalink: 'https://www.instagram.com/p/x/' }));
+  t('실사례: HEROES ↔ BTS ‘Heroes’ 릴스 → none (영상은 원본이 아니다)',
+    M.matchOne({ title: 'HEROES', published_date: '2022-07-25' }, [{ caption: "BTS ‘Heroes’ exclusive for @pap_magazine", media_type: 'VIDEO', permalink: 'https://www.instagram.com/reel/ChfRAnbA-Fo/', timestamp: '2022-08-20T16:49:09+0000' }]).status === 'none');
+  t('같은 제목의 사진 게시물은 여전히 matched', 
+    M.matchOne({ title: 'HEROES', published_date: '2022-07-25' }, [{ caption: "‘Heroes’ exclusive for @pap_magazine", media_type: 'CAROUSEL_ALBUM', permalink: 'https://www.instagram.com/p/x/', timestamp: '2022-08-01T00:00:00Z' }]).status === 'matched');
 })();
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);

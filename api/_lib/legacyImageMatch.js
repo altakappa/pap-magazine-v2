@@ -85,19 +85,46 @@ function quotedTitle(caption) {
   return m ? m[1] : '';
 }
 
+/* 단어 단위로 자른다 — 글자 접두가 아니라 **단어 접두**를 비교하기 위해서다.
+ * 2026-09-14 2차 재스캔에서 글자 접두 규칙이 또 틀렸다: HEAVEN ← ‘Heavenly body’, CHROMATIC ← ‘Chroma’.
+ * "heaven" 은 "heavenlybody" 의 글자 접두지만 단어 [heaven] 은 [heavenly, body] 의 접두가 아니다. */
+function words(s) {
+  return String(s || '').toLowerCase().replace(/[‘’“”']/g, '')
+    .split(/[^a-z0-9가-힣]+/).filter(Boolean);
+}
+function wordPrefix(a, b) {   // a 의 단어열이 b 의 단어열로 시작하는가 (b 가 더 짧거나 같다)
+  if (!b.length || b.length > a.length) return false;
+  for (let i = 0; i < b.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
 function titleMatchesCaption(title, caption) {
   const t = normalize(title);
   const min = /[가-힣]/.test(t) ? MIN_TITLE_LEN_CJK : MIN_TITLE_LEN;
   if (t.length < min) return false;
+  const tw = words(title);
   const qRaw = quotedTitle(caption);
-  const q = normalize(qRaw);
-  if (qRaw) return q.length >= min && (q.startsWith(t) || t.startsWith(q));   // 따옴표 제목이 있으면 그것만 본다 (짧은 따옴표 조각 'Bo' 로 BOHEMIA 를 붙이지 않게 같은 최소 길이)
+  if (qRaw) {   // 따옴표 제목이 있으면 그것만 본다. 한쪽 단어열이 다른 쪽으로 시작해야 한다 (단어 단위).
+    const q = normalize(qRaw);
+    if (q.length < min) return false;   // 짧은 따옴표 조각 'Bo' 로 BOHEMIA 를 붙이지 않게 같은 최소 길이
+    const qw = words(qRaw);
+    return wordPrefix(qw, tw) || wordPrefix(tw, qw);
+  }
+  // 따옴표 제목이 없는 캡션: 첫 줄이 제목 단어열로 **시작**해야 한다. 첫 줄 어딘가에 있는 건 거부
+  // (IGTV 캡션 "Photography by … Model Silvia" 가 SILVIA 에 붙은 사고).
   const firstLine = String(caption || '').split('\n')[0];
-  return normalize(firstLine).includes(t);
+  return wordPrefix(words(firstLine), tw);
+}
+
+/* 영상 게시물(릴스·IGTV)은 원본이 아니다 — 회수하면 썸네일 한 장이 커버가 된다 (2026-09-14 HEROES 실사례). */
+function isVideoMedia(m) {
+  if (!m) return false;
+  if (String(m.media_type || '').toUpperCase() === 'VIDEO') return true;
+  return /instagram\.com\/(reel|tv)\//.test(String(m.permalink || ''));
 }
 
 function matchOne(row, media) {
-  const hits = (media || []).filter(m => m && titleMatchesCaption(row.title, m.caption) && withinDateWindow(row, m));
+  const hits = (media || []).filter(m => m && !isVideoMedia(m) && titleMatchesCaption(row.title, m.caption) && withinDateWindow(row, m));
   if (!hits.length) return { status: 'none', count: 0 };
   if (hits.length > 1) return { status: 'ambiguous', count: hits.length, media: hits[0] };
   return { status: 'matched', count: 1, media: hits[0] };
@@ -136,4 +163,4 @@ function extractHandles(caption) {
   return out;
 }
 
-module.exports = { normalize, titleInCaption, titleMatchesCaption, quotedTitle, matchOne, withinDateWindow, extractHandles, MIN_TITLE_LEN, MIN_TITLE_LEN_CJK, MAX_LAG_DAYS, MAX_LEAD_DAYS };
+module.exports = { normalize, titleInCaption, titleMatchesCaption, quotedTitle, isVideoMedia, matchOne, withinDateWindow, extractHandles, MIN_TITLE_LEN, MIN_TITLE_LEN_CJK, MAX_LAG_DAYS, MAX_LEAD_DAYS };
