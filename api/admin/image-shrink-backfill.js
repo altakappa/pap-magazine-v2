@@ -61,16 +61,26 @@ function isImageName(name) {
   return /\.(jpe?g|png)$/i.test(String(name || ''));
 }
 
+/* PostgREST 쪽에서도 이미지만 고른다. 안 걸면 mp4(1,993개 8.1GB)까지 끌어와
+   "남은 후보" 숫자가 부풀고, 행 상한에 영상이 자리를 차지한다. */
+const IMAGE_LIKE = 'name.ilike.%.jpg,name.ilike.%.jpeg,name.ilike.%.png';
+
+/* 이미지만, originals/ 제외, 1MB 초과 — scan 과 run 이 같은 기준을 쓰게 한다. */
+function targetQuery() {
+  return supabaseAdmin
+    .from('media_objects')
+    .eq('bucket_id', BUCKET)
+    .gt('size_bytes', MIN_BYTES)
+    .not('name', 'like', ORIGINALS_PREFIX + '%')
+    .or(IMAGE_LIKE);
+}
+
 /* 대상 후보를 크기 큰 순으로 가져온다.
    - originals/ 아래는 제외한다 (우리가 피신시켜 둔 원본이다)
    - 이미 처리한 것은 progress 표로 걸러낸다 */
 async function pickTargets(limit) {
-  const { data: rows, error } = await supabaseAdmin
-    .from('media_objects')
+  const { data: rows, error } = await targetQuery()
     .select('name, size_bytes, mimetype')
-    .eq('bucket_id', BUCKET)
-    .gt('size_bytes', MIN_BYTES)
-    .not('name', 'like', ORIGINALS_PREFIX + '%')
     .order('size_bytes', { ascending: false })
     .limit(Math.min(limit * 8, 500));
   if (error) throw new Error('media_objects: ' + error.message);
@@ -158,24 +168,43 @@ module.exports = async function handler(req, res) {
   try {
     /* ── 통계만 ─────────────────────────────────────────── */
     if (q.scan) {
-      const { data: all } = await supabaseAdmin
-        .from('media_objects')
-        .select('size_bytes')
-        .eq('bucket_id', BUCKET)
-        .gt('size_bytes', MIN_BYTES)
-        .not('name', 'like', ORIGINALS_PREFIX + '%')
-        .limit(20000);
-      const sizes = (all || []).map(r => Number(r.size_bytes) || 0);
+      /* 개수는 count 로 정확히 센다. select 로 세면 PostgREST 행 상한(5,000)에
+         걸려 "5000" 이라는 거짓 숫자가 나온다 — 2026-09-14 실제로 그랬다. */
+      const { count: total } = await targetQuery().select('name', { count: 'exact', head: true });
+
+      /* 용량은 합계 함수가 없어 페이지로 나눠 더한다. 1,000행씩, 최대 30페이지. */
+      let bytes = 0, counted = 0, capped = false;
+      for (let page = 0; page < 30; page++) {
+        const from = page * 1000;
+        const { data: chunk, error: e2 } = await targetQuery()
+          .select('size_bytes').order('size_bytes', { ascending: false }).range(from, from + 999);
+        if (e2) break;
+        if (!chunk || !chunk.length) break;
+        for (const r of chunk) bytes += Number(r.size_bytes) || 0;
+        counted += chunk.length;
+        if (chunk.length < 1000) break;
+        if (page === 29) capped = true;
+      }
+
       const { count: doneCount } = await supabaseAdmin
         .from(PROGRESS).select('name', { count: 'exact', head: true }).eq('status', 'done');
-      const { data: sums } = await supabaseAdmin
-        .from(PROGRESS).select('size_from, size_to').eq('status', 'done').limit(20000);
-      const saved = (sums || []).reduce((s, r) => s + ((Number(r.size_from) || 0) - (Number(r.size_to) || 0)), 0);
+      let saved = 0;
+      for (let page = 0; page < 30; page++) {
+        const from = page * 1000;
+        const { data: chunk } = await supabaseAdmin
+          .from(PROGRESS).select('size_from, size_to').eq('status', 'done').range(from, from + 999);
+        if (!chunk || !chunk.length) break;
+        for (const r of chunk) saved += (Number(r.size_from) || 0) - (Number(r.size_to) || 0);
+        if (chunk.length < 1000) break;
+      }
+
       return res.status(200).json({
         ok: true,
-        기준: Math.round(MIN_BYTES / 1024) + 'KB 초과',
-        남은_후보: sizes.length,
-        남은_용량_MB: Math.round(sizes.reduce((a, b) => a + b, 0) / 1048576),
+        기준: Math.round(MIN_BYTES / 1024) + 'KB 초과 이미지 (jpg·png, mp4 제외)',
+        남은_후보: total || 0,
+        남은_용량_MB: Math.round(bytes / 1048576),
+        용량_집계한_장수: counted,
+        용량이_일부만_집계됨: capped || undefined,
         처리완료: doneCount || 0,
         절감_MB: Math.round(saved / 1048576),
       });

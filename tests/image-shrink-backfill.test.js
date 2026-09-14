@@ -49,6 +49,10 @@ t('왜 URL 을 안 건드리는지 적혀 있다', /갈아끼울 것이 없다/.
 console.log('\n=== 대상 고르기 ===');
 t('originals/ 아래는 대상에서 뺀다', /\.not\('name', 'like', ORIGINALS_PREFIX \+ '%'\)/.test(S));
 t('1MB 초과만 집는다', /MIN_BYTES/.test(S) && /\.gt\('size_bytes', MIN_BYTES\)/.test(S));
+t('DB 쪽에서도 이미지만 고른다 (mp4 8.1GB 가 숫자를 부풀리면 안 된다)', /IMAGE_LIKE/.test(S) && /\.or\(IMAGE_LIKE\)/.test(S));
+t('scan 과 run 이 같은 기준을 쓴다 (targetQuery 공용)', /function targetQuery\(\)/.test(S) && (S.match(/targetQuery\(\)/g) || []).length >= 3);
+t('개수는 count 로 센다 (select 로 세면 5,000 에서 거짓말한다)', /count: 'exact', head: true \}\)/.test(S) && /행 상한/.test(S));
+t('용량은 페이지로 나눠 더한다', /\.range\(from, from \+ 999\)/.test(S));
 t('jpg·png 만 집는다 (gif 애니메이션 보호)', /\\\.\(jpe\?g\|png\)\$/.test(S));
 t('이미 처리한 것은 progress 표로 거른다', /from\(PROGRESS\)\.select\('name'\)\.in\('name', names\)/.test(S));
 t('큰 것부터 집는다', /order\('size_bytes', \{ ascending: false \}\)/.test(S));
