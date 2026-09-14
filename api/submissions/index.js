@@ -15,7 +15,7 @@ const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
-const { classifySubmissionType, looksMissingCredit, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
+const { classifySubmissionType, looksMissingCredit, lookItemsMissingInstagram, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
 const { validateCollaborators, collaboratorAlertText } = require('../_lib/collaborators');
 const { isPremiumUser, resolveCoverIndex } = require('../_lib/premiumCover');   // 2026-09-12 커버 선택은 프리미엄만
 const { brandRolesIn } = require('../_lib/brandRoleGuard');   // 2026-09-12 브랜드/디자이너는 팀 크레딧 금지
@@ -205,7 +205,14 @@ module.exports = async function handler(req, res) {
       }
       const collaborators = _cv.collaborators;
       // 2026-09-10 GENRE 규칙 — 장르(FASHION/BEAUTY/기타)에 따라 판정이 갈린다. submissionType.js 헤더 참조.
-      const _cls = classifySubmissionType(looks, lookImageMap, { genres: normalizedGenres });
+      // 2026-09-14 도메니코 — 룩 크레딧의 인스타그램 핸들은 필수, 올바른 아이디여야 한다. 없는 브랜드는 없는 브랜드.
+      // (관용 표기 Stylist's Own 등은 브랜드가 아니라 대상 아님.) 판정(strictHandles)보다 먼저 막는다.
+      const _noInsta = lookItemsMissingInstagram(looks);
+      if (_noInsta.length) {
+        const _lbl = _noInsta.map((x) => 'Look ' + x.lookN + ': ' + (x.brand || x.instagram)).join(', ');
+        return _reject400(res, user, 'LOOK_INSTAGRAM_REQUIRED', 'Every brand credit needs a valid Instagram handle (letters, numbers, dots, underscores). Missing or invalid: ' + _lbl, { items: _noInsta });
+      }
+      const _cls = classifySubmissionType(looks, lookImageMap, { genres: normalizedGenres, strictHandles: true });
       const submissionType = _cls.submissionType;
       // 2026-07-21 (도메니코 지시) — 모든 룩은 최소 1개 크레딧(브랜드 또는 인스타)이
       // 있어야 제출/재제출 가능. 과거엔 강제하지 않아 룩 크레딧 없이 통과됐다(예: Marooned).

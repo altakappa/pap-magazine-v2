@@ -707,7 +707,7 @@ console.log('\n=== GENRE 규칙 (2026-09-10) ===');
      /function selectGenre\(el\)\{[\s\S]*?_renderSubmissionTypeNotice\(\);\s*\}/.test(html));
   for (const f of ['index.js', '[id].js']) {
     const src = fs.readFileSync(path.resolve(__dirname, '..', 'api', 'submissions', f), 'utf8');
-    ok('api/submissions/' + f + ' 가 장르를 분류기에 넘긴다', /classifySubmissionType\(looks, lookImageMap, \{ genres: normalizedGenres \}\)/.test(src));
+    ok('api/submissions/' + f + ' 가 장르를 분류기에 넘긴다', /classifySubmissionType\(looks, lookImageMap, \{ genres: normalizedGenres(, strictHandles: true)? \}\)/.test(src));
     ok('api/submissions/' + f + ' 가 판정 근거(genreMode·paidReason·needsCreditReview)를 저장한다',
        /submissionGenreMode: _cls\.genreMode/.test(src) && /submissionPaidReason: _cls\.paidReason/.test(src) && /needsCreditReview: !!_cls\.needsCreditReview/.test(src));
   }

@@ -173,6 +173,64 @@ function normHandle(s) {
   return String(s == null ? '' : s).trim().replace(/^@+/, '').replace(/\s+/g, '').toLowerCase();
 }
 
+/* ── 인스타그램 핸들 필수 (도메니코 2026-09-14) ──────────────────────────────
+   "인스타그램 핸들은 필수. 올바른 아이디여야 하고, 인스타그램 아이디가 없으면 없는 브랜드로 간주한다."
+   실사례 "Fantasy World"(10b072fc, 9/13): 룩 6개 중 인스타를 적은 항목이 3개뿐이고 그마저 "333 studio"
+   (띄어쓰기) 같은 값이었다. 폼은 브랜드명만으로 통과시켰고 normHandle 은 공백을 지워 '333studio' 로 살렸다.
+   ① validHandle: 인스타그램 아이디 문법(영숫자·마침표·밑줄, 1~30자)만 통과. URL·@ 는 벗기고, 공백이 섞이면 무효.
+   ② lookItemsMissingInstagram: 브랜드를 적은 항목(관용 표기 제외)에 유효한 핸들이 없으면 목록에 올린다 → POST/PUT 400.
+   ③ clothingBrandUnion(무료 자격 = 의상 브랜드 3종)에서 유효 핸들 없는 브랜드는 세지 않는다("없는 브랜드").
+      브랜디드(€790) 판정(brandSetsFromLooks)은 종전대로 브랜드명을 본다 — 핸들을 빼서 €790 을 피하는 길을 열지 않는다.
+   ③ 은 opts.strictHandles === true 일 때만 켠다 — POST/PUT(index.js·[id].js)이 켜고, 발효일 이전 제출은 제외.
+      순수 판정 함수의 기본 동작(테스트 픽스처·미리보기)은 종전과 같다. 실제 요청은 ② 의 400 이 먼저 막으므로
+      ③ 은 API 를 우회한 경우의 마지막 자물쇠다. */
+const HANDLE_RULE_EFFECTIVE_AT = process.env.HANDLE_RULE_EFFECTIVE_AT || '2026-09-14T00:00:00Z';
+const INSTAGRAM_HANDLE_RE = /^[a-z0-9._]{1,30}$/;
+
+/** 유효한 인스타그램 핸들이면 정규화한 핸들, 아니면 ''. "333 studio"·"http://x" 는 ''. */
+function validHandle(raw) {
+  let s = String(raw == null ? '' : raw).trim();
+  if (!s) return '';
+  s = s.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/[/?#].*$/, '');
+  s = s.replace(/^@+/, '').trim().toLowerCase();
+  if (/\s/.test(s)) return '';
+  return INSTAGRAM_HANDLE_RE.test(s) ? s : '';
+}
+
+function handleRuleApplies(submittedAt) {
+  const eff = Date.parse(HANDLE_RULE_EFFECTIVE_AT);
+  if (!isFinite(eff)) return true;
+  const t = submittedAt ? Date.parse(submittedAt) : Date.now();
+  if (!isFinite(t)) return true;
+  return t >= eff;
+}
+
+/**
+ * 브랜드를 적었는데 유효한 인스타 핸들이 없는 룩 항목들.
+ * @returns {Array<{lookN:number|null, type:string, brand:string, instagram:string, reason:'missing'|'invalid'}>}
+ *   · 브랜드가 관용 표기(Stylist's Own 등)나 빈칸이면 대상이 아니다 — 브랜드가 아니므로 인스타를 요구하지 않는다.
+ *   · 브랜드 없이 핸들만 적은 항목은 핸들 문법만 본다(invalid).
+ */
+function lookItemsMissingInstagram(looks) {
+  const out = [];
+  if (!Array.isArray(looks)) return out;
+  for (const L of looks) {
+    const items = (L && Array.isArray(L.items)) ? L.items : [];
+    for (const it of items) {
+      if (!it) continue;
+      const brand = String(it.brand == null ? '' : it.brand).trim();
+      const raw = String(it.instagram == null ? '' : it.instagram).trim();
+      const realBrand = !!brand && !isGenericCredit(brand);
+      if (!realBrand && !raw) continue;
+      const h = validHandle(raw);
+      if (h) continue;
+      if (!realBrand && raw) { out.push({ lookN: L && L.n != null ? L.n : null, type: String(it.type || ''), brand, instagram: raw, reason: 'invalid' }); continue; }
+      out.push({ lookN: L && L.n != null ? L.n : null, type: String(it.type || ''), brand, instagram: raw, reason: raw ? 'invalid' : 'missing' });
+    }
+  }
+  return out;
+}
+
 // GENERIC-CREDIT 필터 (도메니코 지시 2026-08-24) ─────────────────────────────
 // "Stylist" / "Own Design" / "Stylist's Own" 같은 관용 표기는 브랜드가 아니라
 // "스타일리스트 소장품·본인 제작"이라는 뜻이다. 실사례 "BURNOUT IS A BADGE OF
@@ -336,6 +394,7 @@ function clothingBrandUnion(looks, realLookKeys, opts) {
   // 여기이므로 반드시 여기에도 걸어야 한다. brandSetsFromLooks 에만 걸면
   // 브랜디드 판정만 바뀌고 무료/유료 경계는 그대로다.
   const applySpa = spaRuleApplies(opts && opts.submittedAt);
+  const applyHandle = !!(opts && opts.strictHandles) && handleRuleApplies(opts && opts.submittedAt);   // 2026-09-14 인스타 없는 브랜드는 없는 브랜드
   const allowed = new Set((realLookKeys || []).map(String));
   for (const lk of looks) {
     if (!lk || lk.n == null) continue;
@@ -352,6 +411,9 @@ function clothingBrandUnion(looks, realLookKeys, opts) {
       } else if (b && applySpa && isSpaBrand(b)) {
         // SPA 브랜드는 집계에서 뺀다. 핸들 폴백으로도 되살리지 않는다
         // (@zara 로 우회하는 길을 열면 규칙이 무의미해진다).
+        continue;
+      } else if (b && applyHandle && !validHandle(it.instagram)) {
+        // 2026-09-14 도메니코 — 유효한 인스타그램 아이디가 없는 브랜드는 "없는 브랜드". 무료 자격에 안 센다.
         continue;
       } else if (b) {
         out.add(b); continue;
@@ -545,6 +607,11 @@ function looksMissingCredit(looks) {
 }
 
 module.exports = {
+  HANDLE_RULE_EFFECTIVE_AT,
+  INSTAGRAM_HANDLE_RE,
+  validHandle,
+  handleRuleApplies,
+  lookItemsMissingInstagram,
   MIN_LOOKS,
   MIN_CLOTHING_BRANDS,
   BEAUTY_MAX_CLOTHING_BRANDS,
