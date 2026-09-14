@@ -15,7 +15,7 @@
 'use strict';
 
 const path = require('path');
-const { classifySubmissionType, MIN_LOOKS } =
+const { classifySubmissionType, MIN_LOOKS, MIN_CLOTHING_BRANDS, MULTI_BRAND_EXEMPT_MIN } =
   require(path.resolve(__dirname, '..', 'api', '_lib', 'submissionType'));
 
 let passed = 0;
@@ -94,8 +94,9 @@ ok('2 looks, 공통 브랜드 + 의상 브랜드 3종 → 예외 발동 후 룩 
    typeOf(looksFor([['Common', 'A'], ['Common', 'B']]), mapFor([1, 1])) === 'paid_few_looks');
 ok('3 looks, 공통 브랜드 + 의상 브랜드 3종 → 예외 발동 + 룩 3개 → free (2026-09-10)',
    typeOf(looksFor([['Common', 'A'], ['Common', 'B'], ['Common']]), mapFor([1, 1, 1])) === 'free');
-ok('4 looks, 공통 브랜드 + 의상 브랜드 2종뿐 → 여전히 branded',
-   typeOf(looksFor([['Gucci', 'A'], ['Gucci', 'A'], ['Gucci'], ['Gucci', 'A']]), mapFor([1, 1, 1, 1])) === 'branded');
+// 2026-09-14 도메니코: "옷 2종(그중 하나가 전 룩)은 브랜디드가 아니라 유료 서브미션." 종전 branded → paid_few_looks.
+ok('4 looks, 공통 브랜드 + 의상 브랜드 2종뿐 → paid_few_looks (2026-09-14, 종전 branded)',
+   typeOf(looksFor([['Gucci', 'A'], ['Gucci', 'A'], ['Gucci'], ['Gucci', 'A']]), mapFor([1, 1, 1, 1])) === 'paid_few_looks');
 
 console.log('\n=== priority: branded > paid_few_looks ===');
 /* ⏰ 2026-09-03 02:53 — 이 두 줄이 **시한폭탄이었다.**
@@ -190,10 +191,30 @@ console.log('\n=== 다중 브랜드 예외 (2026-08-03) ===');
     L(3, [{ type: 'Jacket', brand: 'A' }, { type: 'Skirt', brand: 'B' }]),
     L(4, [{ type: 'Jacket', brand: 'A' }, { type: 'Coat', brand: 'B' }]),
   ], map([1, 1, 1, 1]));
-  ok('의상 브랜드 2종 → branded 유지 (예외 미발동)',
-     three.submissionType === 'branded' && three.multiBrandExempt === false
-     && three.clothingBrandCount === 2,
+  // 2026-09-14 도메니코: 해제 문턱 3 → 2 (MULTI_BRAND_EXEMPT_MIN). 2종은 branded 가 아니라 few_clothing_brands €380.
+  ok('의상 브랜드 2종 → 예외 발동, paid_few_looks/few_clothing_brands (2026-09-14, 종전 branded 유지)',
+     three.submissionType === 'paid_few_looks' && three.multiBrandExempt === true
+     && three.paidReason === 'few_clothing_brands' && three.clothingBrandCount === 2,
      JSON.stringify(three));
+  ok('MULTI_BRAND_EXEMPT_MIN 은 2, MIN_CLOTHING_BRANDS(무료 문턱) 는 3 그대로',
+     MULTI_BRAND_EXEMPT_MIN === 2 && MIN_CLOTHING_BRANDS === 3);
+  // 도메니코 표 C: 4룩, 옷 A 전 룩 + 옷 B 한 벌 → €380. 표 A: 옷 1종 + 액세서리·잡화 → 여전히 €790.
+  const caseC = classifySubmissionType([
+    L(1, [{ type: 'Dress', brand: 'Alpha', instagram: 'alpha' }, { type: 'Top', brand: 'Bravo', instagram: 'bravo' }]),
+    L(2, [{ type: 'Dress', brand: 'Alpha', instagram: 'alpha' }]),
+    L(3, [{ type: 'Coat', brand: 'Alpha', instagram: 'alpha' }]),
+    L(4, [{ type: 'Dress', brand: 'Alpha', instagram: 'alpha' }]),
+  ], map([1, 1, 1, 1]), { genres: ['FASHION'], strictHandles: true });
+  ok('표 C: 옷 A 전 룩 + 옷 B 한 벌 → paid_few_looks (€380)',
+     caseC.submissionType === 'paid_few_looks' && caseC.paidReason === 'few_clothing_brands', JSON.stringify(caseC));
+  const caseA = classifySubmissionType([
+    L(1, [{ type: 'Dress', brand: 'Alpha', instagram: 'alpha' }, { type: 'Bag', brand: 'Bravo', instagram: 'bravo' }]),
+    L(2, [{ type: 'Top', brand: 'Alpha', instagram: 'alpha' }, { type: 'Shoes', brand: 'Charlie', instagram: 'charlie' }]),
+    L(3, [{ type: 'Coat', brand: 'Alpha', instagram: 'alpha' }, { type: 'Bag', brand: 'Bravo', instagram: 'bravo' }]),
+    L(4, [{ type: 'Dress', brand: 'Alpha', instagram: 'alpha' }, { type: 'Hat', brand: 'Charlie', instagram: 'charlie' }]),
+  ], map([1, 1, 1, 1]), { genres: ['FASHION'], strictHandles: true });
+  ok('표 A: 옷 1종 + 액세서리·잡화 여러 브랜드 → 여전히 branded (€790)',
+     caseA.submissionType === 'branded' && caseA.singleClothingBrand === true, JSON.stringify(caseA));
 
   // 액세서리는 아무리 많아도 예외를 만들지 못한다
   const acc = classifySubmissionType([
@@ -284,8 +305,11 @@ console.log('\n=== ACCESSORY-ONLY 예외 (2026-08-10) ===');
   // 2026-08-23 판정 변경: accessoryOnlyExempt 로 branded(€790)는 해제되지만,
   // 의상 브랜드가 MOIRAI/Roberto Cavalli 2종뿐이라 free 자격(4종)은 안 된다
   // → paid_few_looks(€380). 예외는 "€790 취소"지 "무조건 무료"가 아니다.
+  // 2026-09-14: 의상 2종은 다중 브랜드 예외(문턱 2)가 먼저 branded 를 끈다 → accessoryOnlyExempt 는 더 이상
+  // 켜질 차례가 없다(이미 false). 결과(€380)는 같다.
   ok('실사례 REVERIE → branded 해제 + 의상 2종이라 paid_few_looks (2026-08-23)',
-     reverie.submissionType === 'paid_few_looks' && reverie.accessoryOnlyExempt === true
+     reverie.submissionType === 'paid_few_looks' && reverie.branded === false
+     && (reverie.accessoryOnlyExempt === true || reverie.multiBrandExempt === true)
      && reverie.clothingBrandCount === 2 && reverie.paidReason === 'few_clothing_brands',
      JSON.stringify(reverie));
   ok('해제돼도 sharedBrands 는 남는다 (관리자가 겹침 사실을 볼 수 있게)',
@@ -299,9 +323,11 @@ console.log('\n=== ACCESSORY-ONLY 예외 (2026-08-10) ===');
     L(3, [{ type: 'Pants', brand: 'B' }, { type: 'Shoes', brand: 'A' }]),
     L(4, [{ type: 'Skirt', brand: 'B' }, { type: 'Shoes', brand: 'A' }]),
   ], mapFor([1, 1, 1, 1]));
-  // (의상 브랜드는 A·B 2종 — 3종이면 2026-09-10 문턱의 다중 브랜드 예외가 먼저 걸린다)
-  ok('공통 브랜드가 룩1의 의상 슬롯에도 있으면 → branded 유지 (해제 안 됨)',
-     inClothing.submissionType === 'branded' && inClothing.accessoryOnlyExempt === false,
+  // (의상 브랜드는 A·B 2종) — 2026-09-14 도메니코: 의상 2종은 브랜디드가 아니라 €380. accessoryOnly 해제는
+  // 여전히 안 걸리지만(공통 브랜드가 의상 슬롯에 있음) 다중 브랜드 예외(문턱 2)로 branded 가 꺼진다.
+  ok('공통 브랜드가 룩1의 의상 슬롯에도 있으면 → accessoryOnly 해제는 안 되지만 의상 2종이라 paid_few_looks (2026-09-14)',
+     inClothing.submissionType === 'paid_few_looks' && inClothing.accessoryOnlyExempt === false
+     && inClothing.multiBrandExempt === true && inClothing.paidReason === 'few_clothing_brands',
      JSON.stringify(inClothing));
 
   // 우회로 차단: 의상 슬롯을 하나도 안 채우면 해제되지 않는다
@@ -334,7 +360,8 @@ console.log('\n=== ACCESSORY-ONLY 예외 (2026-08-10) ===');
     L(2, [{ type: 'Jacket', brand: 'N' }, { type: 'Shoes', brand: 'S' }]),
   ], mapFor([1, 1]));
   ok('액세서리 전용 공통 + 실제 룩 2개 → free 아니라 paid_few_looks',
-     fewLooks.submissionType === 'paid_few_looks' && fewLooks.accessoryOnlyExempt === true,
+     fewLooks.submissionType === 'paid_few_looks' && fewLooks.branded === false
+     && (fewLooks.accessoryOnlyExempt === true || fewLooks.multiBrandExempt === true),
      JSON.stringify(fewLooks));
 
   // 단일 브랜드 트리거 (a): 그 브랜드가 액세서리 슬롯에만 있으면 의상 0종이라 유지

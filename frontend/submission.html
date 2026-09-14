@@ -2336,6 +2336,7 @@ function _onTeamLinkTypeChange(sel){
 // 사전 안내(€790)가 서버 판정과 어긋나지 않게 반드시 같이 고친다.
 var _PAP_CLOTHING_TYPES={jacket:1,top:1,shirt:1,sweater:1,dress:1,pants:1,skirt:1,bodysuit:1,costume:1,coat:1};
 var _PAP_MIN_CLOTHING_BRANDS=3;
+var _PAP_MULTI_BRAND_EXEMPT_MIN=2; // 2026-09-14 도메니코: 의상 2종이면 브랜디드 해제(→ €380). 서버 MULTI_BRAND_EXEMPT_MIN 과 동일.
 function _papNormBrand(s){ return String(s==null?'':s).trim().replace(/\s+/g,' ').toLowerCase(); }
 // GENERIC-CREDIT 필터 (도메니코 2026-08-24) — "Stylist"/"Own Design"/"Stylist's
 // Own" 같은 관용 표기는 브랜드가 아니다(스타일리스트 소장·본인 제작). 어떤
@@ -2437,9 +2438,9 @@ function _papClassifySubmission(){
     branded = !!(inter && Object.keys(inter).length>0);
     sharedBrands = inter ? Object.keys(inter) : [];
   }
-  // 다중 브랜드 예외 — 의상 브랜드 ≥ 3 이면 branded 해제.
+  // 다중 브랜드 예외 — 의상 브랜드 ≥ 2 이면 branded 해제 (2026-09-14, 종전 3). 2종은 아래 fewClothingBrands 로 €380.
   var clothingCount=Object.keys(clothing).length;
-  var multiBrandExempt = branded && clothingCount>=_PAP_MIN_CLOTHING_BRANDS;
+  var multiBrandExempt = branded && clothingCount>=_PAP_MULTI_BRAND_EXEMPT_MIN;
   if(multiBrandExempt) branded=false;
   // ACCESSORY-ONLY 예외 (도메니코 2026-08-10) — 공통 브랜드가 의상 슬롯에 한 번도
   // 안 나오면(신발·모자 등 액세서리 전용) branded 해제. 의상 슬롯을 하나도 안 채운

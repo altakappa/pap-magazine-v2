@@ -64,6 +64,10 @@
  *   sharedBrands 는 해제된 뒤에도 그대로 돌려준다(관리자가 "A가 전 룩에 있긴
  *   했다"는 사실을 볼 수 있게). branded 플래그만 false 가 된다.
  *
+ *   → 2026-09-14 도메니코: 해제 문턱을 MULTI_BRAND_EXEMPT_MIN(2) 로 내렸다. "옷 2종, 그중 하나가
+ *   전 룩" 은 브랜디드가 아니라 유료 서브미션(€380). 브랜디드는 의상 1종(SINGLE-CLOTHING-BRAND)
+ *   또는 의상 0종+공통 브랜드뿐. 무료 문턱(MIN_CLOTHING_BRANDS 3)은 그대로.
+ *
  * ACCESSORY-ONLY 예외 (도메니코 지시 2026-08-10) ────────────────────────────
  *   위 다중 브랜드 예외에는 비대칭이 있었다:
  *     • branded 로 "집어넣을 때"  → 모든 슬롯을 본다 (신발·모자도 트리거가 됨)
@@ -128,6 +132,11 @@ const MIN_LOOKS = 3;
 // 다중 브랜드 예외 임계값 — submission.html 약관 ①의 "minimum of 3 different
 // clothing brands" 와 같은 숫자. 약관을 바꾸면 여기도 같이 바꿔야 한다.
 const MIN_CLOTHING_BRANDS = 3;
+
+// 2026-09-14 도메니코: 브랜디드(€790) 해제 문턱은 무료 문턱(3종)과 다르다. 의상 브랜드가 2종만 돼도
+// "한 브랜드의 화보" 가 아니므로 branded 를 끈다 → 2종은 FEW-CLOTHING-BRANDS 유료 €380.
+// 클라이언트(frontend/submission.html)의 _PAP_MULTI_BRAND_EXEMPT_MIN 과 반드시 같은 값.
+const MULTI_BRAND_EXEMPT_MIN = 2;
 
 // 2026-09-10 도메니코: "어떤 화보든 총 이미지 갯수가 최소 4개 이상은 되어야 해." → 2026-09-12 가이드라인("고해상도 사진 6장 이상")과 맞춰 6.
 // 룩 이미지 + 추가 이미지 합계. 장르·무료/유료와 무관한 절대 하한 — 미달이면 접수 자체를 거부(400 TOO_FEW_IMAGES).
@@ -490,9 +499,16 @@ function classifySubmissionType(looks, lookImageMap, opts) {
   // 한 브랜드의 브랜디드 콘텐츠로 볼 수 없다 → branded 해제.
   // sharedBrands 는 남겨둔다(관리자 참고용). 해제 뒤에는 아래 룩 수 규칙이 그대로
   // 다시 적용되므로 3룩 미만이면 free 가 아니라 paid_few_looks 로 떨어진다.
+  //
+  // 2026-09-14 도메니코 — 해제 문턱을 3종 → 2종으로. "옷 2종(그중 하나가 전 룩)은 브랜디드가
+  // 아니라 유료 서브미션." 브랜디드(€790)는 오직 **의상 브랜드 1종**(아래 SINGLE-CLOTHING-BRAND)
+  // 과 의상 0종+공통 브랜드(BURNOUT 가드)뿐이다. 의상 2종은 공통 브랜드가 전 룩에 돌아도
+  // 아래 FEW-CLOTHING-BRANDS 로 떨어져 €380. 약관 제7조 ⑦("의류 2개 이하 → €380, 단일 브랜드 →
+  // 브랜디드")과 코드가 이제 같은 말을 한다. 의상 3종 이상은 종전대로 무료(주인공 브랜드가 있어도
+  // 안 본다 — 도메니코 2026-09-14 "지금처럼 무료").
   const clothingBrandSet = clothingBrandUnion(looks, realLookKeys, opts);
   const clothingBrandCount = clothingBrandSet.size;
-  const multiBrandExempt = branded && clothingBrandCount >= MIN_CLOTHING_BRANDS;
+  const multiBrandExempt = branded && clothingBrandCount >= MULTI_BRAND_EXEMPT_MIN;
   if (multiBrandExempt) branded = false;
 
   // ACCESSORY-ONLY 예외 (도메니코 2026-08-10) — 공통 브랜드가 의상 슬롯에 단 한
@@ -614,6 +630,7 @@ module.exports = {
   lookItemsMissingInstagram,
   MIN_LOOKS,
   MIN_CLOTHING_BRANDS,
+  MULTI_BRAND_EXEMPT_MIN,
   BEAUTY_MAX_CLOTHING_BRANDS,
   MIN_TOTAL_IMAGES,
   genreModeOf,
