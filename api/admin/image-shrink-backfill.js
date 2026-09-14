@@ -65,10 +65,16 @@ function isImageName(name) {
    "남은 후보" 숫자가 부풀고, 행 상한에 영상이 자리를 차지한다. */
 const IMAGE_LIKE = 'name.ilike.%.jpg,name.ilike.%.jpeg,name.ilike.%.png';
 
-/* 이미지만, originals/ 제외, 1MB 초과 — scan 과 run 이 같은 기준을 쓰게 한다. */
-function targetQuery() {
+/* 이미지만, originals/ 제외, 1MB 초과 — scan 과 run 이 같은 기준을 쓰게 한다.
+ *
+ * 2026-09-14 — supabase-js 는 .from() 다음에 **반드시 .select() 가 먼저** 와야
+ * 필터(.eq/.gt/.not/.or)를 붙일 수 있다. 필터를 먼저 붙이면 런타임에
+ * "supabaseAdmin.from(...).eq is not a function" 으로 죽는다. 실제로 그렇게
+ * 배포해 500 을 냈다. 그래서 컬럼을 인자로 받아 select 를 먼저 건다. */
+function targetQuery(columns, selectOpts) {
   return supabaseAdmin
     .from('media_objects')
+    .select(columns, selectOpts)
     .eq('bucket_id', BUCKET)
     .gt('size_bytes', MIN_BYTES)
     .not('name', 'like', ORIGINALS_PREFIX + '%')
@@ -79,8 +85,7 @@ function targetQuery() {
    - originals/ 아래는 제외한다 (우리가 피신시켜 둔 원본이다)
    - 이미 처리한 것은 progress 표로 걸러낸다 */
 async function pickTargets(limit) {
-  const { data: rows, error } = await targetQuery()
-    .select('name, size_bytes, mimetype')
+  const { data: rows, error } = await targetQuery('name, size_bytes, mimetype')
     .order('size_bytes', { ascending: false })
     .limit(Math.min(limit * 8, 500));
   if (error) throw new Error('media_objects: ' + error.message);
@@ -170,14 +175,14 @@ module.exports = async function handler(req, res) {
     if (q.scan) {
       /* 개수는 count 로 정확히 센다. select 로 세면 PostgREST 행 상한(5,000)에
          걸려 "5000" 이라는 거짓 숫자가 나온다 — 2026-09-14 실제로 그랬다. */
-      const { count: total } = await targetQuery().select('name', { count: 'exact', head: true });
+      const { count: total } = await targetQuery('name', { count: 'exact', head: true });
 
       /* 용량은 합계 함수가 없어 페이지로 나눠 더한다. 1,000행씩, 최대 30페이지. */
       let bytes = 0, counted = 0, capped = false;
       for (let page = 0; page < 30; page++) {
         const from = page * 1000;
-        const { data: chunk, error: e2 } = await targetQuery()
-          .select('size_bytes').order('size_bytes', { ascending: false }).range(from, from + 999);
+        const { data: chunk, error: e2 } = await targetQuery('size_bytes')
+          .order('size_bytes', { ascending: false }).range(from, from + 999);
         if (e2) break;
         if (!chunk || !chunk.length) break;
         for (const r of chunk) bytes += Number(r.size_bytes) || 0;
