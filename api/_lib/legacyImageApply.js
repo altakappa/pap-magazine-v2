@@ -27,6 +27,7 @@
 
 const { supabaseAdmin } = require('./supabase');
 const { fetchMediaById, archiveImagesToStorage } = require('./instagramImport');
+const { withinDateWindow } = require('./legacyImageMatch');
 
 const MAX_IMAGES = 12;      // 화보 1편당 보관할 최대 장수
 const DEFAULT_BUDGET_MS = 70000;
@@ -54,10 +55,20 @@ async function applyLegacyImages(o) {
 
   const { data: plan, error } = await supabaseAdmin
     .from('legacy_image_recovery')
-    .select('id, editorial_id, title, ig_media_id, ig_permalink, handles')
+    .select('id, editorial_id, title, ig_media_id, ig_permalink, ig_timestamp, handles')
     .eq('status', 'matched')
     .limit(limit);
   if (error) { const e = new Error('plan 조회 실패'); e.statusCode = 500; e.code = 'plan_query'; throw e; }
+
+  // 2026-09-14 — 적용 직전 게시일 창을 한 번 더 본다. 스캔이 가드 이전 코드로 남긴 'matched' 행
+  // (또는 누가 손으로 넣은 행)이 그대로 적용되면 63편 사고가 재발한다. 창 밖이면 적용하지 않고
+  // 'skipped' 로 남긴다(status 체크 제약: matched·ambiguous·none·applied·skipped) — 스캔이 다시 볼 수 있게.
+  const ids = (plan || []).map((p) => p.editorial_id);
+  const pubById = {};
+  if (ids.length) {
+    const { data: eds } = await supabaseAdmin.from('editorials').select('id, published_date').in('id', ids);
+    (eds || []).forEach((e) => { pubById[e.id] = e.published_date; });
+  }
 
   if (!plan || !plan.length) {
     return {
@@ -71,6 +82,16 @@ async function applyLegacyImages(o) {
 
   for (const p of plan) {
     if (Date.now() - started > budgetMs) break;
+    if (!withinDateWindow({ published_date: pubById[p.editorial_id] }, { timestamp: p.ig_timestamp })) {
+      skipped++;
+      results.push({ title: p.title, skipped: '게시일 창 밖 (발행 ' + String(pubById[p.editorial_id] || '?').slice(0, 10) + ' vs IG ' + String(p.ig_timestamp || '?').slice(0, 10) + ')' });
+      if (!dry) {
+        await supabaseAdmin.from('legacy_image_recovery')
+          .update({ status: 'skipped', note: '게시일 창 밖 — 적용 거부 (' + new Date().toISOString().slice(0, 10) + ')' })
+          .eq('id', p.id);
+      }
+      continue;
+    }
     try {
       // 캐러셀이면 자식 미디어까지 펼쳐 전부 받는다(한 장짜리로 복구되면 화보가 아니다).
       const post = await fetchMediaById(p.ig_media_id);

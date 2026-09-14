@@ -67,10 +67,31 @@ function titleInCaption(title, caption) {
  * 되돌리기 어려운 종류의 오류라 사람이 보게 남긴다.
  */
 function matchOne(row, media) {
-  const hits = (media || []).filter(m => m && titleInCaption(row.title, m.caption));
+  const hits = (media || []).filter(m => m && titleInCaption(row.title, m.caption) && withinDateWindow(row, m));
   if (!hits.length) return { status: 'none', count: 0 };
   if (hits.length > 1) return { status: 'ambiguous', count: hits.length, media: hits[0] };
   return { status: 'matched', count: 1, media: hits[0] };
+}
+
+/* ── 게시일 창 (2026-09-14 사고 후 신설) ──────────────────────────────────────
+ * 제목 단어만 보고 붙이다 63편이 틀렸다: 2022 "EMPATHY" 에 2026 "God's Empathy" 사진,
+ * 2022 "GODDESS" 에 2026 카리나 워터밤 뉴스, 2021 "BALLERINA" 에 2026 나이키×리사 뉴스…
+ * 화보 발행일보다 몇 년 뒤 게시물이 그 화보의 원본일 수는 없다. 그 상식을 코드에 둔다.
+ *
+ *   허용: 발행일 − MAX_LEAD_DAYS ≤ 게시일 ≤ 발행일 + MAX_LAG_DAYS
+ *   · LAG 180일 — 웹 발행 뒤 인스타 게시가 늦어도 반년을 넘기지 않았다(실측: 정상 매칭은 대부분 ±7일).
+ *   · LEAD 365일 — 레거시 웹 날짜가 인스타보다 늦게 적힌 경우(사이트 이전 때 날짜가 밀림)를 허용.
+ *   · 발행일이나 게시일이 없으면 판정 불가 → 통과(종전 동작). 스캔은 published_date 를 항상 넘긴다.
+ */
+const MAX_LAG_DAYS = 180;
+const MAX_LEAD_DAYS = 365;
+const DAY_MS = 86400000;
+
+function withinDateWindow(row, media) {
+  const pub = row && row.published_date ? Date.parse(String(row.published_date).slice(0, 10) + 'T00:00:00Z') : NaN;
+  const ts = media && media.timestamp ? Date.parse(media.timestamp) : NaN;
+  if (!Number.isFinite(pub) || !Number.isFinite(ts)) return true;
+  return ts <= pub + MAX_LAG_DAYS * DAY_MS && ts >= pub - MAX_LEAD_DAYS * DAY_MS;
 }
 
 /** 캡션에서 @핸들을 뽑는다 — 크레딧 복구용(브랜드 허브 연결에 쓰인다). */
@@ -85,4 +106,4 @@ function extractHandles(caption) {
   return out;
 }
 
-module.exports = { normalize, titleInCaption, matchOne, extractHandles, MIN_TITLE_LEN, MIN_TITLE_LEN_CJK };
+module.exports = { normalize, titleInCaption, matchOne, withinDateWindow, extractHandles, MIN_TITLE_LEN, MIN_TITLE_LEN_CJK, MAX_LAG_DAYS, MAX_LEAD_DAYS };

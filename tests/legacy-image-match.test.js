@@ -145,6 +145,28 @@ console.log('=== 적용 단계 안전 규약 (2026-07-31 도메니코 승인) ==
     '펼치지 않으면 여러 장 화보가 커버 한 장으로 복구된다');
 })();
 
+/* ── 2026-09-14 사고: 게시일 창 ──────────────────────────────────────────────
+   제목 단어만 보고 붙여 63편이 틀렸다(2022 EMPATHY ← 2026 God's Empathy, 2022 GODDESS ← 2026 카리나 뉴스 …).
+   발행일보다 몇 년 뒤 게시물은 원본일 수 없다. */
+(function () {
+  console.log('\n=== 게시일 창 (withinDateWindow) ===');
+  const M = require('../api/_lib/legacyImageMatch');
+  const row = { title: 'EMPATHY', published_date: '2022-03-08' };
+  t('실사례: 2022 EMPATHY 에 2026 God\'s Empathy 게시물 → none',
+    M.matchOne(row, [{ caption: "'God's Empathy' exclusive for @pap_magazine", timestamp: '2026-05-03T11:56:19+0000' }]).status === 'none');
+  t('같은 제목이라도 발행일 ±창 안이면 matched',
+    M.matchOne(row, [{ caption: "'EMPATHY' exclusive for @pap_magazine", timestamp: '2022-03-10T00:00:00+0000' }]).status === 'matched');
+  t('창: 발행 +180일까지 허용, +181일은 거부', M.withinDateWindow({ published_date: '2022-03-08' }, { timestamp: '2022-09-04T00:00:00Z' }) && !M.withinDateWindow({ published_date: '2022-03-08' }, { timestamp: '2022-09-05T00:00:00Z' }));
+  t('창: 발행 −365일까지 허용(웹 날짜가 늦게 적힌 경우), 그 전은 거부', M.withinDateWindow({ published_date: '2022-03-08' }, { timestamp: '2021-03-09T00:00:00Z' }) && !M.withinDateWindow({ published_date: '2022-03-08' }, { timestamp: '2021-01-01T00:00:00Z' }));
+  t('발행일·게시일이 없으면 판정 불가 → 통과(종전 동작)', M.withinDateWindow({}, { timestamp: '2026-01-01T00:00:00Z' }) && M.withinDateWindow({ published_date: '2022-03-08' }, {}));
+  t('창 밖 후보는 ambiguous 집계에서도 빠진다',
+    M.matchOne(row, [{ caption: "'EMPATHY' a", timestamp: '2022-03-10T00:00:00Z' }, { caption: "'EMPATHY' b", timestamp: '2026-03-10T00:00:00Z' }]).status === 'matched');
+  const apply = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/legacyImageApply.js'), 'utf8');
+  t('적용 직전에도 창을 다시 본다 (가드 이전 matched 행·수동 행 방어) → skipped', /withinDateWindow\(\{ published_date: pubById\[p\.editorial_id\] \}, \{ timestamp: p\.ig_timestamp \}\)/.test(apply) && /status: 'skipped', note: '게시일 창 밖/.test(apply) && /select\('id, editorial_id, title, ig_media_id, ig_permalink, ig_timestamp, handles'\)/.test(apply));
+  const scan = fs.readFileSync(path.join(__dirname, '..', 'api/admin/legacy-image-scan.js'), 'utf8');
+  t('스캔은 published_date 를 대상 행에 싣는다 (창 판정 입력)', /select\('id, title, published_date'\)/.test(scan));
+})();
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ legacy-image-match tests FAILED'); process.exit(1); }
 console.log('✅ legacy-image-match tests passed');
