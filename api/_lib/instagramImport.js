@@ -694,6 +694,7 @@ async function generateArticleFromPost(post, opts){
 // 개별 실패는 건너뛰고 성공분만 반환 — 전량 실패 시 빈 배열 (호출부 fallback).
 async function archiveImagesToStorage(post, max, prefix){
   const { supabaseAdmin } = require('./supabase');
+  const { shrinkImageBuffer, shrinkNote } = require('./imageShrink');
   const out = [];
   const dir = prefix || 'ig-articles'; // 페퍼릿 등 브랜드별 분리 저장 가능
   const urls = (post.mediaUrls || []).slice(0, max || 10);
@@ -703,11 +704,18 @@ async function archiveImagesToStorage(post, max, prefix){
       if (!r.ok){ console.warn('[ig-archive] fetch ' + r.status + ':', urls[i]); continue; }
       const ct = (r.headers.get('content-type') || 'image/jpeg').split(';')[0];
       if (!/^image\//.test(ct)) continue;
-      const buf = Buffer.from(await r.arrayBuffer());
-      const ext = ct === 'image/png' ? 'png' : (ct === 'image/webp' ? 'webp' : 'jpg');
+      const raw = Buffer.from(await r.arrayBuffer());
+      /* 2026-09-14 — 저장 전에 줄인다 (_lib/imageShrink.js 머리말).
+         독자가 보는 화면은 그대로다. Vercel 이 원본을 가지러 오는 길만 얇아진다.
+         실패하면 원본 그대로 올라간다 — 업로드를 막지 않는다. */
+      const sh = await shrinkImageBuffer(raw, ct);
+      const buf = sh.buf;
+      const useCt = sh.contentType;
+      if (sh.shrunk) console.log('[ig-archive] 축소', shrinkNote(sh));
+      const ext = useCt === 'image/png' ? 'png' : (useCt === 'image/webp' ? 'webp' : 'jpg');
       const path = dir + '/' + String(post.id || 'unknown') + '/' + i + '.' + ext;
       const { error } = await supabaseAdmin.storage.from('media')
-        .upload(path, buf, { contentType: ct, upsert: true });
+        .upload(path, buf, { contentType: useCt, upsert: true });
       if (error){ console.warn('[ig-archive] upload 실패:', error.message); continue; }
       const { data } = supabaseAdmin.storage.from('media').getPublicUrl(path);
       if (data && data.publicUrl) out.push(data.publicUrl);

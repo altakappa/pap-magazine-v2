@@ -27,6 +27,8 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
+// 2026-09-14 — 저장 전 이미지 축소 (전송량 초과 후속)
+const { shrinkImageBuffer, shrinkNote } = require('../_lib/imageShrink');
 
 /* 이관 대상 호스트 (2026-08-09 wixstatic 추가)
  *
@@ -156,6 +158,12 @@ async function fetchImage(url) {
       if (out.length > MAX_BYTES) throw new Error('too large after resize: ' + out.length);
       return { buf: out, contentType: 'image/jpeg', resizedFrom: buf.length };
     }
+    /* 2026-09-14 — 상한을 넘지 않아도 저장 전에 줄인다 (_lib/imageShrink.js 머리말).
+       종전에는 30MB 넘는 것만 줄였다. 그래서 migrated 폴더가 27,904개 21GB,
+       평균 780KB 가 됐고 Vercel 이 그걸 매번 통째로 끌어가 전송량을 태웠다.
+       실패하면 원본 그대로 올라간다. */
+    const sh = await shrinkImageBuffer(buf, ct);
+    if (sh.shrunk) return { buf: sh.buf, contentType: sh.contentType, shrunkFrom: buf.length };
     return { buf, contentType: ct };
   } finally {
     clearTimeout(to);
@@ -241,6 +249,8 @@ module.exports = withCronGuard('migrate-external-images', async function handler
   const failSet = new Set((fails || []).map(f => f.url));
 
   let editorialsDone = 0, imagesMoved = 0, imagesResized = 0;
+  /* 2026-09-14 — 저장 전 축소로 아낀 바이트. 이 숫자가 0 이면 축소가 안 걸린 것이다. */
+  let imagesShrunk = 0, bytesSaved = 0;
   const newFailures = [];
 
   for (const row of rows) {
@@ -263,8 +273,9 @@ module.exports = withCronGuard('migrate-external-images', async function handler
          건너뛴 건 실패로 기록하지 않는다 — 다음 회차에 다시 온다. */
       if (BIG_FILE_HOSTS.test(url) && Date.now() - started > TIME_BUDGET_MS * 0.4) continue;
       try {
-        const { buf, contentType, resizedFrom } = await fetchImage(url);
+        const { buf, contentType, resizedFrom, shrunkFrom } = await fetchImage(url);
         if (resizedFrom) imagesResized++;
+        if (shrunkFrom) { imagesShrunk++; bytesSaved += (shrunkFrom - buf.length); }
         const path = 'migrated/' + row.id + '/' + Date.now() + '_' + (idx++) + '.' + extFromContentType(contentType);
         const { error: upErr } = await supabaseAdmin.storage.from('media')
           .upload(path, buf, { contentType, upsert: true });
@@ -399,9 +410,11 @@ module.exports = withCronGuard('migrate-external-images', async function handler
   const left = await remainingCount();
   return res.status(200).json({
     ok: true, editorialsDone, imagesMoved, failures: newFailures.length, remaining: left,
+    imagesShrunk, bytesSaved,
     note: note(res,
       '이관 ' + editorialsDone + '편 · 이미지 ' + imagesMoved + '장'
       + (imagesResized ? '(리사이즈 ' + imagesResized + ')' : '')
+      + (imagesShrunk ? ' · 축소 ' + imagesShrunk + '장 ' + Math.round(bytesSaved / 1048576) + 'MB 절감' : '')
       + (newFailures.length ? ' · 실패 ' + newFailures.length + '건' : '')
       + (left === null ? '' : ' · 잔량 ' + left + '편')
       + (editorialsDone === 0 ? ' ⚠️ 진전 0 — 큐가 막혔는지 확인' : '')),
