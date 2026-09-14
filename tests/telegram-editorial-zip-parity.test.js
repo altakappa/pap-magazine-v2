@@ -47,11 +47,16 @@ console.log('\n=== telegram.js 전송 내용물 ===');
 t('sendEditorialToTelegram 이 instaComposite 를 쓴다 (brandImage 아님)', /require\('\.\/instaComposite'\)/.test(tg) && /async function sendEditorialToTelegram\(ed\)[\s\S]{0,1500}instaCompositeBuffer\(raw, logo, opts\)/.test(tg));
 t('커버는 바이트 그대로 "<제목>-cover.<ext>" (로고 안 얹음)', /fileBase\(ed\.title\) \+ '-cover\.' \+ ext/.test(tg));
 t('갤러리는 01.png … 순번 PNG (ZIP 과 같은 이름)', /String\(i \+ 1\)\.padStart\(2, '0'\) \+ '\.png'/.test(tg));
-t('문서(document)로 전송 — 사진 재압축(1280px) 회피', /async function sendDocumentsToTelegram\(/.test(tg) && /type: 'document', media: 'attach:\/\/' \+ key/.test(tg) && /sendEditorialToTelegram\(ed\)[\s\S]{0,2500}return sendDocumentsToTelegram\(files, buildCaption\(ed\)\)/.test(tg));
+t('문서(document)로 전송 — 사진 재압축(1280px) 회피', /async function sendDocumentsToTelegram\(/.test(tg) && /type: 'document', media: 'attach:\/\/' \+ key/.test(tg) && /sendEditorialToTelegram\(ed\)[\s\S]{0,2500}const r = await sendDocumentsToTelegram\(files, buildCaption\(ed\)\)/.test(tg));
 t('insta_logo_settings 를 이미지별로 해석한다', /resolveInstaOpts\(ed\.insta_logo_settings, url\)/.test(tg));
 t('sharp 는 여전히 지연 로드 (크론 콜드스타트 보호)', /function sharp\([\s\S]{0,200}require\((['"])sharp\1\)/.test(R('api/_lib/instaComposite.js')));
 t('[id].js 는 .select() 전체 행을 넘긴다 (insta_logo_settings 포함)', /\.update\(updates\)\s*\.eq\('id', id\)\s*\.select\(\)\s*\.single\(\)/.test(R('api/editorials/[id].js')));
 t('module.exports 에 sendDocumentsToTelegram', /sendDocumentsToTelegram,/.test(tg.slice(tg.lastIndexOf('module.exports'))));
+
+console.log('\n=== 인스타그램 캡션 동봉 (2026-09-14) ===');
+t('파일 묶음 뒤에 instagram_caption 원문을 별도 텍스트로 보낸다 (비어 있으면 생략)', /const igCaption = \(ed && typeof ed\.instagram_caption === 'string'\) \? ed\.instagram_caption\.trim\(\) : '';\s*if \(igCaption\) \{\s*const c = await sendTextToChatSafe\(CHAT_ID\(\), igCaption\);/.test(tg));
+t('캡션 전송은 await (서버리스 동결 전에 끝나야 한다) + 실패해도 이미지 결과 반환', /r\.captionSent = !!\(c && c\.ok\);/.test(tg) && /return r;\s*\}/.test(tg.slice(tg.indexOf('async function sendEditorialToTelegram'))));
+t('sendTextToChatSafe 는 링크 미리보기 끄고 4000자 자름', /disable_web_page_preview: true/.test(tg) && /slice\(0, 4000\)/.test(tg));
 
 console.log('\n=== 픽셀 검사 (sharp 있을 때만) ===');
 (async () => {

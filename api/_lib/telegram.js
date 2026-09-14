@@ -181,7 +181,8 @@ function fileBase(title) {
  * 발행 에디토리얼 → 텔레그램. 관리자 "전체 ZIP 다운로드" 와 같은 내용물(2026-09-14 도메니코):
  *   ① 매거진 커버(cover_image 바이트 그대로 — 저장 시 합성된 표지 디자인, 로고 안 얹음) '<제목>-cover.<ext>'
  *   ② 갤러리 전부를 insta_logo_settings 로 인스타 합성(4:5 캔버스 + PAP 로고) 한 PNG '01.png' …
- * 전부 문서(document)로 보내 바이트가 보존된다. ZIP 처럼 갤러리는 커버 원본 컷도 빼지 않는다.
+ *   ③ 인스타그램 캡션(instagram_caption) 원문을 별도 텍스트 메시지로 (있을 때만)
+ * 이미지는 전부 문서(document)로 보내 바이트가 보존된다. ZIP 처럼 갤러리는 커버 원본 컷도 빼지 않는다.
  * TELEGRAM_BRAND_LOGO=off 면 로고만 안 얹고 프레이밍은 그대로.
  * @returns {Promise<{sent:number, groups?:number, skipped?:string}>}
  */
@@ -223,7 +224,19 @@ async function sendEditorialToTelegram(ed) {
   }
   if (!files.length) return { sent: 0, skipped: (coverUrl || gallery.length) ? 'no_usable_images' : 'no_images' };
 
-  return sendDocumentsToTelegram(files, buildCaption(ed));
+  const r = await sendDocumentsToTelegram(files, buildCaption(ed));
+  // ③ 인스타그램 캡션 (2026-09-14 도메니코 "텔레그램으로 보낼 때 인스타그램 캡션도 같이") — 파일 묶음 뒤에
+  //    **별도 텍스트 메시지**로, 캡션 원문만 보낸다. 미디어 캡션은 1,024자 제한이라 긴 캡션이 잘리고, 머리말을
+  //    붙이면 복사할 때 같이 딸려온다. 메시지를 길게 눌러 복사하면 그대로 인스타에 붙일 수 있게.
+  //    캡션이 비어 있으면 안 보낸다. 실패해도 이미지 전송 결과는 그대로 돌려준다.
+  const igCaption = (ed && typeof ed.instagram_caption === 'string') ? ed.instagram_caption.trim() : '';
+  if (igCaption) {
+    const c = await sendTextToChatSafe(CHAT_ID(), igCaption);
+    r.captionSent = !!(c && c.ok);
+  } else {
+    r.captionSent = false;
+  }
+  return r;
 }
 
 // 발행 응답을 절대 막지 않는 안전 래퍼 — 에러를 콘솔에만 남기고 삼킨다.
