@@ -186,6 +186,86 @@ module.exports = async function handler(req, res) {
   const q = req.query || {};
 
   try {
+    /* ── 큐 채우기 (2026-09-14 신설) ────────────────────────────────
+     *
+     * 왜 필요했나: 이 도구는 status='queued' 인 행을 노출 큰 순으로 하나씩
+     * 생성한다. 그런데 **큐를 채우는 코드가 없었다.** 8/17~18 에 사람이 넣은
+     * 50편을 다 쓴 뒤로 큐가 비어 한 달 가까이 멈춰 있었다.
+     *
+     * 무엇을 기준으로 고르나 (뷰 article_seo_opportunity, 마이그레이션 158):
+     *   최근 28일 GSC 를 **기사 단위로 합산**한다. 언어판(/en /ja /es …)을
+     *   합치지 않으면 우선순위가 틀린다. 실측: 제니 아디다스 발레코어는
+     *   페이지별로 보면 17,207 이지만 언어판을 합치면 46,472 로 1위다.
+     *
+     *   조건: 노출 >= min_imp · 평균순위 3.5~15 · 본문 < max_len
+     *   - 순위 3 위 안쪽은 이미 잘 되고 있으니 건드리지 않는다
+     *   - 15 위 밖은 본문을 늘려도 1페이지로 못 온다
+     *   - 본문이 이미 긴 기사는 다른 이유로 막힌 것이라 이 도구의 일이 아니다
+     *
+     * 이 엔드포인트는 **큐에 넣기만 한다.** 본문 생성은 ?generate_next=1,
+     * 반영은 사람이 ?apply= 를 눌러야 일어난다. 그 순서는 바뀌지 않는다.
+     *
+     *   ?enqueue=1                     기본값으로 20편
+     *   ?enqueue=1&limit=30            편수
+     *   ?enqueue=1&min_imp=3000        노출 하한
+     *   ?enqueue=1&max_len=700         본문 자수 상한
+     *   ?enqueue=1&preview=1           넣지 않고 목록만 본다
+     */
+    if (q.enqueue === '1') {
+      const limit   = Math.min(Math.max(parseInt(q.limit, 10) || 20, 1), 100);
+      const minImp  = Math.max(parseInt(q.min_imp, 10) || 2000, 0);
+      const maxLen  = Math.max(parseInt(q.max_len, 10) || 800, 100);
+      const preview = q.preview === '1';
+
+      const { data: cands, error: cErr } = await supabaseAdmin
+        .from('article_seo_opportunity')
+        .select('article_id, slug, title, body_len, impressions, clicks, ctr, avg_position')
+        .gte('impressions', minImp)
+        .lt('body_len', maxLen)
+        .gte('avg_position', 3.5)
+        .lte('avg_position', 15)
+        .order('impressions', { ascending: false })
+        .limit(limit * 3);
+      if (cErr) throw new Error('article_seo_opportunity: ' + cErr.message);
+
+      /* 이미 큐에 있거나 반영·반려된 것은 다시 넣지 않는다 */
+      const ids = (cands || []).map(c => c.article_id);
+      const { data: seen } = ids.length
+        ? await supabaseAdmin.from(TABLE).select('article_id').in('article_id', ids)
+        : { data: [] };
+      const has = new Set((seen || []).map(r => r.article_id));
+      const picked = (cands || []).filter(c => !has.has(c.article_id)).slice(0, limit);
+
+      if (preview) {
+        return res.status(200).json({
+          ok: true, preview: true, 후보: picked.length,
+          목록: picked.map(c => ({
+            노출: Number(c.impressions), 클릭: Number(c.clicks), ctr: c.ctr,
+            순위: c.avg_position, 본문자수: c.body_len, 제목: c.title, 슬러그: c.slug,
+          })),
+        });
+      }
+
+      if (!picked.length) {
+        return res.status(200).json({ ok: true, 넣음: 0, message: '조건에 맞는 새 대상이 없습니다.' });
+      }
+
+      const { error: iErr } = await supabaseAdmin.from(TABLE).insert(
+        picked.map(c => ({
+          article_id: c.article_id,
+          impressions: Number(c.impressions) || 0,
+          status: 'queued',
+        }))
+      );
+      if (iErr) throw new Error('큐 입력 실패: ' + iErr.message);
+
+      return res.status(200).json({
+        ok: true, 넣음: picked.length,
+        합계노출: picked.reduce((s, c) => s + (Number(c.impressions) || 0), 0),
+        목록: picked.map(c => ({ 노출: Number(c.impressions), 순위: c.avg_position, 본문자수: c.body_len, 제목: c.title })),
+      });
+    }
+
     if (q.queue === '1') {
       const { data, error } = await supabaseAdmin.from(TABLE)
         .select('article_id, impressions, old_len, new_len, status, note, generated_at, applied_at')
