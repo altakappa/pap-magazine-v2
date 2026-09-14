@@ -69,6 +69,24 @@ t('게재 후 크레딧 수정(sanitizeBrands)도 같은 규칙', CE.sanitizeBra
 t('폼: _papBrandCase 미러 + 브랜드 칸 focusout 교정 + 제출 수집 시 적용', /function _papBrandCase\(raw\)/.test(html) && /list\.addEventListener\('focusout'/.test(html) && /var brand=inputs\[0\]\?_papBrandCase\(inputs\[0\]\.value\):''/.test(html));
 t('가이드라인: 전체 대문자 금지 → 표기 철칙(첫 글자만 대문자) 9개 언어', !/전체 대문자 사용 금지|No ALL CAPS in credits/.test(html) && (html.match(/glReqBody:'(?:\\.|[^'])*?(Mincrisot, Jean Paul Gaultier)/g)||[]).length===9);
 
+/* 2026-09-14 도메니코 — "iPhone·MSGM 같은 원래 표기가 대문자인 브랜드… 이건 예외로 두자." */
+console.log('\n=== 브랜드명 표기 철칙 예외 목록 (brandCaseExceptions) ===');
+const X = require('../api/_lib/brandCaseExceptions');
+t('예외 목록에 MSGM·MM6·iPhone 이 있고 전부 공식 표기(전체 대문자만은 아님)', X.BRAND_CASE_EXCEPTIONS.includes('MSGM') && X.BRAND_CASE_EXCEPTIONS.includes('MM6') && X.BRAND_CASE_EXCEPTIONS.includes('iPhone') && X.BRAND_CASE_EXCEPTIONS.every(b=>b===b.trim() && b.length>0));
+t('msgm / MSGM / Msgm → MSGM · iphone / IPHONE → iPhone (대소문자 무시)', B.toBrandCase('msgm')==='MSGM' && B.toBrandCase('MSGM')==='MSGM' && B.toBrandCase('Msgm')==='MSGM' && B.toBrandCase('iphone')==='iPhone' && B.toBrandCase('IPHONE')==='iPhone');
+t('단어 단위 예외: mm6 maison margiela → MM6 Maison Margiela · msgm kids → MSGM Kids', B.toBrandCase('mm6 maison margiela')==='MM6 Maison Margiela' && B.toBrandCase('msgm kids')==='MSGM Kids');
+t('전체 일치 예외: jw anderson → JW Anderson · a-cold-wall* → A-COLD-WALL* · a.p.c. → A.P.C.', B.toBrandCase('JW ANDERSON')==='JW Anderson' && B.toBrandCase('a-cold-wall*')==='A-COLD-WALL*' && B.toBrandCase('a.p.c.')==='A.P.C.');
+t('목록에 없는 브랜드는 철칙대로: ZARA → Zara · GUCCI → Gucci (로고가 대문자라도 예외 아님)', B.toBrandCase('ZARA')==='Zara' && B.toBrandCase('GUCCI')==='Gucci');
+t('isBrandCase 가 예외 표기를 인정한다', B.isBrandCase('MSGM') && !B.isBrandCase('Msgm') && B.isBrandCase('iPhone'));
+t('게재 후 크레딧 수정도 예외 적용', CE.sanitizeBrands([{name:'msgm',instagram:'@m'}]).rows[0].name==='MSGM');
+(function(){
+  const m = html.match(/var _PAP_BRAND_CASE_EXCEPTIONS=(\[[^\]]*\]);/);
+  let arr=null; try { arr = m && JSON.parse(m[1].replace(/'/g,'"')); } catch(_) {}
+  t('폼 미러 _PAP_BRAND_CASE_EXCEPTIONS 가 서버 목록과 완전히 같다', Array.isArray(arr) && JSON.stringify(arr)===JSON.stringify(X.BRAND_CASE_EXCEPTIONS));
+  t('폼 미러가 전체 일치·단어 단위 예외를 둘 다 적용한다', /_papBrandExcWhole\[s\.toLowerCase\(\)\]/.test(html) && /_papBrandExcToken\[w\.toLowerCase\(\)\]\|\|w/.test(html));
+})();
+t('가이드라인: 예외(MSGM·MM6 약자 브랜드는 공식 표기) 9개 언어', (html.match(/glReqBody:'(?:\\.|[^'])*?(MSGM, MM6처럼|like MSGM or MM6|wie MSGM oder MM6|come MSGM o MM6|comme MSGM ou MM6|como MSGM o MM6|MSGM や MM6|MSGM、MM6|как MSGM или MM6)/g)||[]).length===9);
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ submission-look-credit tests FAILED'); process.exit(1); }
 console.log('✅ submission-look-credit tests passed');

@@ -8,13 +8,20 @@
  * 라틴 확장(À-ÿ·Ā-ɏ 등)도 글자로 본다(Hermès → Hermès, ÉTUDES → Études).
  */
 const LETTER_RUN = /[A-Za-zÀ-ɏḀ-ỿ]+/g;
+// 2026-09-14 도메니코 "이건 예외로 두자" — MSGM·MM6·iPhone 처럼 원래 표기가 약자·낙타인 브랜드는 공식 표기 그대로.
+const { WHOLE: EXC_WHOLE, TOKEN: EXC_TOKEN } = require('./brandCaseExceptions');
 
 function toBrandCase(raw) {
   const s = String(raw == null ? '' : raw).trim().replace(/\s+/g, ' ');
   if (!s) return '';
+  // 예외 ① 브랜드명 전체가 예외 목록과 같으면(대소문자 무시) 공식 표기.
+  const whole = EXC_WHOLE.get(s.toLowerCase());
+  if (whole) return whole;
   const t = s.replace(LETTER_RUN, (run) => run.charAt(0).toUpperCase() + run.slice(1).toLowerCase());
   // 소유격 's: "Stylist's Own" 이 "Stylist'S Own" 이 되지 않게 — 글자 뒤 아포스트로피 + 한 글자로 끝나는 꼬리는 소문자.
-  return t.replace(/([A-Za-z\u00C0-\u024F\u1E00-\u1EFF])['\u2019]([A-Z\u00C0-\u024F])(?![A-Za-z\u00C0-\u024F\u1E00-\u1EFF])/g, (m, a, b) => a + m.charAt(1) + b.toLowerCase());
+  const u = t.replace(/([A-Za-z\u00C0-\u024F\u1E00-\u1EFF])['\u2019]([A-Z\u00C0-\u024F])(?![A-Za-z\u00C0-\u024F\u1E00-\u1EFF])/g, (m, a, b) => a + m.charAt(1) + b.toLowerCase());
+  // 예외 ② 단어 단위("MM6 Maison Margiela" 의 MM6). 한 단어짜리 예외만 단어로 맞춘다.
+  return u.split(' ').map((w) => EXC_TOKEN.get(w.toLowerCase()) || w).join(' ');
 }
 
 /** 이미 규칙대로인가(고쳐도 같으면 true). */
@@ -38,4 +45,4 @@ function applyBrandCase(data) {
   return n;
 }
 
-module.exports = { toBrandCase, isBrandCase, applyBrandCase, LETTER_RUN };
+module.exports = { toBrandCase, isBrandCase, applyBrandCase, LETTER_RUN, BRAND_CASE_EXCEPTIONS: require('./brandCaseExceptions').BRAND_CASE_EXCEPTIONS };
