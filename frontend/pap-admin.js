@@ -7334,7 +7334,7 @@ async function editEditorial(id){
   galleryImages=[];galleryCount=0;galleryThumbNum=null;
   // Reset cover-picker state so a previously-opened editorial's cover
   // source doesn't leak into this one (esp. when this post has no gallery).
-  galleryCoverNum=null;_papCoverSourceUrl='';_papComposedCoverUrl=null;
+  galleryCoverNum=null;_papCoverSourceUrl='';_papComposedCoverUrl=null;_papCoverTouched=false;
   var grid=document.getElementById('galleryGrid');
   var addBtn=grid?grid.querySelector('.pe-gallery-add'):null;
   if(grid)grid.querySelectorAll('.pe-gallery-item').forEach(function(el){el.remove();});
@@ -7877,6 +7877,25 @@ async function savePost(mode){
     var coverBox = document.getElementById('thumbUploadBox');
     var existingCoverUrl = (coverBox && coverBox.dataset && coverBox.dataset.existingUrl) || '';
     var finalThumb = thumbUrlPick || (galleryUrls.length ? galleryUrls[0] : null);
+    // 2026-09-14 — 라이브 미리보기 디자인 자동 적용(확정 버튼 생략 가능). 조건은 _papCoverAutoApplyWanted 참조.
+    // 실패하면 원본 사진으로 저장하되 상태줄·콘솔에 남긴다(조용히 넘어가서 "왜 디자인이 안 붙었지" 가 되지 않게).
+    if (typeof _papCoverAutoApplyWanted === 'function' && _papCoverAutoApplyWanted()) {
+      try {
+        var _cm = _papCoverReadFormMeta();
+        if (_cm.title && _cm.coverUrl) {
+          _papCoverSetStatus('저장 중 커버 디자인 자동 합성 + 업로드…');
+          var _cu = await _papCoverComposeAndUpload(_cm);
+          _papComposedCoverUrl = _cu;
+          if (coverBox && coverBox.dataset) coverBox.dataset.existingUrl = _cu;
+          existingCoverUrl = _cu;
+          thumbUrl = null;   // 합성본이 hero. 대기 중이던 원본 업로드는 쓰지 않는다.
+          _papCoverSetStatus('✓ 커버 디자인 자동 적용 (저장 시 합성)', 'ok');
+        }
+      } catch (_ce) {
+        console.warn('[cover] auto-apply failed, saving raw cover:', _ce);
+        _papCoverSetStatus('❌ 커버 디자인 자동 합성 실패 — 원본 사진으로 저장됨: ' + (_ce && _ce.message || _ce), 'error');
+      }
+    }
     var finalCover = thumbUrl || existingCoverUrl || finalThumb;
 
     var descriptionVal=document.getElementById('postDescription')?document.getElementById('postDescription').value:'';
@@ -10439,8 +10458,8 @@ function _papCoverEnsureLiveWired(){
   if (!section) return;
   // Event delegation — any 'input' or 'change' inside the section triggers
   // a re-render. Catches sliders, text inputs, and the file upload field.
-  section.addEventListener('input',  _papCoverScheduleLiveRender);
-  section.addEventListener('change', _papCoverScheduleLiveRender);
+  section.addEventListener('input',  function(){ _papCoverTouched = true; _papCoverScheduleLiveRender(); });
+  section.addEventListener('change', function(){ _papCoverTouched = true; _papCoverScheduleLiveRender(); });
   // Also trigger when the cover image upload changes (thumbInput sits
   // outside the section, but its preview lives in thumbPreview — we
   // can't easily delegate, so listen directly on the input).
@@ -10568,6 +10587,32 @@ async function papCoverDownload(){
 //   thumbUrl(신규 업로드) || existingCoverUrl(dataset) || finalThumb
 // 순이므로, 확정 시 대기 중인 업로드 파일을 비우고 dataset.existingUrl 에
 // 합성 커버 URL 을 심어 두면 저장 시 그 합성본이 hero 로 반영된다.
+// 2026-09-14 도메니코 — "라이브 미리보기 디자인이 저장하면 적용돼야 하는데 이미지만 적용된다."
+// 종전엔 ✅ 확정 버튼을 눌러야만 합성본이 업로드됐고, 슬라이더만 만지고 저장하면 원본 사진이 hero 로
+// 갔다(Fantasy World 실사례). 이제 savePost 가 아래 조건이면 확정 버튼 없이도 자동 합성·업로드한다:
+//   · 확정본이 아직 없고(_papComposedCoverUrl 없음)
+//   · 관리자가 ◆ 로 소스를 골랐거나(_papCoverSourceUrl) 커버 디자인 패널을 만졌고(_papCoverTouched)
+//   · 제목·소스 이미지가 있다.
+// 소스가 없고 패널도 안 만진 편집(크레딧만 고침 등)은 종전대로 커버를 건드리지 않는다 — 이미 합성된
+// 커버 위에 또 합성하는 사고를 막는다.
+var _papCoverTouched = false;
+function _papCoverAutoApplyWanted(){
+  return !_papComposedCoverUrl && !!(_papCoverSourceUrl || _papCoverTouched);
+}
+/** 라이브 미리보기와 같은 규칙으로 1080×1350 합성 → PNG 업로드 → URL. 실패는 throw. */
+async function _papCoverComposeAndUpload(meta){
+  var canvas = document.createElement('canvas');
+  canvas.width  = _PAP_COVER_W;
+  canvas.height = _PAP_COVER_H;
+  await _papCoverComposite(canvas, meta);
+  var blob = await new Promise(function(res, rej){
+    canvas.toBlob(function(b){ b ? res(b) : rej(new Error('PNG 변환 실패 (CORS tainted?)')); }, 'image/png', 1);
+  });
+  var slug = (meta.title || 'cover').toLowerCase()
+    .replace(/[^a-z0-9가-힯 ]+/g, '').replace(/\s+/g, '-');
+  var file = new File([blob], slug + '-cover.png', { type: 'image/png' });
+  return await uploadFile(file);
+}
 async function papCoverConfirmAsCover(){
   var meta = _papCoverReadFormMeta();
   if (!meta.title) {
@@ -10585,17 +10630,7 @@ async function papCoverConfirmAsCover(){
   try {
     // Render at full 1080×1350 then upload the PNG blob via the shared
     // media upload endpoint (same path gallery/thumbnail uploads use).
-    var canvas = document.createElement('canvas');
-    canvas.width  = _PAP_COVER_W;
-    canvas.height = _PAP_COVER_H;
-    await _papCoverComposite(canvas, meta);
-    var blob = await new Promise(function(res, rej){
-      canvas.toBlob(function(b){ b ? res(b) : rej(new Error('PNG 변환 실패 (CORS tainted?)')); }, 'image/png', 1);
-    });
-    var slug = (meta.title || 'cover').toLowerCase()
-      .replace(/[^a-z0-9가-힯 ]+/g, '').replace(/\s+/g, '-');
-    var file = new File([blob], slug + '-cover.png', { type: 'image/png' });
-    var url = await uploadFile(file);
+    var url = await _papCoverComposeAndUpload(meta);
     _papComposedCoverUrl = url;
     // Adopt as cover_image source for savePost.
     var thumbBox  = document.getElementById('thumbUploadBox');

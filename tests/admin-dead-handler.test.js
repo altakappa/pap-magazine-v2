@@ -133,6 +133,16 @@ console.log('\n=== 캐시버스트 ===');
 const ver = (HTML_CODE.match(/pap-admin\.js\?v=(\d+)/) || [])[1];
 t('pap-admin.js 버전이 141 이상', Number(ver) >= 141, ver);
 
+/* 2026-09-14 도메니코 — "라이브 미리보기 디자인이 저장하면 적용돼야 하는데 이미지만 적용된다."
+   확정 버튼 없이도 savePost 가 합성본을 올려 cover_image 로 쓴다. Fantasy World 실사례. */
+console.log('\n=== 커버 디자인 자동 적용 (저장 시 합성) ===');
+t('_papCoverComposeAndUpload 가 확정 버튼과 저장 둘 다에서 쓰인다', /async function _papCoverComposeAndUpload\(meta\)/.test(JS_CODE) && (JS_CODE.match(/await _papCoverComposeAndUpload\(/g) || []).length === 2);
+t('자동 적용 조건: 확정본 없음 + (◆ 소스 또는 패널 터치)', /function _papCoverAutoApplyWanted\(\)\{\s*return !_papComposedCoverUrl && !!\(_papCoverSourceUrl \|\| _papCoverTouched\);/.test(JS_CODE));
+t('savePost: finalCover 계산 전에 자동 합성 → existingCoverUrl 교체 + 원본 업로드 무시', /_papCoverAutoApplyWanted\(\)\) \{[\s\S]{0,900}existingCoverUrl = _cu;\s*thumbUrl = null;[\s\S]{0,600}var finalCover = thumbUrl \|\| existingCoverUrl \|\| finalThumb;/.test(JS_CODE));
+t('패널 input/change 가 _papCoverTouched 를 켜고, 모달 열 때 초기화', /_papCoverTouched = true; _papCoverScheduleLiveRender\(\);/.test(JS_CODE) && /_papComposedCoverUrl=null;_papCoverTouched=false;/.test(JS_CODE));
+t('자동 합성 실패는 조용히 넘기지 않는다 (상태줄 error)', /커버 디자인 자동 합성 실패 — 원본 사진으로 저장됨/.test(JS_CODE));
+t('admin.html 미리보기 안내에 "저장하면 자동 적용" + 캐시버스트 ≥159', /저장하면 이 디자인이 커버로 자동 적용됩니다/.test(HTML_CODE) && Number(ver) >= 159);
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) process.exit(1);
 console.log('✓ admin-dead-handler tests passed');

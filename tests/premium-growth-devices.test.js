@@ -75,7 +75,7 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   ok('마이페이지: waived 는 payment_required 가 아니다', /s\.payment_status !== 'paid' && s\.payment_status !== 'waived'\) return 'payment_required'/.test(mp));
   const adm = read('frontend/pap-admin.js');
   ok('관리자: waived 배지 + 미결제 판정 4곳에서 waived 제외', /paymentStatus==='waived'/.test(adm) && (adm.match(/payment_status ?!== ?'waived'/g) || []).length >= 4);
-  ok('캐시버스트: fee v9 · consent v5 · admin 158', /pap-submission-fee\.js\?v=9/.test(sub) && /pap-submission-fee\.js\?v=9/.test(mp) && /pap-submission-fee-consent\.js\?v=5/.test(sub) && /pap-admin\.js\?v=158/.test(read('frontend/admin.html')));
+  ok('캐시버스트: fee v9 · consent v5 · admin ≥159', /pap-submission-fee\.js\?v=9/.test(sub) && /pap-submission-fee\.js\?v=9/.test(mp) && /pap-submission-fee-consent\.js\?v=5/.test(sub) && /pap-admin\.js\?v=(159|1[6-9]\d)/.test(read('frontend/admin.html')));
 
   console.log('\n=== 1. 심사 우선권 — premiumReviewSla ===');
   const S = require(path.join(ROOT, 'api', '_lib', 'premiumReviewSla'));
