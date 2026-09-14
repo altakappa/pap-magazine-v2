@@ -307,7 +307,11 @@ module.exports = async function handler(req, res) {
     }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400');
+    /* 2026-09-14 — 전송량 초과 사고 후속. 엣지 신선도 5분 → 1시간.
+       같은 URL 을 반복해 긁는 함대가 5분마다 DB 를 한 번씩 깨우고 있었다.
+       기사는 발행 뒤 거의 안 바뀌므로 1시간이면 충분하다. 수정이 급하면
+       재배포하면 즉시 반영된다 (엣지 캐시는 배포마다 새로 시작한다). */
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
     res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large');
     /* 2026-07-22 (Ahrefs 감사: 고아 페이지) — 본문 내 내부링크 블록용 데이터.
        · 이전/다음: 발행일 체인으로 '모든' 에디토리얼이 서로 연결되게 (고아 방지의 핵심)

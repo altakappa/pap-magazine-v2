@@ -111,7 +111,11 @@ module.exports = async function handler(req, res) {
     }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400');
+    /* 2026-09-14 — 전송량 초과 사고 후속. 엣지 신선도 5분 → 1시간.
+       같은 URL 을 반복해 긁는 함대가 5분마다 DB 를 한 번씩 깨우고 있었다.
+       기사는 발행 뒤 거의 안 바뀌므로 1시간이면 충분하다. 수정이 급하면
+       재배포하면 즉시 반영된다 (엣지 캐시는 배포마다 새로 시작한다). */
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
     res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large, max-video-preview:-1');
     return res.status(200).send(renderSeoHtml('film', data, { lang: req.query.lang === 'en' ? 'en' : 'ko' }));
 
