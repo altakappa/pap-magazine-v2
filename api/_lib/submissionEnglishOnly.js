@@ -19,6 +19,7 @@
 const { findNonLatin } = require('./latinOnly');
 const { normalizeRole } = require('./creditRoles');
 const { normalizeItemType } = require('./itemTypes');
+const { applyBrandCase } = require('./brandCase');   // 2026-09-14 브랜드명 표기 철칙
 
 function normalize(data) {
   if (!data || typeof data !== 'object') return data;
@@ -27,6 +28,8 @@ function normalize(data) {
     if (!lk || !Array.isArray(lk.items)) return;
     lk.items.forEach(function (it) { if (it && it.type) it.type = normalizeItemType(it.type); });
   });
+  // 2026-09-14 도메니코 — 브랜드명 철칙: 첫 글자 대문자, 나머지 소문자(전체 대문자·전체 소문자 불가). 거부 대신 고쳐 저장.
+  applyBrandCase(data);
   const team = Array.isArray(data.team) ? data.team : [];
   team.forEach(function (m) { if (m && m.role) m.role = normalizeRole(m.role); });
   if (data.credits && typeof data.credits === 'object' && !Array.isArray(data.credits)) {

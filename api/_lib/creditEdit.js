@@ -14,6 +14,7 @@
 
 const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
 const { normBrand, isGenericCredit, isSpaBrand } = require('./submissionType');
+const { toBrandCase } = require('./brandCase');   // 2026-09-14 브랜드명 표기 철칙(게재 후 크레딧 수정에도)
 
 // 누적 수정 한도 (일일이 아니라 에디토리얼 1건당 누적). 도메니코 결정 0-3.
 const MAX_CREDIT_EDITS = 3;
@@ -107,7 +108,7 @@ function sanitizeBrands(input) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
       return { rows: null, error: 'brands[' + i + '] must be an object' };
     }
-    const name = stripTags(raw.name);
+    const name = toBrandCase(stripTags(raw.name));   // 2026-09-14 첫 글자 대문자, 나머지 소문자
     if (!name) return { rows: null, error: 'brands[' + i + '].name is required' };
     if (name.length > LIMITS.name) return { rows: null, error: 'brands[' + i + '].name too long' };
     const instagram = cleanHandle(raw.instagram);

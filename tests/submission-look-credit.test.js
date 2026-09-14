@@ -52,6 +52,23 @@ t('문구 lookNeedsInstagram · lookInstagram 9개 언어', (html.match(/lookNee
 t('가이드라인 필수 자료: 브랜드마다 인스타 필수·없으면 브랜드 아님 (9개 언어)', (html.match(/glReqBody:'(?:\\.|[^'])*?(인스타그램이 없는 브랜드는 브랜드로 세지 않습니다|does not count as a brand|zählt nicht als Marke|non conta come brand|ne compte pas comme marque|no cuenta como marca|ブランドとして数えません|不计为品牌|не считается брендом)/g)||[]).length===9);
 t('인스타 입력칸 placeholder 에 required', (html.match(/placeholder="@instagram \(required\)"/g)||[]).length===2);
 
+/* 2026-09-14 도메니코 — "브랜드명 쓸 때 철칙. 가장 앞글자 대문자 그다음 소문자. 전체 소문자나 전체 대문자 적용 안 됨." */
+console.log('\n=== 브랜드명 표기 철칙 (brandCase) ===');
+const B = require('../api/_lib/brandCase');
+t('mincrisot → Mincrisot · TRENDYWU STUDIOS → Trendywu Studios · jean paul gaultier → Jean Paul Gaultier', B.toBrandCase('mincrisot')==='Mincrisot' && B.toBrandCase('TRENDYWU STUDIOS')==='Trendywu Studios' && B.toBrandCase('jean paul gaultier')==='Jean Paul Gaultier');
+t("H&M · O'Neill · Stylist's Own · 333 Studio · Hermès · Études 처리", B.toBrandCase('h&m')==='H&M' && B.toBrandCase("O'NEILL")==="O'Neill" && B.toBrandCase("stylist's own")==="Stylist's Own" && B.toBrandCase('333 studio')==='333 Studio' && B.toBrandCase('HERMÈS')==='Hermès' && B.toBrandCase('ÉTUDES')==='Études');
+t('공백 정리 + 빈 값', B.toBrandCase('  jean-paul   gaultier ')==='Jean-Paul Gaultier' && B.toBrandCase('')==='' && B.toBrandCase(null)==='');
+t('isBrandCase', B.isBrandCase('Mincrisot') && !B.isBrandCase('MINCRISOT') && !B.isBrandCase('mincrisot'));
+const dd={looks:[{n:1,items:[{type:'Top',brand:'AOIKZZO',instagram:'a'},{type:'Top',brand:'Ok Brand',instagram:'b'}]}]};
+t('applyBrandCase 는 룩 항목을 제자리에서 고치고 고친 수를 돌려준다', B.applyBrandCase(dd)===1 && dd.looks[0].items[0].brand==='Aoikzzo' && dd.looks[0].items[1].brand==='Ok Brand');
+const E = require('../api/_lib/submissionEnglishOnly');
+const d2={looks:[{n:1,items:[{type:'Top',brand:'mincrisot',instagram:'x'}]}],team:[]}; E.normalize(d2);
+t('englishOnly.normalize(POST·PUT 공용)가 브랜드명을 고친다', d2.looks[0].items[0].brand==='Mincrisot');
+const CE = require('../api/_lib/creditEdit');
+t('게재 후 크레딧 수정(sanitizeBrands)도 같은 규칙', CE.sanitizeBrands([{name:'TRENDYWU STUDIOS',instagram:'@t'}]).rows[0].name==='Trendywu Studios');
+t('폼: _papBrandCase 미러 + 브랜드 칸 focusout 교정 + 제출 수집 시 적용', /function _papBrandCase\(raw\)/.test(html) && /list\.addEventListener\('focusout'/.test(html) && /var brand=inputs\[0\]\?_papBrandCase\(inputs\[0\]\.value\):''/.test(html));
+t('가이드라인: 전체 대문자 금지 → 표기 철칙(첫 글자만 대문자) 9개 언어', !/전체 대문자 사용 금지|No ALL CAPS in credits/.test(html) && (html.match(/glReqBody:'(?:\\.|[^'])*?(Mincrisot, Jean Paul Gaultier)/g)||[]).length===9);
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ submission-look-credit tests FAILED'); process.exit(1); }
 console.log('✅ submission-look-credit tests passed');
