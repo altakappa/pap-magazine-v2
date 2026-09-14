@@ -207,6 +207,8 @@ module.exports = async function handler(req, res) {
         ctr: o.ctr,
         avg_position: o.avg_position,
         queries: byId[o.article_id].queries,
+        /* 160 — 검색어별 노출도 같이 담는다. 프롬프트가 "무엇을 겨냥할지" 를 안다. */
+        query_impressions: byId[o.article_id].query_impressions,
         status: 'queued',
       })));
       if (iErr) throw new Error('큐 입력 실패: ' + iErr.message);
