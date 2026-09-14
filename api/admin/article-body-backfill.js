@@ -31,6 +31,9 @@ const papVoice = require('../_lib/papVoice');
 
 const TABLE = 'article_body_backfill';
 
+/* 목표 본문 길이. 2026-09-14 실측: 812자 → 3.5위 / 405자 → 6.5위. */
+const TARGET_LEN = Number(process.env.BODY_BACKFILL_TARGET_LEN || 1200);
+
 function plain(s) {
   return String(s || '').replace(HTML_TAG_RE, dropKnownTags(' ')).replace(/\s+/g, ' ').trim();
 }
@@ -38,10 +41,14 @@ function plain(s) {
 /* 갤러리 이미지를 비전 블록으로. 분량을 늘리려면 **실제 근거**가 있어야 한다.
  * 기존 본문만 주고 "길게 써라" 하면 모델이 형용사로 채우거나 없는 사실을 만든다.
  * 이미지는 우리가 이미 가진 1차 자료라, 거기서 읽어낸 것만 더하게 한다.
- * 3장까지만 쓴다. Vercel 함수 시간과 이미지 다운로드가 비용의 대부분이다. */
+ * 2026-09-14 — 3장 → 6장. 1차 25편의 결과가 평균 763자로 목표에 못 미쳤다.
+ * 모델이 게을러서가 아니라 **쓸 근거가 3장뿐이어서**다. 근거를 늘리면 길이는 따라온다.
+ * 지어내게 만드는 대신 재료를 더 주는 쪽을 택한다.
+ * 비용은 이미지 다운로드 시간이다. 실패한 장은 건너뛰므로 안전하다. */
+const VISION_MAX = Number(process.env.BODY_BACKFILL_VISION_MAX || 6);
 async function visionBlocks(gallery) {
   const out = [];
-  const urls = (Array.isArray(gallery) ? gallery : []).slice(0, 3);
+  const urls = (Array.isArray(gallery) ? gallery : []).slice(0, VISION_MAX);
   for (const u of urls) {
     if (typeof u !== 'string' || !/^https?:\/\//.test(u)) continue;
     try {
@@ -102,7 +109,12 @@ async function generateBody(art) {
     '   날짜·수치·인용·장소를 새로 만들어내는 것은 절대 금지다.',
     '3) 사진에서 읽어낸 것은 단정하지 말고 보이는 그대로만 쓴다.',
     '   (예: 옷의 실루엣·색·소재감·배경·연출 방식)',
-    '4) 더 쓸 근거가 정말 없으면 800자에 못 미쳐도 된다. **지어내는 것보다 짧은 게 낫다.**',
+    /* 2026-09-14 — 목표를 800 → 1,200 자로 올린다. 28일 실측에서 순위와 길이의
+       관계가 분명했다: 812자 → 3.5위 CTR 21.3% / 405자 → 6.5위 CTR 0.18%.
+       1차 25편이 평균 763자에 그쳐 3.5위 그룹에 못 미쳤다.
+       다만 아래 "지어내는 것보다 짧은 게 낫다" 는 그대로 둔다. 이게 안전핀이다. */
+    '4) **1,200자를 목표로 한다.** 사진 6장을 하나씩 근거로 삼아 단락을 늘려라.',
+    '   더 쓸 근거가 정말 없으면 1,200자에 못 미쳐도 된다. **지어내는 것보다 짧은 게 낫다.**',
     '5) 기존 본문의 첫 문장(리드)과 마지막 문장(클로징)의 역할은 유지한다.',
     /* 2026-08-18 — 주류 기사의 과음 경고는 국민건강증진법이 문안까지 정해 둔
        것이라 '~합니다' 를 '~한다' 로 바꾸면 법정 문구가 아니게 된다.
@@ -174,9 +186,11 @@ async function generateBody(art) {
  * 여기서 자동 폐기하면 오탐 하나로 큐가 멎는다. */
 function checkBody(oldBody, newBody) {
   const o = plain(oldBody), n = plain(newBody);
-  const issues = papVoice.lintKoreanBody(newBody, { style: 'plain', structure: true, maxParas: 5, maxLen: 1100 });
+  /* 2026-09-14 — maxLen 1100 · maxParas 5 가 실제 천장이었다. 프롬프트 목표만
+     올리고 이걸 두면 린터가 경고를 띄워 사람이 반려하게 된다. 같이 올린다. */
+  const issues = papVoice.lintKoreanBody(newBody, { style: 'plain', structure: true, maxParas: 7, maxLen: 1600 });
   if (n.length <= o.length) issues.push('보강 안 됨 (' + o.length + ' → ' + n.length + '자)');
-  if (n.length < 800) issues.push('800자 미만 (' + n.length + '자)');
+  if (n.length < TARGET_LEN) issues.push(TARGET_LEN + '자 미만 (' + n.length + '자)');
   return issues;
 }
 
@@ -320,7 +334,7 @@ module.exports = async function handler(req, res) {
           + '<h2>' + esc(a.title || r.article_id) + '</h2>'
           + '<div class="m">노출 ' + n(r.impressions) + ' · ' + esc(r.status)
           + ' · ' + n(oldT.length) + '자 → <b>' + n(newT.length) + '자</b>'
-          + (newT.length >= 800 ? ' <span class="ok">목표 달성</span>' : '')
+          + (newT.length >= TARGET_LEN ? ' <span class="ok">목표 달성</span>' : '')
           + '</div>'
           + (src
               ? '<div class="src"><b>사진 속 글자를 읽었다 — 원본과 대조할 것</b>'
