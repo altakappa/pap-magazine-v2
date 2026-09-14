@@ -1,13 +1,11 @@
 /**
  * PAP Magazine — 텔레그램 자동 전송 라이브러리
  *
- * 새 에디토리얼이 발행(draft→published)되는 순간, 그 에디토리얼의 이미지
- * (cover_image + gallery[])에 흰색 "PAP" 워드마크를 하단 중앙에 합성한 뒤
- * (= 인스타그램 게시 버전과 동일한 룩) 텔레그램 채팅으로 자동 전송한다.
- *
- * DB 에 저장된 원본은 로고가 없는 깨끗한 이미지이므로, 전송 직전 서버가
- * sharp 로 로고를 얹는다(api/_lib/brandImage.js). 합성 후 바이트를 텔레그램에
- * multipart 로 업로드한다.
+ * 새 에디토리얼이 발행(draft→published)되는 순간, 그 에디토리얼의 이미지를 텔레그램 채팅으로 자동 전송한다.
+ * 2026-09-14 부터 내용물은 관리자 "전체 ZIP 다운로드" 와 같다: 매거진 커버(cover_image 그대로) +
+ * 갤러리 인스타 합성본(insta_logo_settings 로 4:5 프레이밍 + PAP 로고, api/_lib/instaComposite.js).
+ * 전부 문서(document)로 보내 텔레그램 재압축 없이 바이트가 보존된다.
+ * (종전: brandImage.js 로 원본 크기에 trim 로고 14% 를 얹어 사진으로 전송 — ZIP 과 달랐다.)
  *
  * 의존 env (Vercel):
  *   TELEGRAM_BOT_TOKEN — @BotFather 봇 토큰
@@ -129,31 +127,103 @@ async function sendGroup(buffers, caption) {
   if (!j || j.ok !== true) throw new Error('sendMediaGroup: ' + ((j && j.description) || ('HTTP ' + r.status)));
 }
 
+/* ── 파일(문서) 묶음 전송 (2026-09-14) ──
+   사진(photo)으로 보내면 텔레그램이 다시 압축해 긴 변 1280px 로 줄인다 — 1080×1350 인스타 합성본이
+   1024×1280 이 되어 그대로 올릴 수 없다. 문서(document)로 보내면 바이트가 그대로 간다(ZIP 과 동일).
+   미디어 그룹은 문서끼리만 묶을 수 있다(10개까지). 캡션은 첫 묶음의 첫 항목에만. */
+async function sendDocumentsToTelegram(files, caption, chatId) {
+  const token = BOT_TOKEN();
+  const chat = String(chatId || CHAT_ID() || '');
+  if (!token || !chat) throw new Error('텔레그램 토큰/채팅 미설정');
+  const list = (files || []).filter((f) => f && f.buffer && f.buffer.length);
+  if (!list.length) throw new Error('보낼 파일이 없습니다');
+  const groups = chunk(list, 10);
+  for (let gi = 0; gi < groups.length; gi++) {
+    const g = groups[gi];
+    const cap = gi === 0 ? caption : '';
+    const form = new FormData();
+    form.append('chat_id', chat);
+    if (g.length === 1) {
+      if (cap) form.append('caption', cap);
+      form.append('document', new Blob([g[0].buffer], { type: g[0].mime || 'image/png' }), g[0].name || 'file.png');
+      const r = await fetch('https://api.telegram.org/bot' + token + '/sendDocument', { method: 'POST', body: form });
+      const j = await r.json().catch(() => ({}));
+      if (!j || j.ok !== true) throw new Error('sendDocument: ' + ((j && j.description) || ('HTTP ' + r.status)));
+      continue;
+    }
+    const media = g.map((f, i) => {
+      const key = 'file' + i;
+      form.append(key, new Blob([f.buffer], { type: f.mime || 'image/png' }), f.name || (key + '.png'));
+      const m = { type: 'document', media: 'attach://' + key };
+      if (i === 0 && cap) m.caption = cap;
+      return m;
+    });
+    form.append('media', JSON.stringify(media));
+    const r = await fetch('https://api.telegram.org/bot' + token + '/sendMediaGroup', { method: 'POST', body: form });
+    const j = await r.json().catch(() => ({}));
+    if (!j || j.ok !== true) throw new Error('sendMediaGroup(document): ' + ((j && j.description) || ('HTTP ' + r.status)));
+  }
+  return { sent: list.length, groups: groups.length };
+}
+
+function extFromUrl(u) {
+  const m = String(u || '').split('?')[0].match(/\.(png|jpe?g|webp|gif)$/i);
+  return m ? m[1].toLowerCase().replace('jpeg', 'jpg') : 'jpg';
+}
+function mimeFromExt(ext) {
+  return ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+}
+function fileBase(title) {
+  return String(title || 'cover').toLowerCase().replace(/[^a-z0-9가-힯 ]+/g, '').replace(/\s+/g, '-') || 'cover';
+}
+
 /**
- * 발행된 에디토리얼 이미지들을 (로고 합성 후) 텔레그램으로 전송.
+ * 발행 에디토리얼 → 텔레그램. 관리자 "전체 ZIP 다운로드" 와 같은 내용물(2026-09-14 도메니코):
+ *   ① 매거진 커버(cover_image 바이트 그대로 — 저장 시 합성된 표지 디자인, 로고 안 얹음) '<제목>-cover.<ext>'
+ *   ② 갤러리 전부를 insta_logo_settings 로 인스타 합성(4:5 캔버스 + PAP 로고) 한 PNG '01.png' …
+ * 전부 문서(document)로 보내 바이트가 보존된다. ZIP 처럼 갤러리는 커버 원본 컷도 빼지 않는다.
+ * TELEGRAM_BRAND_LOGO=off 면 로고만 안 얹고 프레이밍은 그대로.
  * @returns {Promise<{sent:number, groups?:number, skipped?:string}>}
  */
 async function sendEditorialToTelegram(ed) {
   if (!isConfigured()) return { sent: 0, skipped: 'not_configured' };
-  const urls = collectImageUrls(ed);
-  if (!urls.length) return { sent: 0, skipped: 'no_images' };
+  const { resolveInstaOpts, instaCompositeBuffer, getRawLogo } = require('./instaComposite');
+  const files = [];
+  const isHttp = (u) => typeof u === 'string' && /^https?:\/\//i.test(u.trim());
 
-  // collectImageUrls 는 cover_image 를 항상 맨 앞에 넣는다. 커버가 실제로 있을
-  // 때만 첫 장 로고 합성을 건너뛴다(커버가 없으면 첫 장은 갤러리 컷이므로 합성).
-  const hasCover = !!(ed && typeof ed.cover_image === 'string'
-    && /^https?:\/\//i.test(ed.cover_image.trim())
-    && urls[0] === ed.cover_image.trim());
-  const buffers = await prepareImageBuffers(urls, { skipBrandOnFirst: hasCover });
-  if (!buffers.length) return { sent: 0, skipped: 'no_usable_images' };
-
-  const caption = buildCaption(ed);
-  const groups = chunk(buffers, 10);
-  let sent = 0;
-  for (let gi = 0; gi < groups.length; gi++) {
-    await sendGroup(groups[gi], gi === 0 ? caption : '');
-    sent += groups[gi].length;
+  // ① 커버 — 바이트 그대로 (이미 표지 디자인이 들어간 완성본; 2026-07-28 "커버엔 로고 안 얹는다")
+  const coverUrl = ed && isHttp(ed.cover_image) ? ed.cover_image.trim() : '';
+  if (coverUrl) {
+    try {
+      const ext = extFromUrl(coverUrl);
+      files.push({ buffer: await fetchImageBuffer(coverUrl), name: fileBase(ed.title) + '-cover.' + ext, mime: mimeFromExt(ext) });
+    } catch (e) { console.warn('[telegram] 커버 스킵:', coverUrl, e && e.message); }
   }
-  return { sent, groups: groups.length };
+
+  // ② 갤러리 — ZIP 과 같은 인스타 합성
+  const gallery = (ed && Array.isArray(ed.gallery)) ? ed.gallery.filter(isHttp).map((u) => u.trim()) : [];
+  let logo = null;
+  if (BRAND_ON() && gallery.length) {
+    try { logo = await getRawLogo(); }
+    catch (e) { console.warn('[telegram] 로고 로드 실패 → 로고 없이 프레이밍만:', e && e.message); }
+  }
+  for (let i = 0; i < gallery.length; i++) {
+    const url = gallery[i];
+    try {
+      const raw = await fetchImageBuffer(url);
+      const opts = resolveInstaOpts(ed.insta_logo_settings, url);
+      if (!logo) opts.logoEnabled = false;
+      let buf;
+      try { buf = await instaCompositeBuffer(raw, logo, opts); }
+      catch (e) { console.warn('[telegram] 합성 실패 → 원본 사용:', url, e && e.message); buf = raw; }
+      files.push({ buffer: buf, name: String(i + 1).padStart(2, '0') + '.png', mime: 'image/png' });
+    } catch (e) {
+      console.warn('[telegram] 이미지 스킵:', url, e && e.message);
+    }
+  }
+  if (!files.length) return { sent: 0, skipped: (coverUrl || gallery.length) ? 'no_usable_images' : 'no_images' };
+
+  return sendDocumentsToTelegram(files, buildCaption(ed));
 }
 
 // 발행 응답을 절대 막지 않는 안전 래퍼 — 에러를 콘솔에만 남기고 삼킨다.
@@ -338,6 +408,7 @@ async function sendMediaToTelegram(items, caption, chatId) {
 
 module.exports = {
   sendEditorialToTelegram,
+  sendDocumentsToTelegram,
   sendPhotosToTelegram,
   sendMediaToTelegram,
   sendTextToChatSafe,
