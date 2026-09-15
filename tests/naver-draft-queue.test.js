@@ -205,20 +205,41 @@ function runHandler(handler, env) {
     }
   }
 
-  console.log('[9] 아트 판별 — 소스에서 함수를 꺼내 실행한다 (2026-08-26)');
+  console.log('[9] 아트 판별 — api/_lib/naverArtFilter (2026-09-15 규칙 강화, 도메니코 "검열하고 싶어")');
   {
+    const F = require('../api/_lib/naverArtFilter');
+    const A = (title, tags, category, caption) => F.classifyArt({ title, tags, category: category || 'Culture', caption: caption || '' });
+    // ① 카테고리: 뷰티·뉴스는 아트 큐 밖
+    t('뷰티 기사는 아티스트 단어가 있어도 비아트 (쿠사마 점 메이크업)',
+      A('쿠사마의 점이 얼굴 위로 오른 순간', ['kusama yayoi', 'dot makeup', 'avant garde beauty'], 'Beauty').reason === 'category');
+    t('디올 팝업(뷰티) = 비아트', A('디올이 부르자, 다 모였다', ['dior beauty', 'popup', 'jamsil'], 'Beauty').art === false);
+    // ② 차단어: 브랜드 행사·셀럽·시즌
+    t('팝업 태그 → 차단', A('세이투셰가 남산 아래 집을 통째로 삼켰다', ['say touche', 'flagship store', 'namsan']).reason === 'blocked:flagship');
+    t('K-pop 라이브 → 차단', A('성수에 나타난 혁오, 새 곡의 첫 라이브', ['hyukoh', 'live performance', 'seongsu']).art === false);
+    t('시즌 코드 FW26 → 차단', A('워터마크를 캠페인 무기로 쓴 바퀘라의 FW26', ['vaquera', 'fw26']).art === false);
+    t('시즌 코드 26FW·SS27 도', A('x', ['sandro', '26fw']).reason === 'blocked:season' && A('x', ['anna sui', 'ss27']).art === false);
+    t('전시 기사라도 셀럽 컴백이면 차단', A('컴백 이틀 만에 페스티벌, 몬스타엑스의 무대 장악', ['monsta x', 'comeback']).art === false);
+    t('한글 차단어(런웨이)', A('NCT, 10년 무대 의상이 런웨이 위에 섰다', ['nct']).art === false);
+    // ③ 아트 신호: 태그가 근거
+    t('contemporary art 태그 = 아트', A('감정이 신체를 얻는다면', ['lulu lin', 'digital illustration', 'contemporary art']).art === true);
+    t('scan art / collage = 아트 (태너 프로스트 보웬)', A('눌러 담은 사랑의 기록', ['tanner frost bowen', 'scan art', 'collage']).art === true);
+    t('photography exhibition = 아트 (브래드 월스)', A('브래드 월스, 발레리나를 수학으로 번역하다', ['brad walls', 'photography exhibition']).art === true);
+    t('sculpture = 아트 (코에시)', A('울지 않는 흰매미를 만든 작가, 코에시', ['koesy', 'sculpture']).art === true);
+    t('art 는 단어 단위 — party·smart 는 아니다', A('x', ['party', 'smart casual']).art === false && A('x', ['food art']).art === true);
+    t('제목의 전시·개인전·도예 = 아트', A('코에시 개인전', []).art === true && A('로에베 가방과 박종진 도예', []).art === true);
+    t("'작가·아티스트' 단어만으로는 아트가 아니다 (헤어 아티스트 사고)", A('키스 옹 헤어 아티스트', ['hair artist']).art === false && A('주운 것들로 가방을 만드는 작가', ['upcycling']).art === false);
+    t('아무 신호도 없으면 none', A('81세에 시작한 80일간의 세계 배낭여행', ['travel']).reason === 'none');
+    // 입력 형태
+    t('tags 가 JSON 문자열이어도 읽는다', A('x', '["contemporary art"]').art === true);
+    t('빈 입력에 안 터진다', F.isArtArticle(null) === false && F.isArtArticle({}) === false);
+    t('NAVER_DRAFT_ART_BLOCK_EXTRA 로 차단어를 더한다', (() => {
+      const prev = process.env.NAVER_DRAFT_ART_BLOCK_EXTRA; process.env.NAVER_DRAFT_ART_BLOCK_EXTRA = 'frieze';
+      const r = A('프리즈 서울', ['frieze seoul', 'art fair']).art; if (prev === undefined) delete process.env.NAVER_DRAFT_ART_BLOCK_EXTRA; else process.env.NAVER_DRAFT_ART_BLOCK_EXTRA = prev; return r === false; })());
+    // 배선: 조회가 tags 를 읽고, 선정이 새 판별을 쓴다
     const src = fs.readFileSync(ADMIN, 'utf8');
-    const fm = src.match(/const ART_TERMS = \[([\s\S]*?)\];\s*function isArtArticle\(title, caption\) \{([\s\S]*?)\n\}/);
-    t('isArtArticle 을 찾았다', !!fm);
-    if (fm) {
-      const isArt = new Function('title', 'caption', 'const ART_TERMS = [' + fm[1] + '];' + fm[2]);
-      t('조각 작가 기사 = 아트', isArt('매트 존슨, 폐컨테이너로 명상하는 조각을 만들다', '') === true);
-      t('전시 기사 = 아트', isArt('서울 아트위크, 페어 밖 아홉 개의 전시', '') === true);
-      t('영문 exhibition 도 아트', isArt('', 'A new exhibition opens in Seoul') === true);
-      t('셀럽 컴백 기사 = 비아트', isArt('넥스지 컴백, SAUCIN 활동 중 N잡러 변신 영상 화제', '') === false);
-      t('뮤비 티저 기사 = 비아트', isArt('제니 신곡 뮤비 티저, 청량 로맨틱 스타일링이 이미 화제', '') === false);
-      t('빈 입력에 안 터진다', isArt(null, undefined) === false);
-    }
+    t('조회가 tags 를 읽어온다', /\.select\('id, slug, title, category, tags, instagram_caption/.test(src));
+    t('선정이 naverArtFilter 를 쓴다', /require\('\.\.\/_lib\/naverArtFilter'\)/.test(src) && /art: isArtArticle\(\{ title: r\.title, caption: r\.instagram_caption, tags: r\.tags, category: r\.category \}\)/.test(src));
+    t('판별 파일은 의존 없음 (DB 없이 검증)', !/require\(/.test(fs.readFileSync(path.join(__dirname, '..', 'api/_lib/naverArtFilter.js'), 'utf8')));
   }
 
   console.log('[7] TTL 유예(램프) — 2026-08-12 전에는 14일, 그 뒤 7일');

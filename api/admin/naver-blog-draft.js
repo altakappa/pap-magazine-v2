@@ -537,7 +537,7 @@ async function _recentPublished(brand, kind, opt) {
     return (data || []).map((r) => ({ slug: r.slug, id: r.id, published_date: r.published_date, created_at: r.created_at })).filter((r) => r.slug);
   }
   let qy = supabaseAdmin.from(b.table)
-    .select('id, slug, title, category, instagram_caption, published_date, created_at' + (brand === 'pap' ? ', custom_url' : ''))
+    .select('id, slug, title, category, tags, instagram_caption, published_date, created_at' + (brand === 'pap' ? ', custom_url' : ''))
     .eq('status', 'published');
   if (since) qy = qy.gte('published_date', since);
   const { data } = await qy.order('published_date', { ascending: true }).order('created_at', { ascending: true }).limit(limit);
@@ -548,7 +548,7 @@ async function _recentPublished(brand, kind, opt) {
       slug: brand === 'pap' ? (r.custom_url || r.slug) : r.slug,
       id: r.id, category: r.category,
       own: isOwnCoverage(r.instagram_caption),
-      art: isArtArticle(r.title, r.instagram_caption),
+      art: isArtArticle({ title: r.title, caption: r.instagram_caption, tags: r.tags, category: r.category }),
       published_date: r.published_date, created_at: r.created_at,
     }))
     .filter((r) => r.slug);
@@ -605,14 +605,12 @@ function isOwnCoverage(caption) {
  * "네이버 초안은 아트 기사 위주로만"). 카테고리만으로는 못 가른다 — 아트는
  * Culture 안에 셀럽·음악과 섞여 있다. 휴리스틱이므로 경계 사례(네일아트 등)는
  * 일부 섞일 수 있고, 그건 관리자가 게시 단계에서 거른다. */
-const ART_TERMS = [
-  '전시', '개인전', '갤러리', '작가', '아티스트', '조각', '회화', '일러스트',
-  '미술', '아트', '사진집', '포토그래퍼', '설치미술', '비엔날레', '공예', '도예',
-  'artist', 'exhibition', 'gallery', 'sculpture', 'photobook', 'installation',
-];
-function isArtArticle(title, caption) {
-  const hay = (String(title || '') + ' ' + String(caption || '')).toLowerCase();
-  return ART_TERMS.some((t) => hay.includes(t.toLowerCase()));
+/* 2026-09-15 도메니코 "검열하고 싶어" → 판별을 api/_lib/naverArtFilter.js 로 옮기고 규칙을 세 겹으로 조였다
+ * (카테고리 제외 → 차단어 → 태그의 아트 신호). 종전 단어 매칭(ART_TERMS)은 '디올 팝업'·'쿠사마 메이크업'을
+ * 아트로 들여보냈다. 규칙·근거·실측은 그 파일 머리에. */
+const { classifyArt } = require('../_lib/naverArtFilter');
+function isArtArticle(row) {
+  return classifyArt(row).art;
 }
 /* 아트 전용 모드 스위치 — 선정(generateNext)과 크론 기본값(naver-draft-sweep)이
  * 같은 판단을 공유해야 해서 함수로 뺐다. NAVER_DRAFT_ART_ONLY=false 로 끈다. */
