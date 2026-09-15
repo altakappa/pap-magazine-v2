@@ -242,6 +242,18 @@ function runHandler(handler, env) {
     t('판별 파일은 의존 없음 (DB 없이 검증)', !/require\(/.test(fs.readFileSync(path.join(__dirname, '..', 'api/_lib/naverArtFilter.js'), 'utf8')));
   }
 
+  console.log('[11] 최근 발행 조회가 최신을 버리지 않는다 (2026-09-15 사고)');
+  {
+    /* 오름차순 + limit 120 이라 14일 창에 120편이 넘으면 가장 최신 기사가 조회에서 잘렸다.
+       9/15 아트 기사 2편이 pending 에 없어서 generate_next 가 done 을 냈다. */
+    const src = fs.readFileSync(ADMIN, 'utf8');
+    const fn = src.slice(src.indexOf('async function _recentPublished'), src.indexOf('/* 자체 취재인가'));
+    t('_recentPublished 를 찾았다', fn.length > 200);
+    t('조회는 내림차순(최신부터) limit', /\.order\('published_date', \{ ascending: false \}\)\.order\('created_at', \{ ascending: false \}\)\.limit\(limit\)/.test(fn));
+    t('오름차순 조회가 남아 있지 않다', !/ascending: true/.test(fn));
+    t('돌려줄 땐 뒤집어서 오름차순(호출자 가정: 발행 오름차순)', (fn.match(/\(data \|\| \[\]\)\.reverse\(\)/g) || []).length === 2);
+  }
+
   console.log('[7] TTL 유예(램프) — 2026-08-12 전에는 14일, 그 뒤 7일');
   {
     const state = { queue: 0, expirable: 0 };

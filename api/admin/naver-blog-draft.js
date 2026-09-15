@@ -533,16 +533,20 @@ async function _recentPublished(brand, kind, opt) {
     let qy = supabaseAdmin.from('editorials')
       .select('id, slug, published_date, created_at').eq('status', 'published').not('slug', 'is', null);
     if (since) qy = qy.gte('published_date', since);
-    const { data } = await qy.order('published_date', { ascending: true }).order('created_at', { ascending: true }).limit(limit);
-    return (data || []).map((r) => ({ slug: r.slug, id: r.id, published_date: r.published_date, created_at: r.created_at })).filter((r) => r.slug);
+    const { data } = await qy.order('published_date', { ascending: false }).order('created_at', { ascending: false }).limit(limit);
+    return (data || []).reverse().map((r) => ({ slug: r.slug, id: r.id, published_date: r.published_date, created_at: r.created_at })).filter((r) => r.slug);
   }
   let qy = supabaseAdmin.from(b.table)
     .select('id, slug, title, category, tags, instagram_caption, published_date, created_at' + (brand === 'pap' ? ', custom_url' : ''))
     .eq('status', 'published');
   if (since) qy = qy.gte('published_date', since);
-  const { data } = await qy.order('published_date', { ascending: true }).order('created_at', { ascending: true }).limit(limit);
+  /* 2026-09-15 사고: 오름차순 + limit 120 이라 창(14일) 안 기사가 120편을 넘으면 **가장 최신** 기사가 잘려 나갔다.
+   * 실측 — 9/15 아트 기사 2편(태너 프로스트 보웬·오멜 척)이 pending 에 아예 없어서 generate_next 가 done 을 냈다.
+   * '최신부터' 가 선정 원칙인데 조회가 최신을 버리고 있었다. 내림차순으로 limit 만큼 가져온 뒤 뒤집어서
+   * 호출자가 기대하는 오름차순(발행 순)으로 돌려준다. */
+  const { data } = await qy.order('published_date', { ascending: false }).order('created_at', { ascending: false }).limit(limit);
   const skip = skipCategories();
-  return (data || [])
+  return (data || []).reverse()
     .filter((r) => !skip.has(String(r.category || '').toLowerCase()))
     .map((r) => ({
       slug: brand === 'pap' ? (r.custom_url || r.slug) : r.slug,
