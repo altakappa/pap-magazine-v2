@@ -391,6 +391,33 @@ function truncate(s, n) {
   return s.slice(0, n - 1).trimEnd() + '…';
 }
 
+/* 이미지 URL 위생 (2026-09-15) ─────────────────────────────────────────
+ * GSC '이미지 메타데이터 > url 입력란의 URL이 잘못되었습니다' 481페이지.
+ * 478페이지는 자연 해소됐고 남은 것을 DB 전수로 뒤져 하나를 찾았다:
+ *   /editorial/isolation 갤러리 57번
+ *   https://drive.google.com/thumbnail?id=1gcr...<h1 class=
+ * 2022년 레거시 임포트가 HTML 조각을 URL 에 붙여 넣은 값이다.
+ *
+ * 왜 여기까지 나갔나: gallery 필터가 "문자열이냐"만 보고 "URL 이냐"는
+ * 보지 않았다. 그래서 화면의 img 태그에도, ImageObject 스키마에도
+ * 그대로 실렸다.
+ *
+ * DB 는 정정했지만(2026-09-15), 앞으로 어떤 값이 들어와도 스키마와 화면에
+ * 못 나가게 렌더 시점에서 막는다. 규칙은 이 함수 하나뿐이다.
+ *   · https 만 통과시킨다 (http 는 혼합 콘텐츠, data: 는 SNS 가 렌더 안 함)
+ *   · 공백·따옴표·꺾쇠 등 URL 에 올 수 없는 문자가 하나라도 있으면 버린다
+ *   · URL 파서가 못 읽으면 버린다
+ * 버릴 뿐 고치지 않는다. 깨진 URL 을 추측으로 복원하면 엉뚱한 이미지가 걸린다. */
+const BAD_URL_CHARS_RE = /[\s"'<>\\^`{}|]/;
+function isUsableImageUrl(u) {
+  if (typeof u !== 'string') return false;
+  const s = u.trim();
+  if (!s || !/^https:\/\//i.test(s)) return false;
+  if (BAD_URL_CHARS_RE.test(s)) return false;
+  try { const p = new URL(s); return !!p.hostname && p.hostname.includes('.'); }
+  catch (_) { return false; }
+}
+
 function asArray(v) {
   if (!v) return [];
   if (Array.isArray(v)) return v;
@@ -1249,7 +1276,7 @@ function renderSeoHtml(kind, record, opts) {
   const contributors = extractContributors(record);
 
   /* Gallery for editorials/articles */
-  const galleryAll = asArray(record.gallery).filter(u => typeof u === 'string').slice(0, 60);
+  const galleryAll = asArray(record.gallery).filter(isUsableImageUrl).slice(0, 60);
   /* 이미지 미리보기 (2026-08-27 도메니코 결정) ──────────────────────────
    * SSR 페이지에는 열람 게이트가 아예 없었다. /editorial/:slug 는 모든
    * 방문자에게 이 HTML 을 주므로, 잠금은 여기서 걸어야 실제로 걸린다.
@@ -1270,7 +1297,10 @@ function renderSeoHtml(kind, record, opts) {
   const gallery = galleryLocked ? galleryAll.slice(0, galleryPreviewLimit) : galleryAll;
   /* 스키마의 image 는 실제로 보이는 것만 싣는다. 안 보이는 이미지를 구조화
      데이터로만 흘리면 색인과 화면이 어긋난다. */
-  const allImages = [ogImage, ...gallery].filter(Boolean);
+  /* 전부 걸러져 빈 배열이 되면 스키마의 image 가 사라진다. Article 에서 image 는
+     사실상 필수라 그 편이 더 나쁘다. 마지막 한 장은 기본 커버로 보장한다. */
+  const _imgs = [ogImage, ...gallery].filter(isUsableImageUrl);
+  const allImages = _imgs.length ? _imgs : [DEFAULT_OG_IMAGE];
 
   /* Build the primary schema (Article / NewsArticle / VideoObject).
    * Only emit VideoObject when the stored id is in the canonical 11-char
