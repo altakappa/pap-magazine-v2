@@ -361,18 +361,40 @@ async function runSovProbe({ timeoutMs = 240000, probes = PROBES, engines = ENGI
   const deadline = Date.now() + timeoutMs;
 
   /* 조합을 먼저 펼치고 풀로 돌린다. 순차로 돌면 32콜이 함수 예산을 넘는다
-     (웹검색 모드는 한 콜에 10~30초). 순서는 결과에 영향이 없다 — 행마다
-     질문·엔진·모드가 다 적혀 있다. */
+     (웹검색 모드는 한 콜에 10~30초). 순서는 **결과**에 영향이 없다 — 행마다
+     질문·엔진·모드가 다 적혀 있다. 하지만 **누가 굶는지**에는 영향이 있다.
+
+     그래서 검색 모드를 먼저 깐다 (2026-09-15). 검색 콜은 느리고 문턱도 높다
+     (ai-search 100초 vs ai 35초). 뒤에 깔리면 앞의 콜들이 시간을 다 쓴 뒤
+     문턱에 걸려 통째로 '시간부족' 으로 건너뛰어진다 — 못 부른 칸은 실패보다
+     나쁘다(왜 없는지조차 안 남는다). 학습 모드는 빠르고 문턱이 낮아 끝자락에도
+     들어간다. 느린 것을 앞에 — 그래야 상한을 올려도 다른 칸을 굶기지 않는다. */
+  const slowFirst = MODES.slice().sort(
+    (a, b) => (a === 'search' ? 0 : 1) - (b === 'search' ? 0 : 1));
   const tasks = [];
-  for (const p of probes) {
-    for (const engine of usable) {
-      for (const mode of MODES) tasks.push({ p, engine, mode });
+  for (const mode of slowFirst) {
+    for (const p of probes) {
+      for (const engine of usable) tasks.push({ p, engine, mode });
     }
   }
 
   const rows = [];
   const skipped = [];
   let next = 0;
+
+  /* 검색 콜이 실제로 몇 초 걸렸나 — 성공/실패를 나눠 최장치만 들고 간다.
+     2026-09-15 이전에는 이 숫자가 어디에도 없었다. 남은 건 '실패 6' 이라는
+     개수뿐이라, 상한이 모자란 것인지(=더 주면 산다) 콜이 매달린 것인지(=더
+     줘도 죽는다) 가를 방법이 없었다. 매주 상한을 눈대중으로 만지는 건
+     학습이 아니라 도박이다(교훈 5). 실패 경과가 예산과 같으면 잘린 것이고,
+     예산보다 짧으면 다른 이유다 — 이 두 줄이 그걸 가른다. */
+  const slowest = { ok: 0, fail: 0, n: 0 };
+  function markSearch(mode, ms, good) {
+    if (mode !== 'search') return;
+    slowest.n++;              // 0초 실패도 센다 — 즉사와 '검색 안 함' 은 다른 사건이다
+    const k = good ? 'ok' : 'fail';
+    if (ms > slowest[k]) slowest[k] = ms;
+  }
 
   async function worker() {
     for (;;) {
@@ -387,9 +409,11 @@ async function runSovProbe({ timeoutMs = 240000, probes = PROBES, engines = ENGI
       const kind = mode === 'search' ? 'ai-search' : 'ai';
       if (!canStart(deadline, kind)) { skipped.push(p.key + '/' + engine + '/' + mode); continue; }
 
+      const budget = budgetFor(deadline, kind);
+      const startedAt = Date.now();
       try {
-        const { text, urls, searched } = await ask(engine, p.q, mode,
-          budgetFor(deadline, kind));
+        const { text, urls, searched } = await ask(engine, p.q, mode, budget);
+        markSearch(mode, Date.now() - startedAt, true);
 
         /* 검색 모드인데 검색이 실제로 안 돌았으면 그 답은 학습 레이어 답이다.
            그걸 답변 레이어 칸에 넣으면 두 레이어를 나눈 의미가 사라지고,
@@ -415,13 +439,19 @@ async function runSovProbe({ timeoutMs = 240000, probes = PROBES, engines = ENGI
           error: null,
         });
       } catch (err) {
+        const spent = Date.now() - startedAt;
+        markSearch(mode, spent, false);
         console.error('[sov]', p.key, engine, mode, (err && err.message) || err);
         /* 실패도 행으로 남긴다. **빼지 않는다** — 빠진 행과 "없다"는 행은
-           다르고, 빼면 분모가 조용히 줄어 점유율이 부풀려진다. */
+           다르고, 빼면 분모가 조용히 줄어 점유율이 부풀려진다.
+           사유 뒤에 **경과/예산**을 붙인다 — '타임아웃' 네 글자만으로는
+           상한이 모자란 건지 콜이 매달린 건지 영영 못 가른다. */
         rows.push({
           ...base, present: null, described: null, desc_ok: null,
           rivals: [], citations: [],
-          error: String((err && err.message) || 'failed').slice(0, 200),
+          error: (String((err && err.message) || 'failed').slice(0, 150)
+            + ' (경과 ' + Math.round(spent / 1000) + '초/예산 '
+            + Math.round(budget / 1000) + '초)').slice(0, 200),
         });
       }
     }
@@ -436,16 +466,47 @@ async function runSovProbe({ timeoutMs = 240000, probes = PROBES, engines = ENGI
 
   const done = rows.filter((r) => r.present !== null);
   const present = done.filter((r) => r.present).length;
-  const failed = rows.length - done.length;
+  const failedRows = rows.filter((r) => r.present === null);
+  const failed = failedRows.length;
+
+  /* 실패는 **개수가 아니라 사유**로 적는다 (2026-09-15).
+     8/18 cronGuard·9/10 goldenBoost 와 같은 구멍이 여기 세 번째로 있었다:
+     실패는 보이는데 왜인지가 note 에 없어서, 매주 '실패 6' 만 읽고 원인을
+     DB 까지 파고들어야 알 수 있었다. 사유가 한 종류로 모이면 그게 다음 수리
+     대상이라는 것도 note 만 보고 알 수 있어야 한다. */
+  const reasons = {};
+  for (const r of failedRows) { const k = reasonOf(r.error); reasons[k] = (reasons[k] || 0) + 1; }
+  const reasonMd = Object.entries(reasons)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => k + ' ' + n)
+    .join(' · ');
+
+  const sec = (ms) => Math.round(ms / 1000) + '초';
 
   return {
     inserted: rows.length,
     engines: usable,
     skipped,
+    slowestSearchMs: slowest,
     note: 'SoV ' + present + '/' + done.length
-      + (failed ? ' · 실패 ' + failed : '')
-      + (skipped.length ? ' · 시간부족 ' + skipped.length : ''),
+      + (failed ? ' · 실패 ' + failed + (reasonMd ? ' [' + reasonMd + ']' : '') : '')
+      + (skipped.length ? ' · 시간부족 ' + skipped.length : '')
+      + (slowest.n
+        ? ' · 검색 최장 성공 ' + sec(slowest.ok) + '/실패 ' + sec(slowest.fail) : ''),
   };
+}
+
+/* 실패 사유를 짧은 딱지로 묶는다. 원문은 행의 error 에 그대로 남아 있고,
+   이건 note 한 줄에 들어갈 요약이다. 딱지가 안 붙는 사유는 앞 40자를 그대로
+   보여 준다 — 모르는 실패를 '기타' 로 뭉뚱그리면 새 고장을 못 본다.
+   note 는 손으로 쓴 값이라 cronGuard 비밀 필터를 안 거친다 → 긴 토큰 모양은 지운다. */
+function reasonOf(msg) {
+  const m = String(msg || '');
+  if (/aborted due to timeout|abort/i.test(m)) return '타임아웃';
+  if (/웹검색 미실행/.test(m)) return '웹검색 미실행';
+  const http = m.match(/(anthropic|openai)\s+(\d{3})/i);
+  if (http) return http[1].toLowerCase() + ' ' + http[2];
+  return m.replace(/[A-Za-z0-9_-]{20,}/g, '…').slice(0, 40) || '사유없음';
 }
 
 /* ── 리포트 ───────────────────────────────────────────────────
@@ -556,6 +617,6 @@ function renderSovMd(rep) {
 
 module.exports = {
   runSovProbe, buildSovReport, renderSovMd,
-  analyze, extractCitations, papPatterns, sentences,
+  analyze, extractCitations, papPatterns, sentences, reasonOf,
   PROBES, ENGINES, MODES, RIVALS, DESC_GOOD, DESC_BAD, engineReady,
 };

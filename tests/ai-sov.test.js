@@ -109,8 +109,13 @@ t('표 문구가 합산 금지를 명시', /절대 합산 금지|더하지 않�
 
 console.log('\n=== 정직한 집계 ===');
 /* 실패를 빼면 분모가 조용히 줄어 점유율이 부풀려진다. */
+/* 2026-09-15: 실패 사유 뒤에 경과/예산을 덧붙이면서 `error: String(...)` 이
+   `error: (String(...) + ...)` 이 됐다. 여는 괄호를 허용하되 **String 으로
+   원문을 살린다**는 점은 계속 본다. 이 불변식(실패도 행으로 남긴다)은
+   tests/ai-sov-timeout-budget.test.js 가 runSovProbe 를 실제로 돌려서도
+   검사한다 — 여기 훑기는 그 보조다. */
 t('실패 조합도 행으로 남긴다 (present=null)',
-  /present: null[\s\S]{0,200}error: String/.test(lib));
+  /present: null[\s\S]{0,300}error: \(?String/.test(lib));
 t('집계 분모에서 present=null 을 뺀다 (실패를 미등장으로 세지 않는다)',
   /r\.present !== null/.test(lib));
 /* 2026-09-03 — 손계산을 공용 헬퍼로 옮겼다. 같은 타임아웃 버그를 하루에 세 번
