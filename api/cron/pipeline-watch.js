@@ -40,6 +40,10 @@ const { judgeDeployReach, buildDeployAlert } = require('../_lib/deployReach');
 const { judgeFaqHealth, buildFaqAlert, summarizeFaqRuns,
   summarizeLaneRuns, judgeLaneHealth, findSilentParts, buildLaneAlert } = require('../_lib/faqHealth');
 const { summarizeDurations, judgeCronDuration, buildCronDurationAlert } = require('../_lib/cronDurationHealth');
+/* 2026-09-15 — 크론 지연 자동탐지. 이 파일의 감시는 전부 **이름을 적어 둔 크론**만
+   본다(21개). 나머지 30개는 안 돌아도 아무도 모른다. 이건 이름을 적지 않고
+   cron_runs 이력에서 주기를 배워 "늦었다" 를 잡는다. */
+const lateness = require('../_lib/cronLateness');
 
 const ALERT_KEY = 'ig-to-site-pipeline';
 /* 서술문 백필은 IG 파이프라인과 독립적인 문제라 알림 키를 분리한다 —
@@ -302,7 +306,20 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 크론 쪽은 위 생산량 계약으로 막았고, 이건 그 마지막 구멍이다. */
   const deploy = await checkDeployReach({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, tiktokDrive, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons, production, deploy });
+  /* ── 크론 지연 자동탐지 (2026-09-15 추가) ──
+   * 위 감시들은 전부 '적어 둔 크론' 만 본다. 09-13~14 에 7건이 에러 없이 실행
+   * 기록 자체가 없었는데 이 노트는 내내 'healthy' 였다 — 그 7건은 목록에 없었다.
+   * 이건 목록 없이 이력에서 주기를 배워 늦은 것을 잡는다. 첫 배포는 로그 전용
+   * (알림 안 보냄) — 감시 대상이 21→52 로 늘어 첫 실행에 알림이 몰릴 수 있다.
+   * late·lateDetail 은 최상위에 둔다 — cronGuard 자동요약이 note 에 실어 준다. */
+  const lateCrons = await checkLateCrons({ dry });
+  const late = (lateCrons && lateCrons.late) || [];
+  // 자동요약은 60자 넘는 문자열을 버린다 — 앞 두 개만, 60자에서 자른다
+  const lateDetail = late.length
+    ? ((LATE_ALERT_MODE === 'alert' ? '' : '로그전용 ') + late.slice(0, 2).map((x) => x.cron).join('·')).slice(0, 60)
+    : undefined;
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, late: late.map((x) => x.cron), lateDetail, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, tiktokDrive, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons, production, deploy, lateCrons });
 });
 
 /**
@@ -2203,3 +2220,106 @@ async function checkFailingCrons(opts) {
 
 module.exports.judgeFailingCrons = judgeFailingCrons;
 module.exports.buildFailingCronAlert = buildFailingCronAlert;
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * 크론 지연 자동탐지 (2026-09-15). 규칙·순수 함수는 _lib/cronLateness.js.
+ *
+ * 왜 45일치를 통째로 안 읽나 — 45일이면 약 12만 행이라 PostgREST(1,000행/요청)로
+ * 못 가져오고, 집계 RPC 는 마이그레이션이라 자동 트랙 금지 구역이다. 그래서
+ * **크론마다 최근 8회**만 읽어 간격 7개의 중앙값을 쓴다. 통계량(중앙값)과
+ * 임계 공식은 확정 규칙 그대로이고 표본 창만 '45일' → '최근 8회' 다.
+ *
+ * 이름 목록의 출처 — 손으로 안 적는다. ① vercel.json 크론 경로(씨앗) ②
+ * 최근 1,000행에 보이는 이름 ③ 지난 실행이 ops_alert_state 에 남긴 이름. 주 크론도
+ * 한 번 돌면 ②에 잡혀 ③으로 넘어가므로 일주일이면 전부 모인다.
+ *
+ * 알림 모드 — CRON_LATE_ALERT_MODE 가 'alert' 일 때만 텔레그램. 기본은 'log'
+ * (note·ops_alert_state 에만 남긴다). 순서: 로그 전용 배포 → 하루 관찰 → 오경보
+ * 제외 목록 확정 → 그다음 알림. 이 순서를 건너뛰면 첫 실행에 알림이 몰린다.
+ * ═══════════════════════════════════════════════════════════════════════ */
+const LATE_ALERT_KEY = 'cron-late-detect';
+const LATE_ALERT_MODE = process.env.CRON_LATE_ALERT_MODE === 'alert' ? 'alert' : 'log';
+const LATE_HISTORY_N = 8;
+const LATE_QUERY_CONCURRENCY = 8;
+
+function _lateExcludeFromEnv() {
+  return String(process.env.CRON_LATE_EXCLUDE || '').split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+async function checkLateCrons(opts) {
+  try {
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', LATE_ALERT_KEY).maybeSingle();
+    const prevPayload = (st && st.last_payload) || {};
+
+    // ① vercel.json 씨앗 + ② 최근 1,000행의 이름 + ③ 지난 실행이 남긴 이름
+    let seed = [];
+    try { seed = lateness.cronNamesFromVercel(require('../../vercel.json')); } catch (e) { /* 없으면 이력만으로 */ }
+    const { data: recent, error: e1 } = await supabaseAdmin
+      .from('cron_runs').select('cron_name').order('ran_at', { ascending: false }).limit(1000);
+    if (e1) throw e1;
+    const names = new Set([].concat(seed, Array.isArray(prevPayload.names) ? prevPayload.names : []));
+    for (const r of recent || []) if (r && r.cron_name) names.add(r.cron_name);
+
+    // 크론마다 최근 N 회 — 시작만 한 행(duration_ms null)도 '돌았다' 로 센다
+    const histories = {};
+    const list = Array.from(names);
+    for (let i = 0; i < list.length; i += LATE_QUERY_CONCURRENCY) {
+      await Promise.all(list.slice(i, i + LATE_QUERY_CONCURRENCY).map(async (name) => {
+        const { data: rows, error } = await supabaseAdmin
+          .from('cron_runs').select('ran_at').eq('cron_name', name)
+          .order('ran_at', { ascending: false }).limit(LATE_HISTORY_N);
+        if (error) throw error;
+        histories[name] = (rows || []).map((r) => r.ran_at);
+      }));
+    }
+
+    const judged = lateness.judgeLateCrons(histories, { exclude: _lateExcludeFromEnv() });
+    if (opts && opts.dry) return { dry: true, mode: LATE_ALERT_MODE, ...judged };
+
+    const COOLDOWN_H = Number(process.env.CRON_LATE_COOLDOWN_H || 24);
+    const decided = lateness.decideLateAlerts(judged, prevPayload, { cooldownMs: COOLDOWN_H * 3600000 });
+    if (judged.late.length) {
+      console.log('[pipeline-watch] 지연 크론 ' + judged.late.length + '건 (' + LATE_ALERT_MODE + '): '
+        + judged.late.map(lateness.fmtLate).join(' | '));
+    }
+
+    let alerted = false;
+    if (LATE_ALERT_MODE === 'alert' && decided.toAlert.length) {
+      await pushAlert({ ...lateness.buildLateAlert(decided.toAlert, SITE), personalOnly: true });
+      alerted = true;
+    } else if (LATE_ALERT_MODE === 'alert' && decided.recovered.length && !judged.late.length) {
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 크론 지연 해소 — ' + decided.recovered.join(', '),
+        lines: ['늦었던 크론이 다시 돌았다. 빠진 회차의 일은 안 됐을 수 있다 — 결과물을 한번 본다.'],
+        url: `${SITE}/admin/crons`, urlLabel: '크론 상태',
+      });
+      alerted = true;
+    }
+    await supabaseAdmin.from('ops_alert_state').upsert({
+      key: LATE_ALERT_KEY,
+      last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+      last_payload: {
+        broken: judged.late.length > 0,
+        mode: LATE_ALERT_MODE,
+        // {cron: 마지막 알림 시각} — 중복 억제. 로그 전용일 땐 비워 둔다: 안 보낸 알림을
+        // 보낸 것으로 적으면 알림을 켠 뒤 첫 24시간 동안 그 크론들이 조용해진다.
+        late: LATE_ALERT_MODE === 'alert' ? decided.nextState.late : {},
+        lateNow: judged.late.slice(0, 12).map((x) => x.cron + ':' + x.lateMin + '/' + x.thresholdMin),
+        names: list.slice(0, 200),               // 다음 실행이 이어받는 이름 목록
+        checked: judged.checked,
+      },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'key' });
+
+    return { mode: LATE_ALERT_MODE, checked: judged.checked, late: judged.late,
+      skipped: judged.skipped, alerted, recovered: decided.recovered };
+  } catch (e) {
+    console.error('[pipeline-watch] 크론 지연 감시 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+module.exports.checkLateCrons = checkLateCrons;
+module.exports.LATE_ALERT_MODE = LATE_ALERT_MODE;
