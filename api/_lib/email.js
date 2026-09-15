@@ -146,7 +146,6 @@ const SUBMISSION_REVIEW_I18N = {
     upTitle: '프리미엄 회원이라면 이 다음이 달라집니다',
     upBody: '다음 서브미션부터 프리미엄 회원은 아래 혜택을 받습니다.',
     upB1: '우선 심사 — 2영업일 이내 결과 (일반 최대 7영업일)',
-    upB2: '게재 시 인스타그램 피드 + 스토리 포스팅 보장',
     upB3: 'PAP 인증 크리에이터 프로필 — 배지 · 활동 도시 · 연락 버튼 · 첫 게재부터 공개',
     upB4: '연간 프리미엄: 유료 서브미션(€380) 1회 면제 + 심사 대기 중 제출 수정 · 크레딧 수정 · 공동작업자 지정',
     upCta: '프리미엄 혜택 보기',
@@ -172,7 +171,6 @@ const SUBMISSION_REVIEW_I18N = {
     upTitle: 'What changes when you are a Premium member',
     upBody: 'From your next submission, Premium members get:',
     upB1: 'Priority review — result within 2 business days (up to 7 for others)',
-    upB2: 'Guaranteed Instagram feed + story posting when published',
     upB3: 'PAP Verified creator profile — badge, city, contact button, live from your first editorial',
     upB4: 'Yearly Premium: one paid submission (€380) waived, plus edit while pending, credit edits and collaborator tagging',
     upCta: 'SEE PREMIUM BENEFITS',
@@ -198,7 +196,6 @@ const SUBMISSION_REVIEW_I18N = {
     upTitle: 'Cosa cambia con l’abbonamento Premium',
     upBody: 'Dalla prossima candidatura, i membri Premium ottengono:',
     upB1: 'Revisione prioritaria — esito entro 2 giorni lavorativi (fino a 7 per gli altri)',
-    upB2: 'Pubblicazione garantita su feed + storie Instagram all’uscita',
     upB3: 'Profilo creativo verificato PAP — badge, città, pulsante contatto, attivo dal primo editoriale',
     upB4: 'Premium annuale: una candidatura a pagamento (€380) esonerata, più modifica in attesa, modifica crediti e tag collaboratori',
     upCta: 'VEDI I VANTAGGI PREMIUM',
@@ -224,7 +221,6 @@ const SUBMISSION_REVIEW_I18N = {
     upTitle: 'Ce qui change avec l’abonnement Premium',
     upBody: 'Dès votre prochaine soumission, les membres Premium bénéficient de :',
     upB1: 'Examen prioritaire — réponse sous 2 jours ouvrés (jusqu’à 7 pour les autres)',
-    upB2: 'Publication garantie en feed + story Instagram à la parution',
     upB3: 'Profil créatif certifié PAP — badge, ville, bouton contact, actif dès le premier éditorial',
     upB4: 'Premium annuel : une soumission payante (€380) offerte, plus modification en attente, correction des crédits et tag des collaborateurs',
     upCta: 'VOIR LES AVANTAGES PREMIUM',
@@ -250,7 +246,6 @@ const SUBMISSION_REVIEW_I18N = {
     upTitle: 'Lo que cambia si eres miembro Premium',
     upBody: 'Desde tu próxima propuesta, los miembros Premium reciben:',
     upB1: 'Revisión prioritaria — resultado en 2 días hábiles (hasta 7 para el resto)',
-    upB2: 'Publicación garantizada en feed + historias de Instagram al salir',
     upB3: 'Perfil de creador verificado por PAP — insignia, ciudad, botón de contacto, activo desde el primer editorial',
     upB4: 'Premium anual: una propuesta de pago (€380) exenta, más edición en espera, corrección de créditos y etiquetado de colaboradores',
     upCta: 'VER VENTAJAS PREMIUM',
@@ -276,7 +271,6 @@ const SUBMISSION_REVIEW_I18N = {
     upTitle: 'プレミアム会員になると変わること',
     upBody: '次回の応募から、プレミアム会員には以下が適用されます。',
     upB1: '優先審査 — 営業日2日以内に結果（通常は最大7営業日）',
-    upB2: '掲載時にInstagramフィード＋ストーリーズ投稿を保証',
     upB3: 'PAP認証クリエイタープロフィール — バッジ・活動都市・連絡ボタン、初掲載から公開',
     upB4: '年間プレミアム：有料応募（€380）1回免除、審査中の編集・クレジット修正・共同作業者指定',
     upCta: 'プレミアム特典を見る',
@@ -302,7 +296,6 @@ const SUBMISSION_REVIEW_I18N = {
     upTitle: '成为高级会员后有何不同',
     upBody: '从下一次投稿起，高级会员将获得：',
     upB1: '优先审核 — 2个工作日内出结果（其他最多7个工作日）',
-    upB2: '发布时保证Instagram动态＋快拍推送',
     upB3: 'PAP认证创作者主页 — 徽章、活动城市、联系按钮，首次刊登即公开',
     upB4: '年付高级会员：免除1次付费投稿（€380），并可在待审时修改、修改署名、指定合作者',
     upCta: '查看高级会员权益',
@@ -328,7 +321,6 @@ const SUBMISSION_REVIEW_I18N = {
     upTitle: 'Что меняется для участников Premium',
     upBody: 'Со следующей заявки участники Premium получают:',
     upB1: 'Приоритетное рассмотрение — результат в течение 2 рабочих дней (у остальных до 7)',
-    upB2: 'Гарантированная публикация в ленте и сторис Instagram при выходе',
     upB3: 'Верифицированный профиль автора PAP — бейдж, город, кнопка связи, доступен с первой публикации',
     upB4: 'Годовой Premium: одна платная заявка (€380) без оплаты, плюс правка в ожидании, правка кредитов и указание соавторов',
     upCta: 'СМОТРЕТЬ ПРЕИМУЩЕСТВА PREMIUM',
@@ -354,7 +346,6 @@ const SUBMISSION_REVIEW_I18N = {
     upTitle: 'Was sich als Premium-Mitglied ändert',
     upBody: 'Ab Ihrer nächsten Einreichung erhalten Premium-Mitglieder:',
     upB1: 'Vorrangige Prüfung — Ergebnis innerhalb von 2 Werktagen (sonst bis zu 7)',
-    upB2: 'Garantierte Instagram-Feed- + Story-Veröffentlichung bei Erscheinen',
     upB3: 'PAP-verifiziertes Creator-Profil — Badge, Stadt, Kontaktbutton, ab dem ersten Editorial öffentlich',
     upB4: 'Premium jährlich: eine kostenpflichtige Einreichung (€380) erlassen, dazu Bearbeiten während der Prüfung, Credit-Korrekturen und Mitwirkende markieren',
     upCta: 'PREMIUM-VORTEILE ANSEHEN',
@@ -967,14 +958,14 @@ const templates = {
       : '';
 
     /* 2026-09-13 도메니코 — 승인 메일에 프리미엄 업셀(8번 장치). 비프리미엄 수신자에게만, 승인일 때만.
-       적용된 혜택만 적는다(우선 심사·피드+스토리 보장·인증 프로필·연간 €380 면제 + 기존 혜택).
+       적용된 혜택만 적는다(우선 심사·인증 프로필·연간 €380 면제 + 기존 혜택. 피드+스토리 보장은 2026-09-15 폐지 — 승인작은 전원 웹+모든 소셜에 게재).
        미적용 장치(성과 숫자·재도전권·에디터스 픽)는 쓰지 않는다. 결제 URL 이 아니라 /subscribe 로 보낸다. */
     const _upsellBlock = (_isApproved && !(_opts && _opts.isPremium) && L.upTitle)
       ? `<div style="margin:24px 0;padding:18px;border:1px solid #3a3223;background:#121212;">
            <span style="color:#c9a86a;font-size:10px;text-transform:uppercase;letter-spacing:2px;font-weight:700;">${L.upTitle}</span><br>
            <span style="color:#ccc;font-size:13px;line-height:1.7;">${L.upBody}</span>
            <ul style="margin:10px 0 0;padding-left:18px;color:#ddd;font-size:13px;line-height:1.8;">
-             <li>${L.upB1}</li><li>${L.upB2}</li><li>${L.upB3}</li><li>${L.upB4}</li>
+             <li>${L.upB1}</li><li>${L.upB3}</li><li>${L.upB4}</li>
            </ul>
            <a href="${FRONTEND_URL}/subscribe?utm_source=submission_approved_email&utm_medium=email&utm_campaign=premium_upsell" style="display:inline-block;background:#c9a86a;color:#000;padding:12px 28px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:14px;">${L.upCta}</a>
          </div>`

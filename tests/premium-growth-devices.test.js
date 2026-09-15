@@ -125,15 +125,17 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   const E = require(path.join(ROOT, 'api', '_lib', 'email'));
   ok('submissionReceived(isPremium) → 2영업일 문구, 아니면 최대 7영업일', /2영업일 이내/.test(E.templates.submissionReceived({ name: 'A' }, { title: 'T' }, 'ko', { isPremium: true }).html) && /최대 7영업일/.test(E.templates.submissionReceived({ name: 'A' }, { title: 'T' }, 'ko').html));
 
-  console.log('\n=== 3. 인스타그램 피드 + 스토리 보장 ===');
+  console.log('\n=== 3. (폐지 2026-09-15) 인스타그램 피드 + 스토리 보장 → 승인작은 전원 웹 + 모든 소셜 ===');
+  /* 도메니코 2026-09-15: "인스타그램 업로드는 프리미엄에게만 보장된다는 항목을 지우고, 서브미션 통과 시 웹사이트뿐만
+     아니라 PAP 의 모든 소셜 미디어에 업로드되는 걸로 바꿔줘." 장치 3(9/13) 전체 철거 + 절차 문구 신설. */
   const ed = read('api/editorials/[id].js');
-  ok('첫 공개(becomingPublished) 시 프리미엄 제출자면 텔레그램(await) — hasActivePlan 판정', /if \(becomingPublished\) \{[\s\S]{0,1500}hasActivePlan\(_prof, 'premium'\)[\s\S]{0,200}await sendTextToTelegramSafe\(premiumPublishAlertText\(data, _prof\)\)/.test(ed));
-  const PA = require(path.join(ROOT, 'api', '_lib', 'premiumPublishAlert'));
-  const txt = PA.premiumPublishAlertText({ title: 'X', slug: 'x-y' }, { instagram: 'kate', display_name: 'Kate' });
-  ok('알림 문구: 피드 + 스토리 · 릴스 제외 · 페이지 링크 · @핸들', /피드 \+ 스토리/.test(txt) && /릴스는 보장 대상 아님/.test(txt) && /\/editorial\/x-y/.test(txt) && /@kate/.test(txt));
-  // 2026-09-14 도메니코: 절차 섹션의 "인스타그램 게시: 프리미엄 보장/그 외 재량" 줄은 삭제. 보장 문구는 프리미엄 혜택(glAddBody)에만 남는다.
-  ok('가이드라인 절차: IG 게시 줄 없음 (옛 "모든 에디토리얼 IG 게시" 도, 프리미엄 보장/재량 줄도) — 9개 언어', !/모든 에디토리얼은 인스타그램에도 게시됩니다|Every editorial is also posted on Instagram/.test(sub) && (sub.match(/glProcBody:'(?:\\.|[^'])*?(피드 \+ 스토리|feed post \+ story|Feed-Post \+ Story|feed \+ storia|feed \+ story|feed \+ historia|フィード投稿＋ストーリーズ|动态＋快拍|ленте \+ сторис)/g) || []).length === 0 && (sub.match(/glProcBody:'/g) || []).length === 9);
-  ok('프리미엄 혜택(glAddBody)의 피드 + 스토리 보장 문구는 그대로 (9개 언어)', (sub.match(/glAddBody:'(?:\\.|[^'])*?(피드 \+ 스토리|feed post \+ story|Feed-Post \+ Story|feed \+ storia|feed \+ story|feed \+ historia|フィード投稿＋ストーリーズ|动态＋快拍|ленте \+ сторис)/g) || []).length === 9);
+  const IG_GUARANTEE = /(피드 \+ 스토리|feed post \+ story|Feed-Post \+ Story|feed \+ storia|feed \+ story|feed \+ historia|フィード投稿＋ストーリーズ|动态＋快拍|ленте \+ сторис|Лента \+ сторис|스토리 포스팅 보장|feed \+ story posting)/i;
+  ok('editorial PUT 에 프리미엄 게재 알림 없음 · 옛 모듈은 빈 껍데기(아무 데서도 require 안 함)', !/premiumPublishAlert/.test(ed) && Object.keys(require(path.join(ROOT, 'api', '_lib', 'premiumPublishAlert'))).length === 0 && !/premiumPublishAlert/.test(read('api/_lib/telegram.js')));
+  ok('가이드라인 절차(glProcBody): "웹사이트 + PAP 모든 소셜 미디어" 줄 9개 언어 + 정적 마크업', (sub.match(/glProcBody:'<ul><li>[^<]*<\/li><li>[^<]*(PAP[^<]*(소셜|social|sociaux|Social|ソーシャル|社交|социальн)[^<]*)<\/li>/g) || []).length === 9 && /data-i18n-html="glProcBody"><ul><li>[^<]*<\/li><li>Accepted editorials are published on the PAP website and across all PAP social media channels<\/li>/.test(sub));
+  ok('가이드라인 프리미엄 혜택(glAddBody): 보장 문구 없음 — 9개 언어 + 정적', !IG_GUARANTEE.test((sub.match(/glAddBody:'(?:\\.|[^'])*'/g) || []).join('\n')) && !/data-i18n-html="glAddBody">[^]*?Guaranteed Instagram/.test(sub));
+  ok('업그레이드 메일: upB2 삭제, 목록은 upB1·upB3·upB4', !/upB2/.test(em) && /<li>\$\{L\.upB1\}<\/li><li>\$\{L\.upB3\}<\/li><li>\$\{L\.upB4\}<\/li>/.test(em));
+  const sbx = read('frontend/subscribe.html');
+  ok('/subscribe: 프리미엄 카드·비교표에 보장 문구 없음 (전 언어)', !IG_GUARANTEE.test(sbx) && !/\['인스타그램 게시'/.test(sbx) && !/'Instagram posting'/.test(sbx));
 
   console.log('\n=== 5. 크리에이터 공개 프로필 ===');
   const CP = require(path.join(ROOT, 'api', '_lib', 'contributorProfile'));   // 9999a3d 회귀: 여기서 SyntaxError 면 실패
@@ -177,7 +179,7 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
 
   console.log('\n=== 8. 승인 메일 프리미엄 업셀 ===');
   const ap = E.templates.submissionReviewComplete({ name: 'A' }, { title: 'T' }, 'ko', 'approved', { isPremium: false }).html;
-  ok('승인 + 비프리미엄 → 업셀 블록(utm premium_upsell) + 혜택 4줄', /utm_campaign=premium_upsell/.test(ap) && /우선 심사/.test(ap) && /피드 \+ 스토리/.test(ap) && /인증 크리에이터 프로필/.test(ap) && /€380/.test(ap));
+  ok('승인 + 비프리미엄 → 업셀 블록(utm premium_upsell) + 혜택 3줄 (피드+스토리 보장은 2026-09-15 삭제)', /utm_campaign=premium_upsell/.test(ap) && /우선 심사/.test(ap) && !/피드 \+ 스토리/.test(ap) && /인증 크리에이터 프로필/.test(ap) && /€380/.test(ap));
   ok('미적용 장치(성과 숫자·재도전권·에디터스 픽)는 안 쓴다', !/성과|재도전|에디터스 픽|조회수/.test(ap));
   ok('프리미엄 수신자 · 거절 · 보완 메일에는 없음', !/premium_upsell/.test(E.templates.submissionReviewComplete({ name: 'A' }, { title: 'T' }, 'ko', 'approved', { isPremium: true }).html) && !/premium_upsell/.test(E.templates.submissionReviewComplete({ name: 'A' }, { title: 'T' }, 'ko', 'rejected', {}).html) && !/premium_upsell/.test(E.templates.submissionReviewComplete({ name: 'A' }, { title: 'T' }, 'ko', 'revision', {}).html));
   ok('업셀 문구 9개 언어(upTitle…upCta)', (em.match(/    upCta: '/g) || []).length === 9 && LANGS.every((l) => /premium_upsell/.test(E.templates.submissionReviewComplete({ name: 'A' }, { title: 'T' }, l, 'approved', {}).html)));
@@ -186,9 +188,9 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
 
   console.log('\n=== /subscribe · 가이드라인 문구 (9개 언어) ===');
   const sb = read('frontend/subscribe.html');
-  ok('/subscribe 프리미엄 카드 4줄 × 10블록(ru 중복 포함)', (sb.match(/€380\)? ?1회 면제|\(€380\) waived|\(€380\) без оплаты|\(€380\) erlassen|\(€380\) esonerata|\(€380\) offerte|\(€380\) exenta|€380）1回免除|€380）/g) || []).length >= 10);
-  ok('/subscribe 비교표: 심사 결과 · 인스타그램 게시 · 인증 프로필 · €380 면제 (ko)', /\['심사 결과','최대 7영업일','최대 7영업일','2영업일 이내'\]/.test(sb) && /\['인스타그램 게시','에디터 재량','에디터 재량','피드 \+ 스토리 보장'\]/.test(sb) && /\['PAP 인증 크리에이터 프로필',false,false,true\]/.test(sb) && /\['연간 결제 시 유료 서브미션\(€380\) 1회 면제',false,false,true\]/.test(sb));
-  ok('가이드라인 혜택 섹션 glAddBody: 6줄 × 9개 언어', (sub.match(/glAddBody:'<ul>(?:<li>[^<]*<\/li>){6}<\/ul>'/g) || []).length === 9);
+  ok('/subscribe 프리미엄 카드 €380 면제 줄 × 10블록(ru 중복 포함)', (sb.match(/€380\)? ?1회 면제|\(€380\) waived|\(€380\) без оплаты|\(€380\) erlassen|\(€380\) esonerata|\(€380\) offerte|\(€380\) exenta|€380）1回免除|€380）/g) || []).length >= 10);
+  ok('/subscribe 비교표: 심사 결과 · 인증 프로필 · €380 면제 (ko) — 인스타그램 게시 줄은 2026-09-15 삭제', /\['심사 결과','최대 7영업일','최대 7영업일','2영업일 이내'\]/.test(sb) && /\['PAP 인증 크리에이터 프로필',false,false,true\]/.test(sb) && /\['연간 결제 시 유료 서브미션\(€380\) 1회 면제',false,false,true\]/.test(sb));
+  ok('가이드라인 혜택 섹션 glAddBody: 5줄 × 9개 언어 (보장 줄 삭제 후)', (sub.match(/glAddBody:'<ul>(?:<li>[^<]*<\/li>){5}<\/ul>'/g) || []).length === 9);
   ok('가이드라인·업셀에 "커버 이미지" 혜택은 안 쓴다(도메니코 9/12)', !/glAddBody:'[^']*(커버 이미지|cover image)/i.test(sub) && !/upB\d: '[^']*(커버|cover)/i.test(em));
 
   console.log('\npassed: ' + passed + '   failed: ' + failed);

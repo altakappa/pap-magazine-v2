@@ -1,19 +1,9 @@
 'use strict';
 /**
- * 프리미엄 회원 에디토리얼 게재 알림 문구 (도메니코 2026-09-13).
- *   "3번은 릴스 편집은 제외하고 인스타그램 피드 + 스토리 포스팅 보장으로 변경."
- * 프리미엄 회원의 에디토리얼이 처음 공개되는 순간 운영자 텔레그램에 붙는 문구.
- * 비프리미엄은 에디터 재량(문구 없음). 릴스는 보장하지 않는다.
+ * (폐지 2026-09-15 도메니코) 프리미엄 회원 에디토리얼 "인스타그램 피드 + 스토리 포스팅 보장" 알림.
+ * "인스타그램 업로드는 프리미엄에게만 보장된다는 항목을 지우고, 서브미션 통과 시 웹사이트뿐만 아니라
+ *  PAP 의 모든 소셜 미디어에 업로드되는 걸로 바꿔줘." → 등급별 보장이 사라졌으므로 알림도 의미가 없다.
+ * api/editorials/[id].js 에서 호출을 뺐다. 이 파일은 아무 데서도 require 하지 않는다 (맥 작업 VM 이 파일을
+ * 지우지 못해 빈 껍데기로 남겨둔다 — 다음에 맥에서 직접 git rm 하면 된다).
  */
-function premiumPublishAlertText(editorial, profile) {
-  const title = String((editorial && editorial.title) || '').slice(0, 80);
-  const slug = (editorial && editorial.slug) ? String(editorial.slug) : '';
-  const ig = profile && profile.instagram ? '@' + String(profile.instagram).replace(/^@/, '') : '';
-  const who = (profile && (profile.display_name || profile.email)) || '';
-  return '⭐ 프리미엄 회원 에디토리얼 게재 — 인스타그램 피드 + 스토리 포스팅 보장 대상'
-    + '\n제목: ' + title
-    + (slug ? '\n페이지: https://www.pap-magazine.com/editorial/' + encodeURIComponent(slug) : '')
-    + '\n크리에이터: ' + String(who).slice(0, 60) + (ig ? ' (' + ig + ')' : '')
-    + '\n할 일: ① 피드 포스팅 ② 스토리 포스팅' + (ig ? ' (' + ig + ' 태그)' : '') + ' — 릴스는 보장 대상 아님';
-}
-module.exports = { premiumPublishAlertText };
+module.exports = {};

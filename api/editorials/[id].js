@@ -17,7 +17,6 @@ const { feeForType } = require('../_lib/submissionPayment');
 const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
 const { sendEditorialToTelegramSafe, sendTextToTelegramSafe } = require('../_lib/telegram');
 const { hasActivePlan } = require('../_lib/subscriptionAccess');   // 2026-09-13 프리미엄 판정(업셀·IG 보장 알림)
-const { premiumPublishAlertText } = require('../_lib/premiumPublishAlert');   // 2026-09-13 프리미엄 에디토리얼 = IG 피드+스토리 보장
 const { sanitizeInstaLogoSettings } = require('../_lib/instaLogoSettings');  // 2026-07-28
 // 2026-08-07 — 유니크 제약 위반을 사람이 읽는 안내로 (발행 8연속 실패 사고)
 const { describePgError } = require('../_lib/pgError');
@@ -443,22 +442,8 @@ module.exports = async function handler(req, res) {
       // (env TELEGRAM_BOT_TOKEN/CHAT_ID 미설정 시 즉시 skip.)
       if (becomingPublished) {
         await sendEditorialToTelegramSafe(data);
-        // 2026-09-13 도메니코 — 프리미엄 회원의 에디토리얼은 인스타그램 피드 + 스토리 포스팅을 보장한다.
-        // 포스팅은 사람이 한다 → 게재 순간 운영자에게 "보장 대상" 이라고 못 박아 둔다. 실패해도 발행은 막지 않는다.
-        try {
-          if (data.source_submission_id) {
-            const { data: _sub } = await supabaseAdmin
-              .from('submissions').select('user_id').eq('id', data.source_submission_id).maybeSingle();
-            if (_sub && _sub.user_id) {
-              const { data: _prof } = await supabaseAdmin
-                .from('profiles').select('instagram, display_name, email, subscription_plan, subscription_status')
-                .eq('id', _sub.user_id).maybeSingle();
-              if (hasActivePlan(_prof, 'premium')) {
-                await sendTextToTelegramSafe(premiumPublishAlertText(data, _prof));   // ★ await — 서버리스 동결
-              }
-            }
-          }
-        } catch (e) { console.warn('[editorial PUT] premium publish alert failed', e && e.message); }
+        // (2026-09-15 도메니코) 프리미엄 '피드 + 스토리 보장' 알림 폐지 — 승인된 에디토리얼은 회원 등급과 무관하게
+        // 웹사이트 + PAP 의 모든 소셜 미디어에 게재된다. 텔레그램 전송(sendEditorialToTelegramSafe)이 그 출발점이다.
       }
 
       // QA #172 — fire the approval email when the admin ticked the
