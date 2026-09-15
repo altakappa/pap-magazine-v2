@@ -219,12 +219,64 @@ async function submit(urlList) {
         body,
         signal: AbortSignal.timeout(10000), // 엔드포인트 무응답이 함수 시간 다 먹지 않게
       });
-      results.push({ endpoint: ep, status: r.status });
+      /* 2026-09-15 — 거절 이유를 남긴다. 9/15 실행에서 네이버가 처음으로 403 을
+         돌려줬는데(9/13까지 계속 200), 남은 기록은 숫자 '403' 뿐이라 키 검증
+         실패인지 레이트리밋인지 일시 장애인지 구분할 방법이 아예 없었다.
+         IndexNow 규격상 거절 응답은 짧은 텍스트나 JSON 한 줄이다. */
+      let why = '';
+      if (!epAccepted({ status: r.status })) {
+        why = await r.text().then(t => String(t || '').replace(/\s+/g, ' ').trim().slice(0, 120))
+                            .catch(() => '');
+      }
+      results.push({ endpoint: ep, status: r.status, why: why || undefined });
     } catch (err) {
       results.push({ endpoint: ep, error: String(err && err.message || err) });
     }
   }
   return results;
+}
+
+/* 한 엔드포인트가 며칠째 거절하고 있나.
+ *
+ * [왜] 수락이 하나라도 있으면 이 크론은 성공으로 끝난다(옳다 — IndexNow 는
+ * 참여 엔드포인트끼리 제출을 공유하므로 하나만 받아도 전달은 된다). 그래서
+ * 네이버 하나가 조용히 계속 거절해도 아무도 모른다. 네이버는 우리 국내 검색
+ * 유입 채널이라 그 침묵이 제일 비싸다. 지난 기록의 note 를 세어 연속 거절
+ * 일수를 note 앞에 붙인다 — 새 표를 만들지 않고 이미 있는 기록만 읽는다.
+ *
+ * note 형식(위 detail 참고): "네이버 403 · indexnow.org 200 · 빙 200".
+ * 라벨 뒤 첫 토큰이 200/202 가 아니면 그 실행에서 거절당한 것으로 본다. */
+const REFUSE_ALERT_DAYS = Number(process.env.INDEXNOW_REFUSE_ALERT_DAYS || 3);
+
+async function refusalStreaks(labels) {
+  const out = {};
+  try {
+    const { data } = await supabaseAdmin
+      .from('cron_runs').select('note')
+      .eq('cron_name', 'indexnow')
+      .order('ran_at', { ascending: false })
+      .limit(14);
+    for (const label of labels) {
+      const re = new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s+(\\S+)');
+      let n = 0;
+      for (const row of (data || [])) {
+        const txt = String(row && row.note || '');
+        /* 지금 돌고 있는 이 실행의 행이 맨 위에 있다 — cronGuard 는 시작할 때
+           행을 먼저 넣고(note 는 비어 있다) 끝날 때 note 를 채운다. 빈 note 를
+           '기록 없음' 으로 읽고 break 하면 스트릭이 영원히 0 이 된다. 건너뛴다.
+           같은 이유로 note 를 못 남긴 옛 실행도 스트릭을 끊지 않는다. */
+        if (!txt) continue;
+        const m = re.exec(txt);
+        if (!m) break;                    // 그 실행에 이 엔드포인트 기록이 없으면 멈춘다
+        if (m[1] === '200' || m[1] === '202') break;
+        n++;
+      }
+      if (n) out[label] = n;
+    }
+  } catch (_) {
+    /* 스트릭을 못 세도 제출 자체는 끝났다 — 여기서 실패로 만들지 않는다. */
+  }
+  return out;
 }
 
 module.exports = withCronGuard('indexnow', async function handler(req, res) {
@@ -307,14 +359,23 @@ module.exports = withCronGuard('indexnow', async function handler(req, res) {
        이 함수는 200 과 "submitted: 50" 을 돌려줬다. 숫자는 '보낸 개수' 지
        '받아준 개수' 가 아니다. 수락 여부를 세어 note 에 적고, 하나도 못 받으면
        실패로 올려 알림이 가게 한다. */
-    const detail = results.map((r) => epLabel(r.endpoint) + ' ' + (r.error ? ('오류(' + String(r.error).slice(0, 40) + ')') : r.status)).join(' · ');
+    const detail = results.map((r) => epLabel(r.endpoint) + ' '
+      + (r.error ? ('오류(' + String(r.error).slice(0, 40) + ')')
+                 : (r.status + (r.why ? '(' + String(r.why).slice(0, 60) + ')' : '')))).join(' · ');
     const accepted = results.filter(epAccepted).length;
     if (!accepted) {
       note(res, (mode || 'full') + ': ' + urlList.length + '건 제출했으나 수락 0 — ' + detail);
       return res.status(502).json({ submitted: urlList.length, accepted: 0, mode: mode || 'full', endpoints: results });
     }
     const statsTxt = (mode === 'recent' && lastRecentStats) ? ' · 언어판전용 ' + lastRecentStats.translationOnly : '';
-    note(res, (mode || 'full') + ': ' + urlList.length + '건 제출' + statsTxt + ' · 수락 ' + accepted + '/' + results.length + ' — ' + detail);
+    /* 이번에 거절한 엔드포인트만 과거를 뒤진다 — 전부 200 이면 조회조차 안 한다. */
+    const refused = results.filter(r => !epAccepted(r)).map(r => epLabel(r.endpoint));
+    const streaks = refused.length ? await refusalStreaks(refused) : {};
+    const alarm = Object.keys(streaks)
+      .filter(L => streaks[L] + 1 >= REFUSE_ALERT_DAYS)   // 이번 실행까지 합쳐 센다
+      .map(L => L + ' ' + (streaks[L] + 1) + '회 연속 거절');
+    const alarmTxt = alarm.length ? ' · ⚠ ' + alarm.join(' · ') : '';
+    note(res, (mode || 'full') + ': ' + urlList.length + '건 제출' + statsTxt + ' · 수락 ' + accepted + '/' + results.length + alarmTxt + ' — ' + detail);
     return res.status(200).json({
       submitted: urlList.length,
       accepted,
@@ -336,3 +397,5 @@ module.exports.ENDPOINTS = ENDPOINTS;
 module.exports.langVariantUrls = langVariantUrls;
 module.exports.recentContentUrls = recentContentUrls;
 module.exports.CHANGED_FILTER = CHANGED_FILTER;
+module.exports.refusalStreaks = refusalStreaks;
+module.exports.REFUSE_ALERT_DAYS = REFUSE_ALERT_DAYS;

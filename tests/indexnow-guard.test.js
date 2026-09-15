@@ -153,6 +153,58 @@ Module._load = _origLoad;
   const noSince = await m3.langVariantUrls('article', [{ id: 'id1', slug: 'x' }]);
   ok(noSince.includes(S + '/ja/article/x'), 'since 없으면(backfill·full) 종전대로 실재 언어 전부');
 
+
+  /* ── 7. 엔드포인트가 조용히 계속 거절하는 것을 잡는다 (2026-09-15) ──────
+   * 9/15 실행에서 네이버가 처음 403 을 돌려줬다(9/13까지 계속 200). 남은 기록은
+   * 숫자 '403' 하나뿐이라 키 검증 실패인지 레이트리밋인지 알 방법이 없었다.
+   * 그리고 수락이 하나라도 있으면 이 크론은 성공으로 끝나므로(옳다 — IndexNow
+   * 는 엔드포인트끼리 제출을 공유한다) 며칠을 거절당해도 조용하다.
+   * 네이버는 국내 검색 유입 채널이라 그 침묵이 제일 비싸다. */
+  console.log('\n=== 7. 거절 추적 (2026-09-15) ===');
+  ok(/let why = '';\s*\n\s*if \(!epAccepted\(\{ status: r\.status \}\)\)/.test(src),
+     '거절(비2xx)일 때만 응답 본문을 읽는다 — 수락일 때 읽는 건 낭비다');
+  ok(/why = await r\.text\(\)/.test(src), '거절 이유를 본문에서 가져온다');
+  ok(/r\.why \? '\(' \+ String\(r\.why\)\.slice\(0, 60\) \+ '\)'/.test(src),
+     '거절 이유가 note 에 실린다 (403 만 남던 문제)');
+  ok(/async function refusalStreaks\(labels\)/.test(src), '연속 거절을 세는 함수가 있다');
+  ok(/\.from\('cron_runs'\)\.select\('note'\)/.test(src) && !/create table/i.test(src),
+     '새 표를 만들지 않고 이미 있는 cron_runs 기록만 읽는다');
+  ok(/if \(!txt\) continue;/.test(src),
+     '빈 note 는 건너뛴다 — 지금 실행의 행이 맨 위에 있고 note 가 아직 비어 있다');
+  ok(/note 는 비어 있다\) 끝날 때 note 를 채운다/.test(src), '왜 건너뛰는지 적혀 있다');
+  ok(/INDEXNOW_REFUSE_ALERT_DAYS \|\| 3/.test(src), '기본 경보 문턱 3회');
+  ok(/streaks\[L\] \+ 1 >= REFUSE_ALERT_DAYS/.test(src), '이번 실행까지 합쳐 센다');
+  ok(/refused\.length \? await refusalStreaks\(refused\) : \{\}/.test(src),
+     '거절이 없으면 과거를 뒤지지 않는다');
+  ok(/스트릭을 못 세도 제출 자체는 끝났다/.test(src),
+     '스트릭 조회가 실패해도 제출을 실패로 만들지 않는다');
+  ok(/alarmTxt = alarm\.length \? ' · ⚠ '/.test(src), '경보는 note 에 ⚠ 로 붙는다');
+
+  /* 정규식 검사만으로는 '세는 로직' 이 맞는지 알 수 없다. 같은 알고리즘을
+     여기 복제해 실제로 세어 본다. 원본이 바뀌면 위 정규식이 먼저 깨진다. */
+  function streakOf(notes, label) {
+    const re = new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s+(\\S+)');
+    let n = 0;
+    for (const txt of notes) {
+      if (!txt) continue;
+      const m = re.exec(txt);
+      if (!m) break;
+      if (m[1] === '200' || m[1] === '202') break;
+      n++;
+    }
+    return n;
+  }
+  ok(streakOf(['', 'recent: 283건 · 네이버 403 · 빙 200', 'recent: 163건 · 네이버 200 · 빙 200'], '네이버') === 1,
+     '지금 실행(빈 note) + 403 1회 + 그전 200 → 1 (실제 9/15 상황)');
+  ok(streakOf(['', 'a 네이버 403 · 빙 200', 'b 네이버 403 · 빙 200', 'c 네이버 403 · 빙 200', 'd 네이버 200'], '네이버') === 3,
+     '3회 연속 거절 → 3');
+  ok(streakOf(['', 'a 네이버 403 · 빙 200', 'b 네이버 403 · 빙 200'], '빙') === 0,
+     '거절하지 않은 엔드포인트는 0');
+  ok(streakOf(['x 네이버 202'], '네이버') === 0, '202 는 수락이라 0');
+  ok(streakOf([], '네이버') === 0, '기록이 아예 없으면 0');
+  ok(streakOf(['a 네이버 403', 'b 빙 200', 'c 네이버 403'], '네이버') === 1,
+     '그 실행 기록에 라벨이 없으면 거기서 멈춘다 (건너뛰고 이어 세지 않는다)');
+
   console.log(`\npassed: ${pass} failed: ${fail}`);
   if (fail) process.exit(1);
   console.log('✅ indexnow-guard tests passed');
