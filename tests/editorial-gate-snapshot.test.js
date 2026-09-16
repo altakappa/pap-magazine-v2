@@ -1,0 +1,54 @@
+/**
+ * 열람 게이트 구멍 회귀 (2026-09-16, 도메니코 제보 "비회원도 프리뷰가 아니라 전체 볼 수 있던데").
+ *
+ * 서버(/api/editorials/:id)·SSR 은 8/21·8/27 게이트대로 잠갔는데, 홈 SPA 가 먼저 읽는 정적 스냅샷
+ * data/editorial-details.json(2026-04) 에 1,996편의 전체 이미지가 들어 있었다. 이미지·크레딧이 있으면
+ * 상세 API 를 안 부르므로(_needsHydrate=false) 스냅샷 화보는 등급과 무관하게 전부 보였다 —
+ * 프리미엄 전용 아카이브 2,060편이 비회원에게 열려 있었다.
+ *
+ * 지키는 것:
+ *   ① 스냅샷에는 화보당 이미지 1장(표지)만 남는다 — 갤러리는 상세 API 만 내준다.
+ *   ② SPA 는 id 가 있는 화보를 한 번은 반드시 상세 API 로 판정받는다(_gateChecked).
+ *   ③ 잠긴 화보는 서버가 준 이미지 목록으로 통째로 바꾼다(스냅샷 이미지 잔존 금지).
+ *   ④ 캐시버스트: 스냅샷 v=3, pap-content-editorial.js / pap-content-api-sync.js 버전이 HTML 10개에서 일치.
+ */
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const ROOT = path.join(__dirname, '..');
+const R = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
+let pass = 0, fail = 0;
+function t(n, c, d) { if (c) { pass++; console.log('  ✓', n); } else { fail++; console.log('  ✗', n); if (d) console.log('     ', String(d).slice(0, 300)); } }
+
+console.log('\n=== ① 정적 스냅샷은 표지 1장만 ===');
+const snap = JSON.parse(R('frontend/data/editorial-details.json'));
+const keys = Object.keys(snap);
+const over = keys.filter((k) => Array.isArray(snap[k].images) && snap[k].images.length > 1);
+t('스냅샷 항목이 있다 (' + keys.length + ')', keys.length > 2000);
+t('이미지 2장 이상인 항목 0 (갤러리는 상세 API 만)', over.length === 0, over.slice(0, 5).join(', '));
+t('표지·크레딧·이슈는 그대로 남아 있다', keys.every((k) => snap[k].thumb !== undefined && snap[k].credits !== undefined && snap[k].issue !== undefined));
+
+console.log('\n=== ② ③ SPA 가 반드시 서버 판정을 받는다 ===');
+const ed = R('frontend/pap-content-editorial.js');
+t('_needsHydrate 가 _gateChecked 를 본다', /var _needsHydrate = !_edDetC\._gateChecked \|\| \(_imgs <= 1\)/.test(ed));
+t('하이드레이트는 id 가 있을 때 상세 API 로 나간다', /if\(\(_needsHydrate \|\| _edNeedTr \|\| _edNeedIg\) && d\.id\)\{[\s\S]{0,400}fetch\('\/api\/editorials\/' \+ encodeURIComponent\(d\.id\)/.test(ed));
+t('잠겼으면 서버 목록으로 통째로 교체', /if\(dstLocked\)\{\s*dst\.images = Array\.isArray\(full\.gallery\) \? full\.gallery\.slice\(\) : \[\];/.test(ed));
+t('응답 후 _gateChecked = true (재요청 루프 방지)', /dst\._gateChecked = true;/.test(ed));
+t('잠금 판정은 서버의 images.locked', /var dstLocked = _img \? !!_img\.locked/.test(ed));
+
+console.log('\n=== ④ 캐시버스트 ===');
+const sync = R('frontend/pap-content-api-sync.js');
+t('스냅샷 v=3 (api-sync · v5.html)', /editorial-details\.json\?v=3/.test(sync) && /editorial-details\.json\?v=3/.test(R('frontend/pap-magazine-v5.html')) && !/editorial-details\.json\?v=2/.test(sync));
+const htmls = fs.readdirSync(path.join(ROOT, 'frontend')).filter((f) => f.endsWith('.html'));
+const edV = new Set(), syV = new Set();
+for (const h of htmls) {
+  const s = R('frontend/' + h);
+  (s.match(/pap-content-editorial\.js\?v=(\d+)/g) || []).forEach((m) => edV.add(m));
+  (s.match(/pap-content-api-sync\.js\?v=(\d+)/g) || []).forEach((m) => syV.add(m));
+}
+t('pap-content-editorial.js 버전이 HTML 전체에서 하나 (≥85)', edV.size === 1 && Number([...edV][0].split('=')[1]) >= 85, [...edV].join(','));
+t('pap-content-api-sync.js 버전이 HTML 전체에서 하나 (≥127)', syV.size === 1 && Number([...syV][0].split('=')[1]) >= 127, [...syV].join(','));
+
+console.log('\npassed: ' + pass + '   failed: ' + fail);
+if (fail) { console.log('❌ editorial-gate-snapshot FAILED'); process.exit(1); }
+console.log('✅ editorial-gate-snapshot passed');

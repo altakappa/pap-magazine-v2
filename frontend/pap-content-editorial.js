@@ -1596,7 +1596,11 @@ function _openEditorialInner(title,thumb){
      * 하이드레이트가 안 돌아 표지 한 장짜리 화보가 되고, 잠긴 화보인지도
      * 알 수 없다. gallery_count 를 같이 보고, 없으면 1장 이하는 무조건 부른다. */
     var _galCount = Number((d && d.galleryCount) || 0);
-    var _needsHydrate = (_imgs <= 1) || (_galCount > _imgs) || (_credsArr.length === 0 && !_hasDesc);
+    /* 2026-09-16 — 열람 게이트 구멍 막기 (도메니코 제보 "비회원도 전체 보인다").
+     * data/editorial-details.json 스냅샷(2026-04)에 1,996편의 전체 이미지가 들어 있어서, 이미지·크레딧이
+     * 있으면 상세 API 를 안 부르고 스냅샷 그대로 그렸다 = 게이트 우회. 스냅샷은 표지 1장으로 줄였고(v=3),
+     * 여기서는 id 가 있는 화보는 **한 번은 반드시** 상세 API 로 판정을 받게 한다(_gateChecked). */
+    var _needsHydrate = !_edDetC._gateChecked || (_imgs <= 1) || (_galCount > _imgs) || (_credsArr.length === 0 && !_hasDesc);
     // 2026-07-26 — 다국어: 활성 언어가 ko가 아니고 해당 언어 요약이 없고 아직
     // 하이드레이트 안 했으면 상세 GET 으로 description_i18n 을 당겨온다(1회).
     var _edL2 = (function(){try{return localStorage.getItem('pap-lang')||'ko';}catch(e){return 'ko';}})();
@@ -1649,8 +1653,14 @@ function _openEditorialInner(title,thumb){
         dst.id    = full.id || dst.id || '';
         dst.slug  = full.slug || dst.slug || '';
         dst.thumb = dst.thumb || full.cover_image || full.thumbnail || full.thumbnail_url || '';
-        if(Array.isArray(full.gallery) && full.gallery.length) dst.images = full.gallery;
+        /* 2026-09-16 — 서버가 준 이미지 목록이 진실이다. 잠긴 화보(preview 2장·blocked 0장)에서 종전처럼
+         * 스냅샷 이미지를 남겨두면 게이트가 무의미해진다. 잠겼으면 서버 목록으로 통째로 바꾼다. */
+        if(dstLocked){
+          dst.images = Array.isArray(full.gallery) ? full.gallery.slice() : [];
+          if(!dst.images.length && dst.thumb) dst.images = [dst.thumb];
+        } else if(Array.isArray(full.gallery) && full.gallery.length) dst.images = full.gallery;
         else if(!dst.images || !dst.images.length) dst.images = dst.thumb ? [dst.thumb] : [];
+        dst._gateChecked = true;
         if(Array.isArray(full.credits) && full.credits.length){
           if(typeof _normalizeCreditsForDisplay === 'function'){
             dst.credits = _normalizeCreditsForDisplay(full.credits);

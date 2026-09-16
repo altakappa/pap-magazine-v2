@@ -218,7 +218,7 @@ window._papFilmAutoPlay = function(){
   }
   function startDetailsLoad(){
     // For edDetails (object, not array):
-    fetch('data/editorial-details.json?v=2').then(function(r){return r.json();}).then(function(data){
+    fetch('data/editorial-details.json?v=3').then(function(r){return r.json();}).then(function(data){
       Object.keys(data).forEach(function(k){ edDetails[k]=data[k]; });
       if(window._papEdDetailsReady){ window._papEdDetailsReady(); }
       /* Loaded editorial details */
