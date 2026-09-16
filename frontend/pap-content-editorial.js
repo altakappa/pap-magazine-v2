@@ -1777,7 +1777,8 @@ function _openEditorialInner(title,thumb){
   try {
     var _igTopEd = document.getElementById('edDetailIgTop');
     if (_igTopEd && typeof window.papIgTopHtml === 'function') {
-      _igTopEd.innerHTML = window.papIgTopHtml(det && det.ig, { src: 'spa_top', kind: 'editorial' });
+      _igTopEd.innerHTML = window.papIgTopHtml(det && det.ig, { src: 'spa_top', kind: 'editorial' })
+        + _papEdTopNoteHtml(det);   // 2026-09-16 상단 가입 안내 (잠긴 화보만)
     }
   } catch(_){}
   // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).
@@ -2050,6 +2051,18 @@ function _openEditorialInner(title,thumb){
  * 표지·제목·크레딧은 그대로 보인다 — 뭘 놓치는지 보여야 가입할 이유가 생긴다.
  * det.images 를 비우는 방식이라 아래 갤러리 루프는 자연히 아무것도 안 그린다.
  * (제어 흐름을 건드리지 않으려는 의도 — 렌더 경로가 둘이라 분기를 늘리면 어긋난다) */
+/* ── 상단 가입 안내 (2026-09-16 도메니코: "유료 회원 가입 시 더 많은 이미지를 볼 수 있다는 문구") ─────
+ * 갤러리 아래 잠금 패널(_papEdApplyLock)은 스크롤해야 보인다. 제목 바로 아래(IG 버튼 옆)에 한 줄 더.
+ * 등급에 맞춰 정직하게 — 최신 10편은 무료 회원이면 전부 보이므로 '회원 가입', 그 밖은 '유료 멤버십'.
+ * 잠기지 않은 화보(전체를 볼 수 있는 등급)에는 아무것도 안 그린다. 서버 판정(det.locked) 전엔 비워 둔다. */
+function _papEdTopNoteHtml(det){
+  if(!det || !det.locked) return '';
+  var need = String(det.requiredTier || 'free');
+  var msg = need === 'free' ? '회원 가입 시 전체 이미지를 볼 수 있습니다' : '유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다';
+  var href = need === 'free' ? '/auth?utm_source=editorial_top_note&utm_medium=web' : '/subscribe?utm_source=editorial_top_note&utm_medium=web';
+  return '<a class="ed-top-note" href="' + href + '" style="display:block;margin-top:10px;font-size:12.5px;letter-spacing:.02em;color:inherit;opacity:.72;text-decoration:underline;text-underline-offset:3px">' + msg + ' →</a>';
+}
+
 function _papEdApplyLock(det, gal){
   if(!det || !det.locked || !gal) return false;
   /* 2026-08-27 (도메니코 결정) — 앞 2장은 남기고 그 아래에 패널을 붙인다.
@@ -2128,7 +2141,8 @@ function _openEditorialInner_noPush(title,thumb){
   try {
     var _igTopEd = document.getElementById('edDetailIgTop');
     if (_igTopEd && typeof window.papIgTopHtml === 'function') {
-      _igTopEd.innerHTML = window.papIgTopHtml(det && det.ig, { src: 'spa_top', kind: 'editorial' });
+      _igTopEd.innerHTML = window.papIgTopHtml(det && det.ig, { src: 'spa_top', kind: 'editorial' })
+        + _papEdTopNoteHtml(det);   // 2026-09-16 상단 가입 안내 (잠긴 화보만)
     }
   } catch(_){}
   // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).

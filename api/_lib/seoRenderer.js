@@ -1063,6 +1063,8 @@ function renderSeoHtml(kind, record, opts) {
       subStandard: '최신 화보의 모든 컷과 이미지 다운로드가 열립니다.',
       subPremium: '2019년부터의 전체 아카이브가 모든 컷과 함께 열립니다.',
       cta: '멤버십 보기',
+      topFree: '회원 가입 시 전체 이미지를 볼 수 있습니다',
+      topPaid: '유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다',
     },
     en: {
       count: (t, h) => `${h} more of ${t} images`,
@@ -1074,6 +1076,8 @@ function renderSeoHtml(kind, record, opts) {
       subStandard: 'Every frame of recent editorials, plus image downloads.',
       subPremium: 'The full archive since 2019, every frame included.',
       cta: 'See membership',
+      topFree: 'Sign up to see every image',
+      topPaid: 'Paid members see more images',
     },
     it: {
       count: (t, h) => `Altre ${h} immagini su ${t}`,
@@ -1085,6 +1089,8 @@ function renderSeoHtml(kind, record, opts) {
       subStandard: 'Tutti gli scatti degli editoriali recenti, download inclusi.',
       subPremium: "L'archivio completo dal 2019, scatto per scatto.",
       cta: 'Scopri gli abbonamenti',
+      topFree: 'Iscriviti per vedere tutte le immagini',
+      topPaid: 'I membri a pagamento vedono più immagini',
     },
     fr: {
       count: (t, h) => `${h} images de plus sur ${t}`,
@@ -1096,6 +1102,8 @@ function renderSeoHtml(kind, record, opts) {
       subStandard: 'Toutes les images des éditoriaux récents, téléchargements inclus.',
       subPremium: "L'archive complète depuis 2019, image par image.",
       cta: 'Voir les abonnements',
+      topFree: 'Inscrivez-vous pour voir toutes les images',
+      topPaid: 'Les membres payants voient plus d’images',
     },
     es: {
       count: (t, h) => `${h} imágenes más de ${t}`,
@@ -1107,6 +1115,8 @@ function renderSeoHtml(kind, record, opts) {
       subStandard: 'Todas las tomas de los editoriales recientes, con descargas.',
       subPremium: 'El archivo completo desde 2019, toma por toma.',
       cta: 'Ver membresías',
+      topFree: 'Regístrate para ver todas las imágenes',
+      topPaid: 'Los miembros de pago ven más imágenes',
     },
     ja: {
       count: (t, h) => `全${t}枚のうち、あと${h}枚`,
@@ -1118,6 +1128,8 @@ function renderSeoHtml(kind, record, opts) {
       subStandard: '最新エディトリアルの全カットと画像ダウンロードが開きます。',
       subPremium: '2019年からの全アーカイブが、全カットとともに開きます。',
       cta: 'メンバーシップを見る',
+      topFree: '会員登録で全カットをご覧いただけます',
+      topPaid: '有料メンバーシップでより多くのカットをご覧いただけます',
     },
     zh: {
       count: (t, h) => `共 ${t} 张,还有 ${h} 张`,
@@ -1129,6 +1141,8 @@ function renderSeoHtml(kind, record, opts) {
       subStandard: '最新大片的全部照片,并可下载图片。',
       subPremium: '2019 年至今的完整档案,一张不少。',
       cta: '查看会员方案',
+      topFree: '注册会员即可查看全部图片',
+      topPaid: '付费会员可查看更多图片',
     },
     de: {
       count: (t, h) => `${h} weitere von ${t} Bildern`,
@@ -1140,6 +1154,8 @@ function renderSeoHtml(kind, record, opts) {
       subStandard: 'Alle Aufnahmen aktueller Editorials, inklusive Downloads.',
       subPremium: 'Das komplette Archiv seit 2019, jede Aufnahme.',
       cta: 'Mitgliedschaft ansehen',
+      topFree: 'Registrieren und alle Bilder sehen',
+      topPaid: 'Zahlende Mitglieder sehen mehr Bilder',
     },
     ru: {
       count: (t, h) => `Ещё ${h} из ${t} снимков`,
@@ -1151,6 +1167,8 @@ function renderSeoHtml(kind, record, opts) {
       subStandard: 'Все кадры свежих эдиториалов и скачивание изображений.',
       subPremium: 'Полный архив с 2019 года, каждый кадр.',
       cta: 'Смотреть подписку',
+      topFree: 'Зарегистрируйтесь, чтобы увидеть все кадры',
+      topPaid: 'Платные участники видят больше кадров',
     },
   };
 
@@ -1866,7 +1884,7 @@ function renderSeoHtml(kind, record, opts) {
   return `<!DOCTYPE html>
 <html lang="${lang}" prefix="og: https://ogp.me/ns#">
 <head>
-<meta name="pap-ui-i18n" content="_shared" data-v="5">
+<meta name="pap-ui-i18n" content="_shared" data-v="6">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>${escText(seoTitle)}</title>
@@ -2078,6 +2096,9 @@ ${ogImage && !(cfg.schemaType === 'VideoObject' && isValidYtId)
   .ig-top-txt{flex:1 1 auto;min-width:0}
   .ig-top-go{flex:0 0 auto;opacity:.6;font-size:13px}
   @media(max-width:600px){.ig-top{margin:14px 16px 0;padding:11px 13px;font-size:12px}}
+  .seo-top-note{display:block;max-width:800px;margin:10px auto 0;padding:0 16px;color:#fff;opacity:.72;font-size:12.5px;letter-spacing:.02em;text-decoration:underline;text-underline-offset:3px}
+  .seo-top-note:hover{opacity:1}
+  @media(max-width:600px){.seo-top-note{margin:8px 16px 0;padding:0;font-size:12px}}
   @media(prefers-reduced-motion:reduce){.ig-top{transition:none}}
   .ig-funnel{max-width:800px;margin:56px auto 0;padding:36px 28px;border:1px solid rgba(255,255,255,.16);text-align:center}
   .ig-funnel .igf-kicker{font-size:10px;letter-spacing:.32em;text-transform:uppercase;opacity:.55;margin-bottom:14px}
@@ -2341,6 +2362,19 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
       <span class="ig-top-go" aria-hidden="true">↗</span>
     </a>`;
     })()}
+    ${/* 2026-09-16 도메니코: "유료 회원 가입 시 더 많은 이미지를 볼 수 있다는 문구를 넣어 달라" — 상단(제목 아래)에도.
+        갤러리 아래 잠금 패널은 스크롤해야 보인다. 등급에 맞춰 정직하게: 최신 10편(무료 회원이면 전부)은
+        '회원 가입', 그 밖(스탠다드·프리미엄 필요)은 '유료 멤버십'. 이 HTML 은 공용 캐시라 로그인 여부와
+        무관하게 나간다 — 봇·첫 페인트용이다. 실제 브라우저는 SPA 로 넘어가고(QA #131) SPA 가 서버 판정을
+        받은 뒤 같은 줄을 _papEdTopNoteHtml(pap-content-editorial.js)로, 잠긴 화보에만 그린다. */ ''}
+    ${(kind === 'editorial' && galleryLocked) ? (() => {
+      const need = ({ free: 'free', standard: 'standard' })[String((opts && opts.lockTier) || '')] || 'premium';
+      const L = GALLERY_LOCK_T[lang] || GALLERY_LOCK_T.en;
+      const href = need === 'free'
+        ? SITE + '/auth?utm_source=editorial_top_note&utm_medium=web'
+        : SITE + '/subscribe?utm_source=editorial_top_note&utm_medium=web';
+      return `<a class="seo-top-note" href="${escAttr(href)}">${escText(need === 'free' ? L.topFree : L.topPaid)} →</a>`;
+    })() : ''}
     ${bodyHtml}
     ${galleryHtml}
     ${galleryLockHtml}

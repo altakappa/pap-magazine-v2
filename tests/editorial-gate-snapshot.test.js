@@ -46,8 +46,18 @@ for (const h of htmls) {
   (s.match(/pap-content-editorial\.js\?v=(\d+)/g) || []).forEach((m) => edV.add(m));
   (s.match(/pap-content-api-sync\.js\?v=(\d+)/g) || []).forEach((m) => syV.add(m));
 }
-t('pap-content-editorial.js 버전이 HTML 전체에서 하나 (≥85)', edV.size === 1 && Number([...edV][0].split('=')[1]) >= 85, [...edV].join(','));
+t('pap-content-editorial.js 버전이 HTML 전체에서 하나 (≥86)', edV.size === 1 && Number([...edV][0].split('=')[1]) >= 86, [...edV].join(','));
 t('pap-content-api-sync.js 버전이 HTML 전체에서 하나 (≥127)', syV.size === 1 && Number([...syV][0].split('=')[1]) >= 127, [...syV].join(','));
+
+console.log('\n=== ⑤ 상단 가입 안내 (2026-09-16 도메니코: "유료 회원 가입 시 더 많은 이미지를 볼 수 있다는 문구") ===');
+const seo = R('api/_lib/seoRenderer.js');
+t('SSR: GALLERY_LOCK_T 에 topFree·topPaid 9개 언어', (seo.match(/topFree: '/g) || []).length === 9 && (seo.match(/topPaid: '/g) || []).length === 9);
+t('SSR: 에디토리얼이 잠겼을 때만 제목 아래에 .seo-top-note (등급별 href: free→/auth, 그 밖→/subscribe)', /\(kind === 'editorial' && galleryLocked\) \? \(\(\) => \{[\s\S]{0,600}editorial_top_note[\s\S]{0,300}class="seo-top-note"/.test(seo) && /\.seo-top-note\{display:block/.test(seo));
+t('SPA: _papEdTopNoteHtml 은 det.locked 일 때만, 등급별 문구·링크', /function _papEdTopNoteHtml\(det\)\{\s*if\(!det \|\| !det\.locked\) return '';/.test(ed) && /회원 가입 시 전체 이미지를 볼 수 있습니다/.test(ed) && /유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다/.test(ed) && /editorial_top_note/.test(ed));
+t('SPA: 두 열기 경로(push·popstate) 모두 IG 버튼 옆에 붙인다', (ed.match(/\+ _papEdTopNoteHtml\(det\);/g) || []).length === 2);
+const LANGS = ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
+t('_shared 사전 8개 언어에 두 문구', LANGS.every((l) => { const d = JSON.parse(R('frontend/i18n/ui/_shared.' + l + '.json')); return d['회원 가입 시 전체 이미지를 볼 수 있습니다'] && d['유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다']; }));
+t('캐시버스트: index data-v ≥ 7 · editorial.js ≥ 86', /content="index" data-v="([7-9]|\d{2,})"/.test(R('frontend/index.html')) && (function(){ const m = R('frontend/index.html').match(/pap-content-editorial\.js\?v=(\d+)/); return m && Number(m[1]) >= 86; })());
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ editorial-gate-snapshot FAILED'); process.exit(1); }
