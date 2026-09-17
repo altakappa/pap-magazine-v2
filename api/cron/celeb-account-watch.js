@@ -5,9 +5,12 @@
  * 왜: 도메니코 "자동 감지로 바꿔라" (2026-08-23).
  * 기존 흐름은 도메니코가 인스타 링크를 텔레그램으로 보내야 시작됐다.
  * 이 크론은 감시 계정 목록(celeb_watch_accounts)을 business_discovery 로 폴링해
- * 새 게시물을 발견하면 celeb_brief_queue 에 **직접 적재**한다.
- * 그 뒤는 전부 기존 경로다: celeb-brief 크론이 브리프를 만들어 텔레그램으로
- * 보내고, 도메니코가 "올려" 라고 쳐야만 게시된다. **자동 발행 경로는 없다.**
+ * 새 게시물을 발견하면 **캡션이 담긴 알림 한 통**을 텔레그램으로 보낸다.
+ *
+ * 2026-09-18 변경 (도메니코): "기사는 내가 쓴다. 캡션 내용과 함께 새 소식만
+ * 알려달라." → 브리프 적재를 걷어냈다. 이 크론은 이제 **알리기만 한다**.
+ * 브리프가 필요하면 종전대로 텔레그램에 인스타 링크를 보내면 된다
+ * (그 경로는 celeb-brief 크론이 그대로 담당한다). **자동 발행 경로는 없다.**
  *
  * ── 07-20 스팸(144건 draft) 재발 방지 장치 ──────────────────────
  * ① 기준선: 계정 첫 폴링은 기존 게시물을 seen 에만 넣고 브리프를 만들지 않는다.
@@ -29,8 +32,61 @@ const { collectSubPosts } = require('../_lib/igSubPosts');
 const { sendTextToChatSafe } = require('../_lib/telegram');
 
 const FRESH_MS = 24 * 3600 * 1000;   // ② 게시 24시간 이내만
-const MAX_BRIEFS = 4;                // ③ 실행당 브리프 상한
+const MAX_ALERTS = 4;                // ③ 실행당 알림 상한 (넘치면 다음 실행에 잡힌다)
 const MEDIA_PER_ACCOUNT = 5;
+
+/* ── 알림 문구 (2026-09-18) ───────────────────────────────────────────
+ * 도메니코: "기사는 내가 쓴다. 캡션 내용과 함께 새 소식만 알려달라."
+ *
+ * 왜 브리프를 뺐나 — 08-23~09-01 자동감시 9일 실측: 브리프 136건, 발행 1건.
+ * 그동안 나는 "하루 14건이라 많아서 안 봤다" 고 설명했는데 **틀렸다.**
+ * 같은 기간 PAP 속보(뉴스)는 하루 23~46건(평균 36건)이 갔고 도메니코는
+ * 그건 잘 본다고 했다. 양이 문제가 아니었다.
+ * 게시물 하나당 메시지가 **두 개**(감지 알림 + 사진 여러 장 브리프)였고,
+ * 두 번째가 "올릴래 말래" 라는 결정을 매번 요구한 것이 문제였다.
+ * 그래서 결정을 요구하는 쪽을 없애고 읽기만 하면 되는 쪽만 남긴다.
+ *
+ * 형식은 PAP 속보와 맞춘다 — 도메니코 원칙1(2026-07-27):
+ * "한 메시지당 하나의 소식만." 게시물 하나 = 메시지 하나.
+ *
+ * 캡션은 200자에서 잘린다(discoverAccount 가 그만큼만 받아온다).
+ * 잘렸다는 사실을 '…' 로 표시한다 — 안 하면 원문이 그게 전부인 줄 안다. */
+function fmtCount(n) {
+  if (n == null) return null;
+  const v = Number(n);
+  if (!Number.isFinite(v)) return null;
+  if (v >= 10000) return (Math.round(v / 1000) / 10) + '만';
+  if (v >= 1000) return v.toLocaleString('en-US');
+  return String(v);
+}
+
+const TYPE_KO = { IMAGE: '사진', VIDEO: '릴스', CAROUSEL_ALBUM: '여러 장' };
+
+function fmtAgo(ts) {
+  const ms = Date.now() - (Number(ts) || 0);
+  if (!Number.isFinite(ms) || ms < 0) return null;
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return '방금';
+  if (min < 60) return min + '분 전';
+  return Math.floor(min / 60) + '시간 전';
+}
+
+function buildAlert(acc, m) {
+  const who = '@' + acc.username + (acc.label ? ' (' + acc.label + ')' : '');
+  const meta = [
+    TYPE_KO[String(m.type || '').toUpperCase()] || null,
+    fmtCount(m.likes) ? '♥ ' + fmtCount(m.likes) : null,
+    fmtCount(m.comments) ? '💬 ' + fmtCount(m.comments) : null,
+    fmtAgo(m.ts),
+  ].filter(Boolean).join(' · ');
+
+  const cap = String(m.caption_head || '').replace(/\s+/g, ' ').trim();
+  const capLine = cap ? (cap.length >= 200 ? cap + '…' : cap) : '(캡션 없음)';
+
+  return ['📸 ' + who, meta, '', capLine, '', m.permalink]
+    .filter((l, i, a) => !(l === '' && a[i - 1] === ''))
+    .join('\n');
+}
 
 /* permalink 에서 shortcode. business_discovery 는 shortcode 필드를 안 준다. */
 function shortcodeOf(permalink) {
@@ -83,8 +139,8 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
      remaining 은 '밀린 일' 이라는 뜻이다. 의도적으로 끈 계정은 밀린 일이 아니다. */
   const unwatched = offAccounts.length - offExplained;
 
-  const out = { polled: 0, baselined: 0, queued: 0, errors: [] };
-  let briefBudget = MAX_BRIEFS;
+  const out = { polled: 0, baselined: 0, alerted: 0, errors: [] };
+  let alertBudget = MAX_ALERTS;
 
   for (const acc of accounts || []) {
     let media = [];
@@ -104,11 +160,23 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
       continue;
     }
 
+    /* 2026-09-18 — 캡션·유형·반응을 버리지 않는다.
+       예전엔 shortcode/permalink/ts 만 남기고 나머지를 버렸다. 브리프를 만들 때는
+       어차피 다시 받아오니 상관없었지만, 이제는 알림 자체가 결과물이라
+       discoverAccount 가 이미 준 것을 그대로 쓴다 (추가 API 호출 0). */
     const items = media
-      .map((m) => ({ shortcode: shortcodeOf(m.permalink), permalink: m.permalink, ts: Date.parse(m.ts || '') || 0 }))
+      .map((m) => ({
+        shortcode: shortcodeOf(m.permalink),
+        permalink: m.permalink,
+        ts: Date.parse(m.ts || '') || 0,
+        type: m.type || null,
+        likes: m.likes == null ? null : m.likes,
+        comments: m.comments == null ? null : m.comments,
+        caption_head: String(m.caption_head || ''),
+      }))
       .filter((m) => m.shortcode);
 
-    // ① 첫 폴링은 기준선만 — 브리프 없이 seen 채우고 끝
+    // ① 첫 폴링은 기준선만 — 알림 없이 seen 채우고 끝
     if (!acc.baseline_done) {
       if (!dry && items.length) {
         await supabaseAdmin.from('celeb_account_seen')
@@ -129,35 +197,33 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
     for (const m of items) {
       if (seen.has(m.shortcode)) continue;
       if (Date.now() - m.ts > FRESH_MS) {
-        // ② 신선하지 않은 건 조용히 seen 처리 (브리프 없이)
+        // ② 신선하지 않은 건 조용히 seen 처리 (알림 없이)
         if (!dry) await supabaseAdmin.from('celeb_account_seen')
           .upsert([{ username: acc.username, shortcode: m.shortcode }],
             { onConflict: 'username,shortcode', ignoreDuplicates: true });
         continue;
       }
-      if (briefBudget <= 0) continue;   // ③ 상한 초과분은 seen 에 안 넣는다 → 다음 실행에 잡힌다
-      briefBudget--;
+      if (alertBudget <= 0) continue;   // ③ 상한 초과분은 seen 에 안 넣는다 → 다음 실행에 잡힌다
+      alertBudget--;
 
       if (!dry) {
-        /* 기존 웹훅 적재와 같은 모양. batch_key 는 게시물 단위로 고유 —
-           (batch_key,shortcode) 유니크가 재실행 중복을 막는다. */
-        await supabaseAdmin.from('celeb_brief_queue').upsert([{
-          batch_key: 'watch:' + acc.username + ':' + m.shortcode,
-          chat_id: chatId,
-          seq: 0,
-          username: acc.username,
-          shortcode: m.shortcode,
-          permalink: m.permalink,
-          status: 'queued',
-        }], { onConflict: 'batch_key,shortcode', ignoreDuplicates: true });
-        await supabaseAdmin.from('celeb_account_seen')
+        /* 중복 방어 (2026-09-18) — 예전엔 두 겹이었다: celeb_account_seen PK +
+           큐의 (batch_key,shortcode) 유니크. 큐를 걷어냈으니 한 겹만 남는다.
+           그래서 **기록이 성공했을 때만 보낸다**. 순서를 뒤집거나 에러를
+           무시하면, 기록이 실패한 게시물이 매 실행마다 다시 알림으로 나간다
+           (20분마다 같은 메시지 = 최악의 스팸). 기록 실패 시엔 조용히 넘기고
+           다음 실행에 다시 시도한다 — 알림 한 번 늦는 게 훨씬 낫다. */
+        const { error: seenErr } = await supabaseAdmin.from('celeb_account_seen')
           .upsert([{ username: acc.username, shortcode: m.shortcode }],
             { onConflict: 'username,shortcode', ignoreDuplicates: true });
-        await sendTextToChatSafe(chatId,
-          '👀 감지: @' + acc.username + (acc.label ? ' (' + acc.label + ')' : '')
-          + ' 새 게시물 — 브리프 준비 중\n' + m.permalink);
+        if (seenErr) {
+          out.errors.push(acc.username + '/' + m.shortcode + ' seen 기록 실패: '
+            + String(seenErr.message || seenErr).slice(0, 80));
+          continue;
+        }
+        await sendTextToChatSafe(chatId, buildAlert(acc, m));
       }
-      out.queued++;
+      out.alerted++;
     }
   }
 
@@ -197,7 +263,7 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
     : (accounts.length === 0
       ? '감시 대상 0개 — 등록된 ' + totalAccounts + '개가 전부 비활성' + offNote
       : '폴링 ' + out.polled + '/' + accounts.length + '개 · 기준선 ' + out.baselined
-        + ' · 큐 적재 ' + out.queued + '건 · 오류 ' + out.errors.length + '건' + offNote);
+        + ' · 알림 ' + out.alerted + '건 · 오류 ' + out.errors.length + '건' + offNote);
   /* 2026-09-13 — 부계정 피드 참조 수집을 여기에 얹는다 (api/_lib/igSubPosts.js).
      이유는 그 파일 머리말 참고: 크론 호출 예산이 2,599/2,600 이라 새 크론을 못 만든다.
      이 크론은 하루 72회 · 평균 94ms 로 가장 가볍고, 성격도 '계정 감시' 라 맞는다.
@@ -213,7 +279,7 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
     }
   }
 
-  reportProduction(res, { produced: out.queued, remaining: unwatched,
+  reportProduction(res, { produced: out.alerted, remaining: unwatched,
     note: note + ' · ' + sub.note });
 
   return res.status(200).json({

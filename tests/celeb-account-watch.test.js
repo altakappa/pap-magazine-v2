@@ -33,30 +33,46 @@ t('함수 상한이 글롭으로 보장된다 (12계정 폴링이 기본 상한�
     '전용 항목이 다시 생겼다 — 글롭 뒤 중복 항목은 Vercel 빌드를 깨뜨린다');
 });
 
-t('기준선 장치 — 첫 폴링은 브리프를 만들지 않는다', () => {
+t('기준선 장치 — 첫 폴링은 알림을 보내지 않는다', () => {
   assert.ok(/baseline_done/.test(CODE), '기준선 개념이 없다 — 07-20 스팸이 재발한다');
   assert.ok(/out\.baselined\+\+;\s*continue;/.test(CODE), '기준선에서 continue 하지 않는다');
 });
 
-t('신선도 장치 — 24시간 지난 게시물은 브리프 없이 seen 처리', () => {
+t('신선도 장치 — 24시간 지난 게시물은 알림 없이 seen 처리', () => {
   assert.ok(/FRESH_MS = 24 \* 3600 \* 1000/.test(SRC));
   assert.ok(/Date\.now\(\) - m\.ts > FRESH_MS/.test(CODE));
 });
 
-t('상한 장치 — 실행당 브리프 4건, 초과분은 seen 에 안 넣는다', () => {
-  assert.ok(/MAX_BRIEFS = 4/.test(SRC));
-  assert.ok(/briefBudget <= 0\) continue;/.test(CODE), '상한 초과가 seen 처리되면 영영 못 잡는다');
+t('상한 장치 — 실행당 알림 4건, 초과분은 seen 에 안 넣는다', () => {
+  assert.ok(/MAX_ALERTS = 4/.test(SRC));
+  assert.ok(/alertBudget <= 0\) continue;/.test(CODE), '상한 초과가 seen 처리되면 영영 못 잡는다');
 });
 
-t('중복 이중 방어 — seen PK + 큐 (batch_key,shortcode)', () => {
+/* 2026-09-18 — 예전엔 중복 방어가 두 겹이었다: seen PK + 큐 유니크.
+   브리프 큐를 걷어내며 한 겹이 사라졌다. 사라진 겹을 "기록에 성공했을 때만
+   보낸다" 로 대체했고, 이 테스트가 그 순서를 지킨다. 순서가 뒤집히면
+   기록 못 한 게시물이 20분마다 같은 알림으로 다시 나간다. */
+t('중복 방어 — seen PK, 그리고 기록 실패 시엔 보내지 않는다', () => {
   assert.ok(/onConflict: 'username,shortcode'/.test(CODE));
-  assert.ok(/onConflict: 'batch_key,shortcode'/.test(CODE));
+  assert.ok(/const \{ error: seenErr \} = await supabaseAdmin\.from\('celeb_account_seen'\)/.test(CODE),
+    'seen 기록의 에러를 받지 않는다 — 실패를 모르면 매 실행마다 재알림');
+  const seenAt = CODE.indexOf("celeb_account_seen')\n          .upsert");
+  const sendAt = CODE.indexOf('sendTextToChatSafe(chatId, buildAlert');
+  assert.ok(seenAt > -1 && sendAt > -1 && seenAt < sendAt,
+    '알림이 seen 기록보다 먼저다 — 기록이 실패하면 같은 알림이 영원히 반복된다');
+  assert.ok(/if \(seenErr\) \{[\s\S]{0,200}continue;/.test(CODE),
+    '기록 실패인데 알림을 보낸다');
 });
 
-t('자동 발행 경로가 없다 — 큐 적재까지만 (발행은 "올려"만)', () => {
+/* 2026-09-18 도메니코: "기사는 내가 쓴다. 캡션 내용과 함께 새 소식만 알려달라."
+   이 크론은 이제 **알리기만** 한다. 브리프도 안 만들고 발행은 더더욱 안 한다. */
+t('알리기만 한다 — 브리프도 발행도 없다', () => {
   assert.ok(!/publishReel|publishPhotos|media_publish|igPublish/.test(CODE),
     '감시 크론에 발행 코드가 있다 — 절대 규칙 위반');
-  assert.ok(/status: 'queued'/.test(CODE), '기존 브리프 흐름(queued)에 태우지 않는다');
+  assert.ok(!/celeb_brief_queue/.test(CODE),
+    '브리프 큐에 다시 적재하고 있다 — 09-18 결정 되돌림');
+  assert.ok(/sendTextToChatSafe\(chatId, buildAlert\(acc, m\)\)/.test(CODE),
+    '알림을 보내지 않는다 — 그러면 이 크론은 아무것도 안 하는 것이다');
 });
 
 t('계정 오류가 크론을 죽이지 않고 last_error 에 남는다', () => {
@@ -89,7 +105,7 @@ const { judgeCron, MIN_ZERO_RUNS } = require('../api/_lib/productionHealth');
 t('생산량을 신고한다 — 안 하면 checkProduction 의 사각지대로 돌아간다', () => {
   assert.ok(/reportProduction/.test(CODE),
     'reportProduction 신고가 없다 — 미신고 크론은 "모른다"로 분류돼 영원히 조용하다');
-  assert.ok(/produced: out\.queued/.test(CODE), '생산량이 큐 적재 건수가 아니다');
+  assert.ok(/produced: out\.alerted/.test(CODE), '생산량이 알림 건수가 아니다');
   assert.ok(/remaining: unwatched/.test(CODE),
     '잔여가 "안 보고 있는 계정 수"가 아니다 — 이 정의라야 전부 꺼진 상태가 잡힌다');
 });
