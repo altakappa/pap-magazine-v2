@@ -100,16 +100,54 @@ try {
   });
 } catch(_){}
 
+/* ── 쿠키 세션 ↔ localStorage 어긋남 (2026-09-17 도메니코 "5번만 진행") ─────────────────────
+ * 서버(api/_lib/auth.js verifyToken)는 Authorization 헤더가 없으면 httpOnly 쿠키 pap_auth(7일)로
+ * 로그인을 인정한다. 화면(isLoggedIn·isPremium·_papViewState)은 localStorage 만 본다. 어긋나는 두 경우:
+ *   ① 헤더의 로그아웃이 localStorage 만 지우고 쿠키는 그대로 뒀다 → 서버는 최대 7일 계속 회원으로 본다.
+ *      공용 PC 에서 "로그아웃" 했는데 다음 사람이 전체 이미지·다운로드 API 를 그대로 쓴다. 보안 문제다.
+ *   ② 쿠키는 있고 localStorage 는 빈 상태(①의 결과, OAuth 교환 중단, 저장소 정리) → 화면은 비회원으로
+ *      판단해 목록 클릭에 "가입하세요" 팝업을 띄우는데 정작 상세 API 는 전체를 내준다(Rebel Twin 실측).
+ * 고침: ① 로그아웃은 서버 /api/auth/logout 을 불러 쿠키를 지우고 토큰을 무효화한다(keepalive: 이동 중에도 완료).
+ *       ② localStorage 가 비어 있으면 탭 세션당 한 번 /api/auth/me 를 쿠키로 물어, 회원이면 pap-user 를 복원한다.
+ *          토큰은 httpOnly 라 읽을 수 없지만 isLoggedIn 은 pap-user 만으로 참이고 API 는 쿠키로 통한다.
+ *          비회원은 401 한 번(세션당) 받고 끝 — pap-api.js 의 401 청소기(/auth 로 이동)를 타지 않게 raw fetch 로 묻는다. */
 function _papLogout(){
+  try {
+    var _t = localStorage.getItem('pap-token') || '';
+    var _h = {};
+    if(_t) _h['Authorization'] = 'Bearer ' + _t;
+    fetch('/api/auth/logout', { method:'POST', credentials:'same-origin', keepalive:true, headers:_h }).catch(function(){});
+  } catch(_){}
   localStorage.removeItem('pap-token');
   localStorage.removeItem('pap-user');
+  try { sessionStorage.setItem('pap-sess-checked', '1'); } catch(_){}   // 방금 나갔다 — 다음 페이지에서 /me 를 다시 묻지 않는다
   // QA #207 — repaint immediately so the dropdown swaps to LOG IN
   // before the navigation hop finishes (matters when the user lands
   // back on an SPA route via the browser back button).
   _papUpdateAuthDropdown();
   window.location.href='/';
 }
+function _papSyncSessionFromCookie(){
+  try{
+    if(localStorage.getItem('pap-token') || localStorage.getItem('pap-user')) return false;
+    try{ if(sessionStorage.getItem('pap-sess-checked')) return false; sessionStorage.setItem('pap-sess-checked','1'); }catch(_){}
+    if(typeof fetch !== 'function') return false;
+    fetch('/api/auth/me', { credentials:'same-origin', headers:{ 'X-Requested-With':'XMLHttpRequest' } })
+      .then(function(r){ return (r && r.ok) ? r.json() : null; })
+      .then(function(j){
+        var u = j && j.user;
+        if(!u || !(u.id || u.email)) return;
+        localStorage.setItem('pap-user', JSON.stringify({ id:u.id, email:u.email, name:u.name, role:u.role,
+          subscription:u.subscription || 'free', subscriptionStatus:u.subscriptionStatus }));
+        _papUpdateAuthDropdown();
+        try{ window.dispatchEvent(new CustomEvent('pap:session-restored')); }catch(_){}
+      })
+      .catch(function(){});
+    return true;
+  }catch(e){ return false; }
+}
 _papUpdateAuthDropdown();
+_papSyncSessionFromCookie();
 
 // Global auth helpers (needed by openEditorial for premium logo section)
 // 베타 기간 중에는 "로그인한 회원(무료 포함)"에게만 전체 접근 권한 부여
