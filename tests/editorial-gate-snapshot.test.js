@@ -69,7 +69,7 @@ for (const h of htmls) {
   (s.match(/pap-content-editorial\.js\?v=(\d+)/g) || []).forEach((m) => edV.add(m));
   (s.match(/pap-content-api-sync\.js\?v=(\d+)/g) || []).forEach((m) => syV.add(m));
 }
-t('pap-content-editorial.js 버전이 HTML 전체에서 하나 (≥87)', edV.size === 1 && Number([...edV][0].split('=')[1]) >= 87, [...edV].join(','));
+t('pap-content-editorial.js 버전이 HTML 전체에서 하나 (≥88)', edV.size === 1 && Number([...edV][0].split('=')[1]) >= 88, [...edV].join(','));
 t('pap-content-api-sync.js 버전이 HTML 전체에서 하나 (≥127)', syV.size === 1 && Number([...syV][0].split('=')[1]) >= 127, [...syV].join(','));
 
 console.log('\n=== ⑤ 상단 가입 안내 (2026-09-16 도메니코: "유료 회원 가입 시 더 많은 이미지를 볼 수 있다는 문구") ===');
@@ -80,7 +80,35 @@ t('SPA: _papEdTopNoteHtml 은 det.locked 일 때만, 등급별 문구·링크', 
 t('SPA: 두 열기 경로(push·popstate) 모두 IG 버튼 옆에 붙인다', (ed.match(/\+ _papEdTopNoteHtml\(det\);/g) || []).length === 2);
 const LANGS = ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
 t('_shared 사전 8개 언어에 두 문구', LANGS.every((l) => { const d = JSON.parse(R('frontend/i18n/ui/_shared.' + l + '.json')); return d['회원 가입 시 전체 이미지를 볼 수 있습니다'] && d['유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다']; }));
-t('캐시버스트: index data-v ≥ 7 · editorial.js ≥ 87', /content="index" data-v="([7-9]|\d{2,})"/.test(R('frontend/index.html')) && (function(){ const m = R('frontend/index.html').match(/pap-content-editorial\.js\?v=(\d+)/); return m && Number(m[1]) >= 87; })());
+t('캐시버스트: index data-v ≥ 7 · editorial.js ≥ 88', /content="index" data-v="([7-9]|\d{2,})"/.test(R('frontend/index.html')) && (function(){ const m = R('frontend/index.html').match(/pap-content-editorial\.js\?v=(\d+)/); return m && Number(m[1]) >= 88; })());
+
+console.log('\n=== ⑥ det 요약 객체에 게이트 필드 (2026-09-17 라이브 실측: 잠금 패널·상단 안내가 SPA 에서 한 번도 안 떴다) ===');
+/* 두 렌더 경로는 edDetails[title](=d) 에서 요약 객체 det 를 새로 만든다. 하이드레이트는 d 에 locked 등을 쓰는데
+ * det 에 안 옮기면 _papEdApplyLock(det)·_papEdTopNoteHtml(det) 이 늘 '안 잠김' 으로 본다. 정규식 존재 검사가 아니라
+ * 실제 줄을 실행해 det.locked 가 살아남는지, 그 det 로 _papEdApplyLock 이 패널을 붙이는지 본다. */
+const detStmts = ed.match(/var det=\{issue:d\.issue[\s\S]*?viewState:d\.viewState\|\|''\};/g) || [];
+t('det 생성문이 두 경로(push·popstate)에 하나씩, 둘 다 게이트 필드 포함', detStmts.length === 2 && detStmts.every((x) => /locked:!!d\.locked,requiredTier:d\.requiredTier/.test(x)));
+const lockFnSrc = (ed.match(/function _papEdApplyLock\(det, gal\)\{[\s\S]*?\n\}\n/) || [''])[0];
+t('_papEdApplyLock 원문 추출', lockFnSrc.length > 200);
+(function () {
+  let ok = true, err = '';
+  try {
+    for (const stmt of detStmts) {
+      const build = new Function('d', 'thumb', '_normCr', stmt + ' return det;');
+      const d = { thumb: 'c.jpg', images: ['a.jpg', 'b.jpg'], credits: [], locked: true, requiredTier: 'free', galleryCount: 16, previewCount: 2, viewState: 'preview' };
+      const det = build(d, 'c.jpg', []);
+      if (det.locked !== true || det.requiredTier !== 'free' || det.galleryCount !== 16 || det.previewCount !== 2 || det.viewState !== 'preview') { ok = false; err = 'fields lost: ' + JSON.stringify(det); break; }
+      const gal = { html: '', insertAdjacentHTML(_, h) { this.html += h; } };
+      const apply = new Function('det', 'gal', lockFnSrc + ' return _papEdApplyLock(det, gal);');
+      const r = apply(det, gal);
+      if (r !== true || !/class="ed-locked"/.test(gal.html) || !/총 16장 중 14장이 더 있습니다/.test(gal.html) || !/editorial_gallery_lock/.test(gal.html)) { ok = false; err = 'lock panel not rendered: ' + gal.html.slice(0, 200); break; }
+      const unlocked = build({ thumb: 'c.jpg', images: ['a.jpg'], credits: [] }, 'c.jpg', []);
+      const gal2 = { html: '', insertAdjacentHTML(_, h) { this.html += h; } };
+      if (apply(unlocked, gal2) !== false || gal2.html !== '') { ok = false; err = 'panel rendered for unlocked'; break; }
+    }
+  } catch (e) { ok = false; err = String(e); }
+  t('실행: 잠긴 d → det.locked 유지 → _papEdApplyLock 이 패널(총 16장 중 14장)을 붙인다 · 안 잠긴 d 는 안 붙인다', ok, err);
+})();
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ editorial-gate-snapshot FAILED'); process.exit(1); }

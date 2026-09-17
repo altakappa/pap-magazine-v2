@@ -1759,7 +1759,11 @@ function _openEditorialInner(title,thumb){
   // already-display array. Normalise to {r, h} once so the renderer below
   // can stay simple. Empty credits fall back to the placeholder pair.
   var _normCr = _normalizeCreditsForDisplay(d.credits);
-  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||'',ig:d.ig||''};
+  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||'',ig:d.ig||'',
+    /* 2026-09-17 — 게이트 필드를 같이 옮긴다. 하이드레이트가 edDetails[title] 에 locked·requiredTier·galleryCount·previewCount·viewState 를
+       써 놓아도 이 요약 객체(det)에 안 실려서 _papEdApplyLock(det)·_papEdTopNoteHtml(det) 이 늘 '안 잠김' 으로 봤다
+       = 2026-08-27 잠금 패널이 SPA 에서 한 번도 안 떴다(라이브 실측). 렌더 경로 둘 다 같은 줄이어야 한다. */
+    locked:!!d.locked,requiredTier:d.requiredTier||'',galleryCount:d.galleryCount||0,previewCount:d.previewCount||0,viewState:d.viewState||''};
 
   // SEO — update meta tags + JSON-LD when an editorial opens. Helps
   // social-share previews (Kakao/Facebook/X) and Google's JS-aware
@@ -2129,7 +2133,11 @@ function _openEditorialInner_noPush(title,thumb){
   // already-display array. Normalise to {r, h} once so the renderer below
   // can stay simple. Empty credits fall back to the placeholder pair.
   var _normCr = _normalizeCreditsForDisplay(d.credits);
-  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||'',ig:d.ig||''};
+  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||'',ig:d.ig||'',
+    /* 2026-09-17 — 게이트 필드를 같이 옮긴다. 하이드레이트가 edDetails[title] 에 locked·requiredTier·galleryCount·previewCount·viewState 를
+       써 놓아도 이 요약 객체(det)에 안 실려서 _papEdApplyLock(det)·_papEdTopNoteHtml(det) 이 늘 '안 잠김' 으로 봤다
+       = 2026-08-27 잠금 패널이 SPA 에서 한 번도 안 떴다(라이브 실측). 렌더 경로 둘 다 같은 줄이어야 한다. */
+    locked:!!d.locked,requiredTier:d.requiredTier||'',galleryCount:d.galleryCount||0,previewCount:d.previewCount||0,viewState:d.viewState||''};
   // SEO — same meta refresh as _openEditorialInner (back/forward path).
   if(typeof _updateEditorialMeta === 'function'){
     try { _updateEditorialMeta(title, det); } catch(_){}
