@@ -33,10 +33,18 @@ const gb = R('api/_lib/goldenBoost.js');
 const sync = R('api/cron/sync-instagram.js');
 
 /* 1. 사유를 반환값으로 돌려준다 */
-t('goldenBoost: threadsErr 를 잡는다',
-  /catch \(e\) \{\s*threadsErr = String\(/.test(gb));
-t('goldenBoost: xErr 를 잡는다',
-  /catch \(e\) \{\s*xErr = String\(/.test(gb));
+/* 2026-09-17 — 게시가 재시도 래퍼(postWithTransientRetry)를 타도록 바뀌면서
+   사유를 잡는 자리가 래퍼 안의 catch 한 곳으로 모였다. 검사하는 것은 그대로다:
+   **실패 사유가 반환값으로 나와 threadsErr·xErr 에 실리는가.** 재시도 규칙
+   자체는 tests/boost-transient-retry.test.js 가 함수를 실제로 돌려서 본다. */
+t('goldenBoost: 게시 예외를 사유 문자열로 잡는다 (공용 래퍼 한 곳)',
+  /catch \(e\) \{\s*return \{ ok: false, err: String\(\(e && e\.message\) \|\| e\)/.test(gb));
+t('goldenBoost: threadsErr 가 그 사유로 채워진다',
+  /threadsOk = r\.ok; threadsErr = r\.ok \? '' : r\.err/.test(gb));
+t('goldenBoost: xErr 가 그 사유로 채워진다',
+  /xOk = r\.ok; xErr = r\.ok \? '' : r\.err/.test(gb));
+t('goldenBoost: X 의 {ok:false} 응답 사유도 삼키지 않는다',
+  /throw new Error\(String\(\(tr && \(tr\.error \|\| tr\.reason\)\)/.test(gb));
 t('goldenBoost: 반환값에 threadsErr·xErr 가 실린다',
   /return \{ boosted: true,[^}]*threadsErr[^}]*xErr[^}]*\}/.test(gb));
 t('goldenBoost: 사유는 160자에서 자른다 (로그 폭발 방지)',

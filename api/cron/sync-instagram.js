@@ -55,8 +55,13 @@ function recordBoost(results, b){
   results.boosted = (results.boosted || 0) + 1;
   results.boost_threads = results.boost_threads || [];
   results.boost_x = results.boost_x || [];
-  results.boost_threads.push(b.threadsOk ? 'ok' : ('실패: ' + (scrubSecret(b.threadsErr) || '사유 없음')));
-  results.boost_x.push(b.xOk ? 'ok' : ('실패: ' + (scrubSecret(b.xErr) || '사유 없음')));
+  /* 2026-09-17 — 재시도로 건진 건은 'ok' 로만 적으면 재시도가 일한 증거가
+     사라진다. 'ok(재시도)' 로 구분해 남긴다 (교훈 1: 돌았다 ≠ 했다). */
+  const mark = (okFlag, err, retried) => (okFlag
+    ? (retried ? 'ok(재시도)' : 'ok')
+    : ('실패: ' + (scrubSecret(err) || '사유 없음')));
+  results.boost_threads.push(mark(b.threadsOk, b.threadsErr, b.threadsRetried));
+  results.boost_x.push(mark(b.xOk, b.xErr, b.xRetried));
 }
 const { postTweet, isConfigured: xConfigured, buildThreadsParityTweet, uploadArticleMedia } = require('../_lib/xPost');
 const { postArticleToThreads } = require('../_lib/threadsAutopost');
