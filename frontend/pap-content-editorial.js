@@ -1600,7 +1600,10 @@ function _openEditorialInner(title,thumb){
      * data/editorial-details.json 스냅샷(2026-04)에 1,996편의 전체 이미지가 들어 있어서, 이미지·크레딧이
      * 있으면 상세 API 를 안 부르고 스냅샷 그대로 그렸다 = 게이트 우회. 스냅샷은 표지 1장으로 줄였고(v=3),
      * 여기서는 id 가 있는 화보는 **한 번은 반드시** 상세 API 로 판정을 받게 한다(_gateChecked). */
-    var _needsHydrate = !_edDetC._gateChecked || (_imgs <= 1) || (_galCount > _imgs) || (_credsArr.length === 0 && !_hasDesc);
+    /* 2026-09-17 사고: 위 줄이 처음엔 `_edDetC._gateChecked` 를 썼는데 _edDetC 는 몇 줄 아래에서 선언된다(var 호이스팅 → undefined).
+     * TypeError 가 이 try 블록 전체를 삼켜 하이드레이트가 한 번도 안 나갔다 → 등급과 무관하게 스냅샷의 표지 1장만 보였다
+     * (도메니코 "프리미엄인데 무료회원처럼 하나밖에 안 뜨네"). d 가 같은 객체다 — d 를 본다. */
+    var _needsHydrate = !d._gateChecked || (_imgs <= 1) || (_galCount > _imgs) || (_credsArr.length === 0 && !_hasDesc);
     // 2026-07-26 — 다국어: 활성 언어가 ko가 아니고 해당 언어 요약이 없고 아직
     // 하이드레이트 안 했으면 상세 GET 으로 description_i18n 을 당겨온다(1회).
     var _edL2 = (function(){try{return localStorage.getItem('pap-lang')||'ko';}catch(e){return 'ko';}})();

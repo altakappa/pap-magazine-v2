@@ -30,11 +30,34 @@ t('표지·크레딧·이슈는 그대로 남아 있다', keys.every((k) => snap
 
 console.log('\n=== ② ③ SPA 가 반드시 서버 판정을 받는다 ===');
 const ed = R('frontend/pap-content-editorial.js');
-t('_needsHydrate 가 _gateChecked 를 본다', /var _needsHydrate = !_edDetC\._gateChecked \|\| \(_imgs <= 1\)/.test(ed));
+t('_needsHydrate 가 d._gateChecked 를 본다 (_edDetC 는 아래에서 선언되므로 쓰면 안 된다)', /var _needsHydrate = !d\._gateChecked \|\| \(_imgs <= 1\)/.test(ed) && !/!_edDetC\._gateChecked/.test(ed));
 t('하이드레이트는 id 가 있을 때 상세 API 로 나간다', /if\(\(_needsHydrate \|\| _edNeedTr \|\| _edNeedIg\) && d\.id\)\{[\s\S]{0,400}fetch\('\/api\/editorials\/' \+ encodeURIComponent\(d\.id\)/.test(ed));
 t('잠겼으면 서버 목록으로 통째로 교체', /if\(dstLocked\)\{\s*dst\.images = Array\.isArray\(full\.gallery\) \? full\.gallery\.slice\(\) : \[\];/.test(ed));
 t('응답 후 _gateChecked = true (재요청 루프 방지)', /dst\._gateChecked = true;/.test(ed));
 t('잠금 판정은 서버의 images.locked', /var dstLocked = _img \? !!_img\.locked/.test(ed));
+
+console.log('\n=== ②-b 하이드레이트 판정 블록을 실제로 실행한다 (2026-09-17 사고: 선언 전 변수 참조로 try 가 삼킴) ===');
+/* 어제 커밋이 `_edDetC._gateChecked` 를 _edDetC 선언(4줄 아래) 전에 읽었다. TypeError 를 감싼 try/catch 가 조용히
+   먹어서 하이드레이트가 한 번도 안 나갔고, 프리미엄·관리자까지 스냅샷 표지 1장만 봤다. 정규식은 "글자가 있다"만
+   확인한다 — 이 블록은 실제로 돌려서 예외 없이 값이 나오는지 본다. */
+(function () {
+  const a = ed.indexOf('  try {\n    var _imgs = Array.isArray(d.images)');
+  const b = ed.indexOf('    if((_needsHydrate || _edNeedTr || _edNeedIg) && d.id){');
+  t('판정 블록의 시작·끝을 찾았다', a > 0 && b > a);
+  if (a > 0 && b > a) {
+    const body = 'var title="X"; var d=edDetails[title]; ' + ed.slice(a + 8, b) + ' return { h: _needsHydrate, tr: _edNeedTr, ig: _edNeedIg };';
+    const g = { window: {}, document: { getElementById: () => null }, localStorage: { getItem: () => null } };
+    const run = (det) => new Function('window', 'document', 'localStorage', 'edDetails', body)(g.window, g.document, g.localStorage, { X: det });
+    let r1 = null, r2 = null, err = null;
+    try {
+      r1 = run({ id: '1', images: ['a'], credits: [{ r: 1 }], desc: { ko: 'x' }, _igChecked: true });
+      r2 = run({ id: '1', images: ['a', 'b', 'c'], galleryCount: 3, credits: [{ r: 1 }], desc: { ko: 'x' }, _igChecked: true, _gateChecked: true });
+    } catch (e) { err = e; }
+    t('블록이 예외 없이 실행된다 (선언 전 참조 없음)', !err, err && err.message);
+    t('서버 판정 전(_gateChecked 없음)이면 이미지·크레딧이 있어도 하이드레이트', !!(r1 && r1.h === true));
+    t('서버 판정 후 + 이미지 전부면 다시 안 부른다', !!(r2 && r2.h === false));
+  }
+})();
 
 console.log('\n=== ④ 캐시버스트 ===');
 const sync = R('frontend/pap-content-api-sync.js');
@@ -46,7 +69,7 @@ for (const h of htmls) {
   (s.match(/pap-content-editorial\.js\?v=(\d+)/g) || []).forEach((m) => edV.add(m));
   (s.match(/pap-content-api-sync\.js\?v=(\d+)/g) || []).forEach((m) => syV.add(m));
 }
-t('pap-content-editorial.js 버전이 HTML 전체에서 하나 (≥86)', edV.size === 1 && Number([...edV][0].split('=')[1]) >= 86, [...edV].join(','));
+t('pap-content-editorial.js 버전이 HTML 전체에서 하나 (≥87)', edV.size === 1 && Number([...edV][0].split('=')[1]) >= 87, [...edV].join(','));
 t('pap-content-api-sync.js 버전이 HTML 전체에서 하나 (≥127)', syV.size === 1 && Number([...syV][0].split('=')[1]) >= 127, [...syV].join(','));
 
 console.log('\n=== ⑤ 상단 가입 안내 (2026-09-16 도메니코: "유료 회원 가입 시 더 많은 이미지를 볼 수 있다는 문구") ===');
@@ -57,7 +80,7 @@ t('SPA: _papEdTopNoteHtml 은 det.locked 일 때만, 등급별 문구·링크', 
 t('SPA: 두 열기 경로(push·popstate) 모두 IG 버튼 옆에 붙인다', (ed.match(/\+ _papEdTopNoteHtml\(det\);/g) || []).length === 2);
 const LANGS = ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
 t('_shared 사전 8개 언어에 두 문구', LANGS.every((l) => { const d = JSON.parse(R('frontend/i18n/ui/_shared.' + l + '.json')); return d['회원 가입 시 전체 이미지를 볼 수 있습니다'] && d['유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다']; }));
-t('캐시버스트: index data-v ≥ 7 · editorial.js ≥ 86', /content="index" data-v="([7-9]|\d{2,})"/.test(R('frontend/index.html')) && (function(){ const m = R('frontend/index.html').match(/pap-content-editorial\.js\?v=(\d+)/); return m && Number(m[1]) >= 86; })());
+t('캐시버스트: index data-v ≥ 7 · editorial.js ≥ 87', /content="index" data-v="([7-9]|\d{2,})"/.test(R('frontend/index.html')) && (function(){ const m = R('frontend/index.html').match(/pap-content-editorial\.js\?v=(\d+)/); return m && Number(m[1]) >= 87; })());
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ editorial-gate-snapshot FAILED'); process.exit(1); }
