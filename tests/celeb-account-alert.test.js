@@ -137,5 +137,19 @@ console.log('\n--- 알림에 판정 이유가 붙는가 ---');
   }
 }
 
+
+console.log('\n=== 순번 폴링 · 신원 기록 (2026-09-18) ===');
+ok('한 실행에 전부 안 보고 잘라서 본다', /enabledAll\.slice\(0, POLL_PER_RUN\)/.test(SRC));
+ok('가장 오래 안 본 계정이 먼저 온다 (순번이 실제로 돈다)',
+  /\.order\('last_polled_at', \{ ascending: true, nullsFirst: true \}\)/.test(SRC));
+ok('순번 대기 건수가 노트에 드러난다', /순번 대기/.test(SRC));
+ok('폴링 상한 기본값이 20이다 (60초 예산: 12초 + AI 25초)',
+  /CELEB_POLL_PER_RUN\) \|\| 20/.test(SRC));
+ok('API 가 말하는 실제 이름을 적는다 (오타·팬계정은 last_error 에 안 걸린다)',
+  /api_name: \(d && d\.name\) \|\| null/.test(SRC));
+ok('팔로워 수를 적는다', /followers: \(d && Number\.isFinite/.test(SRC));
+ok('팔로워가 숫자가 아니면 null 로 둔다 (NaN 을 DB 에 넣지 않는다)',
+  /Number\.isFinite\(Number\(d\.followers\)\)\) \? Number\(d\.followers\) : null/.test(SRC));
+
 console.log(`\n${failed === 0 ? '✅ 전부 통과' : '❌ 실패 있음'} — 통과 ${passed} · 실패 ${failed}`);
 process.exit(failed === 0 ? 0 : 1);

@@ -39,6 +39,10 @@ const FRESH_MS = 24 * 3600 * 1000;   // ② 게시 24시간 이내만
    넘친 게시물은 seen 에 안 넣으므로 20분 뒤 다음 실행이 잡는다. */
 const MAX_JUDGE = 20;
 const MEDIA_PER_ACCOUNT = 5;
+/* 한 실행에 폴링할 계정 수. 계정당 ~0.6초(실측) 이므로 20개 = 약 12초.
+   AI 판정 25초를 더해도 37초로 60초 상한에 여유가 있다.
+   이 값을 올리려면 MAX_JUDGE·AI 타임아웃과 함께 60초 예산을 다시 계산할 것. */
+const POLL_PER_RUN = Math.max(1, Math.min(60, Number(process.env.CELEB_POLL_PER_RUN) || 20));
 
 /* ── 뉴스 판정 게이트 (2026-09-18) ─────────────────────────────────────
  * 도메니코: "모든 게시물을 다 알려주는 게 아니라 뉴스가 될 만한 소식만
@@ -242,7 +246,21 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
     .order('last_polled_at', { ascending: true, nullsFirst: true });
   if (accErr) return res.status(500).json({ ok: false, error: accErr.message });
 
-  const accounts = (allAccounts || []).filter((a) => a && a.enabled);
+  /* ── 순번 폴링 (2026-09-18) ────────────────────────────────────────
+   * 계정이 19개일 때 폴링에 11초가 걸렸다(실측). 계정 하나에 약 0.6초다.
+   * 멤버 개인 계정까지 넣으면 80개가 넘는데, 그러면 폴링만 50초라
+   * 60초 함수 상한에서 죽는다. **죽은 크론은 자기 죽음을 기록도 못 한다.**
+   *
+   * 그래서 한 실행에 전부 보지 않고 POLL_PER_RUN 개씩만 본다.
+   * 위 조회가 이미 last_polled_at 오름차순(nullsFirst)이라, 가장 오래
+   * 안 본 계정이 앞에 온다 — 자르기만 하면 자연스럽게 순번이 돈다.
+   *
+   * 놓치지 않는 근거: 계정 80개 · 20개씩 · 20분 주기면 한 계정이 80분마다
+   * 돌아온다. 신선도 창은 24시간이라 그 사이 올라온 글은 다음 차례에
+   * 그대로 잡힌다. 알림이 최대 80분 늦을 뿐 사라지지 않는다. */
+  const enabledAll = (allAccounts || []).filter((a) => a && a.enabled);
+  const accounts = enabledAll.slice(0, POLL_PER_RUN);
+  const waiting = Math.max(0, enabledAll.length - accounts.length);
   const totalAccounts = (allAccounts || []).length;
 
   /* ── 꺼진 계정을 두 갈래로 나눈다 (2026-09-12, 마이그레이션 150) ──────
@@ -272,8 +290,19 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
       const d = await discoverAccount(acc.username, MEDIA_PER_ACCOUNT);
       media = (d && d.media) || [];   // discoverAccount 는 정규화된 배열을 준다 (ts·permalink)
       out.polled++;
+      /* 2026-09-18 — API 가 말하는 그 계정의 **실제 이름과 팔로워 수**를 적어 둔다.
+         왜: 핸들을 사람이 찍어 넣으면 두 가지가 조용히 통과한다.
+           ① 오타인데 그 핸들이 실존하는 남의 계정인 경우
+           ② 공식이 아니라 팬 계정인 경우
+         둘 다 last_error 에 안 걸린다 — 읽히긴 읽히니까. 그래서 '읽혔다' 로는
+         부족하고 '누구인지' 를 적어야 한다. api_name 이 label 과 어긋나거나
+         팔로워가 터무니없이 적으면 잘못 넣은 계정이다. 사람이 한 번 훑으면 보인다. */
       if (!dry) await supabaseAdmin.from('celeb_watch_accounts')
-        .update({ last_polled_at: new Date().toISOString(), last_error: null })
+        .update({
+          last_polled_at: new Date().toISOString(), last_error: null,
+          api_name: (d && d.name) || null,
+          followers: (d && Number.isFinite(Number(d.followers))) ? Number(d.followers) : null,
+        })
         .eq('username', acc.username);
     } catch (e) {
       /* 비공개·개인 계정·오타 핸들은 여기로 온다. 죽지 말고 기록만. */
@@ -412,6 +441,7 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
     : (accounts.length === 0
       ? '감시 대상 0개 — 등록된 ' + totalAccounts + '개가 전부 비활성' + offNote
       : '폴링 ' + out.polled + '/' + accounts.length + '개 · 기준선 ' + out.baselined
+        + (waiting ? ' (순번 대기 ' + waiting + '개)' : '')
         + ' · 알림 ' + out.alerted + '건'
         + (out.skipped ? ' · 뉴스 아님 ' + out.skipped + '건' : '')
         /* 판정을 못 한 건 '한 게 없다' 가 아니라 '밀렸다' 다. 노트에 안 적으면
