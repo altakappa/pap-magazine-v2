@@ -43,9 +43,14 @@ t('신선도 장치 — 24시간 지난 게시물은 알림 없이 seen 처리',
   assert.ok(/Date\.now\(\) - m\.ts > FRESH_MS/.test(CODE));
 });
 
-t('상한 장치 — 실행당 알림 4건, 초과분은 seen 에 안 넣는다', () => {
-  assert.ok(/MAX_ALERTS = 4/.test(SRC));
-  assert.ok(/alertBudget <= 0\) continue;/.test(CODE), '상한 초과가 seen 처리되면 영영 못 잡는다');
+t('상한 장치 — 실행당 판정 20건, 초과분은 seen 에 안 넣는다', () => {
+  assert.ok(/MAX_JUDGE = 20/.test(SRC));
+  /* 60초 함수 상한 예산: 계정 폴링 ~11초 + AI 25초 = 36초.
+     둘 중 하나만 늘리면 플랫폼이 함수를 죽이고, 죽은 크론은 기록을 못 남긴다. */
+  assert.ok(/AbortSignal\.timeout\(25000\)/.test(SRC), 'AI 타임아웃이 25초가 아니다');
+  assert.ok(/NEWS_BATCH\) \|\| 20/.test(SRC), '배치 기본값이 20이 아니다 — 실행당 2콜이 된다');
+  assert.ok(/candidates\.length >= MAX_JUDGE\) continue;/.test(CODE),
+    '상한 초과가 seen 처리되면 영영 못 잡는다');
 });
 
 /* 2026-09-18 — 예전엔 중복 방어가 두 겹이었다: seen PK + 큐 유니크.
@@ -71,7 +76,7 @@ t('알리기만 한다 — 브리프도 발행도 없다', () => {
     '감시 크론에 발행 코드가 있다 — 절대 규칙 위반');
   assert.ok(!/celeb_brief_queue/.test(CODE),
     '브리프 큐에 다시 적재하고 있다 — 09-18 결정 되돌림');
-  assert.ok(/sendTextToChatSafe\(chatId, buildAlert\(acc, m\)\)/.test(CODE),
+  assert.ok(/sendTextToChatSafe\(chatId, buildAlert\(acc, m, v\.why\)\)/.test(CODE),
     '알림을 보내지 않는다 — 그러면 이 크론은 아무것도 안 하는 것이다');
 });
 

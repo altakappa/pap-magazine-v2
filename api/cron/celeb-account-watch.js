@@ -32,8 +32,131 @@ const { collectSubPosts } = require('../_lib/igSubPosts');
 const { sendTextToChatSafe } = require('../_lib/telegram');
 
 const FRESH_MS = 24 * 3600 * 1000;   // ② 게시 24시간 이내만
-const MAX_ALERTS = 4;                // ③ 실행당 알림 상한 (넘치면 다음 실행에 잡힌다)
+/* ③ 실행당 판정 상한. 한 배치(NEWS_BATCH)와 같게 둬서 **AI 콜은 실행당 1회**다.
+   왜 40 이 아니라 20 인가 — 실측: 계정 12개 폴링에 6.9초가 걸렸다(09-18 첫 실행).
+   19개면 11초쯤이다. 함수 상한은 60초이고, 상한을 넘기면 플랫폼이 죽여서
+   **크론이 자기 죽음을 기록조차 못 한다**. 11초 + AI 25초 = 36초로 여유를 남긴다.
+   넘친 게시물은 seen 에 안 넣으므로 20분 뒤 다음 실행이 잡는다. */
+const MAX_JUDGE = 20;
 const MEDIA_PER_ACCOUNT = 5;
+
+/* ── 뉴스 판정 게이트 (2026-09-18) ─────────────────────────────────────
+ * 도메니코: "모든 게시물을 다 알려주는 게 아니라 뉴스가 될 만한 소식만
+ * 골라서 주면 돼."
+ *
+ * 왜 규칙으로 못 거르나 — 09-01 에 이 감시를 껐던 이유가 여기 있다.
+ * 아이돌 공식 계정은 컴백 티저와 멤버 셀카를 같은 모양으로 올린다.
+ * 좋아요 수로도, 게시 유형으로도, 키워드 목록으로도 안 갈린다.
+ * "이게 기사가 되나" 는 규칙이 아니라 판단이다. 그래서 celeb-classify 와
+ * 같은 설계를 쓴다 — 한 배치를 한 콜로, 싼 모델로, 캡션만 보내고.
+ *
+ * 비용: 게시물 하나에 한 번만 묻는다. 판정이 끝나면 news 든 아니든
+ * celeb_account_seen 에 남기므로 같은 게시물을 다시 묻지 않는다.
+ *
+ * 실패하면 **아무것도 안 보내고 seen 에도 안 남긴다.** 다음 실행에 다시
+ * 묻는다. 반대로 하면(실패 시 전부 보내기) API 가 흔들릴 때마다 스팸이
+ * 되고, 그건 09-01 에 이 기능을 죽인 바로 그 실패 방식이다.
+ * 조용한 대신 note 에 이유를 적는다 — '돌았다 ≠ 했다'. */
+const NEWS_MODEL = process.env.CELEB_NEWS_MODEL || 'claude-haiku-4-5-20251001';
+const NEWS_BATCH = Math.max(1, Math.min(40, Number(process.env.CELEB_NEWS_BATCH) || 20));
+
+const NEWS_SYSTEM = [
+  '너는 K-POP 을 다루는 패션·컬쳐 매거진의 뉴스 데스크다.',
+  '아이돌·셀럽 인스타그램 게시물을 보고 **기사가 될 소식인지**만 판정한다.',
+  '',
+  '뉴스다 (news: true) — 밖에서 일어난 일, 날짜가 붙는 일, 처음 알려지는 일:',
+  '  · 컴백·신곡·앨범·데뷔·타이틀곡 공개, 티저',
+  '  · 투어·콘서트·팬미팅 일정 발표',
+  '  · 브랜드 앰배서더 선정, 광고 캠페인, 협업',
+  '  · 시상식·레드카펫·패션위크·공항 등 공식 석상',
+  '  · 매거진 화보·커버',
+  '  · 수상, 차트 기록, 판매 기록',
+  '  · 열애·결혼·입대·전역·탈퇴·해체·재계약 같은 신상 변동',
+  '  · 방송·드라마·영화 출연 확정',
+  '',
+  '뉴스가 아니다 (news: false) — 안에서 일어난 일, 날짜가 없는 일:',
+  '  · 일상 셀카, 근황, 셀프 촬영',
+  '  · 팬 인사, 생일 축하, 기념일 축하',
+  '  · 이미 발표된 일정의 리마인드·재공지',
+  '  · 무대 비하인드, 연습실 사진',
+  '  · 멤버 개인 취미·반려동물·음식',
+  '  · 캡션이 없거나 이모지뿐이라 무슨 일인지 알 수 없는 것',
+  '',
+  '애매하면 false 다. 도메니코 지시: "애매한 건 억지로 포함시키지 말고 그냥 빼줘."',
+  '놓치는 것보다 시끄러운 쪽이 이 기능을 죽인다 (09-01 실측: 브리프 136건 → 발행 1건).',
+  '',
+  '출력은 JSON 배열만. 설명도 코드펜스도 쓰지 마라.',
+  '[{"i":0,"news":true,"why":"컴백 티저 공개"},{"i":1,"news":false,"why":"일상 셀카"}]',
+  'why 는 한국어 12자 이내. news 가 false 여도 why 를 적어라.',
+].join('\n');
+
+function buildNewsPrompt(rows) {
+  const items = rows.map((r, i) => ({
+    i,
+    account: r.acc.label || r.acc.username,
+    type: TYPE_KO[String(r.m.type || '').toUpperCase()] || String(r.m.type || ''),
+    likes: r.m.likes,
+    comments: r.m.comments,
+    caption: String(r.m.caption_head || '').replace(/\s+/g, ' ').trim(),
+  }));
+  return '다음 게시물들을 판정해라.\n' + JSON.stringify(items);
+}
+
+/** 판정 결과를 { [i]: {news, why} } 로. 못 읽으면 null (배치 통째로 버린다). */
+function parseNewsVerdicts(text) {
+  /* 공용 jsonRepair 를 쓴다 — 모델이 코드펜스·홑따옴표·꼬리 쉼표를 섞는 건
+     이 저장소가 여러 번 겪은 일이고, 그 수리 규칙이 두 벌이 되면 안 된다. */
+  const { parseJsonArray } = require('../_lib/jsonRepair');
+  /* parseJsonArray 는 배열이 아니라 { value, repaired } 를 돌려준다.
+     여기서 바로 배열로 받으면 항상 null 이 되어 게이트가 통째로 죽는다
+     (테스트가 이 실수를 잡았다). */
+  let arr = null;
+  try { arr = (parseJsonArray(String(text || ''), 'celeb-news') || {}).value; }
+  catch (_e) { arr = null; }
+  if (!Array.isArray(arr)) return null;
+  const out = {};
+  for (const o of arr) {
+    if (!o || !Number.isInteger(o.i) || typeof o.news !== 'boolean') continue;
+    out[o.i] = { news: o.news, why: String(o.why || '').slice(0, 30) };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+async function judgeNews(rows) {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'ANTHROPIC_API_KEY 미설정' };
+  const merged = {};
+  for (let i = 0; i < rows.length; i += NEWS_BATCH) {
+    const chunk = rows.slice(i, i + NEWS_BATCH);
+    let j;
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: NEWS_MODEL, max_tokens: 2000,
+          system: NEWS_SYSTEM,
+          messages: [{ role: 'user', content: buildNewsPrompt(chunk) }],
+        }),
+        /* 45초가 아니라 25초다 — 위 MAX_JUDGE 주석의 60초 예산 계산과 한 몸이다.
+           여기만 늘리면 함수가 통째로 죽고 아무 기록도 안 남는다. */
+        signal: AbortSignal.timeout(25000),
+      });
+      j = await r.json().catch(() => ({}));
+      if (!r.ok) return { ok: false, reason: 'AI 호출 실패 ' + r.status };
+    } catch (e) {
+      return { ok: false, reason: 'AI 호출 예외: ' + String((e && e.message) || e).slice(0, 80) };
+    }
+    const text = (j.content || []).map((c) => c.text || '').join('');
+    const v = parseNewsVerdicts(text);
+    if (!v) return { ok: false, reason: 'AI 응답을 못 읽었다' };
+    for (const k of Object.keys(v)) merged[i + Number(k)] = v[k];
+  }
+  return { ok: true, verdicts: merged };
+}
 
 /* ── 알림 문구 (2026-09-18) ───────────────────────────────────────────
  * 도메니코: "기사는 내가 쓴다. 캡션 내용과 함께 새 소식만 알려달라."
@@ -71,7 +194,7 @@ function fmtAgo(ts) {
   return Math.floor(min / 60) + '시간 전';
 }
 
-function buildAlert(acc, m) {
+function buildAlert(acc, m, why) {
   const who = '@' + acc.username + (acc.label ? ' (' + acc.label + ')' : '');
   const meta = [
     TYPE_KO[String(m.type || '').toUpperCase()] || null,
@@ -83,7 +206,8 @@ function buildAlert(acc, m) {
   const cap = String(m.caption_head || '').replace(/\s+/g, ' ').trim();
   const capLine = cap ? (cap.length >= 200 ? cap + '…' : cap) : '(캡션 없음)';
 
-  return ['📸 ' + who, meta, '', capLine, '', m.permalink]
+  const head = '📸 ' + who + (why ? '  · ' + why : '');
+  return [head, meta, '', capLine, '', m.permalink]
     .filter((l, i, a) => !(l === '' && a[i - 1] === ''))
     .join('\n');
 }
@@ -139,8 +263,8 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
      remaining 은 '밀린 일' 이라는 뜻이다. 의도적으로 끈 계정은 밀린 일이 아니다. */
   const unwatched = offAccounts.length - offExplained;
 
-  const out = { polled: 0, baselined: 0, alerted: 0, errors: [] };
-  let alertBudget = MAX_ALERTS;
+  const out = { polled: 0, baselined: 0, alerted: 0, skipped: 0, unjudged: 0, judgeError: null, errors: [] };
+  const candidates = [];
 
   for (const acc of accounts || []) {
     let media = [];
@@ -203,26 +327,51 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
             { onConflict: 'username,shortcode', ignoreDuplicates: true });
         continue;
       }
-      if (alertBudget <= 0) continue;   // ③ 상한 초과분은 seen 에 안 넣는다 → 다음 실행에 잡힌다
-      alertBudget--;
+      if (candidates.length >= MAX_JUDGE) continue;  // ③ 상한 초과분은 seen 에 안 넣는다 → 다음 실행에 잡힌다
+      candidates.push({ acc, m });
+    }
+  }
 
-      if (!dry) {
-        /* 중복 방어 (2026-09-18) — 예전엔 두 겹이었다: celeb_account_seen PK +
-           큐의 (batch_key,shortcode) 유니크. 큐를 걷어냈으니 한 겹만 남는다.
-           그래서 **기록이 성공했을 때만 보낸다**. 순서를 뒤집거나 에러를
-           무시하면, 기록이 실패한 게시물이 매 실행마다 다시 알림으로 나간다
-           (20분마다 같은 메시지 = 최악의 스팸). 기록 실패 시엔 조용히 넘기고
-           다음 실행에 다시 시도한다 — 알림 한 번 늦는 게 훨씬 낫다. */
-        const { error: seenErr } = await supabaseAdmin.from('celeb_account_seen')
-          .upsert([{ username: acc.username, shortcode: m.shortcode }],
-            { onConflict: 'username,shortcode', ignoreDuplicates: true });
-        if (seenErr) {
-          out.errors.push(acc.username + '/' + m.shortcode + ' seen 기록 실패: '
-            + String(seenErr.message || seenErr).slice(0, 80));
-          continue;
-        }
-        await sendTextToChatSafe(chatId, buildAlert(acc, m));
+  /* ── 뉴스 판정 (2026-09-18) ────────────────────────────────────────
+   * 계정별로 알리던 것을 여기서 한 번에 모아 판정한다. 계정마다 AI 를
+   * 부르면 콜 수가 계정 수만큼 늘어난다 — 19개 계정이면 19콜이다.
+   * 모아서 한 배치로 물으면 보통 1콜이면 끝난다. */
+  let judged = null;
+  if (candidates.length && !dry) {
+    judged = await judgeNews(candidates);
+    if (!judged.ok) {
+      /* 실패하면 아무것도 안 보내고 seen 에도 안 남긴다 → 다음 실행에 재시도.
+         반대로 하면(전부 보내기) API 가 흔들릴 때마다 스팸이 된다. */
+      out.judgeError = judged.reason;
+    }
+  }
+
+  if (judged && judged.ok) {
+    for (let i = 0; i < candidates.length; i++) {
+      const { acc, m } = candidates[i];
+      const v = judged.verdicts[i];
+      /* 판정이 안 돌아온 항목은 seen 에 안 남긴다 — 다음 실행에 다시 묻는다.
+         '답이 없다' 를 '뉴스 아님' 으로 삼으면 소식이 조용히 사라진다. */
+      if (!v) { out.unjudged++; continue; }
+
+      /* 중복 방어 (2026-09-18) — 예전엔 두 겹이었다: celeb_account_seen PK +
+         큐의 (batch_key,shortcode) 유니크. 큐를 걷어냈으니 한 겹만 남는다.
+         그래서 **기록이 성공했을 때만 보낸다**. 순서를 뒤집거나 에러를
+         무시하면, 기록이 실패한 게시물이 매 실행마다 다시 알림으로 나간다
+         (20분마다 같은 메시지 = 최악의 스팸). 기록 실패 시엔 조용히 넘기고
+         다음 실행에 다시 시도한다 — 알림 한 번 늦는 게 훨씬 낫다. */
+      const { error: seenErr } = await supabaseAdmin.from('celeb_account_seen')
+        .upsert([{ username: acc.username, shortcode: m.shortcode }],
+          { onConflict: 'username,shortcode', ignoreDuplicates: true });
+      if (seenErr) {
+        out.errors.push(acc.username + '/' + m.shortcode + ' seen 기록 실패: '
+          + String(seenErr.message || seenErr).slice(0, 80));
+        continue;
       }
+      /* 뉴스가 아니어도 seen 에는 남긴다 — 같은 게시물을 20분마다 다시 묻는
+         것이 이 게이트에서 가장 비싼 실수다. */
+      if (!v.news) { out.skipped++; continue; }
+      await sendTextToChatSafe(chatId, buildAlert(acc, m, v.why));
       out.alerted++;
     }
   }
@@ -263,7 +412,13 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
     : (accounts.length === 0
       ? '감시 대상 0개 — 등록된 ' + totalAccounts + '개가 전부 비활성' + offNote
       : '폴링 ' + out.polled + '/' + accounts.length + '개 · 기준선 ' + out.baselined
-        + ' · 알림 ' + out.alerted + '건 · 오류 ' + out.errors.length + '건' + offNote);
+        + ' · 알림 ' + out.alerted + '건'
+        + (out.skipped ? ' · 뉴스 아님 ' + out.skipped + '건' : '')
+        /* 판정을 못 한 건 '한 게 없다' 가 아니라 '밀렸다' 다. 노트에 안 적으면
+           AI 가 며칠 죽어 있어도 "알림 0건" 으로만 보이고 아무도 모른다. */
+        + (out.unjudged ? ' · ⚠️ 판정 누락 ' + out.unjudged + '건' : '')
+        + (out.judgeError ? ' · ⚠️ 판정 실패(' + out.judgeError + ') 대기 ' + candidates.length + '건' : '')
+        + ' · 오류 ' + out.errors.length + '건' + offNote);
   /* 2026-09-13 — 부계정 피드 참조 수집을 여기에 얹는다 (api/_lib/igSubPosts.js).
      이유는 그 파일 머리말 참고: 크론 호출 예산이 2,599/2,600 이라 새 크론을 못 만든다.
      이 크론은 하루 72회 · 평균 94ms 로 가장 가볍고, 성격도 '계정 감시' 라 맞는다.
@@ -279,7 +434,10 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
     }
   }
 
-  reportProduction(res, { produced: out.alerted, remaining: unwatched,
+  /* 판정이 막혀 못 보낸 건은 remaining 에 더한다. produced 0 · remaining 0 이면
+     판정기가 통째로 죽어도 '할 일이 없었다' 로 보여 조용히 지나간다. */
+  reportProduction(res, { produced: out.alerted,
+    remaining: unwatched + (out.judgeError ? candidates.length : 0) + out.unjudged,
     note: note + ' · ' + sub.note });
 
   return res.status(200).json({

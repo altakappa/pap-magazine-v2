@@ -26,12 +26,12 @@ console.log('\n=== 브리프 경로가 정말로 끊겼는가 ===');
 ok('celeb_brief_queue 에 적재하지 않는다', !/celeb_brief_queue/.test(SRC));
 ok('"브리프 준비 중" 문구가 남아있지 않다', !/브리프 준비 중/.test(SRC));
 ok('seen 기록은 그대로 남긴다 (중복 알림 방지)', /celeb_account_seen/.test(SRC));
-ok('실행당 상한이 살아 있다', /alertBudget\s*<=\s*0/.test(SRC) && /MAX_ALERTS/.test(SRC));
+ok('실행당 상한이 살아 있다', /candidates\.length >= MAX_JUDGE/.test(SRC) && /MAX_JUDGE/.test(SRC));
 ok('첫 폴링 기준선이 살아 있다 (옛 글 폭탄 방지)', /baseline_done/.test(SRC));
 ok('24시간 신선도 창이 살아 있다', /FRESH_MS/.test(SRC));
 
 console.log('\n=== 알림 문구를 소스에서 떼어내 실제로 돌린다 ===');
-const m = SRC.match(/function fmtCount[\s\S]*?\nfunction buildAlert\(acc, m\) \{[\s\S]*?\n\}/);
+const m = SRC.match(/function fmtCount[\s\S]*?\nfunction buildAlert\(acc, m, why\) \{[\s\S]*?\n\}/);
 ok('buildAlert 를 찾았다', !!m);
 
 if (m) {
@@ -74,6 +74,67 @@ if (m) {
 
   // 한 게시물 = 한 메시지 (도메니코 원칙1, 2026-07-27)
   ok('링크가 메시지에 하나뿐이다', (full.match(/https?:\/\//g) || []).length === 1);
+}
+
+
+console.log('\n=== 뉴스 판정 게이트 (2026-09-18) ===');
+ok('AI 판정기가 붙어 있다', /function judgeNews/.test(SRC));
+ok('판정 결과 파싱은 공용 jsonRepair 를 쓴다 (규칙 두 벌 금지)',
+  /require\('\.\.\/_lib\/jsonRepair'\)/.test(SRC));
+ok('판정 실패 시 아무것도 안 보낸다 (fail-closed)',
+  /out\.judgeError = judged\.reason/.test(SRC) && /if \(judged && judged\.ok\)/.test(SRC));
+ok('판정 실패한 건은 seen 에 안 남긴다 (다음 실행에 재시도)',
+  !/judgeError[\s\S]{0,300}celeb_account_seen/.test(SRC));
+ok('판정이 안 돌아온 항목은 뉴스아님으로 삼지 않는다',
+  /if \(!v\) \{ out\.unjudged\+\+; continue; \}/.test(SRC));
+ok('뉴스가 아니어도 seen 에는 남긴다 (같은 글을 다시 묻지 않는다)',
+  /if \(!v\.news\) \{ out\.skipped\+\+; continue; \}/.test(SRC));
+ok('판정이 막히면 remaining 으로 세어 감시망에 걸린다',
+  /remaining: unwatched \+ \(out\.judgeError \? candidates\.length : 0\) \+ out\.unjudged/.test(SRC));
+ok('판정 실패·누락이 노트에 드러난다 (조용히 0건으로 안 보이게)',
+  /판정 누락/.test(SRC) && /판정 실패/.test(SRC));
+ok('계정마다 부르지 않고 모아서 한 배치로 묻는다',
+  /candidates\.push\(\{ acc, m \}\)/.test(SRC) && /judgeNews\(candidates\)/.test(SRC));
+ok('애매하면 제외하라고 지시한다', /애매하면 false/.test(SRC));
+ok('싼 모델을 기본으로 쓴다', /claude-haiku/.test(SRC));
+
+console.log('\n--- 판정 응답 파서를 실제로 돌린다 ---');
+{
+  const pm = SRC.match(/function parseNewsVerdicts\(text\) \{[\s\S]*?\n\}/);
+  ok('parseNewsVerdicts 를 찾았다', !!pm);
+  if (pm) {
+    const path2 = require('path');
+    // eslint-disable-next-line no-new-func
+    const P = new Function('require', `${pm[0]}; return parseNewsVerdicts;`)(
+      (id) => require(id.startsWith('.') ? path2.join(ROOT, 'api', 'cron', id) : id));
+    const good = P('[{"i":0,"news":true,"why":"컴백 티저"},{"i":1,"news":false,"why":"셀카"}]');
+    ok('정상 JSON 을 읽는다', good && good[0].news === true && good[1].news === false);
+    ok('why 를 보관한다', good && good[0].why === '컴백 티저');
+    const fenced = P('```json\n[{"i":0,"news":true,"why":"수상"}]\n```');
+    ok('코드펜스가 섞여도 읽는다', fenced && fenced[0].news === true);
+    ok('빈 응답은 null (배치를 통째로 버린다)', P('') === null);
+    ok('배열이 아니면 null', P('{"i":0}') === null);
+    const partial = P('[{"i":0,"news":true,"why":"x"},{"i":1,"why":"불량"}]');
+    ok('news 가 없는 항목은 버리고 나머지는 산다',
+      partial && partial[0] && partial[1] === undefined);
+  }
+}
+
+console.log('\n--- 알림에 판정 이유가 붙는가 ---');
+{
+  const m2 = SRC.match(/function fmtCount[\s\S]*?\nfunction buildAlert\(acc, m, why\) \{[\s\S]*?\n\}/);
+  ok('buildAlert 가 why 를 받는다', !!m2);
+  if (m2) {
+    // eslint-disable-next-line no-new-func
+    const F2 = new Function(`${m2[0]}; return buildAlert;`)();
+    const withWhy = F2({ username: 'a', label: '블랙핑크' },
+      { type: 'IMAGE', likes: 1, comments: 1, ts: Date.now(), caption_head: 'x', permalink: 'https://x/p/A/' },
+      '컴백 티저');
+    ok('판정 이유가 첫 줄에 보인다', withWhy.split('\n')[0].includes('컴백 티저'));
+    const noWhy = F2({ username: 'a', label: '블랙핑크' },
+      { type: 'IMAGE', likes: 1, comments: 1, ts: Date.now(), caption_head: 'x', permalink: 'https://x/p/A/' });
+    ok('이유가 없으면 빈 구분자를 남기지 않는다', !noWhy.split('\n')[0].includes('·'));
+  }
 }
 
 console.log(`\n${failed === 0 ? '✅ 전부 통과' : '❌ 실패 있음'} — 통과 ${passed} · 실패 ${failed}`);
