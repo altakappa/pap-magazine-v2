@@ -145,11 +145,15 @@ ok('가장 오래 안 본 계정이 먼저 온다 (순번이 실제로 돈다)',
 ok('순번 대기 건수가 노트에 드러난다', /순번 대기/.test(SRC));
 ok('폴링 상한 기본값이 20이다 (60초 예산: 12초 + AI 25초)',
   /CELEB_POLL_PER_RUN\) \|\| 20/.test(SRC));
+/* 2026-09-18 유튜브 추가 — 유튜브는 팔로워를 안 가져오므로(유닛 절약)
+   기존 값을 덮어쓰지 않게 폴백이 붙었다. 이름은 여전히 API 값이 먼저다. */
 ok('API 가 말하는 실제 이름을 적는다 (오타·팬계정은 last_error 에 안 걸린다)',
-  /api_name: \(d && d\.name\) \|\| null/.test(SRC));
+  /api_name: \(d && d\.name\) \|\| acc\.api_name \|\| null/.test(SRC));
 ok('팔로워 수를 적는다', /followers: \(d && Number\.isFinite/.test(SRC));
-ok('팔로워가 숫자가 아니면 null 로 둔다 (NaN 을 DB 에 넣지 않는다)',
-  /Number\.isFinite\(Number\(d\.followers\)\)\) \? Number\(d\.followers\) : null/.test(SRC));
+ok('팔로워가 숫자가 아니면 NaN 을 DB 에 넣지 않는다',
+  /Number\.isFinite\(Number\(d\.followers\)\)\) \? Number\(d\.followers\) : acc\.followers/.test(SRC));
+ok('유튜브 폴링이 인스타에서 얻은 팔로워 수를 지우지 않는다',
+  /: acc\.followers,/.test(SRC));
 
 console.log(`\n${failed === 0 ? '✅ 전부 통과' : '❌ 실패 있음'} — 통과 ${passed} · 실패 ${failed}`);
 process.exit(failed === 0 ? 0 : 1);

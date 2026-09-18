@@ -28,6 +28,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard, reportProduction } = require('../_lib/cronGuard');
 const { discoverAccount } = require('../_lib/igDiscovery');
+const { discoverChannel } = require('../_lib/ytDiscovery');
 const { collectSubPosts } = require('../_lib/igSubPosts');
 const { sendTextToChatSafe } = require('../_lib/telegram');
 
@@ -66,7 +67,10 @@ const NEWS_BATCH = Math.max(1, Math.min(40, Number(process.env.CELEB_NEWS_BATCH)
 
 const NEWS_SYSTEM = [
   '너는 K-POP 을 다루는 패션·컬쳐 매거진의 뉴스 데스크다.',
-  '아이돌·셀럽 인스타그램 게시물을 보고 **기사가 될 소식인지**만 판정한다.',
+  '아이돌·셀럽의 인스타그램 게시물과 공식 유튜브 업로드를 보고',
+  '**기사가 될 소식인지**만 판정한다.',
+  '유튜브는 제목이 핵심 신호다 — [MV] · Official Teaser · Comeback Trailer ·',
+  'Concept Film 은 뉴스, 브이로그 · 비하인드 · 챌린지 · 커버 · 리액션은 아니다.',
   '',
   '뉴스다 (news: true) — 밖에서 일어난 일, 날짜가 붙는 일, 처음 알려지는 일:',
   '  · 컴백·신곡·앨범·데뷔·타이틀곡 공개, 티저',
@@ -98,7 +102,9 @@ function buildNewsPrompt(rows) {
   const items = rows.map((r, i) => ({
     i,
     account: r.acc.label || r.acc.username,
-    type: TYPE_KO[String(r.m.type || '').toUpperCase()] || String(r.m.type || ''),
+    platform: r.acc.platform === 'youtube' ? '유튜브' : '인스타그램',
+    type: r.acc.platform === 'youtube' ? '영상'
+      : (TYPE_KO[String(r.m.type || '').toUpperCase()] || String(r.m.type || '')),
     likes: r.m.likes,
     comments: r.m.comments,
     caption: String(r.m.caption_head || '').replace(/\s+/g, ' ').trim(),
@@ -199,9 +205,13 @@ function fmtAgo(ts) {
 }
 
 function buildAlert(acc, m, why) {
-  const who = '@' + acc.username + (acc.label ? ' (' + acc.label + ')' : '');
+  /* 어디서 온 소식인지 한눈에 갈리게 한다. 인스타와 유튜브가 같은 채팅방에
+     섞여 오므로, 아이콘이 같으면 무엇을 보고 있는지 매번 다시 읽어야 한다. */
+  const isYt = acc.platform === 'youtube';
+  const icon = isYt ? '▶️' : '📸';
+  const who = (isYt ? '' : '@') + acc.username + (acc.label ? ' (' + acc.label + ')' : '');
   const meta = [
-    TYPE_KO[String(m.type || '').toUpperCase()] || null,
+    isYt ? '유튜브 영상' : (TYPE_KO[String(m.type || '').toUpperCase()] || null),
     fmtCount(m.likes) ? '♥ ' + fmtCount(m.likes) : null,
     fmtCount(m.comments) ? '💬 ' + fmtCount(m.comments) : null,
     fmtAgo(m.ts),
@@ -210,7 +220,7 @@ function buildAlert(acc, m, why) {
   const cap = String(m.caption_head || '').replace(/\s+/g, ' ').trim();
   const capLine = cap ? (cap.length >= 200 ? cap + '…' : cap) : '(캡션 없음)';
 
-  const head = '📸 ' + who + (why ? '  · ' + why : '');
+  const head = icon + ' ' + who + (why ? '  · ' + why : '');
   return [head, meta, '', capLine, '', m.permalink]
     .filter((l, i, a) => !(l === '' && a[i - 1] === ''))
     .join('\n');
@@ -286,9 +296,20 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
 
   for (const acc of accounts || []) {
     let media = [];
+    let ytResolved = null;
     try {
-      const d = await discoverAccount(acc.username, MEDIA_PER_ACCOUNT);
-      media = (d && d.media) || [];   // discoverAccount 는 정규화된 배열을 준다 (ts·permalink)
+      /* 2026-09-18 — 플랫폼이 둘이 됐다(인스타·유튜브). 갈라지는 곳은 여기
+         **한 군데뿐**이다. 아래 신선도·중복·판정·알림은 전부 공통이다.
+         ytDiscovery 가 igDiscovery 와 같은 모양을 돌려주도록 맞춰 놨기 때문이다.
+         플랫폼마다 루프를 복사하면 규칙이 두 벌이 되고 한쪽만 고쳐진다. */
+      let d;
+      if (acc.platform === 'youtube') {
+        d = await discoverChannel({ extId: acc.ext_id, handle: acc.username, limit: MEDIA_PER_ACCOUNT });
+        ytResolved = d && d.channelId && d.channelId !== acc.ext_id ? d.channelId : null;
+      } else {
+        d = await discoverAccount(acc.username, MEDIA_PER_ACCOUNT);
+      }
+      media = (d && d.media) || [];   // 두 discovery 모두 정규화된 배열을 준다 (ts·permalink)
       out.polled++;
       /* 2026-09-18 — API 가 말하는 그 계정의 **실제 이름과 팔로워 수**를 적어 둔다.
          왜: 핸들을 사람이 찍어 넣으면 두 가지가 조용히 통과한다.
@@ -298,11 +319,13 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
          부족하고 '누구인지' 를 적어야 한다. api_name 이 label 과 어긋나거나
          팔로워가 터무니없이 적으면 잘못 넣은 계정이다. 사람이 한 번 훑으면 보인다. */
       if (!dry) await supabaseAdmin.from('celeb_watch_accounts')
-        .update({
+        .update(Object.assign({
           last_polled_at: new Date().toISOString(), last_error: null,
-          api_name: (d && d.name) || null,
-          followers: (d && Number.isFinite(Number(d.followers))) ? Number(d.followers) : null,
-        })
+          /* 유튜브는 팔로워 수를 안 가져온다(유닛 절약). name 은 채널명이다. */
+          api_name: (d && d.name) || acc.api_name || null,
+          followers: (d && Number.isFinite(Number(d.followers))) ? Number(d.followers) : acc.followers,
+        /* 핸들→채널ID 는 한 번만 풀고 캐시한다. 안 그러면 20분마다 1유닛씩 샌다. */
+        }, ytResolved ? { ext_id: ytResolved } : {}))
         .eq('username', acc.username);
     } catch (e) {
       /* 비공개·개인 계정·오타 핸들은 여기로 온다. 죽지 말고 기록만. */
@@ -319,7 +342,8 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
        discoverAccount 가 이미 준 것을 그대로 쓴다 (추가 API 호출 0). */
     const items = media
       .map((m) => ({
-        shortcode: shortcodeOf(m.permalink),
+        /* 인스타는 permalink 에서 뽑고, 유튜브는 discovery 가 영상 ID 를 직접 준다. */
+        shortcode: m.shortcode || shortcodeOf(m.permalink),
         permalink: m.permalink,
         ts: Date.parse(m.ts || '') || 0,
         type: m.type || null,
