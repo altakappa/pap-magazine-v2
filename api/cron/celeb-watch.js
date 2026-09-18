@@ -239,6 +239,24 @@ async function translateTitles(titles) {
   }
 }
 
+/** 알림에 같은 줄이 두 번 나오지 않게 한다 (2026-09-18).
+ *  같은 기사가 여러 피드에 잡히면 (매체, 제목) 쌍이 그대로 중복된다.
+ *  제목은 매체명 꼬리표가 붙었다 말았다 하므로 stripSource 로 맞춘 뒤 비교한다.
+ *  순서는 그대로 둔다 — 첫 헤드라인이 알림 제목과 링크의 근거다. */
+function dedupeHeadlines(headlines) {
+  const seen = new Set();
+  const out = [];
+  for (const h of (headlines || [])) {
+    if (!h) continue;
+    const key = String(h.source || '').toLowerCase().trim()
+      + '|' + stripSource(String(h.title || '')).replace(/\s+/g, ' ').trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(h);
+  }
+  return out;
+}
+
 module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
@@ -410,7 +428,16 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
         title: `🚨 PAP 속보 감지 — ${cKo}`,
         lines: [
           `${c.sourceCount}개 매체 교차 확인 · 화제성 ${c.score}점 · ${c.topic}`,
-          ...c.headlines.slice(0, 4).map(h => `· ${h.source}: ${ko(h.title)}`),
+          /* 2026-09-18 — 같은 줄이 두 번 나오던 것을 막는다.
+             도메니코가 보낸 실제 알림: "2개 매체 교차 확인" 인데 아래에
+             insight.co.kr 과 sportschosun.com 이 각각 두 번씩, 4줄이 실렸다.
+             교차검증 자체는 멀쩡하다 — celebDedup 이 Set 으로 매체를 세므로
+             '2개 매체' 는 진짜 2곳이다. 문제는 **표시**다: 같은 기사가
+             구글뉴스 피드 두 곳(KPOP-KR · KR-연예)에 동시에 잡히면 같은
+             (매체, 제목) 쌍이 headlines 에 두 번 들어간다.
+             중복을 걷어내고 나서 4줄을 센다 — 안 그러면 서로 다른 매체의
+             기사가 중복에 밀려 안 보인다. */
+          ...dedupeHeadlines(c.headlines).slice(0, 4).map(h => `· ${h.source}: ${ko(h.title)}`),
           '',
           '기사화할지는 직접 판단하세요.',
         ].filter((l, i, a) => !(l === '' && a[i - 1] === '')),
