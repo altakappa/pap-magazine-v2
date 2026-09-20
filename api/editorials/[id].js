@@ -21,6 +21,47 @@ const { sanitizeInstaLogoSettings } = require('../_lib/instaLogoSettings');  // 
 // 2026-08-07 — 유니크 제약 위반을 사람이 읽는 안내로 (발행 8연속 실패 사고)
 const { describePgError } = require('../_lib/pgError');
 
+/* ── 발행 텔레그램 전송을 전용 워커로 넘긴다 (2026-09-20) ───────────────────────────────
+ * api/editorials/telegram-send.js 를 CRON_SECRET 으로 깨운다(api/telegram/webhook.js 의 wakeProcessor 와 같은 방식).
+ *   · waitUntil(@vercel/functions) 이 있으면 응답을 먼저 보내고 호출은 백그라운드에서 끝까지 간다.
+ *   · 없으면 9초까지만 기다린다 — 워커는 한 번 깨어나면 호출자가 끊어도 끝까지 돈다.
+ *   · CRON_SECRET 이 없거나 깨우기 자체가 실패하면 종전처럼 이 함수 안에서 직접 보낸다(120초 안에 끝나길 바라며).
+ * 절대 응답을 막지 않는다 — 발행은 이미 DB 에 반영됐다. */
+const TG_WORKER_URL = () => (process.env.TELEGRAM_EDITORIAL_WORKER_URL || 'https://www.pap-magazine.com/api/editorials/telegram-send');
+const TG_WAKE_TIMEOUT_MS = 9000;
+function _waitUntil() {
+  try { const fns = require('@vercel/functions'); return typeof fns.waitUntil === 'function' ? fns.waitUntil : null; }
+  catch (_e) { return null; }
+}
+async function dispatchTelegramEditorial(ed) {
+  const secret = String(process.env.CRON_SECRET || '').trim();
+  if (!ed || !ed.id) return { dispatched: 'skip' };
+  if (!secret) {
+    console.warn('[editorial PUT] CRON_SECRET 미설정 — 텔레그램을 이 함수에서 직접 보낸다');
+    return { dispatched: 'inline', result: await sendEditorialToTelegramSafe(ed) };
+  }
+  const url = TG_WORKER_URL() + '?id=' + encodeURIComponent(ed.id);
+  const call = (signal) => fetch(url, { method: 'GET', headers: { Authorization: 'Bearer ' + secret }, signal });
+  const waitUntil = _waitUntil();
+  if (waitUntil) {
+    waitUntil(call(undefined).then(
+      (r) => { if (!r.ok) console.warn('[editorial PUT] 텔레그램 워커 응답', r.status); },
+      (e) => console.warn('[editorial PUT] 텔레그램 워커 깨우기 실패:', (e && e.message) || e),
+    ));
+    return { dispatched: 'waitUntil' };
+  }
+  try {
+    const r = await call(AbortSignal.timeout(TG_WAKE_TIMEOUT_MS));
+    if (!r.ok) throw new Error('worker HTTP ' + r.status);
+    return { dispatched: 'await' };
+  } catch (e) {
+    const name = e && e.name;
+    if (name === 'TimeoutError' || name === 'AbortError') return { dispatched: 'await-timeout' };   // 워커는 이미 돌고 있다
+    console.warn('[editorial PUT] 텔레그램 워커 깨우기 실패 → 직접 전송:', (e && e.message) || e);
+    return { dispatched: 'inline-fallback', result: await sendEditorialToTelegramSafe(ed) };
+  }
+}
+
 // QA #202 — fields we care about in the audit diff. Long opaque JSONB
 // like `embedding` is intentionally excluded so the diff stays small
 // and readable in the admin UI's "수정 이력" view.
@@ -441,9 +482,12 @@ module.exports = async function handler(req, res) {
       // 방지한다. Safe 래퍼라 실패해도 예외를 던지지 않아 발행은 항상 성공한다.
       // (env TELEGRAM_BOT_TOKEN/CHAT_ID 미설정 시 즉시 skip.)
       if (becomingPublished) {
-        await sendEditorialToTelegramSafe(data);
+        /* 2026-09-20 사고 — 여기서 직접 돌리던 전송(16장 합성·업로드)이 120초 상한을 넘겨 504.
+         * DB 는 published 인데 화면은 "발행 실패", 캡션(크레딧)·승인 메일은 유실. 전용 워커(300초)를 깨우고
+         * 이 요청은 바로 끝낸다. 워커 깨우기가 실패하면 종전처럼 여기서 직접 보낸다(안전망). */
+        await dispatchTelegramEditorial(data);
         // (2026-09-15 도메니코) 프리미엄 '피드 + 스토리 보장' 알림 폐지 — 승인된 에디토리얼은 회원 등급과 무관하게
-        // 웹사이트 + PAP 의 모든 소셜 미디어에 게재된다. 텔레그램 전송(sendEditorialToTelegramSafe)이 그 출발점이다.
+        // 웹사이트 + PAP 의 모든 소셜 미디어에 게재된다. 텔레그램 전송이 그 출발점이다.
       }
 
       // QA #172 — fire the approval email when the admin ticked the

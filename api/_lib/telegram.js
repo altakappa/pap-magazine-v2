@@ -15,7 +15,8 @@
  *
  * 두 필수 env 중 하나라도 없으면 조용히 skip → 발행이 막히지 않음.
  *
- * 소비자: api/editorials/[id].js (PUT) — becomingPublished 전환 시 await 호출
+ * 소비자: api/editorials/telegram-send.js (전용 워커, 300초) ← api/editorials/[id].js (PUT) 가 발행 순간 깨운다.
+ *   2026-09-20: 종전엔 PUT 안에서 직접 돌렸다. 16장 합성이 120초 상한을 넘겨 504 + 캡션 유실. 워커로 분리.
  */
 
 const { brandImageBuffer, getTrimmedLogo } = require('./brandImage');
@@ -201,15 +202,28 @@ async function sendEditorialToTelegram(ed) {
     } catch (e) { console.warn('[telegram] 커버 스킵:', coverUrl, e && e.message); }
   }
 
-  // ② 갤러리 — ZIP 과 같은 인스타 합성
+  // ③→① 인스타그램 캡션 (2026-09-14 도메니코 "텔레그램으로 보낼 때 인스타그램 캡션도 같이") — **별도 텍스트 메시지**로
+  //    캡션 원문만 보낸다. 미디어 캡션은 1,024자 제한이라 긴 캡션이 잘리고, 머리말을 붙이면 복사할 때 같이 딸려온다.
+  //    2026-09-20 사고: 종전엔 파일 묶음 **뒤에** 보냈다. 16장 합성·업로드가 함수 상한(120초)을 넘기면서 캡션 차례가
+  //    오지 않았다(도메니코 "크레딧이 오지 않음"). 가장 싸고 가장 중요한 것을 맨 먼저 보낸다 — 1초짜리 텍스트가
+  //    100초짜리 이미지 뒤에서 기다릴 이유가 없다. 캡션이 비어 있으면 안 보낸다. 실패해도 이미지 전송은 계속.
+  const igCaption = (ed && typeof ed.instagram_caption === 'string') ? ed.instagram_caption.trim() : '';
+  let captionSent = false;
+  if (igCaption) {
+    const c = await sendTextToChatSafe(CHAT_ID(), igCaption);
+    captionSent = !!(c && c.ok);
+  }
+
+  // ② 갤러리 — ZIP 과 같은 인스타 합성. 다운로드·합성을 3장씩 겹쳐 돌린다(순서는 보존).
+  //    직렬로 16장이면 다운로드 대기가 그대로 쌓인다. sharp 는 자체 스레드를 쓰므로 3 이상은 이득이 작다.
   const gallery = (ed && Array.isArray(ed.gallery)) ? ed.gallery.filter(isHttp).map((u) => u.trim()) : [];
   let logo = null;
   if (BRAND_ON() && gallery.length) {
     try { logo = await getRawLogo(); }
     catch (e) { console.warn('[telegram] 로고 로드 실패 → 로고 없이 프레이밍만:', e && e.message); }
   }
-  for (let i = 0; i < gallery.length; i++) {
-    const url = gallery[i];
+  const t0 = Date.now();
+  const made = await mapPool(gallery, 3, async (url, i) => {
     try {
       const raw = await fetchImageBuffer(url);
       const opts = resolveInstaOpts(ed.insta_logo_settings, url);
@@ -217,26 +231,36 @@ async function sendEditorialToTelegram(ed) {
       let buf;
       try { buf = await instaCompositeBuffer(raw, logo, opts); }
       catch (e) { console.warn('[telegram] 합성 실패 → 원본 사용:', url, e && e.message); buf = raw; }
-      files.push({ buffer: buf, name: String(i + 1).padStart(2, '0') + '.png', mime: 'image/png' });
+      return { buffer: buf, name: String(i + 1).padStart(2, '0') + '.png', mime: 'image/png' };
     } catch (e) {
       console.warn('[telegram] 이미지 스킵:', url, e && e.message);
+      return null;
     }
-  }
-  if (!files.length) return { sent: 0, skipped: (coverUrl || gallery.length) ? 'no_usable_images' : 'no_images' };
+  });
+  made.forEach((f) => { if (f) files.push(f); });
+  console.log('[telegram] 합성 완료:', files.length + '파일', (Date.now() - t0) + 'ms');
+  if (!files.length) return { sent: 0, captionSent, skipped: (coverUrl || gallery.length) ? 'no_usable_images' : 'no_images' };
 
   const r = await sendDocumentsToTelegram(files, buildCaption(ed));
-  // ③ 인스타그램 캡션 (2026-09-14 도메니코 "텔레그램으로 보낼 때 인스타그램 캡션도 같이") — 파일 묶음 뒤에
-  //    **별도 텍스트 메시지**로, 캡션 원문만 보낸다. 미디어 캡션은 1,024자 제한이라 긴 캡션이 잘리고, 머리말을
-  //    붙이면 복사할 때 같이 딸려온다. 메시지를 길게 눌러 복사하면 그대로 인스타에 붙일 수 있게.
-  //    캡션이 비어 있으면 안 보낸다. 실패해도 이미지 전송 결과는 그대로 돌려준다.
-  const igCaption = (ed && typeof ed.instagram_caption === 'string') ? ed.instagram_caption.trim() : '';
-  if (igCaption) {
-    const c = await sendTextToChatSafe(CHAT_ID(), igCaption);
-    r.captionSent = !!(c && c.ok);
-  } else {
-    r.captionSent = false;
-  }
+  r.captionSent = captionSent;
+  console.log('[telegram] 업로드 완료:', r.sent + '파일', r.groups + '묶음', (Date.now() - t0) + 'ms');
   return r;
+}
+
+/* 순서를 보존하는 병렬 map. 동시에 limit 개까지만 돈다. fn 이 던지면 그 자리는 undefined 가 아니라 예외가 난다 —
+   호출부가 fn 안에서 잡는다(위 갤러리 루프처럼). */
+async function mapPool(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  const n = Math.max(1, Math.min(limit || 1, items.length || 1));
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: n }, worker));
+  return out;
 }
 
 // 발행 응답을 절대 막지 않는 안전 래퍼 — 에러를 콘솔에만 남기고 삼킨다.
@@ -430,4 +454,5 @@ module.exports = {
   isConfigured,
   sendTextToTelegramSafe,
   sendTextToTelegramPersonalSafe,
+  mapPool,
 };
