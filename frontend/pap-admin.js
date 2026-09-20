@@ -53,6 +53,15 @@ function escAttr(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+/* 인라인 onclick="fn('…')" 안에 넣을 문자열 (2026-09-20 도메니코 제보 "발행 버튼을 눌러도 발행이 안 된다").
+   esc() 가 따옴표까지 엔티티로 바꾸게 된 뒤(7/26 B-6) `esc(title).replace(/'/g,"\\'")` 는 아무것도 못 했다 —
+   ' 는 이미 &#39; 라서. 브라우저가 속성값의 &#39; 를 ' 로 되돌리면 JS 문자열이 거기서 끊긴다.
+   "DIDN'T" 가 든 제목의 발행·즉시 발행·삭제·이달의 에디토리얼 버튼이 SyntaxError 로 죽어 있었다(라이브 실측).
+   순서: JS 이스케이프(\ ' 줄바꿈) → 속성 이스케이프. 파서가 되돌리면 \' 가 남아 JS 가 정상으로 읽는다. */
+function jsArg(s){
+  var j = String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,'\\n');
+  return escAttr(j);
+}
 // 보안(2026-07-26 감사 A-1) — 회원이 입력한 URL 을 href 로 깔 때 쓴다.
 // esc() 는 HTML 엔티티만 이스케이프할 뿐 스킴은 보지 않으므로,
 // `javascript:` / `data:` 링크를 관리자가 클릭하면 관리자 세션에서
@@ -6247,7 +6256,7 @@ function renderEditorialList(){
     if(st==='draft')          rowStyle=' style="background:rgba(255,152,0,0.06)"';
     else if(st==='scheduled') rowStyle=' style="background:rgba(124,58,237,0.05)"';
     else if(st==='archived')  rowStyle=' style="background:rgba(220,38,38,0.04)"';
-    var safeTitle=esc(e.title).replace(/'/g,"\\'");
+    var safeTitle=jsArg(e.title);   // 2026-09-20 — 따옴표 든 제목도 onclick 에서 살아남게
     var actions='<button class="btn btn-sm" onclick="editEditorial(\''+e.id+'\')">편집</button>';
     if(st==='draft'){
       actions+=' <button class="btn btn-sm btn-primary" onclick="publishEditorial(\''+e.id+'\',\''+safeTitle+'\')" title="이 에디토리얼을 공개 사이트에 노출합니다">발행 ▶</button>';
@@ -6471,7 +6480,7 @@ function _eomCard(e, opts){
   var img = thumb
     ? '<img loading="lazy" src="' + safeUrl(thumb) + '" style="width:96px;height:64px;object-fit:cover;border-radius:4px;flex:none">'
     : '<div style="width:96px;height:64px;border-radius:4px;background:var(--bg3);flex:none"></div>';
-  var safeTitle = esc(e.title || '').replace(/'/g, "\\'");
+  var safeTitle = jsArg(e.title || '');   // 2026-09-20
   var btn = opts.hideButton ? ''
     : '<button class="btn btn-sm' + (opts.on ? '' : ' btn-primary') + '"'
       + ' onclick="toggleEditorialOfMonth(\'' + e.id + '\',\'' + safeTitle + '\',' + (opts.on ? 'true' : 'false') + ')"'
