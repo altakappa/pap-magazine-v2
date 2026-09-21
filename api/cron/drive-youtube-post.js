@@ -39,7 +39,7 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const { buildTitle, buildHashtags, buildTagList } = require('../_lib/youtubeMeta');
 const drive = require('../_lib/driveVideos');
 const { matchArticle, groupUnmatched, fileCore } = require('../_lib/koMatch');
-const { loadSubPosts, findSubPost } = require('../_lib/igSubPosts');
+const { loadSubPosts, findSubPost, subPostAsArticle, subPostUrl } = require('../_lib/igSubPosts');
 const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim');
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
@@ -74,7 +74,10 @@ function buildDescription(art, url) {
      웹사이트가 아닌 인스타그램이고 서브 도달은 웹사이트입니다."
      웹을 끊지 않고 순서로 우선순위를 표현한다(스레드·X 와 같은 원칙). */
   lines.push('▶ 인스타그램 : ' + SITE + '/ig/youtube');
-  lines.push('▶ 기사 전문 : ' + url);
+  /* 2026-09-21 — 부계정 게시물이 출처면 '기사 전문' 대신 그 게시물로 보낸다.
+     없는 기사 URL 을 적으면 404 로 가는 링크를 공개 채널에 남기는 꼴이다. */
+  if (art.sub) lines.push('▶ 원문 (@' + art.account + ') : ' + subPostUrl(art));
+  else lines.push('▶ 기사 전문 : ' + url);
   lines.push('▶ pap-magazine.com — 아트 기반 패션·뷰티·컬쳐 매거진');
   lines.push('');
   lines.push(buildHashtags(art).join(' '));
@@ -147,11 +150,22 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
     const articles = arts || [];
 
     // ── 4. 매칭 — 확신한 첫 건만 처리한다 ────────────────────
+    /* 2026-09-21 — 부계정 게시물을 **출처로** 쓴다 (종전엔 알림 힌트뿐).
+       도메니코: "pap_celeb 과 papbeauty_ 그리고 pap_object 에서도 기사를 찾아서
+       붙일 수 있어." 웹 기사가 없는 파일은 부계정 4곳의 캡션 첫 줄로 찾고, 찾으면
+       그 게시물을 기사 자리에 놓는다(제목·설명·링크). 웹 기사가 있으면 웹 기사가
+       먼저다 — 순서를 바꾸지 않는다. 표를 못 읽으면 종전대로(기사만) 간다. */
+    let subs = [];
+    try { subs = await loadSubPosts(supabaseAdmin); } catch (_e) { subs = []; }
+
     const unmatched = [];
     let pick = null;
     for (const f of candidates) {
       const m = matchArticle(f.name, articles);
       if (m.matched) { pick = { file: f, art: m.matched, match: m }; break; }
+      const sp = subs.length ? findSubPost(fileCore(f.name), subs) : null;
+      const sa = sp ? subPostAsArticle(sp) : null;
+      if (sa) { pick = { file: f, art: sa, match: { score: 1, reason: 'sub:@' + sa.account, runnerUp: null } }; break; }
       unmatched.push({ name: f.name, reason: m.reason });
     }
 
@@ -164,7 +178,6 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
          기사를 낼지 영상을 뺄지 판단할 수 있다. 실패해도 알림 자체는 나간다. */
       let subHint = '';
       try {
-        const subs = await loadSubPosts(supabaseAdmin);
         const hits = [];
         for (const u of unmatched) {
           const sp = findSubPost(fileCore(u.name), subs);
@@ -257,11 +270,11 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
      * 기록을 고치는 걸로는 부족하다. **유튜브 업로드는 되돌릴 수 없다.**
      * video_id 가 있는 행 = 실제로 채널에 올라간 것. 그러면 올리지 않는다.
      * status='failed' 는 video_id 가 없으므로 재시도가 계속 허용된다. */
-    const { data: already } = await supabaseAdmin.from('youtube_posts')
+    const { data: already } = art.id ? await supabaseAdmin.from('youtube_posts')
       .select('video_id, status, drive_file_id')
       .eq('article_id', art.id)
       .not('video_id', 'is', null)
-      .limit(1).maybeSingle();
+      .limit(1).maybeSingle() : { data: null };
     if (already && already.drive_file_id !== file.id) {
       const why = '이 기사는 이미 유튜브에 있다 (' + already.video_id + ')';
       await finishClaim('youtube_posts', file.id, {
@@ -285,7 +298,8 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
       });
       videoId = v.id;
       const got = v.status && v.status.privacyStatus;
-      detail = 'drive:' + file.name + (isPublic && got && got !== 'public' ? ' · privacy 강제 ' + got : '');
+      detail = 'drive:' + file.name + (art.sub ? ' · sub:@' + art.account + '/' + (art.shortcode || '') : '')
+        + (isPublic && got && got !== 'public' ? ' · privacy 강제 ' + got : '');
     } catch (err) {
       status = 'failed';
       detail = String(err && err.message || err).slice(0, 400);

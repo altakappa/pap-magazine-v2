@@ -36,7 +36,8 @@ const { buildHashtags } = require('../_lib/youtubeMeta');
 const { IG_HANDLE_URL } = require('../_lib/igFirstLink');
 const drive = require('../_lib/driveVideos');
 const buffer = require('../_lib/buffer');
-const { matchArticle, groupUnmatched } = require('../_lib/koMatch');
+const { matchArticle, groupUnmatched, fileCore } = require('../_lib/koMatch');
+const { loadSubPosts, findSubPost, subPostAsArticle, subPostUrl } = require('../_lib/igSubPosts');
 const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim');
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
@@ -75,7 +76,9 @@ function buildCaption(art) {
   /* 2026-09-03 — 인스타가 먼저 (도메니코: 주 도달은 인스타, 서브가 웹).
      틱톡 캡션은 클릭이 안 돼 계측 불가 — 순서가 유일한 우선순위 표현이다. */
   lines.push('▶ 인스타그램 : ' + IG_HANDLE_URL);
-  lines.push('▶ 기사 전문 : ' + url);
+  // 2026-09-21 — 부계정 게시물이 출처면 없는 기사 URL 대신 그 게시물로
+  if (art.sub) lines.push('▶ 원문 (@' + art.account + ') : ' + subPostUrl(art));
+  else lines.push('▶ 기사 전문 : ' + url);
   lines.push('');
   lines.push(buildHashtags(art, 5).join(' '));
   return lines.join('  ').slice(0, CAPTION_MAX);
@@ -139,11 +142,19 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
 
     const articles = await tkd.recentArticles();
 
+    /* 2026-09-21 — 웹 기사가 없으면 부계정 게시물(papfashion_·papbeauty_·pap_celeb·
+       pap_object)을 출처로 쓴다. drive-youtube-post 와 같은 규칙·같은 함수. */
+    let subs = [];
+    try { subs = await loadSubPosts(supabaseAdmin); } catch (_e) { subs = []; }
+
     const unmatched = [];
     let pick = null;
     for (const f of candidates) {
       const m = matchArticle(f.name, articles);
       if (m.matched) { pick = { file: f, art: m.matched, match: m }; break; }
+      const sp = subs.length ? findSubPost(fileCore(f.name), subs) : null;
+      const sa = sp ? subPostAsArticle(sp) : null;
+      if (sa) { pick = { file: f, art: sa, match: { score: 1, reason: 'sub:@' + sa.account, runnerUp: null } }; break; }
       unmatched.push({ name: f.name, reason: m.reason });
     }
     if (!pick) {
@@ -171,8 +182,8 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
      * 도메니코 결정으로 드라이브가 우선이지만, 릴스가 먼저 나가버린 뒤라면
      * 되돌릴 수 없다. 그때 할 수 있는 최선은 두 번 올리지 않는 것이다. */
     try {
-      const { data: taken0 } = await supabaseAdmin.from('tiktok_posts')
-        .select('drive_file_id, status').eq('article_id', art.id).limit(1).maybeSingle();
+      const { data: taken0 } = art.id ? await supabaseAdmin.from('tiktok_posts')
+        .select('drive_file_id, status').eq('article_id', art.id).limit(1).maybeSingle() : { data: null };
       if (taken0 && taken0.status !== 'failed' && taken0.drive_file_id !== file.id) {
         await supabaseAdmin.from('tiktok_posts').insert({
           drive_file_id: file.id, status: 'skipped',
@@ -254,9 +265,10 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
      *    기사 경로의 upsert(onConflict:'article_id') 가 부분 인덱스로는
      *    동작하지 않는다. 2026-08-10 에 정확히 그 이유로 전체 인덱스로 바꿨다.) */
     let articleIdForRow = art.id;
+    if (art.sub) detail = (detail ? detail + ' · ' : '') + 'sub:@' + art.account + '/' + (art.shortcode || '');
     try {
-      const { data: taken } = await supabaseAdmin.from('tiktok_posts')
-        .select('drive_file_id').eq('article_id', art.id).limit(1).maybeSingle();
+      const { data: taken } = art.id ? await supabaseAdmin.from('tiktok_posts')
+        .select('drive_file_id').eq('article_id', art.id).limit(1).maybeSingle() : { data: null };
       if (taken && taken.drive_file_id !== file.id) {
         articleIdForRow = null;
         detail = (detail ? detail + ' · ' : '') + 'article=' + art.id + '(이미 게시된 기사라 연결 생략)';

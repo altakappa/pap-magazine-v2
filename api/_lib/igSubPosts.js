@@ -146,7 +146,7 @@ function findSubPost(core, rows) {
 async function loadSubPosts(supabaseAdmin, days) {
   const since = new Date(Date.now() - (days || 60) * 86400000).toISOString();
   const { data, error } = await supabaseAdmin.from('ig_sub_posts')
-    .select('account, shortcode, permalink, caption_line1, posted_at')
+    .select('account, shortcode, permalink, caption_line1, caption_head, posted_at')
     .gte('posted_at', since)
     .order('posted_at', { ascending: false })
     .limit(500);
@@ -154,8 +154,47 @@ async function loadSubPosts(supabaseAdmin, days) {
   return data || [];
 }
 
+/**
+ * 부계정 게시물을 **기사 모양**으로 바꾼다 (2026-09-21).
+ *
+ * 도메니코: "pap_celeb 과 papbeauty_ 그리고 pap_object 에서도 기사를 찾아서 붙일 수 있어."
+ * 9/13 까지 이 표는 '힌트' 였다 — 알림에 "@papfashion_ 8/28 게시물" 이라고 적어 줄 뿐
+ * 올리지는 않았다. 그래서 15건이 3주째 폴더에 그대로였다(2026-09-21 전수 대조).
+ * 이제 웹 기사가 없으면 부계정 게시물을 **출처**로 쓴다:
+ *   제목 = 캡션 첫 줄 · 설명 = 캡션 앞부분 · 링크 = 그 인스타 게시물 (기사 URL 대신)
+ * 성장 헌법 1항 — 모든 통로는 PAP 인스타나 웹으로. 인스타 게시물 링크는 그 안이다.
+ *
+ * article_id 는 null 이다. 중복 방지는 drive_file_id 찜(driveClaim)이 이미 맡는다.
+ * 기사 기준 중복 검사(`eq('article_id', …)`)는 호출부가 `art.id` 가 있을 때만 돌린다.
+ */
+function subPostAsArticle(sp) {
+  if (!sp || !sp.caption_line1) return null;
+  // 설명문은 첫 줄(=제목) 을 뺀 나머지 — 안 빼면 제목이 설명에 한 번 더 나온다
+  const head = String(sp.caption_head || '').replace(/\r/g, '').split('\n').slice(1).join(' ').trim();
+  return {
+    id: null,
+    sub: true,
+    account: sp.account,
+    shortcode: sp.shortcode || null,
+    permalink: sp.permalink || null,
+    title: String(sp.caption_line1).trim(),
+    content: head,                 // firstSentence() 가 태그 없는 문장도 그대로 받는다
+    slug: null, custom_url: null,
+    tags: [], category: null,
+    published_date: sp.posted_at || null,
+  };
+}
+
+/** 인스타 게시물 URL. permalink 가 없으면 shortcode 로 조립, 그것도 없으면 계정 홈. */
+function subPostUrl(art) {
+  if (!art) return '';
+  if (art.permalink) return String(art.permalink);
+  if (art.shortcode) return 'https://www.instagram.com/p/' + art.shortcode + '/';
+  return 'https://www.instagram.com/' + String(art.account || '') + '/';
+}
+
 module.exports = {
-  collectSubPosts, findSubPost, loadSubPosts,
+  collectSubPosts, findSubPost, loadSubPosts, subPostAsArticle, subPostUrl,
   shortcodeOf, firstLine, isStale,
   SUB_ACCOUNTS, MEDIA_PER_ACCOUNT, STALE_MS,
 };
