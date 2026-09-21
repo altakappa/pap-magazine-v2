@@ -450,9 +450,25 @@ async function getThreadInsights(threadId, accountId) {
     const errObj = j && j.error ? j.error : j;
     const e = new Error('insights 조회 실패: ' + JSON.stringify(errObj).slice(0, 200));
     const code = Number(errObj && errObj.code);
-    // code 10 = permission denied, 190 = 토큰 무효, 200 = 권한 부족.
+    const msg = String((errObj && errObj.message) || '');
+    /* 2026-09-21 — 여기서 `insights` 단어를 매칭하고 있었다. 그런데
+       **엔드포인트 이름이 insights** 라서 이 API 의 거의 모든 오류 메시지에
+       그 단어가 들어간다. 게시물이 너무 오래돼 지표가 없을 때도,
+       일시 오류일 때도 전부 '권한 없음' 으로 분류됐다.
+       그리고 권한 없음은 호출부가 ok=true 로 통과시키므로 **조용히 지나간다**.
+       실측(2026-09-21): threads_auth 두 계정 모두 scope 에
+       threads_manage_insights 가 **들어 있고** 토큰도 유효한데,
+       크론은 9/13 부터 8일간 "insights 권한 없음 — 재인증 대기" 만 찍었다.
+       지표가 0건인 채로 아무 경보도 없었다.
+
+       그래서 단어 매칭을 좁힌다. 권한은 코드로 판정한다:
+         10 = permission denied · 190 = 토큰 무효 · 200 = 권한 부족
+       메시지 매칭은 'permission'·'scope' 만 남긴다 — 이 둘은 엔드포인트
+       이름과 겹치지 않는다. 판정을 못 하겠으면 **권한 문제가 아닌 것으로
+       본다**. 조용한 오분류보다 시끄러운 실패가 낫다. */
     e.needsReauth = code === 10 || code === 190 || code === 200
-      || /permission|scope|insights/i.test(String(errObj && errObj.message || ''));
+      || /permission|scope/i.test(msg);
+    e.apiMessage = msg.slice(0, 160);
     throw e;
   }
   const out = {};

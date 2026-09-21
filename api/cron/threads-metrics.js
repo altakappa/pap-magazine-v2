@@ -25,7 +25,7 @@
 const { bearerOk } = require('../_lib/secretCompare');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
-const { withCronGuard } = require('../_lib/cronGuard');
+const { withCronGuard, reportProduction } = require('../_lib/cronGuard');
 const { getThreadInsights } = require('../_lib/threads');
 
 const DAY = 86400000;
@@ -132,13 +132,31 @@ module.exports = withCronGuard('threads-metrics', async function handler(req, re
   }
 
   if (needsReauth) {
-    // 실패로 기록하면 6시간마다 알림이 울린다. 이건 '고장'이 아니라
-    // '재인증 대기'다 — 토큰 알림(threads.js alertTokenTrouble)이 별도로 담당한다.
-    console.error('[threads-metrics] insights 권한 없음 — /api/threads/oauth 재인증 필요:', lastErr);
-    res.locals.cronNote = 'insights 권한 없음 — 재인증 대기 (수집 ' + collected + '건)';
-    return res.status(200).json({ ok: true, note: res.locals.cronNote, collected, needs_reauth: true });
+    /* 2026-09-21 — 예전 주석: "토큰 알림(alertTokenTrouble)이 별도로 담당한다."
+       **담당하지 않는다.** 그 함수는 토큰이 만료됐거나 연장에 실패했을 때만
+       울린다. 토큰이 멀쩡한데 권한만 빠진 경우는 어디에도 안 걸린다.
+       실측: 9/13~9/21 8일간 이 크론이 수집 0건이었는데 알림이 한 번도
+       안 울렸고, threads_auth.alerted_at 은 두 계정 다 null 이었다.
+       "다른 데서 담당한다" 고 적어 두고 아무도 확인하지 않은 것이다.
+
+       그래서 두 가지를 바꾼다.
+       ① 실제 API 사유를 노트에 싣는다 — '권한 없음' 이라고 단정하지 않는다.
+          그 단정이 8일을 날렸다.
+       ② remaining 에 못 읽은 건수를 올린다. produced 0 · remaining 0 이면
+          생산 감시가 '할 일이 없었다' 로 보고 지나간다 (celeb-account-watch
+          가 09-11 에 같은 구멍에 빠졌다). 밀린 일로 세어야 걸린다. */
+    const pending = Math.max(0, due.length - collected - failed);
+    console.error('[threads-metrics] insights 조회 막힘 — 사유:', lastErr);
+    res.locals.cronNote = '⚠️ 지표 수집 막힘 (수집 ' + collected + '건 · 대기 ' + pending + '건)'
+      + ' · 사유: ' + String(lastErr || '알 수 없음').slice(0, 120);
+    reportProduction(res, { produced: collected, remaining: pending });
+    return res.status(200).json({ ok: true, note: res.locals.cronNote, collected, pending, needs_reauth: true });
   }
 
-  res.locals.cronNote = '수집 ' + collected + '건 · 실패 ' + failed + '건 · 대기 ' + Math.max(0, due.length - collected - failed) + '건';
-  return res.status(200).json({ ok: true, collected, failed, due: due.length, candidates: (rows || []).length });
+  const pending = Math.max(0, due.length - collected - failed);
+  res.locals.cronNote = '수집 ' + collected + '건 · 실패 ' + failed + '건 · 대기 ' + pending + '건';
+  /* 평상시에도 신고한다. 신고를 안 하면 생산 감시가 이 크론을 '모른다' 로
+     분류하고 영영 안 본다 — 09-10 에 celeb-account-watch 에서 겪은 그대로다. */
+  reportProduction(res, { produced: collected, remaining: pending });
+  return res.status(200).json({ ok: true, collected, failed, due: due.length, pending, candidates: (rows || []).length });
 });
