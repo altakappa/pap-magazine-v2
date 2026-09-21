@@ -33,6 +33,10 @@ const STAGE1_AFTER_MS = 24 * 3600 * 1000; // 24시간
 const STAGE2_AFTER_MS = 7 * DAY;          // 7일
 const MAX_PER_RUN = 10;                   // 한 번에 최대 10건 (Graph rate limit 여유)
 const TIME_BUDGET_MS = 30000;             // 서버리스 타임아웃 전에 스스로 멈춘다
+/* 죽은 게시물 표시값. 후보 조회가 `metrics_stage.is.null,metrics_stage.lt.2`
+   이므로 9 는 다시 안 걸린다. 2(확정)로 적지 않는 이유: 확정치 평균에
+   섞이면 안 되고, '왜 못 쟀는지' 를 나중에 세어볼 수 있어야 한다. */
+const STAGE_DEAD = 9;
 
 // 게시 시각 — 097 이전 행은 posted_at 이 없으므로 created_at 으로 폴백.
 function postedAtMs(row) {
@@ -109,7 +113,8 @@ module.exports = withCronGuard('threads-metrics', async function handler(req, re
   }
 
   const started = Date.now();
-  let collected = 0; let failed = 0; let needsReauth = false; let lastErr = null;
+  let collected = 0; let failed = 0; let dead = 0; let needsReauth = false;
+  let lastErr = null; let lastCode = null; let lastSub = null;
 
   for (const item of due) {
     if (Date.now() - started > TIME_BUDGET_MS) break;
@@ -125,7 +130,27 @@ module.exports = withCronGuard('threads-metrics', async function handler(req, re
       collected++;
     } catch (e) {
       lastErr = String(e && e.message || e).slice(0, 200);
-      if (e && e.needsReauth) { needsReauth = true; break; } // 권한 문제는 전 건 동일 — 즉시 중단
+      lastCode = (e && e.code != null) ? e.code : lastCode;
+      lastSub = (e && e.subcode != null) ? e.subcode : lastSub;
+      // 토큰·권한 문제만 전 건 동일하다 — 그때만 즉시 중단한다.
+      if (e && e.needsReauth) { needsReauth = true; break; }
+      /* 2026-09-21 — 여기가 9일을 날린 자리다.
+         지워진 게시물 1건(9/12 16:03, thread_id 18107843381157893)이
+         큐 맨 앞에 있었다. 그 1건이 needsReauth 로 오분류되면서 break 를
+         때렸고, 뒤에 밀린 56건은 매시간 한 번도 시도되지 못했다.
+         **한 건의 실패가 큐 전체를 멈추면 안 된다.**
+         지워진 건은 표시해서 큐에서 빼고 다음으로 넘어간다. */
+      if (e && e.deadObject) {
+        dead++;
+        const why = '지표 없음 — 게시물 조회 불가 (code ' + (e.code != null ? e.code : '?')
+          + (e.subcode != null ? '/' + e.subcode : '') + ')';
+        const { error: dErr } = await supabaseAdmin.from('threads_posts')
+          .update({ metrics_stage: STAGE_DEAD, metrics_at: new Date().toISOString(), detail: why })
+          .eq('id', item.row.id);
+        if (dErr) console.error('[threads-metrics] 죽은 게시물 표시 실패:', dErr.message);
+        console.error('[threads-metrics] 건너뜀 thread_id=' + item.row.thread_id + ':', lastErr);
+        continue;
+      }
       failed++;
       console.error('[threads-metrics] 수집 실패 thread_id=' + item.row.thread_id + ':', lastErr);
     }
@@ -145,18 +170,21 @@ module.exports = withCronGuard('threads-metrics', async function handler(req, re
        ② remaining 에 못 읽은 건수를 올린다. produced 0 · remaining 0 이면
           생산 감시가 '할 일이 없었다' 로 보고 지나간다 (celeb-account-watch
           가 09-11 에 같은 구멍에 빠졌다). 밀린 일로 세어야 걸린다. */
-    const pending = Math.max(0, due.length - collected - failed);
+    const pending = Math.max(0, due.length - collected - failed - dead);
     console.error('[threads-metrics] insights 조회 막힘 — 사유:', lastErr);
-    res.locals.cronNote = '⚠️ 지표 수집 막힘 (수집 ' + collected + '건 · 대기 ' + pending + '건)'
-      + ' · 사유: ' + String(lastErr || '알 수 없음').slice(0, 120);
+    res.locals.cronNote = '⚠️ 토큰·권한 문제로 지표 수집 중단 (수집 ' + collected + '건 · 대기 ' + pending + '건)'
+      + ' · code ' + (lastCode != null ? lastCode : '?') + (lastSub != null ? '/' + lastSub : '')
+      + ' · 사유: ' + String(lastErr || '알 수 없음').slice(0, 100);
     reportProduction(res, { produced: collected, remaining: pending });
-    return res.status(200).json({ ok: true, note: res.locals.cronNote, collected, pending, needs_reauth: true });
+    return res.status(200).json({ ok: true, note: res.locals.cronNote, collected, dead, pending, needs_reauth: true });
   }
 
-  const pending = Math.max(0, due.length - collected - failed);
-  res.locals.cronNote = '수집 ' + collected + '건 · 실패 ' + failed + '건 · 대기 ' + pending + '건';
+  const pending = Math.max(0, due.length - collected - failed - dead);
+  res.locals.cronNote = '수집 ' + collected + '건 · 실패 ' + failed + '건'
+    + (dead ? ' · 건너뜀(삭제됨) ' + dead + '건' : '') + ' · 대기 ' + pending + '건'
+    + (failed && lastErr ? ' · 사유: ' + String(lastErr).slice(0, 100) : '');
   /* 평상시에도 신고한다. 신고를 안 하면 생산 감시가 이 크론을 '모른다' 로
      분류하고 영영 안 본다 — 09-10 에 celeb-account-watch 에서 겪은 그대로다. */
   reportProduction(res, { produced: collected, remaining: pending });
-  return res.status(200).json({ ok: true, collected, failed, due: due.length, pending, candidates: (rows || []).length });
+  return res.status(200).json({ ok: true, collected, failed, dead, due: due.length, pending, candidates: (rows || []).length });
 });

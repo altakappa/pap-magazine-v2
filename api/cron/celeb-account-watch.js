@@ -291,7 +291,7 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
      remaining 은 '밀린 일' 이라는 뜻이다. 의도적으로 끈 계정은 밀린 일이 아니다. */
   const unwatched = offAccounts.length - offExplained;
 
-  const out = { polled: 0, baselined: 0, alerted: 0, skipped: 0, unjudged: 0, judgeError: null, errors: [] };
+  const out = { polled: 0, baselined: 0, alerted: 0, skipped: 0, unjudged: 0, empty: 0, emptyNames: [], judgeError: null, errors: [] };
   const candidates = [];
 
   for (const acc of accounts || []) {
@@ -318,9 +318,14 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
          둘 다 last_error 에 안 걸린다 — 읽히긴 읽히니까. 그래서 '읽혔다' 로는
          부족하고 '누구인지' 를 적어야 한다. api_name 이 label 과 어긋나거나
          팔로워가 터무니없이 적으면 잘못 넣은 계정이다. 사람이 한 번 훑으면 보인다. */
+      /* 2026-09-21 — 예전엔 여기서 last_error 를 **무조건** null 로 지웠다.
+         읽기가 성공했으니 오류가 없다고 본 것이다. 그런데 '읽혔지만 0건' 은
+         성공이 아니다. 지우면 증거까지 사라진다. 0건이면 사유를 남긴다. */
+      const emptyWhy = media.length ? null
+        : '읽혔으나 게시물 0건 — 개인(비프로페셔널) 계정이면 Graph API 로 못 읽는다';
       if (!dry) await supabaseAdmin.from('celeb_watch_accounts')
         .update(Object.assign({
-          last_polled_at: new Date().toISOString(), last_error: null,
+          last_polled_at: new Date().toISOString(), last_error: emptyWhy,
           /* 유튜브는 팔로워 수를 안 가져온다(유닛 절약). name 은 채널명이다. */
           api_name: (d && d.name) || acc.api_name || null,
           followers: (d && Number.isFinite(Number(d.followers))) ? Number(d.followers) : acc.followers,
@@ -353,9 +358,28 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
       }))
       .filter((m) => m.shortcode);
 
+    /* ⓪ 읽히긴 했는데 게시물이 0건 — 2026-09-21 에 잡은 구멍.
+       이 계정은 `out.polled++` 로 성공에 세어지고, last_error 는 null 로
+       지워지고, 아래 기준선 분기에서 `items.length` 가 0 이라 baseline_done
+       이 **영영 안 켜진다**. 그래서 매 순번마다 다시 '기준선' 으로 세어졌다.
+       실측: baseline_done=false 인 인스타 계정 9개 × 하루 폴링 147회분
+       = 예측 132건/일, 실제 노트 130건/일. 9일간 이 9개는 단 한 번도
+       감시 단계에 들어가 본 적이 없다.
+       해당 9개는 전부 개인 멤버 계정(리사·정국·윈터·닝닝·지젤·정한·원우·
+       승한·워니)이다. Graph business_discovery 는 프로페셔널 계정만
+       읽는다 — 개인 계정은 앞으로도 0건이다.
+       그래서 '기준선' 이 아니라 '읽었지만 아무것도 없었다' 로 따로 센다.
+       자동 비활성은 하지 않는다: 도메니코가 필수라고 지정한 계정이다.
+       끄고 말고는 사람이 정한다. 여기서는 보이게만 만든다. */
+    if (!items.length) {
+      out.empty++;
+      if (out.emptyNames.length < 12) out.emptyNames.push(acc.label || acc.username);
+      continue;
+    }
+
     // ① 첫 폴링은 기준선만 — 알림 없이 seen 채우고 끝
     if (!acc.baseline_done) {
-      if (!dry && items.length) {
+      if (!dry) {
         await supabaseAdmin.from('celeb_account_seen')
           .upsert(items.map((m) => ({ username: acc.username, shortcode: m.shortcode })),
             { onConflict: 'username,shortcode', ignoreDuplicates: true });
@@ -468,6 +492,10 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
         + (waiting ? ' (순번 대기 ' + waiting + '개)' : '')
         + ' · 알림 ' + out.alerted + '건'
         + (out.skipped ? ' · 뉴스 아님 ' + out.skipped + '건' : '')
+        /* 읽혔는데 0건인 계정은 순번만 먹고 아무것도 못 낸다. 노트에
+           안 적으면 '기준선' 에 섞여 영원히 정상으로 보인다. */
+        + (out.empty ? ' · ⚠️ 읽혔으나 0건 ' + out.empty + '개('
+            + out.emptyNames.join(', ') + ')' : '')
         /* 판정을 못 한 건 '한 게 없다' 가 아니라 '밀렸다' 다. 노트에 안 적으면
            AI 가 며칠 죽어 있어도 "알림 0건" 으로만 보이고 아무도 모른다. */
         + (out.unjudged ? ' · ⚠️ 판정 누락 ' + out.unjudged + '건' : '')

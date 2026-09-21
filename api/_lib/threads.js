@@ -451,23 +451,37 @@ async function getThreadInsights(threadId, accountId) {
     const e = new Error('insights 조회 실패: ' + JSON.stringify(errObj).slice(0, 200));
     const code = Number(errObj && errObj.code);
     const msg = String((errObj && errObj.message) || '');
-    /* 2026-09-21 — 여기서 `insights` 단어를 매칭하고 있었다. 그런데
-       **엔드포인트 이름이 insights** 라서 이 API 의 거의 모든 오류 메시지에
-       그 단어가 들어간다. 게시물이 너무 오래돼 지표가 없을 때도,
-       일시 오류일 때도 전부 '권한 없음' 으로 분류됐다.
-       그리고 권한 없음은 호출부가 ok=true 로 통과시키므로 **조용히 지나간다**.
-       실측(2026-09-21): threads_auth 두 계정 모두 scope 에
-       threads_manage_insights 가 **들어 있고** 토큰도 유효한데,
-       크론은 9/13 부터 8일간 "insights 권한 없음 — 재인증 대기" 만 찍었다.
-       지표가 0건인 채로 아무 경보도 없었다.
+    const subcode = Number(errObj && errObj.error_subcode);
+    /* 2026-09-21 (2차 수정) — 이 자리에서 두 번 연속 같은 실수를 했다.
 
-       그래서 단어 매칭을 좁힌다. 권한은 코드로 판정한다:
-         10 = permission denied · 190 = 토큰 무효 · 200 = 권한 부족
-       메시지 매칭은 'permission'·'scope' 만 남긴다 — 이 둘은 엔드포인트
-       이름과 겹치지 않는다. 판정을 못 하겠으면 **권한 문제가 아닌 것으로
-       본다**. 조용한 오분류보다 시끄러운 실패가 낫다. */
-    e.needsReauth = code === 10 || code === 190 || code === 200
-      || /permission|scope/i.test(msg);
+       1차: `insights` 단어로 권한을 판정했다. 엔드포인트 이름이 insights 라서
+            이 API 의 거의 모든 오류가 '권한 없음' 으로 분류됐다.
+       2차: 그래서 'permission|scope' 로 좁혔다. 그런데 Graph 의 가장 흔한
+            일반 오류 문구가 이렇다 —
+              "Unsupported get request. Object with ID 'X' does not exist,
+               cannot be loaded due to missing permissions, or does not
+               support this operation."
+            여기에 permissions 가 들어 있다. 게시물 하나가 지워졌을 뿐인데
+            또 '권한 없음' 이 됐다. 실측: 9/13~9/21 9일간 수집 0건, 밀린
+            게시물 57건, 그동안 두 계정 모두 토큰 유효(10/02·10/04)에
+            threads_manage_insights 스코프 보유.
+
+       결론: **메시지 문자열로 권한을 판정하지 않는다.** 두 번 속았으면
+       그 방법이 틀린 것이다. 코드로만 판정한다.
+         10  = permission denied (앱 단위)
+         190 = 토큰 무효·만료
+         200 = 권한 부족
+         102 = 세션 무효
+       그 외는 전부 '이 게시물 하나의 문제' 로 본다. 게시물 하나 때문에
+       토큰을 다시 받으러 갈 일은 없다.
+
+       code 100 + subcode 33 은 '그 객체가 없다' 다. 지워졌거나 다른
+       계정 것이다. 재시도해도 영영 안 된다 — 호출부가 건너뛸 수 있게
+       deadObject 로 표시한다. */
+    e.code = Number.isFinite(code) ? code : null;
+    e.subcode = Number.isFinite(subcode) ? subcode : null;
+    e.needsReauth = code === 10 || code === 102 || code === 190 || code === 200;
+    e.deadObject = code === 100 && (subcode === 33 || /does not exist/i.test(msg));
     e.apiMessage = msg.slice(0, 160);
     throw e;
   }
