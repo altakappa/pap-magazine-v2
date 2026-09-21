@@ -62,4 +62,19 @@ function briefingRecipients() {
   return process.env.DIGEST_TO || 'contact@pap-magazine.com';
 }
 
-module.exports = { mdToBasicHtml, briefingEmailHtml, briefingRecipients };
+/* 주간 브리핑 전용 수신자 (2026-09-21, 도메니코 지시: "해당 주간 브리핑의
+ * 경우 domenico 이메일에만 보내줘").
+ *
+ * 왜 briefingRecipients 를 그냥 고치지 않나 — 그 함수는 데일리 성장 브리핑도
+ * 같이 쓴다(daily-growth-feedback.js). 거길 고치면 도메니코가 말하지 않은
+ * 메일의 수신자까지 조용히 바뀐다. 주간 브리핑만 따로 떼어낸다.
+ *
+ * DIGEST_TO 는 여러 명이 들어갈 수 있는 칸이다. 주간 브리핑은 거기에
+ * 기대지 않고 기본값을 도메니코 주소로 고정한다. 나중에 팀에 돌리고 싶으면
+ * WEEKLY_BRIEFING_TO 만 세팅하면 된다 — 코드 배포 불필요. */
+function weeklyBriefingRecipients() {
+  const v = String(process.env.WEEKLY_BRIEFING_TO || '').trim();
+  return v || 'contact@pap-magazine.com';
+}
+
+module.exports = { mdToBasicHtml, briefingEmailHtml, briefingRecipients, weeklyBriefingRecipients };

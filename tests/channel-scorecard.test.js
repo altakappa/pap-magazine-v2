@@ -103,8 +103,12 @@ console.log('\n[4] weekly-briefing 배선');
   t('model 실패 표기는 AI 기준 유지 (aiOk)', /const aiOk = !!briefing/.test(wb)
     && /model: aiOk \? model/.test(wb));
   t('metrics 에 북극성 수치 저장 (대시보드 시계열)', /paid_total/.test(wb) && /ig_out_7d/.test(wb));
+  /* 2026-09-21 — 수신자가 공용 briefingRecipients 에서 주간 전용
+     weeklyBriefingRecipients 로 바뀌었다(도메니코: 주간 브리핑은 본인 메일로만).
+     지킬 것은 '어느 함수냐' 가 아니라 **메일이 여전히 나간다**는 것이다.
+     수신자 규칙 자체는 tests/weekly-briefing-recipient.test.js 가 본다. */
   t('기존 배선 유지 — weekly_briefings upsert + 메일', /weekly_briefings/.test(wb)
-    && /briefingRecipients\(\)/.test(wb));
+    && /sendEmail\(weeklyBriefingRecipients\(\)/.test(wb));
 }
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);

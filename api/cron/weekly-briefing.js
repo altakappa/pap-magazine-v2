@@ -22,7 +22,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { requireAdmin } = require('../_lib/auth');
 const { sendEmail } = require('../_lib/email');
-const { briefingEmailHtml, briefingRecipients } = require('../_lib/mdEmail');
+const { briefingEmailHtml, weeklyBriefingRecipients } = require('../_lib/mdEmail');
 // 2026-08-08 — 성장 가이드라인 6번: 채널 성적은 "두 도달점(IG·웹)으로 몇 명을
 // 보냈나"로만 잰다. 결정론 집계(AI 아님)라 서사 생성이 실패해도 성적표는 나간다.
 const { buildChannelScorecard, renderScorecardMd } = require('../_lib/channelScorecard');
@@ -200,7 +200,9 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
 
     // 2026-07-21 (도메니코 지시) — 주간 브리핑도 이메일 발송.
     // 기존엔 weekly_briefings 저장만 해서 대시보드를 열어봐야 했다. 데일리와
-    // 동일 수신자(DIGEST_TO)에게 월요일 아침 메일로 도착시킨다. 이로써 맥 앱이
+    // 2026-09-21 — 수신자를 DIGEST_TO 에서 떼어냈다(도메니코 지시: 주간 브리핑은
+    // 본인 메일로만). 기본값은 contact@pap-magazine.com, 바꾸려면 WEEKLY_BRIEFING_TO.
+    // 월요일 아침 메일로 도착시킨다. 이로써 맥 앱이
     // 꺼져 있어도 주간 브리핑이 전달된다(Cowork 예약 의존 제거).
     // 발송 실패는 삼킨다 — 저장(핵심)은 이미 끝났으므로 크론을 실패로 만들지 않는다.
     let emailed = false;
@@ -212,7 +214,7 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
           markdown: briefing,
           footerHtml: '지표 상세는 <a href="https://www.pap-magazine.com/site-analysis" style="color:#2980b9">/site-analysis</a> 대시보드에서',
         });
-        const r = await sendEmail(briefingRecipients(), { subject: '[PAP] 주간 브리핑 — ' + weekStart + ' 주', html });
+        const r = await sendEmail(weeklyBriefingRecipients(), { subject: '[PAP] 주간 브리핑 — ' + weekStart + ' 주', html });
         emailed = !!(r && r.sent);
       } catch (e) {
         console.warn('[weekly-briefing] email failed:', e && e.message);
