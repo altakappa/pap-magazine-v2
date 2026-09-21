@@ -1764,6 +1764,16 @@ function _openEditorialInner(title,thumb){
        써 놓아도 이 요약 객체(det)에 안 실려서 _papEdApplyLock(det)·_papEdTopNoteHtml(det) 이 늘 '안 잠김' 으로 봤다
        = 2026-08-27 잠금 패널이 SPA 에서 한 번도 안 떴다(라이브 실측). 렌더 경로 둘 다 같은 줄이어야 한다. */
     locked:!!d.locked,requiredTier:d.requiredTier||'',galleryCount:d.galleryCount||0,previewCount:d.previewCount||0,viewState:d.viewState||''};
+  /* 2026-09-21 — 서버 판정(하이드레이트)이 오기 전에도 잠금 안내를 먼저 그린다. 목록이 준 required_tier 로 화면이 이미
+     '이 사람은 못 본다' 를 안다(_papViewState). 콜드스타트 2~3초 동안 '표지 1장 + 아무 설명 없음' 이 보이는 것,
+     하이드레이트가 실패했을 때 영영 설명이 없는 것을 막는다. 서버 응답이 오면 그 값으로 다시 그려진다. */
+  try {
+    if(!d._gateChecked && typeof window._papViewState === 'function'){
+      var _pv = window._papViewState(d);
+      if(_pv !== 'full'){ det.locked = true; det.requiredTier = det.requiredTier || d.requiredTier || 'free'; det.viewState = _pv;
+        det.galleryCount = det.galleryCount || Number(d.galleryCount || 0); det.previewCount = det.images.length; }
+    }
+  } catch(_){}
 
   // SEO — update meta tags + JSON-LD when an editorial opens. Helps
   // social-share previews (Kakao/Facebook/X) and Google's JS-aware
@@ -2067,7 +2077,9 @@ function _papEdTopNoteHtml(det){
   var need = String(det.requiredTier || 'free');
   var msg = need === 'free' ? '회원 가입 시 전체 이미지를 볼 수 있습니다' : '유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다';
   var href = need === 'free' ? '/auth?utm_source=editorial_top_note&utm_medium=web' : '/subscribe?utm_source=editorial_top_note&utm_medium=web';
-  return '<a class="ed-top-note" href="' + href + '" style="display:block;margin-top:10px;font-size:12.5px;letter-spacing:.02em;color:inherit;opacity:.72;text-decoration:underline;text-underline-offset:3px">' + msg + ' →</a>';
+  /* 2026-09-21 — color:inherit 이었는데 오버레이의 상속색이 #111(검정)이라 검은 배경 위에서 안 보였다(라이브 실측, 도메니코
+     "회원가입 유도가 아직 설정 안 된 것 같다"). 색·크기를 못박는다. */
+  return '<a class="ed-top-note" href="' + href + '" style="display:inline-block;margin-top:12px;padding:8px 14px;font-size:12.5px;font-weight:600;letter-spacing:.04em;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:2px;text-decoration:none">🔒 ' + msg + ' →</a>';
 }
 
 function _papEdApplyLock(det, gal){
@@ -2102,14 +2114,20 @@ function _papEdApplyLock(det, gal){
     cta = '멤버십 보기';
     href = '/subscribe?utm_source=editorial_gallery_lock&utm_medium=web';
   }
-  var count = hidden > 0 ? ('<div style="font-size:12px;letter-spacing:.12em;opacity:.55;margin-bottom:18px">총 ' + total + '장 중 ' + hidden + '장이 더 있습니다</div>') : '';
-  gal.insertAdjacentHTML('beforeend',
-    '<div class="ed-locked" style="grid-column:1/-1;text-align:center;padding:64px 24px;border:1px solid rgba(255,255,255,.14);border-radius:2px">' +
+  /* 2026-09-21 — 패널 글자가 color 상속(#111)이라 검은 오버레이 위에서 보이지 않았다(라이브 실측). 2026-08-27 부터 이 상태.
+     글자·테두리·버튼 색을 전부 못박고, 위치도 중간 IG 창 **앞**(마지막 미리보기 이미지 바로 다음)으로 옮긴다 —
+     "왜 여기서 이미지가 끊기는지" 는 끊긴 자리에서 말해야 한다. IG 창은 그대로 그 아래에 남는다(전환 장치 제거 아님). */
+  var count = hidden > 0 ? ('<div style="font-size:12px;letter-spacing:.12em;color:rgba(255,255,255,.6);margin-bottom:18px">총 ' + total + '장 중 ' + hidden + '장이 더 있습니다</div>') : '';
+  var html =
+    '<div class="ed-locked" style="grid-column:1/-1;text-align:center;padding:56px 24px;margin:8px 0;color:#fff;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.28);border-radius:2px">' +
+      '<div style="font-size:22px;margin-bottom:14px">🔒</div>' +
       count +
-      '<div style="font-size:17px;font-weight:600;margin-bottom:8px">' + msg + '</div>' +
-      '<div style="font-size:13px;opacity:.6;margin-bottom:24px;line-height:1.6">' + sub + '</div>' +
-      '<a href="' + href + '" style="display:inline-block;padding:13px 30px;border:1px solid currentColor;border-radius:2px;font-size:12px;letter-spacing:.14em;text-decoration:none;color:inherit">' + cta + '</a>' +
-    '</div>');
+      '<div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:10px;line-height:1.4">' + msg + '</div>' +
+      '<div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:26px;line-height:1.7">' + sub + '</div>' +
+      '<a href="' + href + '" style="display:inline-block;padding:14px 34px;background:#fff;color:#000;border-radius:2px;font-size:12px;font-weight:800;letter-spacing:.16em;text-decoration:none">' + cta + '</a>' +
+    '</div>';
+  var mid = gal.querySelector('.ed-mid-cta');
+  if(mid) mid.insertAdjacentHTML('beforebegin', html); else gal.insertAdjacentHTML('beforeend', html);
   if(typeof _papFunnelStep === 'function') _papFunnelStep('gallery_lock_view');
   return true;
 }
@@ -2138,6 +2156,16 @@ function _openEditorialInner_noPush(title,thumb){
        써 놓아도 이 요약 객체(det)에 안 실려서 _papEdApplyLock(det)·_papEdTopNoteHtml(det) 이 늘 '안 잠김' 으로 봤다
        = 2026-08-27 잠금 패널이 SPA 에서 한 번도 안 떴다(라이브 실측). 렌더 경로 둘 다 같은 줄이어야 한다. */
     locked:!!d.locked,requiredTier:d.requiredTier||'',galleryCount:d.galleryCount||0,previewCount:d.previewCount||0,viewState:d.viewState||''};
+  /* 2026-09-21 — 서버 판정(하이드레이트)이 오기 전에도 잠금 안내를 먼저 그린다. 목록이 준 required_tier 로 화면이 이미
+     '이 사람은 못 본다' 를 안다(_papViewState). 콜드스타트 2~3초 동안 '표지 1장 + 아무 설명 없음' 이 보이는 것,
+     하이드레이트가 실패했을 때 영영 설명이 없는 것을 막는다. 서버 응답이 오면 그 값으로 다시 그려진다. */
+  try {
+    if(!d._gateChecked && typeof window._papViewState === 'function'){
+      var _pv = window._papViewState(d);
+      if(_pv !== 'full'){ det.locked = true; det.requiredTier = det.requiredTier || d.requiredTier || 'free'; det.viewState = _pv;
+        det.galleryCount = det.galleryCount || Number(d.galleryCount || 0); det.previewCount = det.images.length; }
+    }
+  } catch(_){}
   // SEO — same meta refresh as _openEditorialInner (back/forward path).
   if(typeof _updateEditorialMeta === 'function'){
     try { _updateEditorialMeta(title, det); } catch(_){}

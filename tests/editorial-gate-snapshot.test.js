@@ -69,7 +69,7 @@ for (const h of htmls) {
   (s.match(/pap-content-editorial\.js\?v=(\d+)/g) || []).forEach((m) => edV.add(m));
   (s.match(/pap-content-api-sync\.js\?v=(\d+)/g) || []).forEach((m) => syV.add(m));
 }
-t('pap-content-editorial.js 버전이 HTML 전체에서 하나 (≥88)', edV.size === 1 && Number([...edV][0].split('=')[1]) >= 88, [...edV].join(','));
+t('pap-content-editorial.js 버전이 HTML 전체에서 하나 (≥89)', edV.size === 1 && Number([...edV][0].split('=')[1]) >= 89, [...edV].join(','));
 t('pap-content-api-sync.js 버전이 HTML 전체에서 하나 (≥127)', syV.size === 1 && Number([...syV][0].split('=')[1]) >= 127, [...syV].join(','));
 
 console.log('\n=== ⑤ 상단 가입 안내 (2026-09-16 도메니코: "유료 회원 가입 시 더 많은 이미지를 볼 수 있다는 문구") ===');
@@ -80,7 +80,7 @@ t('SPA: _papEdTopNoteHtml 은 det.locked 일 때만, 등급별 문구·링크', 
 t('SPA: 두 열기 경로(push·popstate) 모두 IG 버튼 옆에 붙인다', (ed.match(/\+ _papEdTopNoteHtml\(det\);/g) || []).length === 2);
 const LANGS = ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
 t('_shared 사전 8개 언어에 두 문구', LANGS.every((l) => { const d = JSON.parse(R('frontend/i18n/ui/_shared.' + l + '.json')); return d['회원 가입 시 전체 이미지를 볼 수 있습니다'] && d['유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다']; }));
-t('캐시버스트: index data-v ≥ 7 · editorial.js ≥ 88', /content="index" data-v="([7-9]|\d{2,})"/.test(R('frontend/index.html')) && (function(){ const m = R('frontend/index.html').match(/pap-content-editorial\.js\?v=(\d+)/); return m && Number(m[1]) >= 88; })());
+t('캐시버스트: index data-v ≥ 7 · editorial.js ≥ 89', /content="index" data-v="([7-9]|\d{2,})"/.test(R('frontend/index.html')) && (function(){ const m = R('frontend/index.html').match(/pap-content-editorial\.js\?v=(\d+)/); return m && Number(m[1]) >= 89; })());
 
 console.log('\n=== ⑥ det 요약 객체에 게이트 필드 (2026-09-17 라이브 실측: 잠금 패널·상단 안내가 SPA 에서 한 번도 안 떴다) ===');
 /* 두 렌더 경로는 edDetails[title](=d) 에서 요약 객체 det 를 새로 만든다. 하이드레이트는 d 에 locked 등을 쓰는데
@@ -98,17 +98,57 @@ t('_papEdApplyLock 원문 추출', lockFnSrc.length > 200);
       const d = { thumb: 'c.jpg', images: ['a.jpg', 'b.jpg'], credits: [], locked: true, requiredTier: 'free', galleryCount: 16, previewCount: 2, viewState: 'preview' };
       const det = build(d, 'c.jpg', []);
       if (det.locked !== true || det.requiredTier !== 'free' || det.galleryCount !== 16 || det.previewCount !== 2 || det.viewState !== 'preview') { ok = false; err = 'fields lost: ' + JSON.stringify(det); break; }
-      const gal = { html: '', insertAdjacentHTML(_, h) { this.html += h; } };
+      const gal = { html: '', querySelector() { return null; }, insertAdjacentHTML(_, h) { this.html += h; } };
       const apply = new Function('det', 'gal', lockFnSrc + ' return _papEdApplyLock(det, gal);');
       const r = apply(det, gal);
       if (r !== true || !/class="ed-locked"/.test(gal.html) || !/총 16장 중 14장이 더 있습니다/.test(gal.html) || !/editorial_gallery_lock/.test(gal.html)) { ok = false; err = 'lock panel not rendered: ' + gal.html.slice(0, 200); break; }
       const unlocked = build({ thumb: 'c.jpg', images: ['a.jpg'], credits: [] }, 'c.jpg', []);
-      const gal2 = { html: '', insertAdjacentHTML(_, h) { this.html += h; } };
+      const gal2 = { html: '', querySelector() { return null; }, insertAdjacentHTML(_, h) { this.html += h; } };
       if (apply(unlocked, gal2) !== false || gal2.html !== '') { ok = false; err = 'panel rendered for unlocked'; break; }
     }
   } catch (e) { ok = false; err = String(e); }
   t('실행: 잠긴 d → det.locked 유지 → _papEdApplyLock 이 패널(총 16장 중 14장)을 붙인다 · 안 잠긴 d 는 안 붙인다', ok, err);
 })();
+
+console.log('\n=== ⑦ 잠금 안내가 보인다 (2026-09-21 도메니코 "회원가입 유도가 아직 설정 안 된 것 같다" — 글자색 상속 #111 로 검은 배경에서 안 보였다) ===');
+{
+  const lockSrc = (ed.match(/function _papEdApplyLock\(det, gal\)\{[\s\S]*?\n\}\n/) || [''])[0];
+  const noteSrc = (ed.match(/function _papEdTopNoteHtml\(det\)\{[\s\S]*?\n\}\n/) || [''])[0];
+  const noCmt = (x) => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');   // 주석은 뺀다 (주석이 사고 경위를 적고 있다)
+  t('패널·상단 안내 코드에 color:inherit / currentColor 가 없다 (색을 못박는다)', lockSrc.length > 200 && noteSrc.length > 100 && !/color:inherit|currentColor/.test(noCmt(lockSrc)) && !/color:inherit|currentColor/.test(noCmt(noteSrc)));
+  t('패널 글자 #fff · CTA 는 흰 바탕 검은 글자', /color:#fff/.test(lockSrc) && /background:#fff;color:#000/.test(lockSrc));
+  t('상단 안내 글자 #fff + 테두리 (링크가 아니라 버튼처럼 보이게)', /color:#fff;background:rgba\(255,255,255,\.12\);border:1px solid/.test(noteSrc));
+  t('패널은 중간 IG 창 앞에 끼운다 (없으면 맨 뒤)', /var mid = gal\.querySelector\('\.ed-mid-cta'\);\s*if\(mid\) mid\.insertAdjacentHTML\('beforebegin', html\); else gal\.insertAdjacentHTML\('beforeend', html\);/.test(lockSrc));
+  // 실행: mid-cta 가 있으면 그 앞에 들어가는지
+  let ok = true, err = '';
+  try {
+    const apply = new Function('det', 'gal', lockSrc + ' return _papEdApplyLock(det, gal);');
+    const inserted = [];
+    const gal = { querySelector() { return { insertAdjacentHTML(where, h) { inserted.push(where); } }; }, insertAdjacentHTML(where) { inserted.push('END:' + where); } };
+    apply({ locked: true, requiredTier: 'free', galleryCount: 10, previewCount: 2, images: ['a', 'b'] }, gal);
+    if (inserted.length !== 1 || inserted[0] !== 'beforebegin') { ok = false; err = JSON.stringify(inserted); }
+  } catch (e) { ok = false; err = String(e); }
+  t('실행: .ed-mid-cta 가 있으면 beforebegin 한 번', ok, err);
+  // 서버 판정 전 임시 잠금 — 두 경로에 있고, 실행하면 det.locked 가 켜진다
+  const provBlocks = ed.match(/if\(!d\._gateChecked && typeof window\._papViewState === 'function'\)\{[\s\S]*?det\.previewCount = det\.images\.length; \}\s*\}\s*\} catch\(_\)\{\}/g) || [];
+  t('서버 판정 전 임시 잠금 블록이 두 경로(push·popstate)에 있다', provBlocks.length === 2, String(provBlocks.length));
+  let ok2 = true, err2 = '';
+  try {
+    for (const stmt of detStmts) {
+      const idx = ed.indexOf(stmt);
+      const tail = ed.slice(idx, ed.indexOf('} catch(_){}', idx) + '} catch(_){}'.length);
+      const build = new Function('d', 'thumb', '_normCr', 'window', tail + ' return det;');
+      const d = { thumb: 'c.jpg', images: ['a.jpg'], credits: [], requiredTier: 'free', galleryCount: 12 };   // 목록에서 온 상태(판정 전)
+      const det = build(d, 'c.jpg', [], { _papViewState: () => 'preview' });
+      if (det.locked !== true || det.requiredTier !== 'free' || det.viewState !== 'preview' || det.galleryCount !== 12 || det.previewCount !== 1) { ok2 = false; err2 = JSON.stringify(det); break; }
+      const detFull = build(d, 'c.jpg', [], { _papViewState: () => 'full' });
+      if (detFull.locked !== false) { ok2 = false; err2 = 'full 인데 locked: ' + JSON.stringify(detFull); break; }
+      const detChecked = build(Object.assign({ _gateChecked: true, locked: false }, d), 'c.jpg', [], { _papViewState: () => 'preview' });
+      if (detChecked.locked !== false) { ok2 = false; err2 = '서버가 full 로 판정한 뒤엔 임시 잠금을 안 건다: ' + JSON.stringify(detChecked); break; }
+    }
+  } catch (e) { ok2 = false; err2 = String(e); }
+  t('실행: 판정 전 + 화면 판단 preview → det.locked·tier·galleryCount 즉시 / full 이면 안 걸고 / 서버 판정 뒤엔 서버 값 우선', ok2, err2);
+}
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ editorial-gate-snapshot FAILED'); process.exit(1); }
