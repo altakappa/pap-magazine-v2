@@ -153,6 +153,35 @@ async function publishViaBuffer(photos, title, caption) {
   });
 }
 
+/* 2026-09-21 — Buffer 가 "Image could not be read from its URL" 로 거부할 때
+   **어느 사진이 왜** 안 읽혔는지 그 자리에서 재서 남긴다.
+   왜: 9/15~9/20 에디토리얼 게시가 6일 중 6일 실패했는데 원인을 못 찾았다.
+   Vercel 런타임 로그는 1시간만 남아서 다음 날 보면 이미 사라져 있고,
+   우리 쪽 셸에서는 사이트에 접속이 안 돼 재현도 못 한다. 원본 파일
+   메타데이터(크기·형식·버킷)는 성공한 편과 차이가 없었다.
+   증거가 남는 유일한 순간은 실패한 바로 그때다. 그래서 그때 잰다.
+   각 사진을 Buffer 가 받는 것과 같은 URL 로 받아 보고
+   번호:상태코드:콘텐츠타입:KB:ms 를 detail 에 붙인다.
+   진단만 한다. 게시 판단은 바꾸지 않는다. */
+async function probePhotos(urls) {
+  const one = async (u, i) => {
+    const t0 = Date.now();
+    try {
+      const r = await fetch(u, { signal: AbortSignal.timeout(8000) });
+      const buf = await r.arrayBuffer();
+      const ct = String(r.headers.get('content-type') || '?').split(';')[0];
+      return (i + 1) + ':' + r.status + ':' + ct + ':' + Math.round(buf.byteLength / 1024) + 'KB:' + (Date.now() - t0) + 'ms';
+    } catch (e) {
+      const why = (e && e.name === 'TimeoutError') ? 'timeout' : String((e && e.message) || e).slice(0, 40);
+      return (i + 1) + ':ERR:' + why + ':' + (Date.now() - t0) + 'ms';
+    }
+  };
+  const rows = await Promise.all(urls.map(one));
+  const bad = rows.filter((x) => !/:200:image\//.test(x));
+  return '사진점검 ' + (urls.length - bad.length) + '/' + urls.length + ' 정상'
+    + (bad.length ? ' · 이상: ' + bad.join(' | ') : ' · 전부 정상(=우리 쪽 문제 아님, Buffer 쪽 가져오기 실패 가능)');
+}
+
 module.exports = withCronGuard('tiktok-post', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
@@ -316,7 +345,12 @@ module.exports = withCronGuard('tiktok-post', async function handler(req, res) {
       detail = 'buffer:' + String(post && post.status || '');
     } catch (err) {
       status = 'failed';
-      detail = String(err && err.message || err).slice(0, 400);
+      detail = String(err && err.message || err).slice(0, 200);
+      if (/could not be read/i.test(detail)) {
+        try { detail += ' || ' + await probePhotos(photos); }
+        catch (pe) { detail += ' || 사진점검 실패: ' + String((pe && pe.message) || pe).slice(0, 60); }
+      }
+      detail = detail.slice(0, 900);
     }
     // upsert — 이전 실패 기록이 있는 편의 재시도 시 UNIQUE(editorial_id) 충돌 방지
     const { error: edWriteErr } = await supabaseAdmin.from('tiktok_posts').upsert({
