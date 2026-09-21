@@ -58,7 +58,7 @@ function db(row, cap) {
   const mp = read('frontend/mypage.html');
   ok('발급된 풀레터 카드에 "완성된 에디토리얼 제출하기" → /submission?pullletter=<id>', /\/submission\?pullletter=' \+ encodeURIComponent\(r\.id/.test(mp) && /_papUIL\('완성된 에디토리얼 제출하기'/.test(mp));
   ok('연결된 풀레터는 "제출 완료 · 심사 중" + 제출 현황 링크', /if\(r\.submission_id\)\{[\s\S]{0,300}#mp-submissions/.test(mp));
-  ok('마이페이지 사전 v9 + 8개 언어 키', /content="mypage" data-v="9"/.test(mp) && ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const d = JSON.parse(read('frontend/i18n/ui/mypage.' + l + '.json')); return d['완성된 에디토리얼 제출하기'] && d['완성 에디토리얼 제출 완료 · 심사 중입니다.']; }));
+  ok('마이페이지 사전 v9 + 8개 언어 키', (function(){ const m = mp.match(/content="mypage" data-v="(\d+)"/); return m && Number(m[1]) >= 9; })() && ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const d = JSON.parse(read('frontend/i18n/ui/mypage.' + l + '.json')); return d['완성된 에디토리얼 제출하기'] && d['완성 에디토리얼 제출 완료 · 심사 중입니다.']; }));
   const em = require(path.join(ROOT, 'api', '_lib', 'email'));
   ok('발급 메일 9개 언어에 후속 절차 한 줄', ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => /PULL-LETTERS/.test(em.templates.pullletterIssued({ name: 'A' }, '', l).html)));
   ok('관리자: 풀레터 목록 배지 + 검토 모달 Pull-Letter 줄', /발급 완료 · 에디토리얼 제출됨/.test(read('frontend/pap-admin.js')) && /id="reviewModalPullLetter"/.test(read('frontend/admin.html')) && /pap-admin\.js\?v=(15[7-9]|1[6-9]\d)/.test(read('frontend/admin.html')));

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="subscribe" data-v="4">
+<meta name="pap-ui-i18n" content="subscribe" data-v="5">
 <meta charset="UTF-8">
 <!-- CSP — 결제 이원화: PortOne(국내) + Paddle(해외) 도메인 허용.
      Paddle 은 script(cdn.paddle.com) + 체크아웃 오버레이 iframe(buy/
@@ -509,13 +509,13 @@ ko: {
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'월간', yearly:'연간', save2mo:'2개월 무료', perYear:'/ 연',
   heroTitle:'SUBSCRIBE',
-  heroDesc:'스탠다드 멤버는 최신 6개월 에디토리얼 열람과 이미지·로고 이미지·티어시트 다운로드가 가능합니다. 전체 아카이브 열람과 Pull-Letter 요청 등 프리미엄 혜택이 필요하다면 프리미엄 멤버가 되어보세요.',
+  heroDesc:'스탠다드 멤버는 최근 3개 분기(약 6~9개월) 에디토리얼 열람과 이미지·로고 이미지·티어시트 다운로드가 가능합니다. 전체 아카이브 열람과 Pull-Letter 요청 등 프리미엄 혜택이 필요하다면 프리미엄 멤버가 되어보세요.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
   planFreeName:'FREE', planStdName:'STANDARD', planPremName:'PREMIUM',
   priceFree:'€0',
   perMonth:'/ 월',
   planFreeDesc:'가입하면 최신 10개 에디토리얼 무료',
-  planStdDesc:'최신 6개월 에디토리얼 + 서브미션 피드백 + 이미지 다운로드',
+  planStdDesc:'최근 3개 분기 에디토리얼 + 서브미션 피드백 + 이미지 다운로드',
   planPremDesc:'모든 혜택 + Pull-Letter 요청 + 전체 아카이브',
   badge:'추천',
   ctaFree:'둘러보기', ctaStd:'가입 후 구독하기', ctaPrem:'가입 후 구독하기', ctaStdLoggedIn:'구독하기', ctaPremLoggedIn:'구독하기', ctaStdTrial:'7일 무료 체험 시작', ctaPremTrial:'7일 무료 체험 시작', currentPlanBadge:'현재 이용 중', ctaCurrent:'이용 중',
@@ -533,7 +533,7 @@ ko: {
       {on:false, text:'이미지 · 로고 이미지 · 티어시트 다운로드 불가'}
     ],
     std: [
-      {on:true, text:'최신 6개월 에디토리얼 열람'},
+      {on:true, text:'최근 3개 분기 에디토리얼 열람(약 6~9개월)'},
       {on:true, text:'광고 없는 콘텐츠 이용'},
       {on:true, text:'서브미션 제출 가능'},
       {on:true, text:'서브미션 탈락 시 피드백 제공'},
@@ -559,7 +559,7 @@ ko: {
     headers: ['기능','FREE','STANDARD','PREMIUM'],
     rows: [
       ['회원가입','불필요','필요','필요'],
-      ['에디토리얼 열람','최신 10개','최신 6개월','전체'],
+      ['에디토리얼 열람','최신 10개','최근 3개 분기','전체'],
       ['광고 없는 이용',false,true,true],
       ['서브미션 제출',true,true,true],
       ['서브미션 피드백',false,true,true],
@@ -580,12 +580,12 @@ en: {
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
   priceFree:'€0',
   heroTitle:'SUBSCRIBE',
-  heroDesc:'Standard members can browse the latest 6 months of editorials and download images, logo images and tearsheets. For full archive access, Pull-Letter requests and more, upgrade to Premium.',
+  heroDesc:'Standard members can browse the last three quarters of editorials (about 6 to 9 months) and download images, logo images and tearsheets. For full archive access, Pull-Letter requests and more, upgrade to Premium.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
   planFreeName:'FREE', planStdName:'STANDARD', planPremName:'PREMIUM',
   perMonth:'/ mo',
   planFreeDesc:'Sign up free — latest 10 editorials',
-  planStdDesc:'Latest 6 months of editorials + submission feedback & image downloads',
+  planStdDesc:'Last three quarters of editorials + submission feedback & image downloads',
   planPremDesc:'All benefits + Pull-Letter request + full archive',
   badge:'RECOMMENDED',
   ctaFree:'Browse Now', ctaStd:'Sign Up & Subscribe', ctaPrem:'Sign Up & Subscribe', ctaStdLoggedIn:'Subscribe', ctaPremLoggedIn:'Subscribe', ctaStdTrial:'Start 7-day free trial', ctaPremTrial:'Start 7-day free trial', currentPlanBadge:'CURRENTLY ON', ctaCurrent:'CURRENTLY ON',
@@ -603,7 +603,7 @@ en: {
       {on:false, text:'No image, logo image or tearsheet downloads'}
     ],
     std: [
-      {on:true, text:'Latest 6 months of editorials'},
+      {on:true, text:'Editorials from the last three quarters'},
       {on:true, text:'Ad-free browsing'},
       {on:true, text:'Submit work'},
       {on:true, text:'Feedback on rejected submissions'},
@@ -629,7 +629,7 @@ en: {
     headers: ['Feature','FREE','STANDARD','PREMIUM'],
     rows: [
       ['Sign-up required','No','Yes','Yes'],
-      ['Editorial access','Latest 10','Latest 6 months','Full archive'],
+      ['Editorial access','Latest 10','Last 3 quarters','Full archive'],
       ['Ad-free browsing',false,true,true],
       ['Submit work',true,true,true],
       ['Submission feedback',false,true,true],
@@ -650,12 +650,12 @@ ru:{
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
   priceFree:'€0',
   heroTitle:'SUBSCRIBE',
-  heroDesc:'Участники Standard могут просматривать эдиториалы за последние 6 месяцев и скачивать изображения, изображения с логотипом и тиршиты. Для полного доступа к архиву, запросов Pull-Letter и других возможностей перейдите на Premium.',
+  heroDesc:'Участники Standard могут просматривать эдиториалы за последние три квартала (около 6–9 месяцев) и скачивать изображения, изображения с логотипом и тиршиты. Для полного доступа к архиву, запросов Pull-Letter и других возможностей перейдите на Premium.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
   planFreeName:'FREE', planStdName:'STANDARD', planPremName:'PREMIUM',
   perMonth:'/ mo',
   planFreeDesc:'Sign up free — latest 10 editorials',
-  planStdDesc:'Эдиториалы за последние 6 месяцев + фидбэк по заявкам и загрузка изображений',
+  planStdDesc:'Эдиториалы за последние три квартала (около 6–9 месяцев) + фидбэк по заявкам и загрузка изображений',
   planPremDesc:'Все преимущества + запрос Pull-Letter + полный архив',
   badge:'RECOMMENDED',
   ctaFree:'Browse Now', ctaStd:'Sign Up & Subscribe', ctaPrem:'Sign Up & Subscribe', ctaStdLoggedIn:'Subscribe', ctaPremLoggedIn:'Subscribe', ctaStdTrial:'Start 7-day free trial', ctaPremTrial:'Start 7-day free trial', currentPlanBadge:'CURRENTLY ON', ctaCurrent:'CURRENTLY ON',
@@ -673,7 +673,7 @@ ru:{
       {on:false, text:'No image, logo image or tearsheet downloads'}
     ],
     std: [
-      {on:true, text:'Latest 6 months of editorials'},
+      {on:true, text:'Editorials from the last three quarters'},
       {on:true, text:'Ad-free browsing'},
       {on:true, text:'Submit work'},
       {on:true, text:'Feedback on rejected submissions'},
@@ -699,7 +699,7 @@ ru:{
     headers: ['Feature','FREE','STANDARD','PREMIUM'],
     rows: [
       ['Sign-up required','No','Yes','Yes'],
-      ['Editorial access','Latest 10','Latest 6 months','Full archive'],
+      ['Editorial access','Latest 10','Last 3 quarters','Full archive'],
       ['Ad-free browsing',false,true,true],
       ['Submit work',true,true,true],
       ['Submission feedback',false,true,true],
@@ -720,12 +720,12 @@ de:{
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
   priceFree:'€0',
   heroTitle:'SUBSCRIBE',
-  heroDesc:'Standard-Mitglieder können die Editorials der letzten 6 Monate durchsehen und Bilder, Logo-Bilder sowie Tearsheets herunterladen. Für vollen Archivzugang, Pull-Letter-Anfragen und mehr wechseln Sie zu Premium.',
+  heroDesc:'Standard-Mitglieder können die Editorials der letzten drei Quartale (etwa 6 bis 9 Monate) durchsehen und Bilder, Logo-Bilder sowie Tearsheets herunterladen. Für vollen Archivzugang, Pull-Letter-Anfragen und mehr wechseln Sie zu Premium.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
   planFreeName:'FREE', planStdName:'STANDARD', planPremName:'PREMIUM',
   perMonth:'/ mo',
   planFreeDesc:'Sign up free — latest 10 editorials',
-  planStdDesc:'Editorials der letzten 6 Monate + Einreichungs-Feedback & Bild-Downloads',
+  planStdDesc:'Editorials der letzten drei Quartale (etwa 6 bis 9 Monate) + Einreichungs-Feedback & Bild-Downloads',
   planPremDesc:'Alle Vorteile + Pull-Letter-Anfrage + vollständiges Archiv',
   badge:'RECOMMENDED',
   ctaFree:'Browse Now', ctaStd:'Sign Up & Subscribe', ctaPrem:'Sign Up & Subscribe', ctaStdLoggedIn:'Subscribe', ctaPremLoggedIn:'Subscribe', ctaStdTrial:'Start 7-day free trial', ctaPremTrial:'Start 7-day free trial', currentPlanBadge:'CURRENTLY ON', ctaCurrent:'CURRENTLY ON',
@@ -743,7 +743,7 @@ de:{
       {on:false, text:'No image, logo image or tearsheet downloads'}
     ],
     std: [
-      {on:true, text:'Latest 6 months of editorials'},
+      {on:true, text:'Editorials from the last three quarters'},
       {on:true, text:'Ad-free browsing'},
       {on:true, text:'Submit work'},
       {on:true, text:'Feedback on rejected submissions'},
@@ -769,7 +769,7 @@ de:{
     headers: ['Feature','FREE','STANDARD','PREMIUM'],
     rows: [
       ['Sign-up required','No','Yes','Yes'],
-      ['Editorial access','Latest 10','Latest 6 months','Full archive'],
+      ['Editorial access','Latest 10','Last 3 quarters','Full archive'],
       ['Ad-free browsing',false,true,true],
       ['Submit work',true,true,true],
       ['Submission feedback',false,true,true],
@@ -789,7 +789,7 @@ it: {
   business:'BUSINESS', contact:'CONTATTI', about:'CHI SIAMO', subscribe:'ABBONATI',
   monthly:'MENSILE', yearly:'ANNUALE', save2mo:'2 MESI GRATIS', perYear:'/ anno',
   heroTitle:'ABBONATI',
-  heroDesc:'Con la registrazione gratuita vedi i 10 editoriali più recenti. I membri Standard accedono agli ultimi 6 mesi, i membri Premium a tutto il catalogo. Quando sei pronto per vantaggi professionali come feedback sulle submission e richiesta Pull-Letter, diventa membro.',
+  heroDesc:'Con la registrazione gratuita vedi i 10 editoriali più recenti. I membri Standard accedono agli ultimi tre trimestri (circa 6-9 mesi), i membri Premium a tutto il catalogo. Quando sei pronto per vantaggi professionali come feedback sulle submission e richiesta Pull-Letter, diventa membro.',
   tierFree:'LIVELLO 1', tierStandard:'LIVELLO 2', tierPremium:'LIVELLO 3',
   planFreeName:'GRATUITO', planStdName:'STANDARD', planPremName:'PREMIUM',
   priceFree:'€0',
@@ -813,7 +813,7 @@ it: {
       {on:false, text:'Nessun download di immagini, immagini con logo o tearsheet'}
     ],
     std: [
-      {on:true, text:'Editoriali degli ultimi 6 mesi'},
+      {on:true, text:'Editoriali degli ultimi tre trimestri'},
       {on:true, text:'Navigazione senza pubblicità'},
       {on:true, text:'Invia lavori'},
       {on:true, text:'Feedback sulle submission rifiutate'},
@@ -839,7 +839,7 @@ it: {
     headers: ['Funzionalità','GRATUITO','STANDARD','PREMIUM'],
     rows: [
       ['Registrazione richiesta','No','Sì','Sì'],
-      ['Accesso editoriali','Ultimi 10','Ultimi 6 mesi','Archivio completo'],
+      ['Accesso editoriali','Ultimi 10','Ultimi 3 trimestri','Archivio completo'],
       ['Senza pubblicità',false,true,true],
       ['Invia lavori',true,true,true],
       ['Feedback submission',false,true,true],
@@ -882,7 +882,7 @@ fr: {
       {on:false, text:'Pas de téléchargement d\'images avec logo'}
     ],
     std: [
-      {on:true, text:'Éditoriaux des 6 derniers mois'},
+      {on:true, text:'Éditoriaux des trois derniers trimestres (environ 6 à 9 mois)'},
       {on:true, text:'Navigation sans publicité'},
       {on:true, text:'Soumettre des travaux'},
       {on:true, text:'Retours sur les soumissions refusées'},
@@ -908,7 +908,7 @@ fr: {
     headers: ['Fonctionnalité','GRATUIT','STANDARD','PREMIUM'],
     rows: [
       ['Inscription requise','Non','Oui','Oui'],
-      ['Accès éditoriaux','10 derniers','6 derniers mois','Archives complètes'],
+      ['Accès éditoriaux','10 derniers','3 derniers trimestres','Archives complètes'],
       ['Sans publicité',false,true,true],
       ['Soumettre des travaux',true,true,true],
       ['Retours soumission',false,true,true],
@@ -952,7 +952,7 @@ es: {
       {on:false, text:'Sin descarga de imágenes, imágenes con logo ni tearsheets'}
     ],
     std: [
-      {on:true, text:'Editoriales de los últimos 6 meses'},
+      {on:true, text:'Editoriales de los últimos tres trimestres (unos 6 a 9 meses)'},
       {on:true, text:'Navegación sin anuncios'},
       {on:true, text:'Enviar trabajos'},
       {on:true, text:'Feedback de submissions rechazadas'},
@@ -978,7 +978,7 @@ es: {
     headers: ['Funcionalidad','GRATIS','STANDARD','PREMIUM'],
     rows: [
       ['Registro requerido','No','Sí','Sí'],
-      ['Acceso editorial','Últimos 10','Últimos 6 meses','Archivo completo'],
+      ['Acceso editorial','Últimos 10','Últimos 3 trimestres','Archivo completo'],
       ['Sin anuncios',false,true,true],
       ['Enviar trabajos',true,true,true],
       ['Feedback submission',false,true,true],
@@ -998,7 +998,7 @@ ja: {
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'購読',
   monthly:'月間', yearly:'年間', save2mo:'2ヶ月無料', perYear:'/ 年',
   heroTitle:'購読',
-  heroDesc:'無料会員登録で最新10本のエディトリアルをご覧いただけます。Standard会員は最新6か月、Premium会員は全アーカイブをご覧いただけます。サブミッションフィードバックやフルレターコンサルティングなどのプロフェッショナルな特典が必要な方は、ぜひメンバーになってください。',
+  heroDesc:'無料会員登録で最新10本のエディトリアルをご覧いただけます。Standard会員は直近3四半期（約6～9か月）、Premium会員は全アーカイブをご覧いただけます。サブミッションフィードバックやフルレターコンサルティングなどのプロフェッショナルな特典が必要な方は、ぜひメンバーになってください。',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
   planFreeName:'FREE', planStdName:'STANDARD', planPremName:'PREMIUM',
   priceFree:'€0',
@@ -1022,7 +1022,7 @@ ja: {
       {on:false, text:'画像・ロゴ入り画像・ティアシートのダウンロード不可'}
     ],
     std: [
-      {on:true, text:'直近6か月のエディトリアル閲覧'},
+      {on:true, text:'直近3四半期のエディトリアル閲覧'},
       {on:true, text:'広告なしで閲覧'},
       {on:true, text:'作品提出可能'},
       {on:true, text:'サブミッション不採用時フィードバック'},
@@ -1048,7 +1048,7 @@ ja: {
     headers: ['機能','FREE','STANDARD','PREMIUM'],
     rows: [
       ['会員登録','不要','必要','必要'],
-      ['エディトリアル閲覧','最新10本','直近6か月','全アーカイブ'],
+      ['エディトリアル閲覧','最新10本','直近3四半期','全アーカイブ'],
       ['広告なし',false,true,true],
       ['作品提出',true,true,true],
       ['サブミッションフィードバック',false,true,true],
@@ -1068,7 +1068,7 @@ zh: {
   business:'商务', contact:'联系', about:'关于', subscribe:'订阅',
   monthly:'月付', yearly:'年付', save2mo:'免费2个月', perYear:'/ 年',
   heroTitle:'订阅',
-  heroDesc:'免费注册即可查看最新10篇专题。Standard会员可查看最近6个月，Premium会员可查看全部档案。当您需要投稿反馈、Pull-Letter咨询等专业权益时，欢迎成为订阅会员。',
+  heroDesc:'免费注册即可查看最新10篇专题。Standard会员可查看最近三个季度（约6～9个月），Premium会员可查看全部档案。当您需要投稿反馈、Pull-Letter咨询等专业权益时，欢迎成为订阅会员。',
   tierFree:'等级 1', tierStandard:'等级 2', tierPremium:'等级 3',
   planFreeName:'免费', planStdName:'标准', planPremName:'高级',
   priceFree:'€0',
@@ -1092,7 +1092,7 @@ zh: {
       {on:false, text:'无法下载图片、带Logo图片与内页样张'}
     ],
     std: [
-      {on:true, text:'最近6个月编辑内容'},
+      {on:true, text:'最近三个季度编辑内容'},
       {on:true, text:'无广告浏览'},
       {on:true, text:'可提交作品'},
       {on:true, text:'投稿未入选时提供反馈'},
@@ -1118,7 +1118,7 @@ zh: {
     headers: ['功能','免费','标准','高级'],
     rows: [
       ['注册要求','不需要','需要','需要'],
-      ['编辑内容访问','最新10篇','最近6个月','全部'],
+      ['编辑内容访问','最新10篇','最近三个季度','全部'],
       ['无广告浏览',false,true,true],
       ['提交作品',true,true,true],
       ['投稿反馈',false,true,true],
@@ -1138,7 +1138,7 @@ ru:{
   business:'БИЗНЕС', contact:'КОНТАКТ', about:'О НАС', subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',
   monthly:'МЕСЯЦ', yearly:'ГОД', save2mo:'2 МЕСЯЦА БЕСПЛАТНО', perYear:'/ год',
   heroTitle:'ПОДПИСКА',
-  heroDesc:'Бесплатная регистрация открывает 10 последних материалов. Standard — последние 6 месяцев, Premium — весь архив. Когда будете готовы к профессиональным преимуществам, станьте участником.',
+  heroDesc:'Бесплатная регистрация открывает 10 последних материалов. Standard — последние три квартала (около 6–9 месяцев), Premium — весь архив. Когда будете готовы к профессиональным преимуществам, станьте участником.',
   tierFree:'УРОВЕНЬ 1', tierStandard:'УРОВЕНЬ 2', tierPremium:'УРОВЕНЬ 3',
   planFreeName:'БЕСПЛАТНО', planStdName:'СТАНДАРТНЫЙ', planPremName:'ПРЕМИУМ',
   priceFree:'€0',
@@ -1162,7 +1162,7 @@ ru:{
       {on:false, text:'Нет загрузки изображений, изображений с логотипом и тиршитов'}
     ],
     std: [
-      {on:true, text:'Материалы за последние 6 месяцев'},
+      {on:true, text:'Материалы за последние три квартала (около 6–9 месяцев)'},
       {on:true, text:'Просмотр без рекламы'},
       {on:true, text:'Возможность подачи работ'},
       {on:true, text:'Обратная связь по отклоненным подачам'},
@@ -1188,7 +1188,7 @@ ru:{
     headers: ['Возможность','БЕСПЛАТНО','СТАНДАРТНЫЙ','ПРЕМИУМ'],
     rows: [
       ['Требуется регистрация','Нет','Да','Да'],
-      ['Доступ к материалам','Последние 10','Последние 6 месяцев','Полный архив'],
+      ['Доступ к материалам','Последние 10','Последние 3 квартала','Полный архив'],
       ['Без рекламы',false,true,true],
       ['Подача работ',true,true,true],
       ['Обратная связь по подаче',false,true,true],
@@ -1617,9 +1617,9 @@ setBilling('monthly');
 <script src="/pap-auth.js?v=4"></script>
 <script src="/pap-search.js?v=5"></script>
 <script src="/pap-static.js?v=1"></script>
-<script src="/pap-subscription.js?v=5"></script>
+<script src="/pap-subscription.js?v=6"></script>
 <script src="/pap-home.js?v=3"></script>
-<script src="/pap-content-editorial.js?v=89"></script>
+<script src="/pap-content-editorial.js?v=90"></script>
 <script src="/pap-content-film.js?v=14"></script>
 <script src="/pap-content-article.js?v=52"></script>
 <script src="/pap-content-creator-shorts.js?v=14"></script>

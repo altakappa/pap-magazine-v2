@@ -74,12 +74,12 @@ t('pap-content-api-sync.js 버전이 HTML 전체에서 하나 (≥127)', syV.siz
 
 console.log('\n=== ⑤ 상단 가입 안내 (2026-09-16 도메니코: "유료 회원 가입 시 더 많은 이미지를 볼 수 있다는 문구") ===');
 const seo = R('api/_lib/seoRenderer.js');
-t('SSR: GALLERY_LOCK_T 에 topFree·topPaid 9개 언어', (seo.match(/topFree: '/g) || []).length === 9 && (seo.match(/topPaid: '/g) || []).length === 9);
+t('SSR: GALLERY_LOCK_T 9개 언어에 headFree·headFreeBlocked·subFree(cut)·login·subStandard(cut)·subPremium(cut) (2026-09-21 문구 정직화)', ['headFree:', 'headFreeBlocked:', 'subFree: (c) =>', 'ctaFree: ', 'subStandard: (c) =>', 'subPremium: (c) =>'].every((k) => (seo.split(k).length - 1) === 9) && (seo.match(/ctaFree: (['"]).*?\1, login: '/g) || []).length === 9 && /ctaFree: '무료로 가입하고 보기', login: '이미 회원이면 로그인'/.test(seo));
 t('SSR: 에디토리얼이 잠겼을 때만 제목 아래에 .seo-top-note (등급별 href: free→/auth, 그 밖→/subscribe)', /\(kind === 'editorial' && galleryLocked\) \? \(\(\) => \{[\s\S]{0,600}editorial_top_note[\s\S]{0,300}class="seo-top-note"/.test(seo) && /\.seo-top-note\{display:block/.test(seo));
-t('SPA: _papEdTopNoteHtml 은 det.locked 일 때만, 등급별 문구·링크', /function _papEdTopNoteHtml\(det\)\{\s*if\(!det \|\| !det\.locked\) return '';/.test(ed) && /회원 가입 시 전체 이미지를 볼 수 있습니다/.test(ed) && /유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다/.test(ed) && /editorial_top_note/.test(ed));
+t('SPA: _papEdTopNoteHtml 은 det.locked 일 때만, 화보 단위 문구(남은 장수·필요 등급)·링크', /function _papEdTopNoteHtml\(det\)\{\s*if\(!det \|\| !det\.locked\) return '';/.test(ed) && /가입하면 남은 ' \+ left \+ '장을 볼 수 있습니다/.test(ed) && /남은 ' \+ left \+ '장은 STANDARD 멤버십에서/.test(ed) && /남은 ' \+ left \+ '장은 PREMIUM 멤버십에서/.test(ed) && /회원 전용 화보입니다/.test(ed) && /editorial_top_note/.test(ed));
 t('SPA: 두 열기 경로(push·popstate) 모두 IG 버튼 옆에 붙인다', (ed.match(/\+ _papEdTopNoteHtml\(det\);/g) || []).length === 2);
 const LANGS = ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
-t('_shared 사전 8개 언어에 두 문구', LANGS.every((l) => { const d = JSON.parse(R('frontend/i18n/ui/_shared.' + l + '.json')); return d['회원 가입 시 전체 이미지를 볼 수 있습니다'] && d['유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다']; }));
+t('_shared 사전 8개 언어에 새 문구 (패널·팝업·상단 안내)', LANGS.every((l) => { const d = JSON.parse(R('frontend/i18n/ui/_shared.' + l + '.json')); return ['이 화보는 STANDARD 멤버십부터 열립니다', '이 화보는 PREMIUM 멤버십부터 열립니다', 'STANDARD · {0} 이후 발행 화보와 이미지 다운로드', 'PREMIUM · 2019년부터 모든 아카이브', '지금 STANDARD는 {0} 이후 화보까지 열립니다', '가입하면 이 화보를 끝까지 볼 수 있습니다', '회원 가입 후 멤버십에서 열리는 화보입니다', '무료 회원은 최신 10편, STANDARD는 {0} 이후 화보, PREMIUM은 2019년부터 모든 아카이브', '무료로 가입하고 보기', '이미 회원이면 로그인', '가입하면 남은 {0}장을 볼 수 있습니다', '남은 {0}장은 STANDARD 멤버십에서', '남은 {0}장은 PREMIUM 멤버십에서'].every((k) => d[k]); }));
 t('캐시버스트: index data-v ≥ 7 · editorial.js ≥ 89', /content="index" data-v="([7-9]|\d{2,})"/.test(R('frontend/index.html')) && (function(){ const m = R('frontend/index.html').match(/pap-content-editorial\.js\?v=(\d+)/); return m && Number(m[1]) >= 89; })());
 
 console.log('\n=== ⑥ det 요약 객체에 게이트 필드 (2026-09-17 라이브 실측: 잠금 패널·상단 안내가 SPA 에서 한 번도 안 떴다) ===');
@@ -99,8 +99,8 @@ t('_papEdApplyLock 원문 추출', lockFnSrc.length > 200);
       const det = build(d, 'c.jpg', []);
       if (det.locked !== true || det.requiredTier !== 'free' || det.galleryCount !== 16 || det.previewCount !== 2 || det.viewState !== 'preview') { ok = false; err = 'fields lost: ' + JSON.stringify(det); break; }
       const gal = { html: '', querySelector() { return null; }, insertAdjacentHTML(_, h) { this.html += h; } };
-      const apply = new Function('det', 'gal', lockFnSrc + ' return _papEdApplyLock(det, gal);');
-      const r = apply(det, gal);
+      const apply = new Function('det', 'gal', 'window', lockFnSrc + ' return _papEdApplyLock(det, gal);');
+      const r = apply(det, gal, { _papCutLabel: () => '2026.01' });
       if (r !== true || !/class="ed-locked"/.test(gal.html) || !/총 16장 중 14장이 더 있습니다/.test(gal.html) || !/editorial_gallery_lock/.test(gal.html)) { ok = false; err = 'lock panel not rendered: ' + gal.html.slice(0, 200); break; }
       const unlocked = build({ thumb: 'c.jpg', images: ['a.jpg'], credits: [] }, 'c.jpg', []);
       const gal2 = { html: '', querySelector() { return null; }, insertAdjacentHTML(_, h) { this.html += h; } };
@@ -122,10 +122,10 @@ console.log('\n=== ⑦ 잠금 안내가 보인다 (2026-09-21 도메니코 "회�
   // 실행: mid-cta 가 있으면 그 앞에 들어가는지
   let ok = true, err = '';
   try {
-    const apply = new Function('det', 'gal', lockSrc + ' return _papEdApplyLock(det, gal);');
+    const apply = new Function('det', 'gal', 'window', lockSrc + ' return _papEdApplyLock(det, gal);');
     const inserted = [];
     const gal = { querySelector() { return { insertAdjacentHTML(where, h) { inserted.push(where); } }; }, insertAdjacentHTML(where) { inserted.push('END:' + where); } };
-    apply({ locked: true, requiredTier: 'free', galleryCount: 10, previewCount: 2, images: ['a', 'b'] }, gal);
+    apply({ locked: true, requiredTier: 'free', galleryCount: 10, previewCount: 2, images: ['a', 'b'] }, gal, { _papCutLabel: () => '2026.01' });
     if (inserted.length !== 1 || inserted[0] !== 'beforebegin') { ok = false; err = JSON.stringify(inserted); }
   } catch (e) { ok = false; err = String(e); }
   t('실행: .ed-mid-cta 가 있으면 beforebegin 한 번', ok, err);

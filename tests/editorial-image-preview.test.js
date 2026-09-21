@@ -162,9 +162,12 @@ t('잠금 문구가 9개 언어에 있다', () => {
 });
 t('필요 등급에 따라 문구와 링크가 갈린다', () => {
   const mk = (tier) => renderSeoHtml('editorial', rec('g1', RECENT), { lang: 'ko', galleryLimit: 2, lockTier: tier });
-  assert.ok(/가입하면 전체 이미지를/.test(mk('free')));
-  assert.ok(/STANDARD 멤버부터/.test(mk('standard')));
-  assert.ok(/PREMIUM 멤버부터/.test(mk('premium')));
+  /* 2026-09-21 문구 정직화: "전체 이미지" 대신 "이 화보", 등급 범위를 기준일과 함께 나란히 */
+  assert.ok(/가입하면 이 화보를 끝까지 볼 수 있습니다/.test(mk('free')));
+  assert.ok(/이미 회원이면 로그인/.test(mk('free')), '로그아웃된 유료회원을 위한 로그인 링크');
+  assert.ok(/이 화보는 STANDARD 멤버십부터 열립니다/.test(mk('standard')) && /STANDARD · \d{4}\.\d{2} 이후 발행 화보와 이미지 다운로드<br>PREMIUM · 2019년부터 모든 아카이브/.test(mk('standard')));
+  assert.ok(/이 화보는 PREMIUM 멤버십부터 열립니다/.test(mk('premium')) && /지금 STANDARD는 \d{4}\.\d{2} 이후 화보까지 열립니다<br>PREMIUM · 2019년부터 모든 아카이브/.test(mk('premium')));
+  assert.ok(!/최신 6개월|올해/.test(mk('standard') + mk('premium') + mk('free')), '"최신 6개월"·"올해" 는 분기 규칙과 어긋난다');
 });
 t('무료로 열리는 화보는 결제가 아니라 가입으로 보낸다', () => {
   const free = renderSeoHtml('editorial', rec('g2', RECENT), { lang: 'ko', galleryLimit: 2, lockTier: 'free' });
@@ -240,9 +243,9 @@ t('못 여는 화보를 누르면 상세로 안 가고 팝업이 뜬다', () => 
   assert.ok(fn.indexOf('return;') > fn.indexOf('_papShowLockedPopup('), '팝업만 띄우고 끝내야 한다');
 });
 t('팝업이 등급별로 다른 말을 하고 가입은 /auth 로 보낸다', () => {
-  assert.ok(/가입하면 볼 수 있습니다/.test(SUB));
-  assert.ok(/STANDARD 멤버부터 볼 수 있습니다/.test(SUB));
-  assert.ok(/PREMIUM 멤버부터 볼 수 있습니다/.test(SUB));
+  assert.ok(/회원 가입 후 멤버십에서 열리는 화보입니다/.test(SUB));
+  assert.ok(/이 화보는 STANDARD 멤버십부터 열립니다/.test(SUB) && /'STANDARD · ' \+ cut \+ ' 이후 발행 화보와 이미지 다운로드 \/ PREMIUM · 2019년부터 모든 아카이브'/.test(SUB));
+  assert.ok(/이 화보는 PREMIUM 멤버십부터 열립니다/.test(SUB) && /'지금 STANDARD는 ' \+ cut \+ ' 이후 화보까지 열립니다/.test(SUB));
   assert.ok(/\/auth\?utm_source=editorial_locked_popup/.test(SUB), '비회원을 결제 페이지로 보내면 이탈한다');
   assert.ok(/\/subscribe\?utm_source=editorial_locked_popup/.test(SUB));
 });
@@ -251,8 +254,9 @@ t('팝업을 닫을 수 있다 (가둬두지 않는다)', () => {
 });
 t('2장만 보이는 화면에도 다음 단계 유도 문구가 있다', () => {
   const src = read('frontend/pap-content-editorial.js');
-  assert.ok(/가입하면 전체 이미지를 볼 수 있습니다/.test(src));
-  assert.ok(/최신 에디토리얼 10편은 회원이면 무료입니다/.test(src));
+  assert.ok(/가입하면 이 화보를 끝까지 볼 수 있습니다/.test(src));
+  assert.ok(/무료 회원은 최신 10편, STANDARD는 ' \+ cutTxt \+ ' 화보, PREMIUM은 2019년부터 모든 아카이브/.test(src));
+  assert.ok(/이미 회원이면 로그인/.test(src));
 });
 
 console.log('\n=== ⑥ 계측 (벽의 효과를 재는가) ===');

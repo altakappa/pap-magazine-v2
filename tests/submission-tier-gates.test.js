@@ -50,7 +50,7 @@ const mp = read('frontend/mypage.html');
 ok('목록: pending + canSelfEdit 일 때만 수정 버튼', /if \(ds === 'pending' && s\.canSelfEdit\)/.test(mp));
 ok('상세: feedbackLocked 면 본문 대신 스탠다드 안내 + /subscribe 링크', /if\(s\.feedbackLocked\)\{[\s\S]{0,400}utm_source=mypage_feedback/.test(mp));
 ok('상세: pending 프리미엄은 수정 버튼, 아니면 프리미엄 안내', /if\(s\.canSelfEdit\)\{[\s\S]{0,600}selfEditBlockedReason === 'not_premium'[\s\S]{0,400}utm_source=mypage_selfedit/.test(mp));
-ok('마이페이지 사전 v8 + 8개 언어 키', /content="mypage" data-v="[8-9]"/.test(mp) && ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const d = JSON.parse(read('frontend/i18n/ui/mypage.' + l + '.json')); return d['심사 피드백은 스탠다드 회원부터 볼 수 있습니다.'] && d['심사 대기 중 제출 내용을 직접 수정하는 것은 프리미엄 회원만 가능합니다.'] && d['제출 내용 수정하기']; }));
+ok('마이페이지 사전 v8 + 8개 언어 키', (function(){ const m = mp.match(/content="mypage" data-v="(\d+)"/); return m && Number(m[1]) >= 8; })() && ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const d = JSON.parse(read('frontend/i18n/ui/mypage.' + l + '.json')); return d['심사 피드백은 스탠다드 회원부터 볼 수 있습니다.'] && d['심사 대기 중 제출 내용을 직접 수정하는 것은 프리미엄 회원만 가능합니다.'] && d['제출 내용 수정하기']; }));
 
 console.log('\n=== 서브미션 폼 ===');
 const sub = read('frontend/submission.html');

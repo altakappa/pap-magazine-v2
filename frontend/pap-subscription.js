@@ -132,26 +132,27 @@ function _papShowLockedPopup(need, opts){
     var ko = (localStorage.getItem('pap-lang') || 'ko') === 'ko';
     var anon = (typeof isLoggedIn === 'function') && !isLoggedIn();
     var o = opts || {};
+    var cut = _papCutLabel();   // 2026-09-21 — "STANDARD = 전부" 오해 방지: 등급별 범위를 기준일과 함께 나란히
     var T;
     if(anon){
       T = { tag: ko ? '회원 전용' : 'MEMBERS ONLY',
-            head: ko ? '가입하면 볼 수 있습니다' : 'Sign up to view this editorial',
-            sub: ko ? '무료 회원가입만 하면 최신 에디토리얼 10편이 바로 열립니다. 이 화보는 멤버십으로 열립니다.'
-                    : 'A free account opens the 10 most recent editorials right away. This one opens with a membership.',
-            cta: ko ? '가입하고 보기' : 'Sign up',
+            head: ko ? '회원 가입 후 멤버십에서 열리는 화보입니다' : 'Sign up first; this editorial then opens with a membership',
+            sub: ko ? ('무료 회원은 최신 10편, STANDARD는 ' + cut + ' 이후 화보, PREMIUM은 2019년부터 모든 아카이브')
+                    : ('Free members: the latest 10 · STANDARD: editorials since ' + cut + ' · PREMIUM: the full archive since 2019'),
+            cta: ko ? '무료로 가입하고 보기' : 'Sign up free and view',
             href: '/auth?utm_source=editorial_locked_popup&utm_medium=web' };
     } else if(need === 'standard'){
       T = { tag: 'STANDARD',
-            head: ko ? 'STANDARD 멤버부터 볼 수 있습니다' : 'Standard members can view this',
-            sub: ko ? '최신 6개월 에디토리얼 전체와 이미지 다운로드가 열립니다.'
-                    : 'The latest 6 months of editorials, plus image downloads.',
+            head: ko ? '이 화보는 STANDARD 멤버십부터 열립니다' : 'This editorial opens with a STANDARD membership',
+            sub: ko ? ('STANDARD · ' + cut + ' 이후 발행 화보와 이미지 다운로드 / PREMIUM · 2019년부터 모든 아카이브')
+                    : ('STANDARD · editorials published since ' + cut + ', plus image downloads / PREMIUM · the full archive since 2019'),
             cta: ko ? '멤버십 보기' : 'See membership',
             href: '/subscribe?utm_source=editorial_locked_popup&utm_medium=web' };
     } else {
       T = { tag: 'PREMIUM',
-            head: ko ? 'PREMIUM 멤버부터 볼 수 있습니다' : 'Premium members can view this',
-            sub: ko ? '2019년부터의 전체 아카이브와 풀레터 요청이 열립니다.'
-                    : 'The full archive since 2019, plus Pull-Letter requests.',
+            head: ko ? '이 화보는 PREMIUM 멤버십부터 열립니다' : 'This editorial opens with a PREMIUM membership',
+            sub: ko ? ('지금 STANDARD는 ' + cut + ' 이후 화보까지 열립니다 / PREMIUM · 2019년부터 모든 아카이브')
+                    : ('STANDARD currently covers editorials published since ' + cut + ' / PREMIUM · the full archive since 2019'),
             cta: ko ? '멤버십 보기' : 'See membership',
             href: '/subscribe?utm_source=editorial_locked_popup&utm_medium=web' };
     }
@@ -184,9 +185,19 @@ function _papShowLockedPopup(need, opts){
     return true;
   }catch(e){ return false; }
 }
+/* 2026-09-21 — 스탠다드 기준일을 "YYYY.MM" 로. 화면 문구에 "최신 6개월"·"올해" 같은 말을 쓰지 않는다:
+   규칙이 분기 단위로 굴러서(현재 분기 + 직전 두 분기) 어떤 날은 9개월, 어떤 날은 6개월이고 해가 바뀌면 "올해" 가
+   성립하지 않는다. 서버(editorialAccess.standardCutoff)와 같은 계산으로 날짜를 그대로 찍는다.
+   숫자만 쓰는 이유: 자리표시자 {0} 로 9개 언어 사전에 되넣기 때문이다(한글 "1월" 이 영어 문장에 섞이지 않게). */
+function _papCutLabel(now){
+  var d = _papStandardCutoff(now);
+  return d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0');
+}
 try {
   window._papViewState = _papViewState;
   window._papShowLockedPopup = _papShowLockedPopup;
+  window._papStandardCutoff = _papStandardCutoff;
+  window._papCutLabel = _papCutLabel;
 } catch(_){}
 
 // ======== INTERSTITIAL AD + PREMIUM UPSELL ========

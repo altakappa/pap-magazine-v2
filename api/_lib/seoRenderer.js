@@ -1052,125 +1052,107 @@ function renderSeoHtml(kind, record, opts) {
 
   /* 갤러리 잠금 패널 카피 — 9개 언어 (2026-08-27 도메니코 결정).
      전체 이미지는 스탠다드부터. 그 아래 등급에는 앞 2장만 나간다. */
+  /* 2026-09-21 (도메니코) — "STANDARD 멤버부터 전체 이미지" 는 "스탠다드 = 사이트 전부" 로 읽혀 프리미엄과 같은 혜택으로
+     오해한다. "전체" 를 빼고 "이 화보" 로 못박고, STANDARD 와 PREMIUM 의 범위를 기준일(cut, "YYYY.MM")과 함께 나란히 적는다.
+     "최신 6개월"·"올해" 는 쓰지 않는다 — 규칙이 분기 단위(현재 + 직전 두 분기)라 날짜가 굴러간다. cut 은
+     editorialAccess.standardCutoff() 로 계산한다. SPA(pap-content-editorial.js _papEdApplyLock)와 같은 문구여야 한다. */
   const GALLERY_LOCK_T = {
     ko: {
       count: (t, h) => `총 ${t}장 중 ${h}장이 더 있습니다`,
-      headFree: '가입하면 전체 이미지를 볼 수 있습니다',
-      subFree: '최신 에디토리얼 10편은 회원이면 무료입니다.',
-      ctaFree: '가입하고 보기',
-      headStandard: 'STANDARD 멤버부터 전체 이미지를 볼 수 있습니다',
-      headPremium: 'PREMIUM 멤버부터 전체 이미지를 볼 수 있습니다',
-      subStandard: '최신 화보의 모든 컷과 이미지 다운로드가 열립니다.',
-      subPremium: '2019년부터의 전체 아카이브가 모든 컷과 함께 열립니다.',
+      headFree: '가입하면 이 화보를 끝까지 볼 수 있습니다', headFreeBlocked: '회원 가입 후 멤버십에서 열리는 화보입니다',
+      subFree: (c) => `무료 회원은 최신 10편, STANDARD는 ${c} 이후 화보, PREMIUM은 2019년부터 모든 아카이브`,
+      ctaFree: '무료로 가입하고 보기', login: '이미 회원이면 로그인',
+      headStandard: '이 화보는 STANDARD 멤버십부터 열립니다', headPremium: '이 화보는 PREMIUM 멤버십부터 열립니다',
+      subStandard: (c) => [`STANDARD · ${c} 이후 발행 화보와 이미지 다운로드`, 'PREMIUM · 2019년부터 모든 아카이브'],
+      subPremium: (c) => [`지금 STANDARD는 ${c} 이후 화보까지 열립니다`, 'PREMIUM · 2019년부터 모든 아카이브'],
       cta: '멤버십 보기',
-      topFree: '회원 가입 시 전체 이미지를 볼 수 있습니다',
-      topPaid: '유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다',
     },
     en: {
       count: (t, h) => `${h} more of ${t} images`,
-      headFree: 'Sign up to see every image',
-      subFree: 'The 10 most recent editorials are free for members.',
-      ctaFree: 'Sign up',
-      headStandard: 'Standard members see the full set',
-      headPremium: 'Premium members see the full set',
-      subStandard: 'Every frame of recent editorials, plus image downloads.',
-      subPremium: 'The full archive since 2019, every frame included.',
+      headFree: 'Sign up to see this editorial in full', headFreeBlocked: 'Sign up first; this editorial then opens with a membership',
+      subFree: (c) => `Free members: the latest 10 · STANDARD: editorials since ${c} · PREMIUM: the full archive since 2019`,
+      ctaFree: 'Sign up free and view', login: 'Already a member? Log in',
+      headStandard: 'This editorial opens with a STANDARD membership', headPremium: 'This editorial opens with a PREMIUM membership',
+      subStandard: (c) => [`STANDARD · editorials published since ${c}, plus image downloads`, 'PREMIUM · the full archive since 2019'],
+      subPremium: (c) => [`STANDARD currently covers editorials published since ${c}`, 'PREMIUM · the full archive since 2019'],
       cta: 'See membership',
-      topFree: 'Sign up to see every image',
-      topPaid: 'Paid members see more images',
     },
     it: {
       count: (t, h) => `Altre ${h} immagini su ${t}`,
-      headFree: 'Iscriviti per vedere tutte le immagini',
-      subFree: 'Gli ultimi 10 editoriali sono gratuiti per i membri.',
-      ctaFree: 'Iscriviti',
-      headStandard: 'I membri Standard vedono il servizio completo',
-      headPremium: 'I membri Premium vedono il servizio completo',
-      subStandard: 'Tutti gli scatti degli editoriali recenti, download inclusi.',
-      subPremium: "L'archivio completo dal 2019, scatto per scatto.",
+      headFree: 'Iscriviti per vedere questo editoriale per intero', headFreeBlocked: 'Registrati; questo editoriale si apre poi con un abbonamento',
+      subFree: (c) => `Gratis: gli ultimi 10 · STANDARD: editoriali da ${c} · PREMIUM: tutto l'archivio dal 2019`,
+      ctaFree: 'Iscriviti gratis e guarda', login: 'Già membro? Accedi',
+      headStandard: "Questo editoriale si apre con l'abbonamento STANDARD", headPremium: "Questo editoriale si apre con l'abbonamento PREMIUM",
+      subStandard: (c) => [`STANDARD · editoriali pubblicati da ${c}, più download delle immagini`, "PREMIUM · l'intero archivio dal 2019"],
+      subPremium: (c) => [`STANDARD copre attualmente gli editoriali da ${c}`, "PREMIUM · l'intero archivio dal 2019"],
       cta: 'Scopri gli abbonamenti',
-      topFree: 'Iscriviti per vedere tutte le immagini',
-      topPaid: 'I membri a pagamento vedono più immagini',
     },
     fr: {
       count: (t, h) => `${h} images de plus sur ${t}`,
-      headFree: 'Inscrivez-vous pour voir toutes les images',
-      subFree: 'Les 10 derniers éditoriaux sont gratuits pour les membres.',
-      ctaFree: 'S\'inscrire',
-      headStandard: 'Les membres Standard voient la série complète',
-      headPremium: 'Les membres Premium voient la série complète',
-      subStandard: 'Toutes les images des éditoriaux récents, téléchargements inclus.',
-      subPremium: "L'archive complète depuis 2019, image par image.",
+      headFree: 'Inscrivez-vous pour voir cet éditorial en entier', headFreeBlocked: "Inscrivez-vous ; cet éditorial s'ouvre ensuite avec un abonnement",
+      subFree: (c) => `Gratuit : les 10 derniers · STANDARD : éditoriaux depuis ${c} · PREMIUM : toutes les archives depuis 2019`,
+      ctaFree: "S'inscrire gratuitement et voir", login: 'Déjà membre ? Connexion',
+      headStandard: "Cet éditorial s'ouvre avec l'abonnement STANDARD", headPremium: "Cet éditorial s'ouvre avec l'abonnement PREMIUM",
+      subStandard: (c) => [`STANDARD · éditoriaux publiés depuis ${c}, plus téléchargement des images`, 'PREMIUM · toutes les archives depuis 2019'],
+      subPremium: (c) => [`STANDARD couvre actuellement les éditoriaux depuis ${c}`, 'PREMIUM · toutes les archives depuis 2019'],
       cta: 'Voir les abonnements',
-      topFree: 'Inscrivez-vous pour voir toutes les images',
-      topPaid: 'Les membres payants voient plus d’images',
     },
     es: {
       count: (t, h) => `${h} imágenes más de ${t}`,
-      headFree: 'Regístrate para ver todas las imágenes',
-      subFree: 'Los 10 editoriales más recientes son gratis para los miembros.',
-      ctaFree: 'Registrarse',
-      headStandard: 'Los miembros Standard ven la serie completa',
-      headPremium: 'Los miembros Premium ven la serie completa',
-      subStandard: 'Todas las tomas de los editoriales recientes, con descargas.',
-      subPremium: 'El archivo completo desde 2019, toma por toma.',
+      headFree: 'Regístrate para ver este editorial completo', headFreeBlocked: 'Regístrate; este editorial se abre luego con una membresía',
+      subFree: (c) => `Gratis: los 10 más recientes · STANDARD: editoriales desde ${c} · PREMIUM: todo el archivo desde 2019`,
+      ctaFree: 'Regístrate gratis y mira', login: '¿Ya eres miembro? Inicia sesión',
+      headStandard: 'Este editorial se abre con la membresía STANDARD', headPremium: 'Este editorial se abre con la membresía PREMIUM',
+      subStandard: (c) => [`STANDARD · editoriales publicados desde ${c}, más descarga de imágenes`, 'PREMIUM · todo el archivo desde 2019'],
+      subPremium: (c) => [`STANDARD cubre actualmente los editoriales desde ${c}`, 'PREMIUM · todo el archivo desde 2019'],
       cta: 'Ver membresías',
-      topFree: 'Regístrate para ver todas las imágenes',
-      topPaid: 'Los miembros de pago ven más imágenes',
     },
     ja: {
-      count: (t, h) => `全${t}枚のうち、あと${h}枚`,
-      headFree: '会員登録で全カットをご覧いただけます',
-      subFree: '最新エディトリアル10本は会員なら無料です。',
-      ctaFree: '登録して見る',
-      headStandard: 'STANDARD 会員から全カットをご覧いただけます',
-      headPremium: 'PREMIUM 会員から全カットをご覧いただけます',
-      subStandard: '最新エディトリアルの全カットと画像ダウンロードが開きます。',
-      subPremium: '2019年からの全アーカイブが、全カットとともに開きます。',
+      count: (t, h) => `全${t}枚のうち、あと${h}枚あります`,
+      headFree: '会員登録でこのエディトリアルを最後までご覧いただけます', headFreeBlocked: '会員登録のうえ、メンバーシップで開くエディトリアルです',
+      subFree: (c) => `無料会員は最新10本、STANDARDは${c}以降、PREMIUMは2019年からの全アーカイブ`,
+      ctaFree: '無料登録して見る', login: 'すでに会員の方はログイン',
+      headStandard: 'このエディトリアルはSTANDARD会員から閲覧できます', headPremium: 'このエディトリアルはPREMIUM会員から閲覧できます',
+      subStandard: (c) => [`STANDARD · ${c}以降に公開されたエディトリアルと画像ダウンロード`, 'PREMIUM · 2019年からの全アーカイブ'],
+      subPremium: (c) => [`STANDARDは現在${c}以降のエディトリアルまで閲覧できます`, 'PREMIUM · 2019年からの全アーカイブ'],
       cta: 'メンバーシップを見る',
-      topFree: '会員登録で全カットをご覧いただけます',
-      topPaid: '有料メンバーシップでより多くのカットをご覧いただけます',
     },
     zh: {
-      count: (t, h) => `共 ${t} 张,还有 ${h} 张`,
-      headFree: '注册后即可查看全部图片',
-      subFree: '最新 10 篇大片对会员免费。',
-      ctaFree: '注册查看',
-      headStandard: 'STANDARD 会员可查看全部图片',
-      headPremium: 'PREMIUM 会员可查看全部图片',
-      subStandard: '最新大片的全部照片,并可下载图片。',
-      subPremium: '2019 年至今的完整档案,一张不少。',
+      count: (t, h) => `共${t}张，还有${h}张`,
+      headFree: '注册后即可完整查看此专题', headFreeBlocked: '注册后需会员方可查看此专题',
+      subFree: (c) => `免费会员：最新10篇 · STANDARD：${c}起的专题 · PREMIUM：2019年起的全部档案`,
+      ctaFree: '免费注册并查看', login: '已是会员？登录',
+      headStandard: '此专题需STANDARD会员及以上查看', headPremium: '此专题需PREMIUM会员查看',
+      subStandard: (c) => [`STANDARD · ${c}起发布的专题及图片下载`, 'PREMIUM · 2019年起的全部档案'],
+      subPremium: (c) => [`STANDARD目前可查看${c}起的专题`, 'PREMIUM · 2019年起的全部档案'],
       cta: '查看会员方案',
-      topFree: '注册会员即可查看全部图片',
-      topPaid: '付费会员可查看更多图片',
     },
     de: {
       count: (t, h) => `${h} weitere von ${t} Bildern`,
-      headFree: 'Registriere dich, um alle Bilder zu sehen',
-      subFree: 'Die 10 neuesten Editorials sind für Mitglieder kostenlos.',
-      ctaFree: 'Registrieren',
-      headStandard: 'Standard-Mitglieder sehen die komplette Strecke',
-      headPremium: 'Premium-Mitglieder sehen die komplette Strecke',
-      subStandard: 'Alle Aufnahmen aktueller Editorials, inklusive Downloads.',
-      subPremium: 'Das komplette Archiv seit 2019, jede Aufnahme.',
+      headFree: 'Registrieren und dieses Editorial vollständig sehen', headFreeBlocked: 'Erst registrieren; dieses Editorial öffnet sich dann mit einer Mitgliedschaft',
+      subFree: (c) => `Kostenlos: die neuesten 10 · STANDARD: Editorials ab ${c} · PREMIUM: das gesamte Archiv seit 2019`,
+      ctaFree: 'Kostenlos registrieren und ansehen', login: 'Schon Mitglied? Anmelden',
+      headStandard: 'Dieses Editorial öffnet sich ab der STANDARD-Mitgliedschaft', headPremium: 'Dieses Editorial öffnet sich ab der PREMIUM-Mitgliedschaft',
+      subStandard: (c) => [`STANDARD · Editorials ab ${c} plus Bild-Downloads`, 'PREMIUM · das gesamte Archiv seit 2019'],
+      subPremium: (c) => [`STANDARD umfasst derzeit Editorials ab ${c}`, 'PREMIUM · das gesamte Archiv seit 2019'],
       cta: 'Mitgliedschaft ansehen',
-      topFree: 'Registrieren und alle Bilder sehen',
-      topPaid: 'Zahlende Mitglieder sehen mehr Bilder',
     },
     ru: {
-      count: (t, h) => `Ещё ${h} из ${t} снимков`,
-      headFree: 'Зарегистрируйтесь, чтобы увидеть все снимки',
-      subFree: '10 свежих эдиториалов бесплатны для участников.',
-      ctaFree: 'Зарегистрироваться',
-      headStandard: 'Участники Standard видят серию целиком',
-      headPremium: 'Участники Premium видят серию целиком',
-      subStandard: 'Все кадры свежих эдиториалов и скачивание изображений.',
-      subPremium: 'Полный архив с 2019 года, каждый кадр.',
-      cta: 'Смотреть подписку',
-      topFree: 'Зарегистрируйтесь, чтобы увидеть все кадры',
-      topPaid: 'Платные участники видят больше кадров',
+      count: (t, h) => `Ещё ${h} из ${t} кадров`,
+      headFree: 'Зарегистрируйтесь, чтобы увидеть этот материал целиком', headFreeBlocked: 'Зарегистрируйтесь; этот материал открывается с подпиской',
+      subFree: (c) => `Бесплатно: последние 10 · STANDARD: материалы с ${c} · PREMIUM: весь архив с 2019 года`,
+      ctaFree: 'Зарегистрироваться бесплатно и смотреть', login: 'Уже участник? Войти',
+      headStandard: 'Этот материал открывается с подпиской STANDARD', headPremium: 'Этот материал открывается с подпиской PREMIUM',
+      subStandard: (c) => [`STANDARD · материалы с ${c} и загрузка изображений`, 'PREMIUM · весь архив с 2019 года'],
+      subPremium: (c) => [`STANDARD сейчас открывает материалы с ${c}`, 'PREMIUM · весь архив с 2019 года'],
+      cta: 'Смотреть подписки',
     },
   };
+  /* 스탠다드 기준일 "YYYY.MM" — 숫자만(언어 무관). SPA 의 _papCutLabel 과 같은 값. */
+  function _lockCut() {
+    try { const d = require('./editorialAccess').standardCutoff(new Date()); return d.getUTCFullYear() + '.' + String(d.getUTCMonth() + 1).padStart(2, '0'); }
+    catch (_e) { return ''; }
+  }
 
   /* IG 퍼널 CTA 카피 — 언어별. 유입자가 인스타로 넘어가는 마지막 관문까지 해당 언어로. */
   const FUNNEL_T = {
@@ -1778,8 +1760,11 @@ function renderSeoHtml(kind, record, opts) {
         const need = ({ free: 'free', standard: 'standard' })[String((opts && opts.lockTier) || '')] || 'premium';
         const L = GALLERY_LOCK_T[lang] || GALLERY_LOCK_T.en;
         const hidden = galleryAll.length - gallery.length;
-        const head = need === 'free' ? L.headFree : (need === 'standard' ? L.headStandard : L.headPremium);
-        const sub = need === 'free' ? L.subFree : (need === 'standard' ? L.subStandard : L.subPremium);
+        const blockedAll = gallery.length === 0;   // 미리보기조차 없는 구간(비회원이 스탠다드·프리미엄 화보를 연 경우)
+        const cut = _lockCut();
+        const head = need === 'free' ? (blockedAll ? L.headFreeBlocked : L.headFree) : (need === 'standard' ? L.headStandard : L.headPremium);
+        const subLines = need === 'free' ? [L.subFree(cut)] : (need === 'standard' ? L.subStandard(cut) : L.subPremium(cut));
+        const sub = subLines.map(escText).join('<br>');
         /* 무료 회원이면 열리는 화보는 구독이 아니라 가입으로 보낸다.
            돈을 낼 필요가 없는 사람을 결제 페이지로 보내면 그냥 이탈한다. */
         const ctaHref = need === 'free'
@@ -1788,9 +1773,10 @@ function renderSeoHtml(kind, record, opts) {
         return '<section class="seo-gallery-locked" aria-label="Members only">'
           + '<div class="sgl-count">' + escText(L.count(galleryAll.length, hidden)) + '</div>'
           + '<div class="sgl-head">' + escText(head) + '</div>'
-          + '<div class="sgl-sub">' + escText(sub) + '</div>'
+          + '<div class="sgl-sub">' + sub + '</div>'
           + '<a class="sgl-cta" href="' + escAttr(ctaHref) + '">'
           + escText(need === 'free' ? L.ctaFree : L.cta) + '</a>'
+          + (need === 'free' ? ('<div class="sgl-login"><a href="' + escAttr(SITE + '/auth?mode=login&utm_source=editorial_gallery_lock&utm_medium=web') + '">' + escText(L.login) + '</a></div>') : '')
           + '</section>'
       })()
     : '';
@@ -1884,7 +1870,7 @@ function renderSeoHtml(kind, record, opts) {
   return `<!DOCTYPE html>
 <html lang="${lang}" prefix="og: https://ogp.me/ns#">
 <head>
-<meta name="pap-ui-i18n" content="_shared" data-v="6">
+<meta name="pap-ui-i18n" content="_shared" data-v="7">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>${escText(seoTitle)}</title>
@@ -2061,6 +2047,8 @@ ${ogImage && !(cfg.schemaType === 'VideoObject' && isValidYtId)
   .sgl-count{font-size:12px;letter-spacing:.12em;opacity:.55;margin-bottom:18px}
   .sgl-head{font-size:17px;font-weight:600;margin-bottom:8px}
   .sgl-sub{font-size:13px;opacity:.62;margin-bottom:24px;line-height:1.6}
+  .sgl-login{margin-top:14px;font-size:12px;opacity:.7}
+  .sgl-login a{color:inherit;text-decoration:underline;text-underline-offset:3px}
   .sgl-cta{display:inline-block;padding:13px 30px;border:1px solid currentColor;
     font-size:12px;letter-spacing:.14em;text-decoration:none;color:inherit}
   /* 로딩 스켈레톤 (2026-07-20, QA 공백 페이지 대응) — 이미지가 로딩되는 동안
@@ -2373,7 +2361,9 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
       const href = need === 'free'
         ? SITE + '/auth?utm_source=editorial_top_note&utm_medium=web'
         : SITE + '/subscribe?utm_source=editorial_top_note&utm_medium=web';
-      return `<a class="seo-top-note" href="${escAttr(href)}">${escText(need === 'free' ? L.topFree : L.topPaid)} →</a>`;
+      const topBlocked = galleryPreviewLimit === 0;
+      const topText = need === 'free' ? (topBlocked ? L.headFreeBlocked : L.headFree) : (need === 'standard' ? L.headStandard : L.headPremium);
+      return `<a class="seo-top-note" href="${escAttr(href)}">🔒 ${escText(topText)} →</a>`;
     })() : ''}
     ${bodyHtml}
     ${galleryHtml}

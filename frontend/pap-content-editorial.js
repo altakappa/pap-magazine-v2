@@ -2075,7 +2075,14 @@ function _openEditorialInner(title,thumb){
 function _papEdTopNoteHtml(det){
   if(!det || !det.locked) return '';
   var need = String(det.requiredTier || 'free');
-  var msg = need === 'free' ? '회원 가입 시 전체 이미지를 볼 수 있습니다' : '유료 멤버십 가입 시 더 많은 이미지를 볼 수 있습니다';
+  /* 2026-09-21 — "전체 이미지" 는 사이트 전체로 읽힌다(도메니코). 이 화보의 남은 장수와 필요한 등급만 말한다. */
+  var total = Number(det.galleryCount || 0), shown = Number(det.previewCount || (det.images ? det.images.length : 0));
+  var left = Math.max(0, total - shown);
+  var blocked = String(det.viewState || '') === 'blocked' || shown === 0;
+  var msg;
+  if(need === 'free') msg = blocked ? '회원 전용 화보입니다' : (left > 0 ? ('가입하면 남은 ' + left + '장을 볼 수 있습니다') : '가입하면 이 화보를 끝까지 볼 수 있습니다');
+  else if(need === 'standard') msg = left > 0 ? ('남은 ' + left + '장은 STANDARD 멤버십에서') : '이 화보는 STANDARD 멤버십부터 열립니다';
+  else msg = left > 0 ? ('남은 ' + left + '장은 PREMIUM 멤버십에서') : '이 화보는 PREMIUM 멤버십부터 열립니다';
   var href = need === 'free' ? '/auth?utm_source=editorial_top_note&utm_medium=web' : '/subscribe?utm_source=editorial_top_note&utm_medium=web';
   /* 2026-09-21 — color:inherit 이었는데 오버레이의 상속색이 #111(검정)이라 검은 배경 위에서 안 보였다(라이브 실측, 도메니코
      "회원가입 유도가 아직 설정 안 된 것 같다"). 색·크기를 못박는다. */
@@ -2095,22 +2102,30 @@ function _papEdApplyLock(det, gal){
   /* 서버가 blocked 로 준 화보는 이미지가 0장이다. 직접 URL 로 들어온
      경우이므로 (목록 클릭은 팝업에서 걸린다) 여기서도 같은 말을 한다. */
   var blocked = String(det.viewState || '') === 'blocked' || shown === 0;
-  var msg, cta, sub, href;
+  var msg, cta, sub, href, extra = '';
+  /* 2026-09-21 (도메니코) — "STANDARD 멤버부터 전체 이미지" 는 대충 읽으면 "스탠다드 = 사이트 전부" 로 읽혀
+     프리미엄과 같은 혜택으로 오해한다. 그래서 ① "전체" 를 빼고 "이 화보" 로 못박고 ② STANDARD 와 PREMIUM 의 범위를
+     기준일과 함께 나란히 적는다(나란히 있어야 착각이 안 생긴다) ③ 버튼은 여전히 하나. "최신 6개월"·"올해" 는 쓰지 않는다
+     — 규칙이 분기 단위라 날짜가 굴러가므로 계산된 기준일(_papCutLabel)을 그대로 찍는다. */
+  var cut = (typeof window !== 'undefined' && typeof window._papCutLabel === 'function') ? window._papCutLabel() : '';
+  var cutTxt = cut ? (cut + ' 이후') : '최근 3개 분기';
   if(need === 'free'){
-    /* 돈을 낼 필요가 없는 사람을 결제 페이지로 보내면 그냥 이탈한다.
-       최신 10편은 회원이면 무료이므로 가입으로 보낸다. */
-    msg = blocked ? '가입하면 볼 수 있습니다' : '가입하면 전체 이미지를 볼 수 있습니다';
-    sub = '최신 에디토리얼 10편은 회원이면 무료입니다.';
-    cta = '가입하고 보기';
+    /* 돈을 낼 필요가 없는 사람을 결제 페이지로 보내면 그냥 이탈한다. 가입으로 보낸다.
+       blocked(스탠다드·프리미엄 구간) 면 "가입하면 본다" 고 말하면 거짓말이다 — 가입 후 멤버십이라고 말한다. */
+    msg = blocked ? '회원 가입 후 멤버십에서 열리는 화보입니다' : '가입하면 이 화보를 끝까지 볼 수 있습니다';
+    sub = '무료 회원은 최신 10편, STANDARD는 ' + cutTxt + ' 화보, PREMIUM은 2019년부터 모든 아카이브';
+    cta = '무료로 가입하고 보기';
     href = '/auth?utm_source=editorial_gallery_lock&utm_medium=web';
+    /* 로그아웃된 유료회원이 이 벽을 만나면 "또 사라" 로 보인다. 로그인 링크는 필수. */
+    extra = '<div style="margin-top:16px"><a href="/auth?mode=login&utm_source=editorial_gallery_lock&utm_medium=web" style="font-size:12px;color:rgba(255,255,255,.7);text-decoration:underline;text-underline-offset:3px">이미 회원이면 로그인</a></div>';
   } else if(need === 'standard'){
-    msg = blocked ? 'STANDARD 멤버부터 볼 수 있습니다' : 'STANDARD 멤버부터 전체 이미지를 볼 수 있습니다';
-    sub = '최신 6개월 화보의 모든 컷과 이미지 다운로드가 열립니다.';
+    msg = '이 화보는 STANDARD 멤버십부터 열립니다';
+    sub = 'STANDARD · ' + cutTxt + ' 발행 화보와 이미지 다운로드<br>PREMIUM · 2019년부터 모든 아카이브';
     cta = '멤버십 보기';
     href = '/subscribe?utm_source=editorial_gallery_lock&utm_medium=web';
   } else {
-    msg = blocked ? 'PREMIUM 멤버부터 볼 수 있습니다' : 'PREMIUM 멤버부터 전체 이미지를 볼 수 있습니다';
-    sub = '2019년부터의 전체 아카이브가 모든 컷과 함께 열립니다.';
+    msg = '이 화보는 PREMIUM 멤버십부터 열립니다';
+    sub = '지금 STANDARD는 ' + cutTxt + ' 화보까지 열립니다<br>PREMIUM · 2019년부터 모든 아카이브';
     cta = '멤버십 보기';
     href = '/subscribe?utm_source=editorial_gallery_lock&utm_medium=web';
   }
@@ -2125,6 +2140,7 @@ function _papEdApplyLock(det, gal){
       '<div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:10px;line-height:1.4">' + msg + '</div>' +
       '<div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:26px;line-height:1.7">' + sub + '</div>' +
       '<a href="' + href + '" style="display:inline-block;padding:14px 34px;background:#fff;color:#000;border-radius:2px;font-size:12px;font-weight:800;letter-spacing:.16em;text-decoration:none">' + cta + '</a>' +
+      extra +
     '</div>';
   var mid = gal.querySelector('.ed-mid-cta');
   if(mid) mid.insertAdjacentHTML('beforebegin', html); else gal.insertAdjacentHTML('beforeend', html);
@@ -2618,7 +2634,7 @@ function _renderEdAllPage(){
         ? (_ko?'가입하면 최신 10편이 열려요':'Sign up to open the latest 10')
         : (_ko?'무료 미리보기는 여기까지예요':'The free preview ends here'));
     var _sub=standard
-      ? (_ko?'지금은 최신 6개월치를 보고 계세요. Premium 멤버는 2019년부터의 전체 아카이브와 풀레터까지 이용할 수 있어요.':'You are seeing the latest 6 months. Premium unlocks the full archive since 2019 and Pull-Letters.')
+      ? (_ko?'지금은 최근 3개 분기 화보를 보고 계세요. Premium 멤버는 2019년부터의 전체 아카이브와 풀레터까지 이용할 수 있어요.':'You are seeing the last three quarters of editorials. Premium unlocks the full archive since 2019 and Pull-Letters.')
       : (_anon
         ? (_ko?'무료 회원가입만 하면 최신 10편을 바로 볼 수 있어요. 그 이전 화보는 멤버십으로 열립니다.':'A free account opens the latest 10 editorials right away. Older ones open with a membership.')
         : (_ko?('멤버가 되면 '+_more+'편을 더 볼 수 있어요 — 광고 없이, 이미지·로고 이미지·티어시트 다운로드까지.'):('Become a member to unlock '+_more+' more editorials — ad-free, with image, logo image & tearsheet downloads.')));
@@ -2626,7 +2642,7 @@ function _renderEdAllPage(){
       ? [_ko?'2019년부터 전체 아카이브':'Full archive since 2019',_ko?'풀레터 요청':'Pull-Letter requests',_ko?'광고 없이 · 다운로드':'Ad-free · downloads']
       : _anon
         ? [_ko?'최신 10편 무료':'Latest 10 free',_ko?'서브미션 제출':'Submit your work',_ko?'가입 무료':'Free to join']
-        : [_ko?'최신 6개월 에디토리얼':'Latest 6 months of editorials',_ko?'광고 없이 감상':'Ad-free reading',_ko?'이미지·로고·티어시트 다운로드':'Image, logo & tearsheet downloads'];
+        : [_ko?'최근 3개 분기 에디토리얼':'Editorials from the last three quarters',_ko?'광고 없이 감상':'Ad-free reading',_ko?'이미지·로고·티어시트 다운로드':'Image, logo & tearsheet downloads'];
     var _btn=standard
       ? (_ko?'Premium 업그레이드':'Upgrade to Premium')
       : _anon
