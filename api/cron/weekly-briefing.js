@@ -36,10 +36,19 @@ const { buildIgContentMix, renderContentMixMd } = require('../_lib/igContentMix'
    **읽기만 한다** — 수집은 별도 주간 크론(ai-sov-probe)이 40분 먼저 끝낸다.
    프로브는 32콜(웹검색 포함)이라 브리핑 함수 안에서 돌리면 브리핑이 인질이 된다. */
 const { buildSovReport, renderSovMd } = require('../_lib/aiVisibility');
+const { buildPublishLedger, renderPublishLedgerMd } = require('../_lib/publishLedger');
 
 const SYSTEM = [
   '너는 PAP 매거진(아트 기반 패션·뷰티·컬쳐 디지털 매거진, IG @pap_magazine 38만, 웹 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만 — 두 매체 지표는 절대 합산 금지)의 주간 경영 브리핑을 쓰는 전략 컨설턴트다.',
-  '입력: 지난 7일 데일리 감사 요약 배열, 전주 7일 요약 배열, 운영 이벤트 로그, 어필리에이트 클릭 수.',
+  '입력: 지난 7일 데일리 감사 요약 배열, 전주 7일 요약 배열, 운영 이벤트 로그, 어필리에이트 클릭 수, **발행 장부**.',
+  '',
+  '발행 장부 규칙 (2026-09-21 신설 — 이걸 안 지키면 9/21 사고가 반복된다):',
+  '· 발행 장부는 DB 실측이다. 채널별로 우리가 실제로 내보낸 건수가 들어 있다.',
+  '· 따라서 "발행이 멈췄나" "포스팅이 중단됐나" 를 **추측하지 마라**. 장부를 읽어라.',
+  '· 발행량이 그대로인데 유입이 줄었으면 그건 발행 문제가 아니다. 그렇게 쓰라 —',
+  '  "같은 양을 내보냈는데 유입만 줄었다" 가 훨씬 유용한 문장이다.',
+  '· 장부에 error 가 있는 채널은 **0건이 아니라 모르는 것**이다. 0으로 읽지 마라.',
+  '· 발행량 회복을 베팅으로 제안하려면 장부에서 실제로 줄어든 것을 먼저 보여라.',
   '',
   '출력 (한국어 마크다운, 구조 고정):',
   '# 주간 브리핑 — {week_start} 주',
@@ -48,7 +57,8 @@ const SYSTEM = [
   '## 잘된 것 2 / 안된 것 2',
   '(각각 수치 근거 필수. 전주 대비 변화율 계산해 인용.)',
   '## 원인 분석',
-  '(지표 변화를 이벤트 로그와 대조해 가장 유력한 원인 가설을 랭킹. 이벤트 로그에 없는 원인은 "미기록 요인 가능성"으로 표시.)',
+  '(지표 변화를 **발행 장부부터** 대조하고, 그 다음 이벤트 로그와 대조해 가설을 랭킹.',
+  ' 발행 장부로 이미 배제되는 가설은 쓰지 않는다. 이벤트 로그에 없는 원인만 "미기록 요인 가능성"으로 표시.)',
   '## 다음 주의 베팅 1개',
   '(리소스를 집중할 단 하나. 무엇을 — 왜 지금 — 성공 판정 기준(수치)까지.)',
   '## 대표 결정 요청',
@@ -112,6 +122,13 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     try { contentMix = await buildIgContentMix(Date.now()); }
     catch (e) { console.warn('[weekly-briefing] contentMix failed:', e && e.message); }
 
+    /* 발행 장부 — 2026-09-21 신설. best-effort 지만 **가장 먼저** 넘긴다.
+       유입이 떨어졌을 때 "우리가 덜 내보냈나" 를 AI 가 추측으로 채우는 것을
+       막는 것이 목적이다. 9/21 브리핑이 그 추측으로 한 주를 통째로 날렸다. */
+    let pubLedger = null;
+    try { pubLedger = await buildPublishLedger(); }
+    catch (e) { console.warn('[weekly-briefing] publishLedger failed:', e && e.message); }
+
     // AI 답변 점유율 — best-effort. DB 읽기뿐이라 싸다. 기록이 없으면 null.
     let sov = null;
     try { sov = await buildSovReport({ days: 60 }); }
@@ -125,6 +142,9 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
 
     const userMsg = [
       'week_start: ' + weekStart,
+      /* 맨 앞에 둔다. AI 가 원인을 찾을 때 가장 먼저 읽어야 하는 표다. */
+      '발행 장부(우리가 내보낸 양 — 7일 vs 전 7일. error 가 있으면 0이 아니라 모르는 것):',
+      JSON.stringify((pubLedger && pubLedger.rows) || []),
       '이번 주 데일리 요약(' + thisWeek.length + '일):', JSON.stringify(thisWeek),
       '전주 데일리 요약(' + lastWeek.length + '일):', JSON.stringify(lastWeek),
       '운영 이벤트 로그(14일):', JSON.stringify(evs),
@@ -163,6 +183,12 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     if (scorecard) {
       const scMd = renderScorecardMd(scorecard);
       briefing = briefing ? (briefing + '\n\n---\n\n' + scMd) : scMd;
+    }
+    /* 발행 장부 표는 채널 성적표 **바로 뒤**에 붙인다. 유입 표를 본 직후에
+       "그럼 우리가 얼마나 내보냈나" 가 바로 보여야 대조가 된다. */
+    {
+      const plMd = renderPublishLedgerMd(pubLedger);
+      if (plMd) briefing = briefing ? (briefing + '\n\n---\n\n' + plMd) : plMd;
     }
     if (igLedger) {
       const lgMd = renderIgLedgerMd(igLedger);
