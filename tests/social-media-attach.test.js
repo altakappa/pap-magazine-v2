@@ -95,7 +95,8 @@ console.log('\n[3] postMedia — 형식별 요청이 맞게 나간다');
   t('webp 는 걸러낸다 (스레드는 JPEG·PNG 만 받는다)', /jpe\?g\|png/.test(src));
   t('https 아닌 URL 은 안 보낸다', /\^https:/.test(src));
   t('영상은 대기를 더 길게 준다 (트랜스코딩)', /waitContainer\(cj\.id, token, 20\)/.test(src));
-  t('캐러셀은 장수에 비례해 기다린다', /Math\.max\(12, urls\.length \* 2\)/.test(src));
+  // 2026-09-21: 준비된 자식 수(ready)에 비례 — 빠진 장까지 기다릴 이유가 없다
+  t('캐러셀은 장수에 비례해 기다린다', /Math\.max\(12, ready\.length \* 2\)/.test(src));
   t('텍스트 경로의 대기 횟수는 예전 그대로 6', /waitContainer\(cj\.id, token, 6\)/.test(src));
 }
 

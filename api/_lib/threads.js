@@ -271,6 +271,46 @@ async function publishContainer(id, token) {
 }
 
 /**
+ * 캐러셀 자식 컨테이너가 전부 처리될 때까지 기다린다 (2026-09-21).
+ *
+ * 왜: 9/14 부터 스레드 캐러셀이 일주일 49건 중 20건(41%) 실패했다.
+ * 오류는 전부 같다 — code 100 / subcode 4279004 "슬라이드 하위 요소 오류:
+ * ID 가 X 인 하위 요소가 유효하지 않거나 없거나 만료되었습니다."
+ * 실패하면 '미디어 없이 게시함' 으로 떨어져 사진 없는 글이 나갔다.
+ *
+ * 원인: 자식을 만들자마자 곧바로 CAROUSEL 을 만들었다. 기다리는 건
+ * 캐러셀 컨테이너 하나뿐이었다. 메타는 자식 이미지를 받아 처리하는 데
+ * 몇 초가 걸리고, 그 전에 캐러셀로 묶으면 '없는 하위 요소' 가 된다.
+ * 9/13 이전에 0건이었던 건 그때는 처리가 빨랐을 뿐이다 — 운이었다.
+ *
+ * 그래서 자식 전부를 **한 번에** 폴링한다(자식마다 따로 기다리면 장수만큼
+ * 시간이 곱해진다). ERROR 난 자식과 시간 안에 안 끝난 자식은 빼고
+ * 끝난 것만 돌려준다. 순서는 유지한다(첫 컷이 표지다).
+ *
+ * @returns {Promise<{ready:string[], dropped:{id:string,status:string}[]}>}
+ */
+async function waitChildren(ids, token, rounds) {
+  const n = rounds || 8;
+  const state = new Map(ids.map((id) => [id, 'IN_PROGRESS']));
+  for (let i = 0; i < n; i++) {
+    await new Promise((r) => setTimeout(r, i === 0 ? 2000 : 2500));
+    const pending = ids.filter((id) => state.get(id) === 'IN_PROGRESS');
+    if (!pending.length) break;
+    await Promise.all(pending.map(async (id) => {
+      try {
+        const st = await fetch(GRAPH + '/v1.0/' + id + '?fields=status&access_token=' + encodeURIComponent(token),
+          { signal: AbortSignal.timeout(8000) });
+        const sj = await st.json().catch(() => ({}));
+        if (sj.status === 'FINISHED' || sj.status === 'ERROR' || sj.status === 'EXPIRED') state.set(id, sj.status);
+      } catch (_) { /* 이번 라운드만 건너뛴다 — 다음 라운드에 다시 본다 */ }
+    }));
+  }
+  const ready = ids.filter((id) => state.get(id) === 'FINISHED');
+  const dropped = ids.filter((id) => state.get(id) !== 'FINISHED').map((id) => ({ id, status: state.get(id) }));
+  return { ready, dropped };
+}
+
+/**
  * 이미지·영상과 함께 게시한다 (2026-08-07, 도메니코 요청).
  *
  * 왜 만들었나 ────────────────────────────────────────────────────────
@@ -360,19 +400,29 @@ async function postMedia(media, text, accountId) {
     children.push(j.id);
   }
 
+  /* 자식이 다 처리된 뒤에 묶는다 — 위 waitChildren 머리말 참고. */
+  const { ready, dropped } = await waitChildren(children, token);
+  if (ready.length < 2) {
+    throw new Error('캐러셀 자식 준비 안 됨 (' + ready.length + '/' + children.length + '장 완료, 미완료: '
+      + dropped.map((d) => d.status).join(',') + ')');
+  }
+  if (dropped.length) {
+    console.warn('[threads] 캐러셀 자식 ' + dropped.length + '장 제외:', JSON.stringify(dropped));
+  }
+
   const create = await fetch(GRAPH + '/v1.0/me/threads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      media_type: 'CAROUSEL', children: children.join(','), text: caption, access_token: token,
+      media_type: 'CAROUSEL', children: ready.join(','), text: caption, access_token: token,
     }),
     signal: AbortSignal.timeout(20000),
   });
   const cj = await create.json();
   if (!create.ok || !cj.id) throw new Error('캐러셀 컨테이너 생성 실패: ' + JSON.stringify(cj).slice(0, 300));
   /* 장수만큼 처리 시간이 는다 — 대기를 넉넉히 준다(장당 2회, 최소 12회). */
-  await waitContainer(cj.id, token, Math.max(12, urls.length * 2));
-  return { id: await publishContainer(cj.id, token), kind: 'carousel', count: urls.length };
+  await waitContainer(cj.id, token, Math.max(12, ready.length * 2));
+  return { id: await publishContainer(cj.id, token), kind: 'carousel', count: ready.length, dropped: dropped.length };
 }
 
 /**
@@ -499,7 +549,7 @@ async function getThreadInsights(threadId, accountId) {
 }
 
 module.exports = {
-  authorizeUrl, exchangeCode, getAccessToken, postText, postMedia, selectArticleMedia, getThreadInsights,
+  authorizeUrl, exchangeCode, getAccessToken, postText, postMedia, selectArticleMedia, getThreadInsights, waitChildren,
   MAX_CAROUSEL,
   INSIGHT_METRICS, REDIRECT_URI,
   /* 계정 다중화 (2026-08-05) — 호출부는 accountId 를 안 주면 예전대로 1(PAP)이다. */
