@@ -26,6 +26,10 @@
  *       (Vercel 함수 호출 비용 동일), 대기만 왕복 N → N/6.
  *   + 사용자가 먼저 검색을 열거나 화면을 누르면 타이머를 안 기다린다.
  *
+ * 2026-09-22 갱신 — 홈에서는 타이머·pointerdown 트리거도 없앴다. 홈은 '전체 목록'을 열 때만
+ * (papEnsureFullCatalog) 전량을 받는다. 실측 51 요청·24.6MB 가 그 둘에서 나왔다.
+ * 그 검증은 tests/home-catalog-on-demand.test.js 가 실제 실행으로 한다. 여기 4·5절은 그에 맞췄다.
+ *
  * 이 테스트가 지키는 것
  *   1. fetchAll 이 실제로 병렬이고, 동시 상한을 지키고, 순서를 보존한다
  *   2. 요청 횟수가 늘지 않는다 (비용 회귀 방지)
@@ -180,23 +184,24 @@ console.log('\n=== 3. 홈 판정 ===');
   }
 
   console.log('\n=== 4. 언제 도는가 ===');
-  t('홈은 load 이벤트 이후에 건다',
+  t('홈의 가벼운 후속(필름 전량)은 load 이벤트 이후에 건다',
     /addEventListener\('load',\s*go,\s*\{\s*once:\s*true\s*\}\)/.test(src));
   t('DOMContentLoaded 에 전체 동기화를 직접 걸지 않는다 (회귀 방지)',
     !/DOMContentLoaded[\s\S]{0,400}?fetchAll\(/.test(src));
-  t('syncArticles · syncFilms 는 큐를 거친다',
+  t('syncArticles 는 큐를 거친다 · syncFilms 는 홈이면 load+유휴, 아니면 큐',
     /_queueFullSync\(function\(\)\{ syncArticles\(\); \}\)/.test(src) &&
-    /_queueFullSync\(function\(\)\{ syncFilms\(\); \}\)/.test(src));
+    /_queueFullSync\(function\(\)\{ syncFilms\(\); \}\)/.test(src) &&
+    /_afterLoadIdle\(function\(\)\{ try \{ syncFilms\(\); \}/.test(src));
+  t('홈은 전량 타이머가 없다 (2026-09-22)', !/requestIdleCallback\(_flushFullSyncs/.test(src) && !/setTimeout\(_flushFullSyncs/.test(src));
   t('editorials STAGE 2 도 큐를 거친다',
     /STAGE 2[\s\S]{0,400}?_queueFullSync\(/.test(src));
   t('홈이 아니면 종전대로 곧 돈다', /if\(!_isHomePath\(\)\)\{[\s\S]{0,200}?idleSoon\(_flushFullSyncs\)/.test(src));
   t('큐는 한 번만 비워진다 (_fullFired 가드)',
     /if\(_fullFired\) return;\s*_fullFired = true;/.test(src));
 
-  console.log('\n=== 5. 사용자가 먼저 움직이면 ===');
-  t('검색창을 열면 즉시 시작한다', /window\.toggleSearch = function\(\)\{[\s\S]{0,120}_flushFullSyncs/.test(src));
-  t('첫 pointerdown 에도 즉시 시작한다',
-    /addEventListener\('pointerdown'[\s\S]{0,200}?once:\s*true/.test(src));
+  console.log('\n=== 5. 사용자가 목록을 열면 (2026-09-22: 검색창·pointerdown 트리거는 제거) ===');
+  t('검색창 열기로 전량을 시작하지 않는다 — 홈 검색은 /search 페이지로 간다', !/window\.toggleSearch = function/.test(src));
+  t('pointerdown 트리거가 없다', !/addEventListener\('pointerdown'/.test(src));
   t('외부에서 부를 수 있는 문이 열려 있다', /window\.papEnsureFullCatalog = _flushFullSyncs;/.test(src));
 
   console.log('\n=== 6. 캐시버스트 ===');

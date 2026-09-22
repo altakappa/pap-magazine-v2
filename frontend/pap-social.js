@@ -128,6 +128,40 @@ if (!window._papEdHref) {
     return supabaseClient;
   }
 
+  /* ── SDK 지연 로드 (2026-09-22, 테크 매니저 속도 연구) ──
+     supabase-js(≈170KB) 는 댓글·별점·관련 화보를 읽을 때만 쓰인다. 종전엔 index.html 이
+     홈 첫 로드에 defer 로 받았고, 이 파일은 100ms 폴링으로 5초 동안 SDK 를 기다렸다.
+     이제 처음 필요한 순간(화보 오버레이 열림 → 별점·댓글 마운트)에 <script> 를 붙여 받는다.
+     HTML 에 SDK 태그가 아직 있는 페이지(auth·mypage·community 등)에서는 그 태그를 그대로 쓴다.
+     모든 데이터 함수는 이미 Promise 를 돌려주므로 호출부 계약은 그대로다. */
+  var SUPABASE_SDK_SRC = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  var _sdkPromise = null;
+  function ensureSupabase(){
+    if(supabaseClient) return Promise.resolve(supabaseClient);
+    if(typeof global.supabase !== 'undefined' && global.supabase.createClient){
+      return Promise.resolve(initSupabase());
+    }
+    if(_sdkPromise) return _sdkPromise;
+    _sdkPromise = new Promise(function(resolve){
+      try{
+        var existing = document.querySelector('script[src="' + SUPABASE_SDK_SRC + '"]');
+        var s = existing || document.createElement('script');
+        var done = false;
+        var finish = function(){ if(done) return; done = true; resolve(initSupabase()); };
+        s.addEventListener('load', finish);
+        s.addEventListener('error', function(){
+          if(done) return; done = true;
+          console.warn('[PAPSocial] Supabase SDK failed to load');
+          _sdkPromise = null;
+          resolve(null);
+        });
+        if(!existing){ s.src = SUPABASE_SDK_SRC; s.async = true; document.head.appendChild(s); }
+        else if(typeof global.supabase !== 'undefined'){ finish(); }
+      }catch(e){ console.warn('[PAPSocial] Supabase SDK inject failed:', e); resolve(null); }
+    });
+    return _sdkPromise;
+  }
+
   // ======== LOCAL CACHE (for immediate UI, then sync with server) ========
   var CACHE = {
     comments: {}, // key: type:id -> [comments]
@@ -179,8 +213,8 @@ if (!window._papEdHref) {
 
   // ======== SUPABASE DATA LAYER ========
   function sbListComments(targetType, targetId){
-    var sb = initSupabase();
-    if(!sb) return Promise.resolve([]);
+    return ensureSupabase().then(function(sb){
+    if(!sb) return [];
     return sb.from('comments')
       .select('*')
       .eq('target_type', targetType)
@@ -202,6 +236,7 @@ if (!window._papEdHref) {
           };
         });
       });
+    });
   }
 
   // ── 쓰기 경로는 전부 서버 API(/api/social/*) 경유 ──
@@ -260,8 +295,8 @@ if (!window._papEdHref) {
   }
 
   function sbGetMyRating(editorialTitle, userId){
-    var sb = initSupabase();
-    if(!sb) return Promise.resolve(0);
+    return ensureSupabase().then(function(sb){
+    if(!sb) return 0;
     return sb.from('ratings')
       .select('score')
       .eq('editorial_title', editorialTitle)
@@ -271,11 +306,12 @@ if (!window._papEdHref) {
         if(res.error || !res.data || res.data.length===0) return 0;
         return res.data[0].score;
       });
+    });
   }
 
   function sbGetRatingStats(editorialTitle){
-    var sb = initSupabase();
-    if(!sb) return Promise.resolve({avg:0,count:0});
+    return ensureSupabase().then(function(sb){
+    if(!sb) return {avg:0,count:0};
     return sb.from('editorial_rating_stats')
       .select('avg_score,rating_count')
       .eq('editorial_title', editorialTitle)
@@ -284,16 +320,18 @@ if (!window._papEdHref) {
         if(res.error || !res.data || res.data.length===0) return {avg:0,count:0};
         return { avg: parseFloat(res.data[0].avg_score)||0, count: res.data[0].rating_count||0 };
       });
+    });
   }
 
   function sbGetAllStats(){
-    var sb = initSupabase();
-    if(!sb) return Promise.resolve([]);
+    return ensureSupabase().then(function(sb){
+    if(!sb) return [];
     return sb.from('editorial_rating_stats').select('*')
       .then(function(res){
         if(res.error) return [];
         return res.data || [];
       });
+    });
   }
 
   // ======== RATING UI ========
@@ -653,8 +691,9 @@ if (!window._papEdHref) {
   function renderRelatedEditorials(container, editorialId){
     if(!container) return;
     function hide(){ container.hidden = true; container.style.display = 'none'; container.innerHTML = ''; }
-    var sb = initSupabase();
-    if(!sb || !editorialId){ hide(); return; }
+    if(!editorialId){ hide(); return; }
+    ensureSupabase().then(function(sb){
+    if(!sb){ hide(); return; }
 
     sb.rpc('related_editorials', { target_id: editorialId, match_count: 4 })
       .then(function(res){
@@ -705,6 +744,7 @@ if (!window._papEdHref) {
         });
       })
       .catch(function(err){ console.warn('[PAPSocial] related_editorials failed:', err); hide(); });
+    });
   }
 
   // ======== ARTICLE SOCIAL (comments only) ========
@@ -782,24 +822,14 @@ if (!window._papEdHref) {
     currentUser: currentUser,
     isLoggedIn: isLoggedIn,
     starHTML: starHTML,
-    _init: initSupabase
+    _init: initSupabase,
+    _ensure: ensureSupabase
   };
 
-  // Auto-init when Supabase SDK is available
+  // SDK 가 이미 있으면(HTML 태그로 실은 페이지) 바로 초기화. 없으면 첫 사용 때 ensureSupabase 가 받는다.
+  // (2026-09-22 — 100ms 폴링 50회로 SDK 를 기다리던 코드 제거. 홈은 이제 SDK 를 안 싣는다.)
   if(typeof global.supabase !== 'undefined'){
     initSupabase();
-  } else {
-    // Wait for SDK to load
-    var waitCount = 0;
-    var waitInterval = setInterval(function(){
-      if(typeof global.supabase !== 'undefined'){
-        initSupabase();
-        clearInterval(waitInterval);
-      } else if(waitCount++ > 50){ // 5s timeout
-        console.warn('[PAPSocial] Supabase SDK did not load within 5s');
-        clearInterval(waitInterval);
-      }
-    }, 100);
   }
 
 })(window);

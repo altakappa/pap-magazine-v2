@@ -173,9 +173,27 @@ window._papFilmAutoPlay = function(){
     });
   }
 
+  /* 2026-09-22 — 홈 정적 JSON 을 둘로 가른다 (테크 매니저 속도 연구).
+     · 홈 화면 부품(films·creators·shorts, 합계 ~140KB): 필름 캐러셀·쇼츠가 실제로 읽는다 → 종전대로.
+     · 카탈로그 시드(articles-snapshot 1.5MB · editorials.json 0.9MB · editorial-details.json 2.6MB):
+       홈에는 그리는 곳이 없다. articles-snapshot 은 max-age=0 이라 매번 새로 받았고,
+       editorial-details 는 9/16 게이트 이후 표지 1장짜리 껍데기다. 홈에서는 받지 않는다.
+       '전체 목록'을 열 때만 시드 2종을 받는다(window._papStartCatalogSeeds — 목록이 즉시 차도록).
+     · 딥링크(/editorial/… 등)·홈 아닌 페이지는 종전 그대로. */
   function startStaticLoads(){
+    startHomeStaticLoads();
+    startCatalogSeeds();
+  }
+  function startHomeStaticLoads(){
     // Use late-binding wrappers so callbacks are resolved when JSON arrives, not when loadJSON is called
     loadJSON('data/films.json', filmAllData, function(){ if(window._papFilmRenderCards) window._papFilmRenderCards(); if(window._papFilmAutoPlay) window._papFilmAutoPlay(); }, 'films');
+    loadJSON('data/creators.json', creatorData);
+    loadJSON('data/shorts.json', shortsData, function(){ if(window._papShortsRender) window._papShortsRender(); });
+  }
+  var _seedsStarted = false;
+  function startCatalogSeeds(){
+    if(_seedsStarted) return;
+    _seedsStarted = true;
     // 2026-07-12 — 정적 스냅샷(articles.json)이 stale해지는 문제 해소: DB에서 항상
     // 최신을 주는 스냅샷 API(엣지 캐시)를 우선 사용, 실패 시 정적 파일로 폴백.
     (function(){
@@ -213,9 +231,8 @@ window._papFilmAutoPlay = function(){
         try { _renderEdAllPage(); } catch(_){}
       }
     }).catch(function(){ console.warn('[PAP] Could not load data/editorials.json, using API sync fallback'); });
-    loadJSON('data/creators.json', creatorData);
-    loadJSON('data/shorts.json', shortsData, function(){ if(window._papShortsRender) window._papShortsRender(); });
   }
+  window._papStartCatalogSeeds = startCatalogSeeds;
   function startDetailsLoad(){
     // For edDetails (object, not array):
     fetch('data/editorial-details.json?v=3').then(function(r){return r.json();}).then(function(data){
@@ -231,9 +248,24 @@ window._papFilmAutoPlay = function(){
     var deepLink = /^\/(editorial|article|film|short)\//.test(window.location.pathname)
       || /#(editorial|article|film|short)/.test(window.location.hash || '');
 
+    // 홈인가 — 언어 프리픽스(/ja 등) 포함. 아래 sync IIFE 의 _isHomePath 와 같은 판정.
+    var isHome = (function(){
+      try {
+        var p = String(window.location.pathname || '/').replace(/\/+$/, '');
+        p = p.replace(/^\/(ko|ja|en|fr|it|es|de|ru|zh)(?=\/|$)/, '');
+        return p === '' || p === '/index.html';
+      } catch(_){ return false; }
+    })();
+    window._papIsHomePath = isHome;
+
     if(deepLink){
       startStaticLoads();
       startDetailsLoad();
+    } else if(isHome){
+      // 홈 — 화면 부품 3종만. 시드 2종은 전체 목록을 열 때(_papStartCatalogSeeds), 상세맵은 안 받는다.
+      var kickHome = function(){ setTimeout(startHomeStaticLoads, 800); };
+      if(document.readyState === 'complete'){ kickHome(); }
+      else { window.addEventListener('load', kickHome); }
     } else {
       var kick = function(){
         // 가벼운 5종(합계 ~2.2MB)은 첫 유휴 시점, 4.5MB 상세맵은 그 뒤에
@@ -488,10 +520,14 @@ window._papFilmAutoPlay = function(){
   // 병렬로 바꾼 뒤 실측 185ms → 1076ms (891ms) — 3.7배.
   // 요청 "횟수"는 그대로라 Vercel 함수 호출 비용은 동일하다.
   // 동시 6개 상한은 이미지·폰트 대역폭을 다 빼앗지 않도록 일부러 둔 것.
-  function fetchAll(endpoint, converter, callback){
+  /* extraQuery (2026-09-22) — '&public=1' 같은 꼬리표. 에디토리얼 전량 동기화가
+     이걸 안 붙여서 서버가 관리자용 굵은 컬럼(instagram_caption·seo_*·description_it·
+     related_films 조인)까지 실어 보냈다. STAGE 1 은 이미 public=1 을 쓴다. */
+  function fetchAll(endpoint, converter, callback, extraQuery){
     var limit = 100;
+    var extra = extraQuery ? String(extraQuery) : '';
     function pageUrl(p){
-      return PAP_API_BASE + endpoint + '?status=published&limit=' + limit + '&page=' + p;
+      return PAP_API_BASE + endpoint + '?status=published&limit=' + limit + '&page=' + p + extra;
     }
     function flatten(buckets){
       // 여기 담기는 건 이미 변환이 끝난 배열이다 (변환은 absorb 에서 쪼개 했다).
@@ -638,7 +674,7 @@ window._papFilmAutoPlay = function(){
 
   // Sync articles
   function syncArticles(){
-    if(typeof artData==='undefined') return;
+    if(typeof artData==='undefined'){ _catalogPartDone('articles'); return; }
     fetchAll('/articles',apiArticleToLocal,function(apiArticles){
       /* 2026-08-22 — 채우기를 조각내면 "다 채워진 뒤"가 비동기가 된다.
          렌더는 반드시 그 뒤에 와야 한다(안 그러면 빈 목록을 그린다). */
@@ -660,10 +696,19 @@ window._papFilmAutoPlay = function(){
   /* syncArticles 의 후처리 — artData 가 완전히 채워진 뒤에만 부른다. */
   function _afterArticlesFilled(apiArticles){
     {
+      _catalogPartDone('articles');
       // Re-render article cards if available (/articles)
       if(typeof window._papArticleRenderCards==='function'){
         window._papArticleRenderCards();
       }
+      /* 2026-09-22 — 홈에서는 전량 동기화가 '전체 기사' 목록을 여는 순간에야 돈다.
+         그 목록이 이미 열려 있으면(최신 12건만 그려진 채) 전량이 도착했을 때 다시 그린다. */
+      try {
+        var _artAll = document.getElementById('artAllOverlay');
+        if(_artAll && _artAll.classList.contains('active') && typeof window._papArtAllRefresh === 'function'){
+          window._papArtAllRefresh();
+        }
+      } catch(_){}
       // QA #226 — also surface newly-published articles on the home-page
       // "최신기사" carousel. The carousel HTML is a long list of static
       // cards (kept around so the page paints instantly with no JS), so
@@ -1412,7 +1457,7 @@ window._papFilmAutoPlay = function(){
   };
 
   function syncEditorials(){
-    if(typeof edData==='undefined') return;
+    if(typeof edData==='undefined'){ _catalogPartDone('editorials'); return; }
 
     // Two-stage sync to fix "newest editorial appears with a delay" UX:
     //
@@ -1481,9 +1526,12 @@ window._papFilmAutoPlay = function(){
         // 2026-08-22 — 예전엔 여기서 곧바로 시작해 첫 화면이 그려지는 동안
         // 24쪽을 받았다. 이제 _queueFullSync 에 넣어 load 이후 유휴에 돈다.
         _queueFullSync(function(){
+        /* public=1 (2026-09-22) — 슬림 컬럼. 상세(관련 필름·IG 원본 등)는 열 때
+           /api/editorials/:id 하이드레이트가 채운다. */
         fetchAll('/editorials', apiEditorialToLocal, function(apiEds){
-          if(apiEds.length === 0) return;
+          if(apiEds.length === 0){ _catalogPartDone('editorials'); return; }
           applyToEdData(apiEds, function(){
+            _catalogPartDone('editorials');
             if(typeof _renderEdAllPage === 'function' && typeof edAllBuilt !== 'undefined' && edAllBuilt){
               try { _renderEdAllPage(); } catch(_){}
             }
@@ -1492,7 +1540,7 @@ window._papFilmAutoPlay = function(){
               try { window.papReveal.refresh(); } catch(_){}
             }
           });
-        });
+        }, '&public=1');
         });
       });
   }
@@ -1519,15 +1567,41 @@ window._papFilmAutoPlay = function(){
   //   • load 이벤트 이후 + 유휴(최대 3초 대기)에만 시작하고,
   //   • 사용자가 검색을 먼저 열면 타이머를 기다리지 않고 즉시 시작한다.
   // 화면에 보이는 최신 12건(STAGE 1 · syncArticlesFast)은 종전 그대로 즉시.
+  //
+  // 2026-09-22 — 홈에서는 타이머로도 돌리지 않는다 (테크 매니저 속도 연구).
+  // 실측: 홈이 /api/articles 28쪽 + /api/editorials 23쪽 = 51 요청, 압축 해제 24.6MB 를
+  // 사람이 아무것도 안 눌러도 받았다. 게다가 첫 pointerdown 에도 즉시 시작하게 돼 있어
+  // 손가락이 화면에 닿는 순간 51 요청이 터졌다 — 스크롤이 버벅이던 이유.
+  // 홈의 검색창은 Enter 로 /search 페이지에 가므로(pap-search.js) 카탈로그가 필요 없다.
+  // 카탈로그가 정말 필요한 건 '전체 에디토리얼 / 전체 기사' 목록을 열 때뿐이다.
+  // → 홈: 그때만 window.papEnsureFullCatalog() 로 시작한다. 그 전엔 요청 0.
+  // → 홈이 아닌 목록·상세 화면: 종전대로 곧 돈다.
+  // 필름 전량(2쪽)은 홈 필름 카드 클릭이 filmAllData 를 보므로 홈에서도 load 이후 유휴에 받는다.
   var _fullQueue = [];
   var _fullFired = false;
   function _queueFullSync(fn){
     if(_fullFired){ try { fn(); } catch(e){ console.warn('[PAP Sync] full:', e); } return; }
     _fullQueue.push(fn);
   }
+  /* 목록 화면이 "불러오는 중"을 그릴 수 있도록 상태를 공개한다.
+     _papCatalogState: 'idle'(아직 요청 안 함) → 'loading' → 'done' */
+  var _catalogParts = { articles: false, editorials: false };
+  window._papCatalogState = 'idle';
+  function _catalogPartDone(part){
+    _catalogParts[part] = true;
+    if(_catalogParts.articles && _catalogParts.editorials) window._papCatalogState = 'done';
+    /* 크리에이터 DB(pap-content-creator-shorts.js#getCreatorDB)는 edDetails 를 한 번 훑어 캐시한다.
+       카탈로그가 뒤늦게 차면 캐시를 버려 다음 팝업이 전체 크레딧으로 다시 만들게 한다. */
+    if(part === 'editorials'){ try { window.creatorDB = null; } catch(_){} }
+  }
   function _flushFullSyncs(){
     if(_fullFired) return;
     _fullFired = true;
+    if(!(_catalogParts.articles && _catalogParts.editorials)) window._papCatalogState = 'loading';
+    // 홈: 정적 시드 2종(articles-snapshot · editorials.json)도 이때 받는다 — 목록이 즉시 차도록.
+    if(_isHomePath() && typeof window._papStartCatalogSeeds === 'function'){
+      try { window._papStartCatalogSeeds(); } catch(_){}
+    }
     var q = _fullQueue;
     _fullQueue = [];
     q.forEach(function(fn){ try { fn(); } catch(e){ console.warn('[PAP Sync] full:', e); } });
@@ -1555,34 +1629,31 @@ window._papFilmAutoPlay = function(){
       return;
     }
 
-    // 홈 — load 이후 유휴까지 미룬다.
+    // 홈 — 타이머 없음. 전체 목록을 여는 쪽(openAllEditorials / openAllArticles)이
+    // window.papEnsureFullCatalog() 를 부를 때까지 기사·에디토리얼 전량 요청은 0건이다.
+    // (2026-08-22 의 load+유휴 타이머와 첫 pointerdown 트리거는 2026-09-22 에 제거 —
+    //  홈에서 아무도 안 보는 5,000건을 받던 51 요청이 그 둘에서 나왔다.)
+  }
+
+  /* 홈에서만 쓰는 '가벼운 후속' 스케줄 — load 이후 유휴. 필름 전량(2쪽)이 여기로 간다. */
+  function _afterLoadIdle(fn){
     var go = function(){
       if(typeof requestIdleCallback === 'function'){
-        requestIdleCallback(_flushFullSyncs, { timeout: 3000 });
+        requestIdleCallback(fn, { timeout: 3000 });
       } else {
-        setTimeout(_flushFullSyncs, 1200);
+        setTimeout(fn, 1200);
       }
     };
     if(document.readyState === 'complete') go();
     else window.addEventListener('load', go, { once: true });
-
-    // 사용자가 먼저 움직이면(검색창 열기·카드 클릭) 타이머를 기다리지 않는다.
-    var _origToggleSearch = window.toggleSearch;
-    if(typeof _origToggleSearch === 'function'){
-      window.toggleSearch = function(){
-        try { _flushFullSyncs(); } catch(_){}
-        return _origToggleSearch.apply(this, arguments);
-      };
-    }
-    try {
-      document.addEventListener('pointerdown', function(){
-        try { _flushFullSyncs(); } catch(_){}
-      }, { once: true, passive: true, capture: true });
-    } catch(_){}
   }
 
   function _kickDeferredSyncs(){
-    _queueFullSync(function(){ syncFilms(); });
+    if(_isHomePath()){
+      _afterLoadIdle(function(){ try { syncFilms(); } catch(e){ console.warn('[PAP Sync] films:', e); } });
+    } else {
+      _queueFullSync(function(){ syncFilms(); });
+    }
     _queueFullSync(function(){ syncArticles(); });
     // 커뮤니티 CTA 썸네일은 요청 1건짜리 화면 요소 — 종전대로 유휴에 바로.
     var idle = (typeof requestIdleCallback === 'function')

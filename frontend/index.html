@@ -219,7 +219,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- 2026-09-22 — 히어로(LCP) 이미지 호스트 사전 연결 + 프리로드. 스타일시트·폰트 CSS 뒤에서 발견되던 것을 앞당긴다. -->
+<link rel="preconnect" href="https://igcazquhkwxtqsaqpznx.supabase.co">
+<link rel="preload" as="image" fetchpriority="high" href="https://igcazquhkwxtqsaqpznx.supabase.co/storage/v1/object/public/media/uploads/1782883490406_pbkv6ny169.jpg">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/pap-styles.css?v=43">
 <link rel="stylesheet" href="/pap-social.css?v=2">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
@@ -946,7 +949,7 @@
      (첫 화면 심볼 오버레이 제거). 되살리려면 아래 스크립트 주석 해제.
 <script src="/pap-splash-loader.js?v=3"></script>
 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=16" defer></script><script src="/pap-social.js?v=8" defer></script><script src="/pap-utils.js?v=9" defer></script><script src="/pap-i18n.js?v=11" defer></script><script src="/pap-auth.js?v=4" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=6" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=90" defer></script><script src="/pap-content-film.js?v=14" defer></script><script src="/pap-content-article.js?v=52" defer></script><script src="/pap-content-creator-shorts.js?v=14" defer></script><script src="/pap-content-api-sync.js?v=127" defer></script><script src="/pap-content-seo.js?v=9" defer></script><script src="/pap-shell-bootstrap.js?v=12" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script><script src="/pap-inclick.js?v=4" defer></script>
+<script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=16" defer></script><script src="/pap-social.js?v=9" defer></script><script src="/pap-utils.js?v=9" defer></script><script src="/pap-i18n.js?v=11" defer></script><script src="/pap-auth.js?v=4" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=6" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=91" defer></script><script src="/pap-content-film.js?v=14" defer></script><script src="/pap-content-article.js?v=53" defer></script><script src="/pap-content-creator-shorts.js?v=14" defer></script><script src="/pap-content-api-sync.js?v=128" defer></script><script src="/pap-content-seo.js?v=9" defer></script><script src="/pap-shell-bootstrap.js?v=12" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script><script src="/pap-inclick.js?v=4" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">
@@ -1304,7 +1307,6 @@
        or an <a class="ed-video-link"> (Instagram fallback) and flips
        this section's `hidden` attribute, based on normaliseEmbedUrl
        (pap-utils.js) of the editorial's url field. Empty / unrecognised
-<script src="/pap-protect.js?v=3" defer></script>
        URL → wrap stays [hidden] and the section never reaches the DOM
        layout — matches "영상 없는 에디토리얼 → DOM 추가 안 함" rule. -->
   <section class="ed-video" id="edDetailVideoWrap" hidden>
@@ -1348,11 +1350,9 @@
         <div style="font-size:11px;color:#888;margin-top:4px">개인 사용 및 비상업적 용도에 한해 사용 가능</div>
       </div>
     </div>
-    <!-- JSZip CDN — 갤러리 이미지 ZIP 패키징용. defer로 본문 파싱 후 로드. -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
-    <!-- jsPDF CDN — 티어시트 A4 PDF 생성용 (2026-08-09). 로드 실패 시
-         티어시트만 조용히 빠지고 로고 ZIP 은 정상 동작한다. -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <!-- JSZip · jsPDF (ZIP 패키징 · 티어시트 PDF) 는 2026-09-22 부터 여기서 싣지 않는다.
+         pap-content-editorial.js#_papLoadScriptOnce 가 다운로드 버튼을 누르는 순간 받는다.
+         supabase-js(댓글·별점) 도 같은 날 pap-social.js#ensureSupabase 로 옮겼다. -->
     <!-- QA #246 — clickable hashtag chips, identical UX to the article
          detail (.art-tag-chip). Rendered by pap-content-editorial.js
          when the editorial carries .tags. Clicking a chip links to

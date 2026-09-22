@@ -1069,6 +1069,31 @@ async function _papMakeTearsheetPdf(ts, logo, JsPDF, onProgress){
   return doc.output('blob');
 }
 
+/* ── 다운로드 전용 라이브러리 지연 로드 (2026-09-22, 테크 매니저 속도 연구) ──
+   JSZip(≈100KB)·jsPDF(≈360KB)는 로고 ZIP·티어시트 버튼을 눌러야만 쓰인다. 종전엔 index.html 이
+   홈 첫 로드에 defer 로 둘 다 받았다 — 홈 방문자 대부분은 한 번도 안 누른다.
+   이제 버튼을 누르는 순간 <script> 를 붙여 받고, 같은 URL 은 한 번만 붙인다.
+   (관리자 콘솔 admin.html 은 자기 태그를 그대로 쓴다 — 여기와 무관.) */
+var _PAP_JSZIP_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+var _PAP_JSPDF_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+var _papScriptOnce = {};
+function _papLoadScriptOnce(src, isReady){
+  try { if (isReady && isReady()) return Promise.resolve(true); } catch(_){}
+  if (_papScriptOnce[src]) return _papScriptOnce[src];
+  _papScriptOnce[src] = new Promise(function(resolve){
+    var el = document.querySelector('script[src="' + src + '"]');
+    if (el && isReady && isReady()) { resolve(true); return; }
+    var s = document.createElement('script');
+    s.src = src;
+    s.async = true;
+    s.onload = function(){ resolve(!!(isReady ? isReady() : true)); };
+    s.onerror = function(){ resolve(false); };
+    document.head.appendChild(s);
+  }).then(function(ok){ if(!ok) delete _papScriptOnce[src]; return ok; });
+  return _papScriptOnce[src];
+}
+window._papLoadScriptOnce = _papLoadScriptOnce;
+
 /* 티어시트 PDF 단독 다운로드 (2026-08-09 도메니코) — 로고 ZIP 버튼 옆.
    같은 게이트(회원 + 약관 동의)와 같은 다운로드 이력 로깅을 쓴다. */
 window._papDownloadTearsheet = async function(btn){
@@ -1080,6 +1105,7 @@ window._papDownloadTearsheet = async function(btn){
   }
   var agreed = await window._papEnsureDlConsent();
   if (!agreed) return;
+  await _papLoadScriptOnce(_PAP_JSPDF_SRC, function(){ return !!(window.jspdf && window.jspdf.jsPDF); });
   var _JsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : null;
   if (!_JsPDF) { _s('❌ PDF 라이브러리 로드 실패 — 페이지를 새로고침해주세요.', '#c62828'); return; }
   var ts = null;
@@ -1141,6 +1167,7 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
   // QA #277 — 약관 동의 (1회).
   var agreed = await window._papEnsureDlConsent();
   if (!agreed) return;
+  await _papLoadScriptOnce(_PAP_JSZIP_SRC, function(){ return typeof JSZip !== 'undefined'; });
   if (typeof JSZip === 'undefined') {
     _s('❌ ZIP 라이브러리 로드 실패 — 페이지를 새로고침해주세요.', '#c62828');
     return;
@@ -2465,6 +2492,9 @@ function _openAllEditorialsInner(){
     p.classList.toggle('active', isAll);
     p.setAttribute('aria-selected', isAll ? 'true' : 'false');
   });
+  /* 2026-09-22 — 홈은 전체 카탈로그를 미리 받지 않는다(pap-content-api-sync.js).
+   * 목록을 여는 지금이 받을 때다. 도착하면 sync 쪽이 _renderEdAllPage 를 다시 부른다. */
+  try { if(typeof window.papEnsureFullCatalog === 'function') window.papEnsureFullCatalog(); } catch(_){}
   _renderEdAllPage();
   edAllBuilt=true;
   overlay.classList.add('active');
@@ -2616,7 +2646,10 @@ function _renderEdAllPage(){
     empty.textContent = 'NO EDITORIALS IN THIS CATEGORY';
     grid.appendChild(empty);
   }
-  if(!premium&&edAllCurrentPage===totalPages&&filtered.length>availableData.length){
+  /* 2026-09-22 — 전체 카탈로그가 아직 오는 중이면(홈에서 목록을 막 열었을 때) 업셀 숫자가 12건 기준으로
+   * 틀리게 나온다. 다 도착한 뒤 재렌더에서만 그린다. */
+  var _catLoading = (typeof window !== 'undefined' && window._papCatalogState === 'loading');
+  if(!_catLoading&&!premium&&edAllCurrentPage===totalPages&&filtered.length>availableData.length){
     // (availableData = 실제로 열 수 있는 것. 목록은 전부 보이지만 업셀 숫자는 이 기준이다)
     // 소프트 페이월(2026-07 전환): 차단이 아니라 프리미엄 가치를 보여주는 카드로 설득.
     var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
@@ -2660,7 +2693,8 @@ function _renderEdAllPage(){
     grid.appendChild(upsell);
   }
   count.textContent=visibleData.length+' EDITORIALS'
-    +(premium?'':' · '+availableData.length+' UNLOCKED');
+    +(premium?'':' · '+availableData.length+' UNLOCKED')
+    +(_catLoading?' · LOADING…':'');
   if(pagContainer){
     buildPagination(pagContainer,edAllCurrentPage,totalPages,function(page){
       edAllCurrentPage=page;

@@ -76,12 +76,13 @@ function openAllArticles(){
   }
   _openAllArticlesInner();
 }
-function _openAllArticlesInner(){
-  var overlay=document.getElementById('artAllOverlay');
-  if(!overlay) return;
+function _renderArtAllGrid(){
   var grid=document.getElementById('artAllGrid');
+  if(!grid) return;
   var count=document.getElementById('artAllCount');
   var filterWrap=document.getElementById('artFilterWrap');
+  var _prevBtn=filterWrap&&filterWrap.querySelector('.art-filter-btn.active');
+  var _prevCat=_prevBtn?(_prevBtn.getAttribute('data-cat')||'all'):'all';
   grid.innerHTML='';
   // Gather unique categories
   var cats={};
@@ -115,7 +116,20 @@ function _openAllArticlesInner(){
     card.innerHTML='<div class="art-all-thumb"><img src="'+(a.img||a.th)+'" alt="'+escapeHtml(cTitle)+'" loading="lazy" onerror="edImgError(this)"></div><div class="art-all-info"><div class="art-all-cat">'+escapeHtml(metaStr)+'</div><div class="art-all-title">'+escapeHtml(cTitle)+'</div>'+(cSub?'<div class="art-all-sub">'+escapeHtml(cSub)+'</div>':'')+'</div>';
     grid.appendChild(card);
   });
-  count.textContent=artData.length+' ARTICLES';
+  var _catLoading=(typeof window!=='undefined'&&window._papCatalogState==='loading');
+  count.textContent=artData.length+' ARTICLES'+(_catLoading?' · LOADING…':'');
+  if(_prevCat!=='all'){
+    var _keep=filterWrap&&filterWrap.querySelector('.art-filter-btn[data-cat="'+_prevCat+'"]');
+    if(_keep){ filterWrap.querySelectorAll('.art-filter-btn').forEach(function(b){b.classList.remove('active');}); _keep.classList.add('active'); filterArticles(_prevCat); }
+  }
+}
+/* 2026-09-22 — 홈은 전체 카탈로그를 목록을 열 때 받는다(pap-content-api-sync.js). 도착하면 sync 가 이걸 불러 다시 그린다. */
+window._papArtAllRefresh=_renderArtAllGrid;
+function _openAllArticlesInner(){
+  var overlay=document.getElementById('artAllOverlay');
+  if(!overlay) return;
+  try { if(typeof window.papEnsureFullCatalog==='function') window.papEnsureFullCatalog(); } catch(_){}
+  _renderArtAllGrid();
   // QA #330 — 히스토리 스택 정합성 (film/editorial 과 동일 로직).
   // `/articles` clean path 또는 `/#articles-all` hash 로 진입한 경우 URL 이
   // 이미 이 상태를 나타냄 → replaceState. 그 외는 pushState.

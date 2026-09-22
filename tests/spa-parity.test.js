@@ -334,7 +334,8 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
   t('중간 IG 창 — 옆 사진(4:5 칸) 높이에 실측 축소로 맞춘다',
     /_papFitMidIg/.test(edJs) && /transform/.test(edJs) && /max-width:400px/.test(edJs)
     && !/aspect-ratio:auto;height:auto;overflow:visible/.test(edJs));
-  t('jsPDF 는 CDN defer — 로드 실패 시 안내 후 중단 (ZIP 본체 무관)', /jspdf\.umd\.min\.js/.test(idx)
+  t('jsPDF 는 클릭 때 지연 로드(2026-09-22, 종전 index.html defer) — 로드 실패 시 안내 후 중단 (ZIP 본체 무관)',
+    /jspdf\.umd\.min\.js/.test(edJs) && !/<script[^>]+jspdf/.test(idx)
     && /PDF 라이브러리 로드 실패/.test(edJs));
   {
     const midFn = edJs.slice(edJs.indexOf('function _papMidIgCtaHtml'), edJs.indexOf('function _papRenderEdIg'));
