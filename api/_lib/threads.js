@@ -386,18 +386,36 @@ async function postMedia(media, text, accountId) {
      있고, 한 장이 실패했을 때 어느 장인지 알기 어렵다. 게시 순서는 매거진
      콘텐츠에서 의미가 있으므로(첫 컷이 표지다) 순차로 간다. */
   const children = [];
+  /* 한 장의 생성 실패가 캐러셀 전체를 날리면 안 된다. 2026-09-21 16:03 KST 기준
+     7번째 한 장이 code 1 / subcode 2207052(메타가 이미지를 못 받아 감)로 실패해서
+     나머지 9장까지 버리고 글만 올라갔다. 실패한 장은 빼고 이어 간다.
+     단, 네트워크 예외(타임아웃 등)도 같은 취급이다. 남은 장이 2장 미만이면 아래에서 멈춘다. */
+  const createFailed = [];
   for (let i = 0; i < urls.length; i++) {
-    const r = await fetch(GRAPH + '/v1.0/me/threads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        media_type: 'IMAGE', image_url: urls[i], is_carousel_item: 'true', access_token: token,
-      }),
-      signal: AbortSignal.timeout(20000),
-    });
-    const j = await r.json();
-    if (!r.ok || !j.id) throw new Error('캐러셀 ' + (i + 1) + '번째 컨테이너 실패: ' + JSON.stringify(j).slice(0, 200));
+    let r = null; let j = null;
+    try {
+      r = await fetch(GRAPH + '/v1.0/me/threads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          media_type: 'IMAGE', image_url: urls[i], is_carousel_item: 'true', access_token: token,
+        }),
+        signal: AbortSignal.timeout(20000),
+      });
+      j = await r.json();
+    } catch (e) {
+      j = { error: { message: String((e && e.message) || e).slice(0, 120) } };
+    }
+    if (!r || !r.ok || !j || !j.id) {
+      const er = (j && j.error) || {};
+      createFailed.push({ n: i + 1, code: er.code == null ? null : er.code, subcode: er.error_subcode == null ? null : er.error_subcode });
+      continue;
+    }
     children.push(j.id);
+  }
+  if (children.length < 2) {
+    throw new Error('캐러셀 ' + createFailed.map((f) => f.n).join(',') + '번째 컨테이너 실패 (성공 ' + children.length + '/' + urls.length + '장): '
+      + JSON.stringify(createFailed).slice(0, 200));
   }
 
   /* 자식이 다 처리된 뒤에 묶는다 — 위 waitChildren 머리말 참고. */
@@ -406,8 +424,9 @@ async function postMedia(media, text, accountId) {
     throw new Error('캐러셀 자식 준비 안 됨 (' + ready.length + '/' + children.length + '장 완료, 미완료: '
       + dropped.map((d) => d.status).join(',') + ')');
   }
-  if (dropped.length) {
-    console.warn('[threads] 캐러셀 자식 ' + dropped.length + '장 제외:', JSON.stringify(dropped));
+  if (dropped.length || createFailed.length) {
+    console.warn('[threads] 캐러셀 제외 — 생성 실패 ' + createFailed.length + '장, 처리 미완료 ' + dropped.length + '장:',
+      JSON.stringify({ createFailed, dropped }));
   }
 
   const create = await fetch(GRAPH + '/v1.0/me/threads', {
@@ -422,7 +441,7 @@ async function postMedia(media, text, accountId) {
   if (!create.ok || !cj.id) throw new Error('캐러셀 컨테이너 생성 실패: ' + JSON.stringify(cj).slice(0, 300));
   /* 장수만큼 처리 시간이 는다 — 대기를 넉넉히 준다(장당 2회, 최소 12회). */
   await waitContainer(cj.id, token, Math.max(12, ready.length * 2));
-  return { id: await publishContainer(cj.id, token), kind: 'carousel', count: ready.length, dropped: dropped.length };
+  return { id: await publishContainer(cj.id, token), kind: 'carousel', count: ready.length, dropped: dropped.length + createFailed.length };
 }
 
 /**
