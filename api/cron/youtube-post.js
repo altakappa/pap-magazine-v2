@@ -30,6 +30,14 @@ const { buildTitle, buildHashtags, buildTagList } = require('../_lib/youtubeMeta
 const { verdictForMedia } = require('../_lib/igCredit');
 const { muteMp4 } = require('../_lib/mp4Mute');
 
+/* 2026-09-22 도메니코 — "영상은 유튜브 폴더에서 가져가서 올려주고 인스타에서
+   가져가지 않으면 돼". 유튜브 업로드 출처는 드라이브(drive-youtube-post ·
+   drive-story-shorts, 소리 그대로)만 쓴다. 인스타 릴스 → 유튜브 경로(이 파일)는 끈다.
+   계기: 이 경로는 인스타 음원 때문에 음소거해서 올려야 해서 소리 없는 쇼츠가 나갔다.
+   다시 켜려면 도메니코 결정이 필요하다. 크론 등록은 남겨 두고 매번 '꺼짐' 노트만 남긴다
+   (크론 감시가 '죽은 크론'으로 오인하지 않게). */
+const IG_REELS_TO_YOUTUBE = false;
+
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const MAX_BYTES = 100 * 1024 * 1024; // 안전 상한 (IG 아카이브는 ≤60MB)
 const ART_COLS = 'id, title, slug, custom_url, content, videos, category, source_media_type, tags, source_instagram_post_id';
@@ -83,6 +91,10 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
   if (!cronOk) {
     const user = await requireAdmin(req, res);
     if (!user) return;
+  }
+  if (!IG_REELS_TO_YOUTUBE) {
+    res.locals.cronNote = '꺼짐 — 유튜브는 드라이브 유튜브 폴더에서만 올린다 (도메니코 2026-09-22). 인스타 릴스는 가져가지 않는다.';
+    return res.status(200).json({ ok: true, disabled: true, note: res.locals.cronNote });
   }
   // 공개 전환 전 대기 모드 (관리자 수동은 private 테스트 업로드 허용)
   if (cronOk && process.env.YOUTUBE_PUBLIC !== '1') {
