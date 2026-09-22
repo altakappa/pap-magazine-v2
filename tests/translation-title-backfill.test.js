@@ -59,6 +59,10 @@ t('관리자만', /const user = await requireAdmin\(req, res\);/.test(S));
 t('생성은 status=draft 까지만', /status: 'draft'/.test(S));
 t('반영은 ?apply= 로만', /q\.apply === '1' && id && lang/.test(S));
 t('큐에는 queued 로만 넣는다', /status: 'queued'/.test(S));
+/* 2026-09-22 — 남은대상 조용한 0 버그 */
+t('남은대상 개수 조회의 error 를 받는다', /count: remaining, error: remErr/.test(S));
+t('남은대상을 || 0 으로 덮지 않는다', !/남은대상: remaining \|\| 0/.test(S));
+t('실패면 null 과 남은대상_오류를 준다', /remErr \? null/.test(S) && /남은대상_오류/.test(S));
 t('검토 화면이 있다', /q\.review === '1'/.test(S));
 t('넣기 전 preview 가 있다', /q\.preview === '1'/.test(S));
 

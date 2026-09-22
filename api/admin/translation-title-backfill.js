@@ -374,13 +374,21 @@ module.exports = async function handler(req, res) {
 
     /* ── 현황 ──────────────────────────────────────────── */
     if (q.queue === '1') {
-      const { count: remaining } = await targetQuery('content_id', { count: 'exact', head: true });
+      /* 2026-09-22 — 에러를 버리고 remaining || 0 을 돌려줘서, 뷰가 시간 초과
+         (PostgREST 8초)로 실패한 날 4,394건이 남았는데 "0" 으로 보였다.
+         0 은 "다 끝났다" 로 읽히는 가장 위험한 거짓말이다. 실패면 null 과 이유를 준다. */
+      const { count: remaining, error: remErr } = await targetQuery('content_id', { count: 'exact', head: true });
       const { data } = await supabaseAdmin.from(TABLE)
         .select('content_id, lang, impressions, clicks, ctr, old_len, new_len, old_title, new_title, status, note')
         .order('status', { ascending: true }).order('impressions', { ascending: false }).limit(200);
       const by = {};
       (data || []).forEach(r => { by[r.status] = (by[r.status] || 0) + 1; });
-      return res.status(200).json({ 남은대상: remaining || 0, 상태별: by, queue: data || [] });
+      const remainingOut = remErr ? null : (typeof remaining === 'number' ? remaining : null);
+      return res.status(200).json({
+        남은대상: remainingOut,
+        ...(remainingOut === null ? { 남은대상_오류: (remErr && remErr.message) || '개수를 받지 못했다' } : {}),
+        상태별: by, queue: data || [],
+      });
     }
 
     return res.status(400).json({

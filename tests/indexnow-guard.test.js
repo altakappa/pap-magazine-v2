@@ -205,6 +205,19 @@ Module._load = _origLoad;
   ok(streakOf(['a 네이버 403', 'b 빙 200', 'c 네이버 403'], '네이버') === 1,
      '그 실행 기록에 라벨이 없으면 거기서 멈춘다 (건너뛰고 이어 세지 않는다)');
 
+  /* 2026-09-22 — 연속 거절을 개인 텔레그램으로 올린다 (note 만으로는 아무도 못 봤다) */
+  ok(/require\('\.\/_lib\/telegram'\)/.test(src) && /sendTextToTelegramPersonalSafe\(/.test(src),
+     '개인 텔레그램 알림 함수를 불러서 쓴다');
+  ok(/shouldPingRefusal\(streaks\[L\] \+ 1\)/.test(src), '이번 실행까지 합친 일수로 알림 여부를 판단한다');
+  ok(!/sendTextToTelegramSafe\(/.test(src), '그룹방 전송 함수는 쓰지 않는다 (개인방 전용)');
+  ok(/const REFUSE_REPING_DAYS = 7;/.test(src), '재알림 간격 7일');
+  function pingOf(days, th, re) { if (!(days >= th)) return false; return (days - th) % re === 0; }
+  ok(pingOf(2, 3, 7) === false, '2일째는 알리지 않는다');
+  ok(pingOf(3, 3, 7) === true, '3일째(처음 기준 도달) 알린다');
+  ok(pingOf(4, 3, 7) === false && pingOf(9, 3, 7) === false, '그 다음 날들은 조용하다');
+  ok(pingOf(10, 3, 7) === true && pingOf(17, 3, 7) === true, '7일마다 다시 알린다');
+  ok(pingOf(NaN, 3, 7) === false, '숫자가 아니면 알리지 않는다');
+
   console.log(`\npassed: ${pass} failed: ${fail}`);
   if (fail) process.exit(1);
   console.log('✅ indexnow-guard tests passed');

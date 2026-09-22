@@ -31,6 +31,7 @@ const { supabaseAdmin } = require('./_lib/supabase');
    cron_runs 에 아무 기록을 남기지 않았다. 제출이 되는지, 검색엔진이 받았는지,
    아예 안 도는지 구분할 방법이 없었다. */
 const { withCronGuard } = require('./_lib/cronGuard');
+const { sendTextToTelegramPersonalSafe } = require('./_lib/telegram');
 
 function note(res, msg) {
   res.locals = res.locals || {};
@@ -248,6 +249,16 @@ async function submit(urlList) {
  * 라벨 뒤 첫 토큰이 200/202 가 아니면 그 실행에서 거절당한 것으로 본다. */
 const REFUSE_ALERT_DAYS = Number(process.env.INDEXNOW_REFUSE_ALERT_DAYS || 3);
 
+/* 2026-09-22 — note 경고만으로는 부족했다. 크론은 ok 로 끝나니 알림이 안 가고,
+   네이버는 9/15 부터 8일 연속 403 이었는데 아무도 note 를 열어보지 않았다.
+   연속 거절이 기준(REFUSE_ALERT_DAYS)에 처음 닿는 날 개인 텔레그램으로 한 번,
+   그 뒤로는 7일마다 한 번만 다시 알린다. 매일 울리면 곧 무시하게 된다. */
+const REFUSE_REPING_DAYS = 7;
+function shouldPingRefusal(days) {
+  if (!(days >= REFUSE_ALERT_DAYS)) return false;
+  return (days - REFUSE_ALERT_DAYS) % REFUSE_REPING_DAYS === 0;
+}
+
 async function refusalStreaks(labels) {
   const out = {};
   try {
@@ -375,6 +386,15 @@ module.exports = withCronGuard('indexnow', async function handler(req, res) {
       .filter(L => streaks[L] + 1 >= REFUSE_ALERT_DAYS)   // 이번 실행까지 합쳐 센다
       .map(L => L + ' ' + (streaks[L] + 1) + '회 연속 거절');
     const alarmTxt = alarm.length ? ' · ⚠ ' + alarm.join(' · ') : '';
+    const pingLabels = Object.keys(streaks).filter(L => shouldPingRefusal(streaks[L] + 1));
+    if (pingLabels.length) {
+      /* 실패해도 제출 결과를 바꾸지 않는다 — Safe 함수는 throw 하지 않는다. */
+      await sendTextToTelegramPersonalSafe(
+        '⚠️ [PAP IndexNow] ' + pingLabels.map(L => L + ' ' + (streaks[L] + 1) + '일 연속 거절').join(' · ') + '\n'
+        + '이번 결과: ' + detail.slice(0, 600) + '\n\n'
+        + '다른 엔드포인트가 받아줘서 크론은 성공으로 끝났다. 거절 원인은 따로 확인해야 한다.\n'
+        + '다음 알림: 계속 거절하면 ' + REFUSE_REPING_DAYS + '일 뒤');
+    }
     note(res, (mode || 'full') + ': ' + urlList.length + '건 제출' + statsTxt + ' · 수락 ' + accepted + '/' + results.length + alarmTxt + ' — ' + detail);
     return res.status(200).json({
       submitted: urlList.length,
@@ -399,3 +419,5 @@ module.exports.recentContentUrls = recentContentUrls;
 module.exports.CHANGED_FILTER = CHANGED_FILTER;
 module.exports.refusalStreaks = refusalStreaks;
 module.exports.REFUSE_ALERT_DAYS = REFUSE_ALERT_DAYS;
+module.exports.shouldPingRefusal = shouldPingRefusal;
+module.exports.REFUSE_REPING_DAYS = REFUSE_REPING_DAYS;
