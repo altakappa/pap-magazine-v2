@@ -52,7 +52,8 @@ const ALLOWED_MIME = new Set([
   'image/jpg',
   'image/png',
   'image/webp',
-  'image/tiff',
+  // 2026-09-22 (도메니코 결정) — image/tiff 제외. 브라우저가 TIFF 를 그리지 못해 관리자 화면·공개 사이트 모두
+  // 검은 칸이 된다(MODERN TEARS 재제출 20장 중 14장). 허용 목록에 있던 6개월간 실제 TIFF 제출은 1건.
 ]);
 
 const MIME_TO_EXT = {
@@ -60,7 +61,6 @@ const MIME_TO_EXT = {
   'image/jpg':  '.jpg',
   'image/png':  '.png',
   'image/webp': '.webp',
-  'image/tiff': '.tiff',
 };
 
 // A-6 정합 (2026-07-26) — 버킷 'submissions' 의 allowed_mime_types 는
