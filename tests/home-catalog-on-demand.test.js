@@ -54,12 +54,16 @@ function boot(pathname, opts) {
     const body = isList
       ? { data: page === 1 ? [{ id: 'x' + page, title: 'T' + page, cover_image: 'c', published_date: '2026-09-01', gallery: [], credits: [], tags: [] }] : [], pagination: { pages: opts.pages || 3 } }
       : (url.indexOf('.json') > -1 ? [] : {});
-    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    const resp = { ok: true, status: 200, json: () => Promise.resolve(body) };
+    // 기사 전량을 에디토리얼보다 늦게 끝내는 시나리오 (라이브에서 실제로 이 순서였다)
+    if (opts.slowArticles && /\/api\/articles\?/.test(url)) return new Promise((res) => realTimeout(() => res(resp), 15));
+    return Promise.resolve(resp);
   };
   const el = () => ({ innerHTML: '', textContent: '', style: {}, classList: { contains: () => false, add() {}, remove() {}, toggle() {} }, setAttribute() {}, getAttribute: () => null, appendChild() {}, insertBefore() {}, querySelectorAll: () => [], querySelector: () => null, addEventListener() {}, children: [], remove() {} });
+  const renderStates = [];   // _renderEdAllPage 가 불릴 때의 카탈로그 상태
   const doc = {
     readyState: 'loading',
-    getElementById: () => null,
+    getElementById: (id) => (opts.edAllOpen && id === 'edAllOverlay') ? { classList: { contains: () => true } } : null,
     querySelector: () => null,
     querySelectorAll: () => [],
     createElement: el,
@@ -83,6 +87,7 @@ function boot(pathname, opts) {
     // 다른 파일이 제공하는 전역 — 여기서는 껍데기
     filmAllData: [], artData: [], edData: [], edDetails: {}, shortsData: [], creatorData: [],
     _renderLatestRow() {}, _renderTrendingRow() {}, _renderThemeRows() {},
+    _renderEdAllPage() { renderStates.push(ctx.window._papCatalogState); }, edAllBuilt: true,
     buildShortsCarousel() {}, updateShortsPositions() {},
     IntersectionObserver: function () { return { observe() {}, disconnect() {} }; },
   };
@@ -96,15 +101,17 @@ function boot(pathname, opts) {
   const fire = (key) => (listeners[key] || []).splice(0).forEach((fn) => { try { fn(); } catch (e) { throw e; } });
   const drainTimers = () => { while (timers.length) { const x = timers.shift(); try { x.fn(); } catch (_) {} } };
   const drainIdle = () => { while (idleCbs.length) { const fn = idleCbs.shift(); try { fn(); } catch (_) {} } };
-  return { ctx, urls, fire, drainTimers, drainIdle, listeners };
+  return { ctx, urls, fire, drainTimers, drainIdle, listeners, renderStates };
 }
+const realTimeout = setTimeout;
 const tick = () => new Promise((r) => setImmediate(r));
+const sleep = (ms) => new Promise((r) => realTimeout(r, ms));
 async function settle(n) { for (let i = 0; i < (n || 12); i++) await tick(); }
 
 (async () => {
   console.log('=== 1. 홈: 아무것도 안 누르면 전량 동기화·시드 요청이 0건 ===');
   {
-    const b = boot('/');
+    const b = boot('/', { edAllOpen: true, slowArticles: true });
     b.fire('doc:DOMContentLoaded');
     b.ctx.document.readyState = 'complete';
     b.fire('win:load');
@@ -143,8 +150,10 @@ async function settle(n) { for (let i = 0; i < (n || 12); i++) await tick(); }
       after.some((x) => /articles-snapshot/.test(x)) && after.some((x) => /data\/editorials\.json/.test(x)), JSON.stringify(after));
     t('editorial-details.json 은 여전히 안 받는다', !after.some((x) => /editorial-details\.json/.test(x)));
     t('두 번 불러도 다시 받지 않는다', (() => { const n = b.urls.length; b.ctx.window.papEnsureFullCatalog(); return b.urls.length === n; })());
-    await settle(40); b.drainTimers(); await settle(40); b.drainTimers(); await settle(40);
+    for (let i = 0; i < 8; i++) { await sleep(20); b.drainTimers(); await settle(20); }
     t('두 전량이 끝나면 상태가 done', b.ctx.window._papCatalogState === 'done', String(b.ctx.window._papCatalogState));
+    t('열려 있는 에디토리얼 목록은 done 이 된 뒤 한 번 더 그려진다 (LOADING… 이 남지 않는다 — 라이브 실측 버그)',
+      b.renderStates.length > 0 && b.renderStates[b.renderStates.length - 1] === 'done', JSON.stringify(b.renderStates));
   }
 
   console.log('\n=== 3. 홈이 아니면(목록·상세 화면) 종전대로 곧 돈다 ===');
@@ -217,7 +226,7 @@ async function settle(n) { for (let i = 0; i < (n || 12); i++) await tick(); }
 
   console.log('\n=== 8. 캐시버스트 ===');
   const htmls = fs.readdirSync(path.join(ROOT, 'frontend')).filter((f) => f.endsWith('.html'));
-  [['pap-content-api-sync', 128], ['pap-content-editorial', 91], ['pap-content-article', 53], ['pap-social', 9]].forEach(([f, min]) => {
+  [['pap-content-api-sync', 129], ['pap-content-editorial', 91], ['pap-content-article', 53], ['pap-social', 9]].forEach(([f, min]) => {
     const vs = new Set();
     htmls.forEach((h) => (R('frontend/' + h).match(new RegExp(f + '\\.js\\?v=(\\d+)', 'g')) || []).forEach((m) => vs.add(Number(m.split('=')[1]))));
     t(f + '.js?v= 가 HTML 전체에서 하나이고 ≥' + min, vs.size === 1 && [...vs][0] >= min, [...vs].join(','));

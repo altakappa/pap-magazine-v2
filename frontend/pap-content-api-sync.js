@@ -1589,10 +1589,23 @@ window._papFilmAutoPlay = function(){
   window._papCatalogState = 'idle';
   function _catalogPartDone(part){
     _catalogParts[part] = true;
-    if(_catalogParts.articles && _catalogParts.editorials) window._papCatalogState = 'done';
     /* 크리에이터 DB(pap-content-creator-shorts.js#getCreatorDB)는 edDetails 를 한 번 훑어 캐시한다.
        카탈로그가 뒤늦게 차면 캐시를 버려 다음 팝업이 전체 크레딧으로 다시 만들게 한다. */
     if(part === 'editorials'){ try { window.creatorDB = null; } catch(_){} }
+    if(_catalogParts.articles && _catalogParts.editorials && window._papCatalogState !== 'done'){
+      window._papCatalogState = 'done';
+      /* 라이브 실측(2026-09-22 첫 배포): 에디토리얼이 먼저 끝나고 기사가 나중에 끝나면
+         에디토리얼 목록은 'LOADING…' 인 채로 남았다 — 마지막 재렌더가 state 가 done 이 되기 전이었다.
+         둘 다 끝난 순간 열려 있는 목록을 한 번 더 그려 LOADING 을 걷고 업셀을 그린다. */
+      try {
+        var _edAll = document.getElementById('edAllOverlay');
+        if(_edAll && _edAll.classList.contains('active') && typeof _renderEdAllPage === 'function') _renderEdAllPage();
+      } catch(_){}
+      try {
+        var _artAll2 = document.getElementById('artAllOverlay');
+        if(_artAll2 && _artAll2.classList.contains('active') && typeof window._papArtAllRefresh === 'function') window._papArtAllRefresh();
+      } catch(_){}
+    }
   }
   function _flushFullSyncs(){
     if(_fullFired) return;
