@@ -34,8 +34,13 @@ const UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadTy
 // 인증을 두 번 해야 한다. 스코프는 읽기 전용이라 기존 권한을 넓히지 않는다.
 // ⚠️ 스코프를 늘렸으므로 /api/youtube/oauth 로 **1회 재인증**해야 적용된다.
 //    2026-08-07 drive.readonly 때와 같다 — 옛 refresh_token 은 403 난다.
+// 2026-09-23 youtube.force-ssl 추가 — 도메니코: "올리는 영상들이 각각 카테고리
+// (재생목록) 안에 잘 배치돼야 해" + "설명 수정 해줘". 재생목록 넣기(playlistItems.insert)와
+// 제목·설명 고치기(videos.update)는 upload·readonly 스코프로는 403 이다.
+// ⚠️ 스코프를 늘렸으므로 /api/youtube/oauth 로 **1회 재인증**해야 적용된다.
 const SCOPES = 'https://www.googleapis.com/auth/youtube.upload'
   + ' https://www.googleapis.com/auth/youtube.readonly'
+  + ' https://www.googleapis.com/auth/youtube.force-ssl'
   + ' https://www.googleapis.com/auth/drive.readonly'
   + ' https://www.googleapis.com/auth/webmasters.readonly';
 const REDIRECT_URI = 'https://www.pap-magazine.com/api/youtube/callback';
@@ -210,5 +215,97 @@ async function fetchVideoStates(ids) {
   return out;
 }
 
+const YT_API = 'https://www.googleapis.com/youtube/v3';
+
+/* 403 을 '권한 부족(재인증 필요)'과 '그 밖의 403(할당량 등)'으로 가른다.
+   메시지 문구로 가르지 않는다 — 구글이 돌려주는 reason 코드로 가른다. */
+async function ytError(r, what) {
+  const text = await r.text().catch(() => '');
+  let reason = '';
+  try {
+    const j = JSON.parse(text);
+    reason = (((j.error || {}).errors || [])[0] || {}).reason || '';
+  } catch (_) { /* 본문이 JSON 이 아니면 reason 없음 */ }
+  const e = new Error(what + ' 실패 ' + r.status + (reason ? ' (' + reason + ')' : '') + ': ' + text.slice(0, 200));
+  e.status = r.status;
+  e.reason = reason;
+  e.needsReauth = r.status === 401 || reason === 'insufficientPermissions' || reason === 'ACCESS_TOKEN_SCOPE_INSUFFICIENT';
+  return e;
+}
+
+/** 우리 채널의 재생목록 전부. [{id, title}] */
+async function listMyPlaylists() {
+  const token = await getAccessToken();
+  const out = [];
+  let pageToken = '';
+  for (let i = 0; i < 10; i++) {
+    const q = new URLSearchParams({ part: 'snippet', mine: 'true', maxResults: '50' });
+    if (pageToken) q.set('pageToken', pageToken);
+    const r = await fetch(YT_API + '/playlists?' + q.toString(), {
+      headers: { Authorization: 'Bearer ' + token },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) throw await ytError(r, 'playlists.list');
+    const j = await r.json();
+    for (const p of (j.items || [])) out.push({ id: p.id, title: (p.snippet && p.snippet.title) || '' });
+    if (!j.nextPageToken) break;
+    pageToken = j.nextPageToken;
+  }
+  return out;
+}
+
+/** 영상 하나를 재생목록에 넣는다 (youtube.force-ssl 필요). */
+async function addToPlaylist(playlistId, videoId) {
+  const token = await getAccessToken();
+  const r = await fetch(YT_API + '/playlistItems?part=snippet', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json; charset=UTF-8' },
+    body: JSON.stringify({ snippet: { playlistId, resourceId: { kind: 'youtube#video', videoId } } }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!r.ok) throw await ytError(r, 'playlistItems.insert');
+  return r.json();
+}
+
+/** 영상의 현재 snippet (제목·설명·태그·categoryId). 없으면 null. */
+async function getVideoSnippet(videoId) {
+  const token = await getAccessToken();
+  const r = await fetch(YT_API + '/videos?part=snippet&id=' + encodeURIComponent(videoId), {
+    headers: { Authorization: 'Bearer ' + token },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!r.ok) throw await ytError(r, 'videos.list');
+  const j = await r.json();
+  const v = (j.items || [])[0];
+  return v ? v.snippet : null;
+}
+
+/**
+ * 제목·설명·태그를 고친다 (youtube.force-ssl 필요).
+ * videos.update 는 snippet 을 통째로 갈아끼운다 — categoryId 를 빼면 400 이다.
+ * 그래서 지금 값을 먼저 읽고 바뀐 칸만 덮는다.
+ */
+async function updateVideoSnippet(videoId, patch) {
+  const cur = await getVideoSnippet(videoId);
+  if (!cur) throw new Error('videos.update: 영상 없음 ' + videoId);
+  const snippet = {
+    title: sanitizeTitle(patch.title != null ? patch.title : cur.title),
+    description: String(patch.description != null ? patch.description : (cur.description || '')).slice(0, 4900),
+    tags: (patch.tags || cur.tags || []).slice(0, 15),
+    categoryId: cur.categoryId || '24',
+  };
+  if (cur.defaultLanguage) snippet.defaultLanguage = cur.defaultLanguage;
+  const token = await getAccessToken();
+  const r = await fetch(YT_API + '/videos?part=snippet', {
+    method: 'PUT',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json; charset=UTF-8' },
+    body: JSON.stringify({ id: videoId, snippet }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!r.ok) throw await ytError(r, 'videos.update');
+  return r.json();
+}
+
 module.exports = {
-  fetchVideoStates, authorizeUrl, exchangeCode, getAccessToken, uploadVideo, REDIRECT_URI };
+  fetchVideoStates, authorizeUrl, exchangeCode, getAccessToken, uploadVideo, REDIRECT_URI,
+  listMyPlaylists, addToPlaylist, getVideoSnippet, updateVideoSnippet, SCOPES };
