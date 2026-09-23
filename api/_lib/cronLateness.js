@@ -94,23 +94,42 @@ function judgeLateCrons(histories, opts) {
 }
 
 /**
+ * 재알림 간격 — 크론의 평소 주기에 비례한다 (2026-09-23 신설).
+ *
+ * 왜 — 24시간 고정이면 **주 크론이 한 번 빠졌을 때 닷새 내리 같은 알림이 온다.**
+ * 실측(9/16~9/20): weekly-briefing 이 9/13 회차를 통째로 빠뜨렸고 지연 탐지가
+ * 232회 연속 잡았다. 고정 24h 면 알림 5건 — 같은 사실을 다섯 번 말한다.
+ * 주기가 일주일인 크론은 일주일에 한 번 말하면 된다.
+ * 바닥은 기본 쿨다운(24h), 천장은 7일 — 한 주 넘게 입 다무는 일은 없게.
+ */
+const REALERT_CEIL_MS = 7 * 24 * 3600000;
+
+function realertCooldownMs(item, baseMs) {
+  const base = Number.isFinite(baseMs) ? baseMs : 24 * 3600000;
+  const medMs = Number(item && item.medMin) * 60000;
+  if (!Number.isFinite(medMs) || medMs <= 0) return base;
+  return Math.min(Math.max(medMs, base), REALERT_CEIL_MS);
+}
+
+/**
  * 중복 억제 — 같은 크론이 늦은 채로 있으면 30분마다 같은 알림이 오면 안 된다.
  * state: ops_alert_state.last_payload 로 저장되는 { late: { [cron]: lastAlertIso } }
  * 반환 { toAlert: [...late 항목], recovered: [cron...], nextState }
- *   · 처음 늦었거나(상태에 없음) 마지막 알림이 cooldownMs 보다 오래됐으면 알린다
+ *   · 처음 늦었거나(상태에 없음) 마지막 알림이 재알림 간격보다 오래됐으면 알린다
+ *   · 재알림 간격은 크론마다 다르다 (realertCooldownMs — 평소 주기에 비례)
  *   · 늦지 않게 된 크론은 상태에서 빠지고 recovered 에 실린다
  */
 function decideLateAlerts(judged, state, opts) {
   const o = opts || {};
   const now = Number.isFinite(o.now) ? o.now : Date.now();
-  const cooldownMs = Number.isFinite(o.cooldownMs) ? o.cooldownMs : 24 * 3600000;
+  const baseCooldownMs = Number.isFinite(o.cooldownMs) ? o.cooldownMs : 24 * 3600000;
   const prev = (state && state.late && typeof state.late === 'object') ? state.late : {};
   const nextLate = {};
   const toAlert = [];
   for (const x of (judged && judged.late) || []) {
     const lastIso = prev[x.cron];
     const lastMs = lastIso ? Date.parse(lastIso) : 0;
-    if (!lastMs || now - lastMs > cooldownMs) {
+    if (!lastMs || now - lastMs > realertCooldownMs(x, baseCooldownMs)) {
       toAlert.push(x);
       nextLate[x.cron] = new Date(now).toISOString();
     } else {
@@ -157,6 +176,7 @@ function cronNamesFromVercel(json) {
 
 module.exports = {
   MIN_RUNS, GRACE_FLOOR_SEC, GRACE_CEIL_SEC, DEFAULT_EXCLUDE,
+  REALERT_CEIL_MS, realertCooldownMs,
   median, lateThresholdSec, summarizeHistory, judgeLateCrons, decideLateAlerts,
   buildLateAlert, fmtLate, cronNamesFromVercel,
 };

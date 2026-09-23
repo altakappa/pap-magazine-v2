@@ -2233,12 +2233,20 @@ module.exports.buildFailingCronAlert = buildFailingCronAlert;
  * 최근 1,000행에 보이는 이름 ③ 지난 실행이 ops_alert_state 에 남긴 이름. 주 크론도
  * 한 번 돌면 ②에 잡혀 ③으로 넘어가므로 일주일이면 전부 모인다.
  *
- * 알림 모드 — CRON_LATE_ALERT_MODE 가 'alert' 일 때만 텔레그램. 기본은 'log'
- * (note·ops_alert_state 에만 남긴다). 순서: 로그 전용 배포 → 하루 관찰 → 오경보
- * 제외 목록 확정 → 그다음 알림. 이 순서를 건너뛰면 첫 실행에 알림이 몰린다.
+ * 알림 모드 — 기본은 'alert'(텔레그램). CRON_LATE_ALERT_MODE='log' 로 끌 수 있다.
+ *
+ * 9/15 에는 일부러 로그 전용으로 냈다: 로그 전용 배포 → 관찰 → 오경보 제외 목록
+ * 확정 → 그다음 알림. 그 관찰이 끝났다 (2026-09-23).
+ * 7일 실측 — 지연 탐지 336회 중 238회가 잡았고, 정리하면 **딱 3건**이다:
+ *   · weekly-briefing  9/16~9/20 — 9/13 회차를 통째로 빠뜨림 (주간 브리핑 1회 증발)
+ *   · image-link-check 9/20~9/21 — 9/14 회차 빠뜨림
+ *   · youtube-post     9/23     — 평소 10분인데 60분 구멍
+ * 셋 다 진짜다. 오경보 0건. 그런데 **아무도 못 들었다** — 로그 전용이라
+ * 닷새 동안 텔레그램은 조용했다. 탐지가 도는 것과 일하는 것은 다르다(교훈 1).
+ * 그래서 기본을 켠다. 재알림 간격은 크론 주기에 비례한다(cronLateness).
  * ═══════════════════════════════════════════════════════════════════════ */
 const LATE_ALERT_KEY = 'cron-late-detect';
-const LATE_ALERT_MODE = process.env.CRON_LATE_ALERT_MODE === 'alert' ? 'alert' : 'log';
+const LATE_ALERT_MODE = process.env.CRON_LATE_ALERT_MODE === 'log' ? 'log' : 'alert';
 const LATE_HISTORY_N = 8;
 const LATE_QUERY_CONCURRENCY = 8;
 

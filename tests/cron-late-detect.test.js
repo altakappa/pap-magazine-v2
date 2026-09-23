@@ -17,7 +17,8 @@
  *   (d) 이미 알린 크론은 상태로 중복 억제한다 (30분마다 같은 알림 방지)
  *   ⑤ 임계 표: 10분→40분 · 1시간→90분 · 매일→30시간 · 매주→7.25일
  *   ⑥ 9/14 12:00 되감기 — 스킵 7건 중 일·주 크론이 잡힌다 / 3배 규칙은 못 잡는다
- *   ⑦ 감시가 핸들러에 배선돼 있고 기본이 로그 전용이다
+ *   ⑦ 감시가 핸들러에 배선돼 있고 기본이 알림이다 (9/23 — 관찰 끝나고 켬)
+ *   ⑧ 재알림 간격이 크론 주기에 비례한다 (주 크론이 닷새 내리 울지 않게)
  */
 'use strict';
 
@@ -150,7 +151,8 @@ console.log('\n=== ⑦ 배선 + 로그 전용 기본값 ===');
   const src = fs.readFileSync(path.join(ROOT, 'api', 'cron', 'pipeline-watch.js'), 'utf8');
   t('핸들러가 checkLateCrons 를 부른다', /const lateCrons = await checkLateCrons\(\{ dry \}\)/.test(src));
   t('cronLateness 를 ../_lib 로 require 한다', /require\('\.\.\/_lib\/cronLateness'\)/.test(src));
-  t('기본 모드는 log (env 가 alert 일 때만 알림)', /CRON_LATE_ALERT_MODE === 'alert' \? 'alert' : 'log'/.test(src));
+  t("기본 모드는 alert (env 가 'log' 일 때만 끈다)", /CRON_LATE_ALERT_MODE === 'log' \? 'log' : 'alert'/.test(src));
+  t('끄는 스위치가 살아 있다 (CRON_LATE_ALERT_MODE)', /process\.env\.CRON_LATE_ALERT_MODE/.test(src));
   t('알림은 alert 모드에서만 나간다', /LATE_ALERT_MODE === 'alert' && decided\.toAlert\.length/.test(src));
   t('note 에 late 가 최상위로 실린다', /late: late\.map\(\(x\) => x\.cron\)/.test(src) && /lateDetail/.test(src));
   t('중복 억제 상태는 ops_alert_state 키로', /LATE_ALERT_KEY = 'cron-late-detect'/.test(src));
@@ -158,6 +160,46 @@ console.log('\n=== ⑦ 배선 + 로그 전용 기본값 ===');
   const vnames = L.cronNamesFromVercel(JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8')));
   t('vercel.json 씨앗에 주 크론이 들어 있다', vnames.includes('weekly-briefing') && vnames.includes('image-link-check'), vnames);
   t('쿼리스트링·중복 경로는 하나로 합친다', vnames.filter((n) => n === 'sync-instagram').length === 1 && vnames.includes('indexnow'));
+}
+
+console.log('\n=== ⑧ 재알림 간격은 주기에 비례한다 (2026-09-23) ===');
+{
+  const BASE = 24 * H;
+  t('10분 크론 → 바닥(24h)', L.realertCooldownMs({ medMin: 10 }, BASE) === BASE);
+  t('일 크론 → 24h (바닥과 같다)', L.realertCooldownMs({ medMin: 1440 }, BASE) === D);
+  t('주 크론 → 7일', L.realertCooldownMs({ medMin: 10080 }, BASE) === 7 * D);
+  t('2주 크론도 천장 7일을 안 넘는다', L.realertCooldownMs({ medMin: 20160 }, BASE) === L.REALERT_CEIL_MS);
+  t('medMin 이 없으면 바닥', L.realertCooldownMs({}, BASE) === BASE && L.realertCooldownMs(null, BASE) === BASE);
+  t('medMin 이 0·음수여도 바닥', L.realertCooldownMs({ medMin: 0 }, BASE) === BASE && L.realertCooldownMs({ medMin: -5 }, BASE) === BASE);
+  t('base 가 없으면 24h 로 본다', L.realertCooldownMs({ medMin: 10 }) === D);
+
+  // 실측 재현: weekly-briefing 이 9/13 회차를 빠뜨려 닷새 동안 계속 늦은 상태
+  const weekly = { 'weekly-briefing': hist(NOW, 7 * D, 8, 7 * D + 13 * H) };
+  const j = L.judgeLateCrons(weekly, { now: NOW });
+  t('주 크론이 늦은 걸로 잡힌다', j.late.length === 1 && j.late[0].medMin === 7 * 24 * 60, j.late);
+  const a1 = L.decideLateAlerts(j, {}, { now: NOW, cooldownMs: BASE });
+  t('처음엔 알린다', a1.toAlert.length === 1);
+  let silent = 0;
+  for (let day = 1; day <= 5; day++) {
+    const jd = L.judgeLateCrons({ 'weekly-briefing': hist(NOW + day * D, 7 * D, 8, 7 * D + 13 * H + day * D) }, { now: NOW + day * D });
+    const r = L.decideLateAlerts(jd, a1.nextState, { now: NOW + day * D, cooldownMs: BASE });
+    if (!r.toAlert.length) silent++;
+  }
+  t('그 뒤 닷새는 조용하다 (종전 고정 24h 면 5건이 더 갔다)', silent === 5, silent);
+
+  // 일 크론은 종전과 똑같이 하루 뒤 다시 알린다 — 비례가 기존 동작을 깎지 않는다
+  const daily = L.judgeLateCrons({ 'daily-digest-email': hist(NOW, D, 8, 36 * H) }, { now: NOW });
+  const d1 = L.decideLateAlerts(daily, {}, { now: NOW, cooldownMs: BASE });
+  const daily2 = L.judgeLateCrons({ 'daily-digest-email': hist(NOW + 25 * H, D, 8, 61 * H) }, { now: NOW + 25 * H });
+  const d2 = L.decideLateAlerts(daily2, d1.nextState, { now: NOW + 25 * H, cooldownMs: BASE });
+  t('일 크론은 25시간 뒤 다시 알린다 (종전 동작 보존)', d1.toAlert.length === 1 && d2.toAlert.length === 1, { d1: d1.toAlert.length, d2: d2.toAlert.length });
+
+  // 돌아오면 상태에서 빠지므로 다음 지연은 쿨다운과 무관하게 즉시 알린다
+  const back = L.judgeLateCrons({ 'weekly-briefing': hist(NOW + H, 7 * D, 8, 10 * MIN) }, { now: NOW + H });
+  const r4 = L.decideLateAlerts(back, a1.nextState, { now: NOW + H, cooldownMs: BASE });
+  t('돌아오면 recovered 로 빠진다', r4.recovered.includes('weekly-briefing') && !('weekly-briefing' in r4.nextState.late), r4);
+  const again = L.decideLateAlerts(j, r4.nextState, { now: NOW + 2 * H, cooldownMs: BASE });
+  t('다시 늦으면 쿨다운 안 기다리고 알린다', again.toAlert.length === 1, again);
 }
 
 console.log(`\n크론 지연 자동탐지: ${pass} 통과 · ${fail} 실패`);
