@@ -20,7 +20,14 @@ function t(n, ok, x) { if (ok) { pass++; console.log('  ✓ ' + n); } else { fai
     '../_lib/cors': { handleCors: () => false },
     '../_lib/rateLimit': { rateLimit: () => false, RATE_LIMITS: { upload: {} } },
     '../_lib/auth': { requireAuth: () => ({ id: 'u1' }) },
-    '../_lib/supabase': { supabaseAdmin: { storage: { from: () => ({ createSignedUploadUrl: async () => ({ data: { signedUrl: 'https://x/put', token: 'tk', path: 'p' }, error: null }) }) } } },
+    /* 2026-09-23 — getPublicUrl 이 스텁에 없어서 통과 케이스가 catch 로 떨어졌고,
+       그 catch 의 운영 알림이 진짜 텔레그램 그룹방으로 나갔다. 스텁을 채우고
+       텔레그램도 스텁한다(라이브러리 쪽 tests/ 차단과 이중 안전핀). */
+    '../_lib/supabase': { supabaseAdmin: { storage: { from: () => ({
+      createSignedUploadUrl: async () => ({ data: { signedUrl: 'https://x/put', token: 'tk', path: 'p' }, error: null }),
+      getPublicUrl: () => ({ data: { publicUrl: 'https://x/pub' } }),
+    }) } } },
+    '../_lib/telegram': { sendTextToTelegramSafe: async () => ({ ok: false, skipped: 'test' }) },
   };
   const orig = Module.prototype.require;
   Module.prototype.require = function (n) { if (Object.prototype.hasOwnProperty.call(stubs, n)) return stubs[n]; return orig.apply(this, arguments); };
@@ -34,7 +41,10 @@ function t(n, ok, x) { if (ok) { pass++; console.log('  ✓ ' + n); } else { fai
   t('image/tiff → 400 unsupported_type', r.code === 400 && r.body && r.body.code === 'unsupported_type', JSON.stringify(r.body));
   r = res();
   await handler({ method: 'POST', headers: {}, body: { files: [{ name: 'a.jpg', type: 'image/jpeg', size: 1000, category: 'look' }, { name: 'b.png', type: 'image/png', size: 1000, category: 'look' }, { name: 'c.webp', type: 'image/webp', size: 1000, category: 'look' }] } }, r);
-  t('jpeg·png·webp 는 여전히 통과 (400 아님)', r.code !== 400, 'code ' + r.code + ' ' + JSON.stringify(r.body).slice(0, 120));
+  /* "400 이 아니다" 로만 보면 500 도 통과다 — 실제로 그렇게 새 버그를 못 봤다. 200 과 발급 개수를 본다. */
+  t('jpeg·png·webp 는 200 으로 3건 발급', r.code === 200 && r.body && Array.isArray(r.body.uploads) && r.body.uploads.length === 3,
+    'code ' + r.code + ' ' + JSON.stringify(r.body).slice(0, 160));
+  t('발급 결과에 publicUrl 이 들어간다', !!(r.body && r.body.uploads && r.body.uploads[0] && r.body.uploads[0].publicUrl));
   console.error = origErr;
   const src = R('api/submissions/upload-url.js');
   t('ALLOWED_MIME / MIME_TO_EXT 에 tiff 항목이 없다 (주석 제외)', !/^\s*'image\/tiff'/m.test(src));

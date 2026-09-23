@@ -28,6 +28,16 @@ const SITE      = 'https://www.pap-magazine.com';
 
 function isConfigured() { return !!(BOT_TOKEN() && CHAT_ID()); }
 
+/* 2026-09-23 — tests/ 에서 실제 전송 금지.
+   submission-no-tiff 테스트의 supabaseAdmin 스텁에 getPublicUrl 이 빠져 있어
+   핸들러가 catch 로 떨어졌고, 그 catch 의 운영 알림이 진짜 그룹방으로 나갔다
+   (9/23 12:54 "업로드URL 발급 실패" 2건). 테스트가 운영 알림을 쏘면 알림을
+   믿을 수 없게 된다. 스텁을 고치는 것과 별개로, 여기서도 한 번 더 막는다.
+   판별은 실행 진입점이 tests/*.test.js 인지 — env 에 의존하지 않는다. */
+function inTestRun() {
+  return /(^|[\\/])tests[\\/][^\\/]+\.test\.js$/.test(String(process.argv[1] || ''));
+}
+
 // cover_image + gallery[] 에서 유효한 http(s) 이미지 URL만 추린다.
 // 순서: cover 먼저, 그다음 gallery. 중복 URL 제거.
 function collectImageUrls(ed) {
@@ -283,6 +293,7 @@ async function sendEditorialToTelegramSafe(ed) {
 // ── 운영 텍스트 알림 (서브미션 반려 피드백 알림 등) ──
 // 실패해도 호출부(리뷰 저장 등)를 절대 막지 않는다.
 async function sendTextToTelegramSafe(text) {
+  if (inTestRun()) return { ok: false, skipped: 'test_run' };
   try {
     if (!isConfigured() || !text) return { ok: false, skipped: 'not_configured_or_empty' };
     const r = await fetch('https://api.telegram.org/bot' + BOT_TOKEN() + '/sendMessage', {
@@ -305,6 +316,7 @@ async function sendTextToTelegramSafe(text) {
 // 개인방" 지시), 미설정이면 skipped 를 반환해 호출부가 이메일 등으로
 // 폴백할 수 있게 한다.
 async function sendTextToTelegramPersonalSafe(text) {
+  if (inTestRun()) return { ok: false, skipped: 'test_run' };
   try {
     const personal = process.env.TELEGRAM_PERSONAL_CHAT_ID || '';
     if (!BOT_TOKEN() || !personal || !text) return { ok: false, skipped: 'no_personal_chat_id' };
@@ -444,6 +456,7 @@ async function sendMediaToTelegram(items, caption, chatId) {
 }
 
 module.exports = {
+  inTestRun,
   sendEditorialToTelegram,
   sendDocumentsToTelegram,
   sendPhotosToTelegram,
