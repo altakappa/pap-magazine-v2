@@ -239,9 +239,9 @@ module.exports = async function handler(req, res) {
         try { console.warn('[submissions] 400 BRAND_LATIN_ONLY (resubmit) user=%s %s', user.id, JSON.stringify(_nonLatin).slice(0, 300)); } catch (_) {}
         return res.status(400).json(englishOnly.rejection(_nonLatin));
       }
-      // 2026-09-12 도메니코 — 인스타그램 공동작업자: 제출자가 아이디로 고르고, 프리미엄 회원만 지정 가능.
+      // 2026-09-24 도메니코 — 인스타그램 공동작업자: 연간 프리미엄 제출자만 고르고, 지정받는 쪽은 PAP 회원이면 된다(무료 포함).
       // 폼의 실시간 확인과 같은 lib(collaborators.js). 통과하면 [{handle,userId}] 로 저장.
-      const _cv = await validateCollaborators(supabaseAdmin, data.collaborators);
+      const _cv = await validateCollaborators(supabaseAdmin, data.collaborators, { userId: user.id, isAdmin: user.role === 'admin' });
       if (!_cv.ok) {
         return res.status(400).json({ code: _cv.code, message: _cv.message, handles: _cv.handles });
       }

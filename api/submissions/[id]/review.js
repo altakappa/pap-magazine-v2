@@ -8,7 +8,7 @@
  */
 
 const { supabaseAdmin } = require('../../_lib/supabase');
-const { lookupHandles } = require('../../_lib/collaborators');   // 2026-09-12 공동작업자 재판정
+const { lookupHandles, canPickCollaborators } = require('../../_lib/collaborators');   // 2026-09-12 공동작업자 재판정 · 2026-09-24 연간 프리미엄 제출자 기준
 const { resolveEmailLang } = require('../../_lib/emailLocale');
 const { requireAdmin, requireMainAdmin } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
@@ -675,21 +675,27 @@ module.exports = async function handler(req, res) {
           alreadyStaged = true;
         }
         const desc = submission.description ? JSON.parse(submission.description) : {};
-        /* 2026-09-12 도메니코 — 공동작업자는 "프리미엄 회원이 유지되는 사람에게만". 제출 때 프리미엄이었어도
-           승인 시점에 자격이 끊겼으면 자연 종료: 여기서 다시 판정해 끊긴 아이디를 뺀다(collaboratorsDropped 에
-           남겨 관리자가 볼 수 있게). 판정 규칙은 api/_lib/collaborators.js 한 곳. 실패해도 승인은 막지 않는다. */
+        /* 2026-09-24 도메니코 — 공동작업자는 "연간 프리미엄 제출자가 고른 PAP 회원". 제출 때 자격이 있었어도
+           승인 시점에 (a) 제출자의 연간 프리미엄이 끊겼으면 전부 자연 종료, (b) 아이디를 지운 회원은 그 사람만 제외.
+           뺀 아이디는 collaboratorsDropped 에 남겨 관리자가 본다. 판정 규칙은 api/_lib/collaborators.js 한 곳.
+           실패해도 승인은 막지 않는다. */
         try {
           const _stored = Array.isArray(desc.collaborators) ? desc.collaborators : [];
           if (_stored.length) {
             const _hs = _stored.map((c) => (c && typeof c === 'object') ? c.handle : c).filter(Boolean);
-            const _found = await lookupHandles(supabaseAdmin, _hs);
             const _keep = [], _drop = [];
-            _hs.forEach((h) => { (_found[h] && _found[h].premium) ? _keep.push({ handle: h, userId: _found[h].userId }) : _drop.push({ handle: h, reason: 'premium_lapsed', at: nowIso }); });
+            const _pickerOk = await canPickCollaborators(supabaseAdmin, { userId: submission.user_id });
+            if (!_pickerOk) {
+              _hs.forEach((h) => _drop.push({ handle: h, reason: 'picker_yearly_premium_lapsed', at: nowIso }));
+            } else {
+              const _found = await lookupHandles(supabaseAdmin, _hs);
+              _hs.forEach((h) => { _found[h] ? _keep.push({ handle: h, userId: _found[h].userId }) : _drop.push({ handle: h, reason: 'handle_removed', at: nowIso }); });
+            }
             if (_drop.length) {
               desc.collaborators = _keep;
               desc.collaboratorsDropped = (Array.isArray(desc.collaboratorsDropped) ? desc.collaboratorsDropped : []).concat(_drop);
               await supabaseAdmin.from('submissions').update({ description: JSON.stringify(desc) }).eq('id', submission.id);
-              console.warn('[review] collaborators dropped (premium lapsed) sub=%s %s', submission.id, _drop.map((d) => d.handle).join(','));
+              console.warn('[review] collaborators dropped sub=%s %s', submission.id, _drop.map((d) => d.handle + ':' + d.reason).join(','));
             }
           }
         } catch (e) { console.error('[review] collaborator re-check failed (ignored):', e.message); }

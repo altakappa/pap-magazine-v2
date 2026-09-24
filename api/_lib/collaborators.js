@@ -1,13 +1,17 @@
 'use strict';
 /**
- * 인스타그램 공동작업자(Collaborator) 지정 — 도메니코 정책 변경 2026-09-12.
+ * 인스타그램 공동작업자(Collaborator) 지정 — 도메니코 정책 변경 2026-09-12 → 2026-09-24 재변경.
  *
- * 종전: 공동작업자 태그는 유료 추가 옵션(€110/피드, PayPal 애드온 ig_collab).
- * 이제: 제출자가 서브미션 폼에서 공동작업자를 인스타그램 아이디로 직접 고른다.
- *   · 지정받는 사람은 **PAP 프리미엄 회원**이어야 한다(profiles.subscription_plan='premium' AND
- *     subscription_status='active', 그리고 마이페이지에 인스타그램 아이디를 등록해 둔 상태).
- *   · 프리미엄이 아닌 아이디는 등록되지 않고 "프리미엄 회원만 지정할 수 있다"는 경고가 뜬다.
+ * 종전(9/12): 제출자는 누구나 최대 4명을 고르되, 지정받는 사람은 프리미엄 회원이어야 했다.
+ *   → 실측: 이것 때문에 프리미엄에 드는 사람이 없었다.
+ * 이제(9/24, 도메니코): 권력의 방향을 뒤집는다.
+ *   · **지정하는 쪽(제출자)이 연간 프리미엄 회원**이어야 한다(subscriptions 활성 + billing_cycle yearly,
+ *     판정은 premiumFeeWaiver.findYearlyPremiumSubscription 과 같은 것). 관리자는 예외.
+ *   · **지정받는 쪽은 PAP 회원이면 된다** — 무료 회원 포함. 마이페이지에 인스타그램 아이디를 등록해 둔 상태면 끝.
+ *     (한 명이 연간 프리미엄이면 스태프 5명을 회원으로 끌어온다 — 회원 DB 확보가 목적이다.)
+ *   · 최대 5명(인스타그램 공동작업자 상한).
  *   · 아무도 고르지 않으면 공동작업자는 임의로 정해지거나 없을 수 있다(안내 문구).
+ *   · 승인 시점 재판정(review.js): 제출자의 연간 프리미엄이 끊겼으면 전부 제외, 아이디를 지운 회원은 제외.
  *
  * 한 곳에서만 규칙을 만든다 — 폼의 실시간 확인(GET /api/submissions/collaborator-check),
  * 제출(POST /api/submissions), 재제출(PUT /api/submissions/[id]), 마이페이지 아이디 등록
@@ -16,8 +20,9 @@
  */
 
 const { countryName } = require('./countries');
+const { findYearlyPremiumSubscription } = require('./premiumFeeWaiver');
 
-const MAX_COLLABORATORS = 4;   // 도메니코 2026-09-12: 최대 4명 (처음 3명 → 4명으로 변경)
+const MAX_COLLABORATORS = 5;   // 도메니코 2026-09-24: 3 → 4 → 5명 (인스타그램 공동작업자 상한)
 
 /**
  * 인스타그램 아이디 정규화. '@', 앞뒤 공백, 프로필 URL(instagram.com/xxx/) 을 벗기고 소문자로.
@@ -82,22 +87,39 @@ async function lookupHandles(supabaseAdmin, handles) {
 }
 
 /**
+ * 이 회원이 공동작업자를 고를 자격이 있는가 — 활성 연간 프리미엄(관리자는 항상).
+ * 판정은 premiumFeeWaiver.findYearlyPremiumSubscription 하나를 같이 쓴다(€380 면제와 같은 자격).
+ */
+async function canPickCollaborators(supabaseAdmin, picker) {
+  if (!picker) return false;
+  if (picker.isAdmin) return true;
+  if (!picker.userId) return false;
+  const row = await findYearlyPremiumSubscription(supabaseAdmin, picker.userId);
+  return !!row;
+}
+
+/**
  * 제출 데이터의 공동작업자를 검증한다.
+ * @param picker {userId, isAdmin} — 지정하는 쪽. 아이디가 하나라도 있으면 연간 프리미엄이어야 한다.
  * @returns {{ ok:true, collaborators:[{handle,userId}] } | { ok:false, code, message, handles:string[] }}
  */
-async function validateCollaborators(supabaseAdmin, list) {
+async function validateCollaborators(supabaseAdmin, list, picker) {
   const { handles, invalid } = parseCollaboratorInput(list);
   if (invalid.length) {
     return { ok: false, code: 'COLLAB_HANDLE_INVALID',
       message: 'Invalid Instagram handle: ' + invalid.join(', '), handles: invalid };
   }
   if (!handles.length) return { ok: true, collaborators: [] };
+  if (!(await canPickCollaborators(supabaseAdmin, picker))) {
+    return { ok: false, code: 'COLLAB_YEARLY_PREMIUM_ONLY',
+      message: 'Only Yearly Premium members can choose Instagram collaborators', handles };
+  }
   const found = await lookupHandles(supabaseAdmin, handles);
-  const notPremium = handles.filter((h) => !(found[h] && found[h].premium));
-  if (notPremium.length) {
-    return { ok: false, code: 'COLLAB_NOT_PREMIUM',
-      message: 'Only PAP Premium members can be selected as Instagram collaborators: @' + notPremium.join(', @'),
-      handles: notPremium };
+  const notMember = handles.filter((h) => !found[h]);
+  if (notMember.length) {
+    return { ok: false, code: 'COLLAB_NOT_MEMBER',
+      message: 'Instagram collaborators must be PAP members with a registered Instagram handle: @' + notMember.join(', @'),
+      handles: notMember };
   }
   return { ok: true, collaborators: handles.map((h) => ({ handle: h, userId: found[h].userId })) };
 }
@@ -110,8 +132,8 @@ function collaboratorAlertText(kind, sub, collaborators, submitter) {
     + '제목: ' + String((sub && sub.title) || '').slice(0, 80) + '\n'
     + '제출자: ' + String(submitter || '').slice(0, 80) + '\n'
     + '공동작업자(' + hs.length + '/' + MAX_COLLABORATORS + '): ' + hs.join(' ') + '\n'
-    + '※ 게재 승인 시 프리미엄 자격을 다시 확인해 끊긴 사람은 자동 제외됩니다.'
+    + '※ 게재 승인 시 다시 판정: 제출자의 연간 프리미엄이 끊겼으면 전부, 아이디를 지운 회원은 그 사람만 자동 제외.'
     + (sub && sub.id ? '\nsubmission=' + sub.id : '');
 }
 
-module.exports = { collaboratorAlertText, MAX_COLLABORATORS, normalizeHandle, isPremiumProfile, parseCollaboratorInput, lookupHandles, validateCollaborators };
+module.exports = { canPickCollaborators, collaboratorAlertText, MAX_COLLABORATORS, normalizeHandle, isPremiumProfile, parseCollaboratorInput, lookupHandles, validateCollaborators };

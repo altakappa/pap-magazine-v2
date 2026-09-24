@@ -2,7 +2,8 @@
  * GET /api/submissions/fee-waiver
  *
  * 서브미션 폼이 묻는다: "이 회원, 연간 프리미엄 €380 면제를 지금 쓸 수 있나?" (도메니코 2026-09-13)
- * 응답: { eligible, reason, periodEnd, usedAt }
+ * 응답: { eligible, reason, periodEnd, usedAt, yearlyPremium }
+ *   · yearlyPremium=true → 활성 연간 프리미엄(면제를 이미 썼어도 참). 폼의 공동작업자 칸이 이걸로 열린다(2026-09-24).
  *   · eligible=true  → 소룩(€380) 유형으로 판정되면 결제 승인 없이 접수된다(서버가 POST 에서 다시 판정).
  *   · reason: not_yearly_premium | already_used | ok
  * 이 응답은 안내용이다 — 최종 판정은 POST /api/submissions 가 같은 lib(premiumFeeWaiver)로 한다.
@@ -29,9 +30,10 @@ module.exports = async function handler(req, res) {
       periodEnd: c.periodEnd || null,
       usedAt: c.usedAt || null,
       amountCents: 38000,
+      yearlyPremium: c.reason !== 'not_yearly_premium',
     });
   } catch (e) {
     console.error('[fee-waiver]', e && e.message);
-    return res.status(200).json({ eligible: false, reason: 'error' });
+    return res.status(200).json({ eligible: false, reason: 'error', yearlyPremium: false });
   }
 };
