@@ -168,12 +168,13 @@
     const kws = (state.existingPayload.theme_keywords || []).join(' · ');
     const chosen = state.existingPayload.theme;
     box.style.display = 'block';
-    box.innerHTML = '<div style="font-size:11px;color:#c9a86a;margin-bottom:8px">이달의 테마 후보 (' + esc(kws) + ') · 하나를 누르세요. 안 고르면 테마 블록 없이 나갑니다.</div>'
+    box.innerHTML = '<div style="font-size:11px;color:#c9a86a;margin-bottom:8px">이달의 테마 후보 · 기본 키워드 ' + esc(kws) + ' + 최신 트렌드 · 하나를 누르세요. 안 고르면 테마 블록 없이 나갑니다.</div>'
       + cands.map((c, i) => {
           const ko = (c.i18n && c.i18n.ko) || {};
           const on = chosen && chosen.i18n && chosen.i18n.ko && chosen.i18n.ko.title === ko.title;
           return '<button type="button" class="btn btn-sm' + (on ? ' btn-primary' : '') + '" style="display:block;width:100%;text-align:left;margin:4px 0;white-space:normal" onclick="campaigns.pickTheme(' + i + ')">'
-            + (i + 1) + '. <b>' + esc(ko.title || '') + '</b> : ' + esc(ko.body || '') + ' <span style="opacity:.6">[' + esc((c.keywords || []).join(', ')) + ']</span></button>';
+            + (i + 1) + '. <b>' + esc(ko.title || '') + '</b> : ' + esc(ko.body || '') + ' <span style="opacity:.6">[' + esc((c.keywords || []).join(', ')) + ']</span>'
+            + (c.trend ? '<br><span style="opacity:.6;font-size:11px">읽은 흐름: ' + esc(c.trend) + '</span>' : '') + '</button>';
         }).join('')
       + (chosen ? '<button type="button" class="btn btn-sm btn-red" style="margin-top:6px" onclick="campaigns.pickTheme(-1)">선택 해제</button>' : '');
   }

@@ -14,8 +14,9 @@
  *   헤드라인·본문 칸에 '이달의 테마'를 쓰고(비우면 테마 블록이 빠진다) 예약하면
  *   send-due-campaigns 가 payload.audience='creators'(승인 크리에이터 ∩ 수신 동의)에게 보낸다.
  *
- * [테마 후보] 도메니코 2026-09-24 "우리 키워드로 항상 추천해 줘, 고르는 건 나".
- *   초안을 만들 때 _lib/creatorTheme.js 가 브랜드 코어 키워드(달마다 3개씩 돌아감)로
+ * [테마 후보] 도메니코 2026-09-24 "우리 키워드로 항상 추천해 줘, 고르는 건 나" +
+ *   "기본 키워드는 항상 드리미·서리얼리즘·스토리텔링·크리에이티비티, 최신 트렌드와 맞춰서, 포괄적으로".
+ *   초안을 만들 때 _lib/creatorTheme.js 가 기본 키워드 4개 + 트렌드 신호로
  *   테마 후보 3개를 9개 언어로 만들어 payload.theme_candidates 에 넣고 텔레그램에도 보낸다.
  *   관리자 편집기에서 하나를 누르면 payload.theme 이 된다. AI 가 실패해도 고정 후보 3개.
  * [멱등] name = creator-monthly-YYYY-MM 이 이미 있으면 새로 만들지 않는다.
@@ -76,14 +77,17 @@ module.exports = withCronGuard(CRON_NAME, async function handler(req, res) {
     }
     const payload = R.buildMonthlyPayload(range.key, (eds || []).map((e) => Object.assign({}, e, { ig: igById[e.id] || null })));
 
-    /* 이달의 테마 후보 3개 (도메니코 2026-09-24 "키워드 기반으로 항상 추천, 고르는 건 나").
-       테마는 소식이 나가는 달(지난달의 다음 달)의 촬영용이다. 강조 키워드는 달마다 돈다.
-       AI 가 실패해도 고정 후보 3개가 들어간다. 고르지 않으면 테마 블록 없이 나간다. */
+    /* 이달의 테마 후보 3개 (도메니코 2026-09-24: 기본 키워드 DREAMY·SURREALISM·STORYTELLING·
+       CREATIVITY 고정 + 최신 트렌드, 후보는 포괄적으로, 고르는 건 도메니코).
+       테마는 소식이 나가는 달(지난달의 다음 달)의 촬영용이다. 트렌드 신호는 매체 RSS 헤드라인과
+       trend_reports 30일 키워드. AI 가 실패해도 고정 후보 3개. 고르지 않으면 테마 블록 없이 나간다. */
     const themeMonth = T.nextMonthKey(range.key);
     const context = (eds || []).slice(0, 40).map((e) => e.title + (Array.isArray(e.tags) && e.tags.length ? ' [' + e.tags.slice(0, 5).join(', ') + ']' : '')).join(' / ');
-    const theme = await T.generateThemeCandidates(themeMonth, context);
+    const trends = await T.gatherTrendSignals({ supabase: supabaseAdmin });
+    const theme = await T.generateThemeCandidates(themeMonth, context, { trends });
     payload.theme_month = themeMonth;
     payload.theme_keywords = T.keywordsForMonth(themeMonth);
+    payload.theme_trend_counts = { headlines: trends.headlines.length, keywords: trends.keywords.length };
     payload.theme_candidates = theme.candidates;
     payload.theme_note = theme.note;
 
@@ -102,7 +106,7 @@ module.exports = withCronGuard(CRON_NAME, async function handler(req, res) {
     await sendTextToTelegramSafe('📰 월간 크리에이터 소식 초안 준비 (' + range.key + ')\n'
       + '화보 ' + payload.totals.n + '편 · 인스타 도달 합계 ' + R.fmtNum(payload.totals.reach) + ' · 카드 ' + payload.items.length + '개\n'
       + '이달의 테마 후보 (' + payload.theme_keywords.join(' · ') + ', ' + theme.note + ')\n'
-      + theme.candidates.map((c, i) => (i + 1) + '. ' + c.i18n.ko.title + ' : ' + c.i18n.ko.body).join('\n') + '\n'
+      + theme.candidates.map((c, i) => (i + 1) + '. ' + c.i18n.ko.title + ' : ' + c.i18n.ko.body + (c.trend ? '\n   (읽은 흐름: ' + c.trend + ')' : '')).join('\n') + '\n'
       + '관리자 > 캠페인 > 편집에서 후보 버튼을 누르거나 직접 쓰고 예약하세요. 고르지 않으면 테마 블록 없이 나갑니다.\n'
       + '받는 사람: 승인된 크리에이터 중 이메일 수신 동의자.');
     const note = '초안 ' + name + ' · 화보 ' + payload.totals.n + ' · 도달 ' + payload.totals.reach + ' · 테마 ' + theme.note;
