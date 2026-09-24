@@ -118,6 +118,16 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
         const submitterIds = new Set((subRows || []).map(r => r.user_id).filter(Boolean));
         recipientList = recipientList.filter(r =>
           submitterIds.has(r.id) && !hasActivePlan(r, 'standard'));
+      } else if (audience === 'creators') {
+        /* 2026-09-24 — 월간 크리에이터 소식(creator-monthly). 게재 승인을 한 번이라도
+         * 받은 제출자 ∩ 수신 동의(위 email_consent=true 조회). 유료·무료 구분 없음. */
+        const { data: apRows, error: apErr } = await supabaseAdmin
+          .from('submissions')
+          .select('user_id')
+          .eq('status', 'approved');
+        if (apErr) throw apErr;
+        const creatorIds = new Set((apRows || []).map(r => r.user_id).filter(Boolean));
+        recipientList = recipientList.filter(r => creatorIds.has(r.id));
       } else if (audience) {
         // 모르는 audience 값은 조용히 전체 발송하지 말고 실패시킨다 —
         // 「누구에게 갔는지 모르는 발송」이 최악이다.
@@ -133,7 +143,9 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
           ? templates.weeklyNews
           : campaign.type === 'creator-pullletter'
             ? templates.creatorPullletter
-            : null;
+            : campaign.type === 'creator-monthly'
+              ? templates.creatorMonthly
+              : null;
       if (!templateFn) {
         throw new Error(`No template for campaign type "${campaign.type}"`);
       }

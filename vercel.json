@@ -40,6 +40,14 @@
       "schedule": "20 0 * * *"
     },
     {
+      "path": "/api/cron/creator-report-card",
+      "schedule": "10 2 * * *"
+    },
+    {
+      "path": "/api/cron/creator-monthly",
+      "schedule": "0 1 1 * *"
+    },
+    {
       "path": "/api/cron/premium-review-sla",
       "schedule": "30 0 * * *"
     },

@@ -49,7 +49,11 @@ module.exports = async function handler(req, res) {
       ? templates.weeklyEditorial
       : campaign.type === 'news-weekly'
         ? templates.weeklyNews
-        : null;
+        : campaign.type === 'creator-pullletter'
+          ? templates.creatorPullletter
+          : campaign.type === 'creator-monthly'   // 2026-09-24 월간 크리에이터 소식 초안 테스트 발송
+            ? templates.creatorMonthly
+            : null;
     if (!templateFn) {
       return res.status(400).json({ message: `No template for campaign type "${campaign.type}"` });
     }

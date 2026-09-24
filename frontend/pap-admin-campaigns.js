@@ -73,7 +73,7 @@
       tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">등록된 캠페인이 없습니다</td></tr>';
       return;
     }
-    const typeLabel = (t) => t === 'editorial-weekly' ? '이주의 에디토리얼' : t === 'news-weekly' ? '이주의 뉴스' : t;
+    const typeLabel = (t) => t === 'editorial-weekly' ? '이주의 에디토리얼' : t === 'news-weekly' ? '이주의 뉴스' : t === 'creator-monthly' ? '월간 크리에이터 소식' : t === 'creator-pullletter' ? '풀레터 안내' : t;
     const statusLabel = (s) => ({
       draft: '<span class="badge b-pending">임시저장</span>',
       scheduled: '<span class="badge b-revision">예약됨</span>',
@@ -107,8 +107,14 @@
     state.editingId = (existing && existing.id) || null;
     state.pickedEditorials = [];
     state.newsItems = [];
+    // 2026-09-24 — 크론이 만든 초안(creator-monthly 등)은 payload 를 편집기가 모른다.
+    // 저장할 때 그대로 돌려보내야 한다. 안 그러면 gather() 가 {} 로 덮어 카드·통계가 사라진다.
+    state.existingPayload = (existing && existing.payload) || null;
 
-    $('campaignEditorTitle').textContent = type === 'editorial-weekly' ? '이주의 에디토리얼 편집' : '이주의 뉴스 편집';
+    $('campaignEditorTitle').textContent = type === 'editorial-weekly' ? '이주의 에디토리얼 편집'
+      : type === 'news-weekly' ? '이주의 뉴스 편집'
+      : type === 'creator-monthly' ? '월간 크리에이터 소식 편집 (헤드라인·본문 = 이달의 테마, 비우면 테마 블록 없음)'
+      : '캠페인 편집 (' + type + ')';
     $('campaignEditorRecipients').textContent = (state.eligibleRecipients || 0).toLocaleString();
     $('campName').value = (existing && existing.name) || '';
     $('campSubject').value = (existing && existing.subject) || '';
@@ -310,6 +316,8 @@
         return null;
       }
       payload.newsItems = valid;
+    } else if (state.existingPayload) {
+      payload = state.existingPayload;   // creator-monthly 등: 크론이 만든 payload 보존
     }
     return {
       name: ($('campName').value || '').trim() || null,

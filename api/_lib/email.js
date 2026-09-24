@@ -149,6 +149,10 @@ const SUBMISSION_REVIEW_I18N = {
     upB3: 'PAP 인증 크리에이터 프로필 — 배지 · 활동 도시 · 연락 버튼 · 첫 게재부터 공개',
     upB4: '심사 대기 중 제출 수정 · 게재 후 크레딧 수정 (에디토리얼당 3회)', upB5:'연간 프리미엄 전용: 유료 서브미션(€380) 구독 연도당 1회 면제 · 인스타그램 공동작업자 최대 5명 직접 지정 (PAP 회원이면 무료 회원도 가능)',
     upCta: '프리미엄 혜택 보기',
+    nextTitle: '다음 촬영을 준비하고 계신가요?',
+    nextBody: '다음 화보도 PAP로 보내 주세요. 촬영에 브랜드 의상이 필요하면 PAP 명의의 공식 Pull-Letter로 쇼룸에 대여를 요청할 수 있습니다(프리미엄 회원, 월 1건).',
+    nextCtaSubmit: '다음 화보 보내기',
+    nextCtaPl: 'Pull-Letter 알아보기 →',
   },
   en: {
     subject: 'Your submission review is complete — "{title}"',
@@ -174,6 +178,10 @@ const SUBMISSION_REVIEW_I18N = {
     upB3: 'PAP Verified creator profile — badge, city, contact button, live from your first editorial',
     upB4: 'Edit while your submission is pending · credit edits after publication (3 per editorial)', upB5:'Yearly Premium only: one paid submission (€380) waived per subscription year · choose up to 5 Instagram collaborators yourself (any PAP member, free members included)',
     upCta: 'SEE PREMIUM BENEFITS',
+    nextTitle: 'Planning your next shoot?',
+    nextBody: 'Send us your next editorial too. If you need brand pieces for the shoot, an official PAP Pull-Letter lets you request loans from showrooms (Premium members, 1 per month).',
+    nextCtaSubmit: 'SUBMIT YOUR NEXT EDITORIAL',
+    nextCtaPl: 'About Pull-Letters →',
   },
   it: {
     subject: 'La tua revisione è completa — "{title}"',
@@ -199,6 +207,10 @@ const SUBMISSION_REVIEW_I18N = {
     upB3: 'Profilo creativo verificato PAP — badge, città, pulsante contatto, attivo dal primo editoriale',
     upB4: 'Modifica mentre la candidatura è in attesa · modifica dei crediti dopo la pubblicazione (3 per editoriale)', upB5:'Solo Premium annuale: una candidatura a pagamento (€380) esonerata per anno di abbonamento · scegli tu fino a 5 collaboratori Instagram (qualsiasi membro PAP, anche gratuito)',
     upCta: 'VEDI I VANTAGGI PREMIUM',
+    nextTitle: 'Stai preparando il prossimo shooting?',
+    nextBody: 'Inviaci anche il tuo prossimo editoriale. Se per lo shooting ti servono capi di brand, con una Pull-Letter ufficiale PAP puoi richiederli in prestito agli showroom (membri Premium, 1 al mese).',
+    nextCtaSubmit: 'INVIA IL PROSSIMO EDITORIALE',
+    nextCtaPl: 'Scopri la Pull-Letter →',
   },
   fr: {
     subject: 'Votre soumission a été examinée — "{title}"',
@@ -224,6 +236,10 @@ const SUBMISSION_REVIEW_I18N = {
     upB3: 'Profil créatif certifié PAP — badge, ville, bouton contact, actif dès le premier éditorial',
     upB4: 'Modification pendant l’examen · correction des crédits après publication (3 par éditorial)', upB5:'Premium annuel uniquement : une soumission payante (€380) offerte par année d’abonnement · choisissez vous-même jusqu’à 5 collaborateurs Instagram (tout membre PAP, gratuits inclus)',
     upCta: 'VOIR LES AVANTAGES PREMIUM',
+    nextTitle: 'Vous préparez votre prochain shooting ?',
+    nextBody: 'Envoyez-nous aussi votre prochain éditorial. Si vous avez besoin de pièces de marque pour le shooting, une Pull-Letter officielle PAP vous permet d\'en demander le prêt aux showrooms (membres Premium, 1 par mois).',
+    nextCtaSubmit: 'ENVOYER VOTRE PROCHAIN ÉDITORIAL',
+    nextCtaPl: 'Découvrir la Pull-Letter →',
   },
   es: {
     subject: 'Tu envío ha sido revisado — "{title}"',
@@ -249,6 +265,10 @@ const SUBMISSION_REVIEW_I18N = {
     upB3: 'Perfil de creador verificado por PAP — insignia, ciudad, botón de contacto, activo desde el primer editorial',
     upB4: 'Edición mientras tu propuesta está en espera · corrección de créditos tras la publicación (3 por editorial)', upB5:'Solo Premium anual: una propuesta de pago (€380) exenta por año de suscripción · elige tú mismo hasta 5 colaboradores de Instagram (cualquier miembro de PAP, gratuitos incluidos)',
     upCta: 'VER VENTAJAS PREMIUM',
+    nextTitle: '¿Preparas tu próxima sesión?',
+    nextBody: 'Envíanos también tu próximo editorial. Si necesitas prendas de marca para la sesión, con una Pull-Letter oficial de PAP puedes solicitar préstamos a los showrooms (miembros Premium, 1 al mes).',
+    nextCtaSubmit: 'ENVÍA TU PRÓXIMO EDITORIAL',
+    nextCtaPl: 'Conoce la Pull-Letter →',
   },
   ja: {
     subject: '審査が完了しました — "{title}"',
@@ -274,6 +294,10 @@ const SUBMISSION_REVIEW_I18N = {
     upB3: 'PAP認証クリエイタープロフィール — バッジ・活動都市・連絡ボタン、初掲載から公開',
     upB4: '審査待ちの間の提出内容の編集 · 掲載後のクレジット修正（エディトリアルごとに3回）', upB5:'年間プレミアム限定：有料応募（€380）が購読年ごとに1回免除 · Instagramコラボレーターを最大5名まで自分で指定（PAP会員なら無料会員も可）',
     upCta: 'プレミアム特典を見る',
+    nextTitle: '次の撮影の準備はできていますか？',
+    nextBody: '次のエディトリアルもぜひPAPへお送りください。撮影でブランドの衣装が必要な場合は、PAP名義の公式Pull-Letterでショールームに貸し出しを依頼できます（プレミアム会員・月1件）。',
+    nextCtaSubmit: '次のエディトリアルを送る',
+    nextCtaPl: 'Pull-Letterについて →',
   },
   zh: {
     subject: '您的投稿审核已完成 — "{title}"',
@@ -299,6 +323,10 @@ const SUBMISSION_REVIEW_I18N = {
     upB3: 'PAP认证创作者主页 — 徽章、活动城市、联系按钮，首次刊登即公开',
     upB4: '待审期间可修改投稿 · 发布后可修改署名（每篇 3 次）', upB5:'仅限年度高级会员：每个订阅年度免除 1 次付费投稿（€380）· 自行指定最多 5 位 Instagram 合作者（任何 PAP 会员，含免费会员）',
     upCta: '查看高级会员权益',
+    nextTitle: '正在筹备下一次拍摄吗？',
+    nextBody: '欢迎把你的下一组大片也投给PAP。如果拍摄需要品牌服装，可以用PAP名义的官方Pull-Letter向展厅申请借衣（高级会员，每月1份）。',
+    nextCtaSubmit: '投递下一组大片',
+    nextCtaPl: '了解Pull-Letter →',
   },
   ru: {
     subject: 'Рассмотрение вашей заявки завершено — "{title}"',
@@ -324,6 +352,10 @@ const SUBMISSION_REVIEW_I18N = {
     upB3: 'Верифицированный профиль автора PAP — бейдж, город, кнопка связи, доступен с первой публикации',
     upB4: 'Правка заявки во время ожидания · правка кредитов после публикации (3 раза на эдиториал)', upB5:'Только годовой Premium: одна платная заявка (€380) бесплатно за год подписки · сами выбираете до 5 соавторов в Instagram (любые участники PAP, включая бесплатных)',
     upCta: 'СМОТРЕТЬ ПРЕИМУЩЕСТВА PREMIUM',
+    nextTitle: 'Готовите следующую съёмку?',
+    nextBody: 'Присылайте в PAP и следующий эдиториал. Если для съёмки нужны вещи брендов, официальное письмо PAP (Pull-Letter) поможет запросить их в шоуруме (участники Premium, 1 в месяц).',
+    nextCtaSubmit: 'ОТПРАВИТЬ СЛЕДУЮЩИЙ ЭДИТОРИАЛ',
+    nextCtaPl: 'Подробнее о Pull-Letter →',
   },
   de: {
     subject: 'Die Prüfung deiner Einreichung ist abgeschlossen — "{title}"',
@@ -349,6 +381,10 @@ const SUBMISSION_REVIEW_I18N = {
     upB3: 'PAP-verifiziertes Creator-Profil — Badge, Stadt, Kontaktbutton, ab dem ersten Editorial öffentlich',
     upB4: 'Bearbeiten während der Prüfung · Credit-Korrekturen nach Veröffentlichung (3 pro Editorial)', upB5:'Nur Jahres-Premium: eine kostenpflichtige Einreichung (€380) pro Abojahr erlassen · bis zu 5 Instagram-Collaborators selbst auswählen (alle PAP-Mitglieder, auch kostenlose)',
     upCta: 'PREMIUM-VORTEILE ANSEHEN',
+    nextTitle: 'Planen Sie Ihr nächstes Shooting?',
+    nextBody: 'Senden Sie uns auch Ihr nächstes Editorial. Wenn Sie für das Shooting Markenteile brauchen, können Sie mit einem offiziellen PAP Pull-Letter Leihgaben bei Showrooms anfragen (Premium-Mitglieder, 1 pro Monat).',
+    nextCtaSubmit: 'NÄCHSTES EDITORIAL EINREICHEN',
+    nextCtaPl: 'Mehr zum Pull-Letter →',
   },
 };
 
@@ -957,6 +993,22 @@ const templates = {
         })()
       : '';
 
+    /* 2026-09-24 도메니코 "세 조각 설정해줘" ① — 승인 뒤 '다음 화보' 동선.
+       [왜] 첫 제출 60일 이상 지난 크리에이터 51명 중 다시 낸 사람 3명(6%).
+       유료 구독이 확실히 이어진 1명은 두 번째 화보를 낸 사람이었다. 승인 메일이
+       축하·배지·프리미엄 광고로 끝나고, 다음 촬영으로 이어지는 문장이 없었다.
+       미용실의 "다음 예약" 자리다. 승인일 때만, 프리미엄 여부와 무관하게 싣는다.
+       풀레터는 서버가 프리미엄 월 1건으로 막으므로(api/pullletters/index.js) 문구도 그대로 적는다.
+       utm_campaign=next_shoot 로 이 동선만 따로 잰다. */
+    const _nextBlock = (_isApproved && L.nextTitle)
+      ? `<div style="margin:24px 0 8px;padding:18px;border:1px solid #2a2a2a;background:#101010;">
+           <span style="color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:2px;font-weight:700;">${L.nextTitle}</span><br>
+           <span style="color:#ccc;font-size:13px;line-height:1.7;">${L.nextBody}</span><br>
+           <a href="${FRONTEND_URL}/submission.html?utm_source=submission_approved_email&utm_medium=email&utm_campaign=next_shoot" style="display:inline-block;background:#fff;color:#000;padding:11px 24px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:14px;">${L.nextCtaSubmit}</a>
+           <a href="${FRONTEND_URL}/mypage?utm_source=submission_approved_email&utm_medium=email&utm_campaign=next_shoot#mp-pullletters" style="display:inline-block;margin:14px 0 0 12px;color:#fff;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:underline;">${L.nextCtaPl}</a>
+         </div>`
+      : '';
+
     /* 2026-09-13 도메니코 — 승인 메일에 프리미엄 업셀(8번 장치). 비프리미엄 수신자에게만, 승인일 때만.
        적용된 혜택만 적는다(우선 심사·인증 프로필·연간 €380 면제 + 기존 혜택. 피드+스토리 보장은 2026-09-15 폐지 — 승인작은 전원 웹+모든 소셜에 게재).
        미적용 장치(성과 숫자·재도전권·에디터스 픽)는 쓰지 않는다. 결제 URL 이 아니라 /subscribe 로 보낸다. */
@@ -981,6 +1033,7 @@ const templates = {
         ${_payBlock}
         ${_kitBlock}
         <a href="${ctaUrl}" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+        ${_nextBlock}
         ${_upsellBlock}
         <p style="font-size:12px;color:#888;margin-top:24px;">${L.footer}</p>
       `, lang),
@@ -1320,6 +1373,143 @@ const templates = {
 </html>`;
     return { subject, html };
   },
+  // ── creator-report-card / creator-monthly (2026-09-24, 도메니코 "세 조각 설정해줘" ②·③) ──
+  // 문구는 api/_lib/creatorMailCopy.js (9개 언어), 숫자 규칙은 api/_lib/creatorReport.js.
+  // 디자인은 creatorPullletter 와 같은 웹사이트 문법(흰 카드 · 검정 헤더 · #891717).
+  // 성적표는 게재된 본인 작품에 대한 안내(거래 부수 정보)라 수신거부 링크 대신 회신 안내를 둔다.
+  // 월간 소식은 캠페인이라 weeklyNews 와 같은 수신거부·설정 링크를 단다.
+  creatorReportCard: (data, lang) => {
+    const { REPORT, LOCALE_TAG } = require('./creatorMailCopy');
+    const R = require('./creatorReport');
+    const C = REPORT[lang] || REPORT.en;
+    const d = data || {};
+    const title = String(d.title || '');
+    const name = d.name ? String(d.name) : C.greetFallback;
+    const MONT = "'Montserrat','Inter',Helvetica,Arial,sans-serif";
+    const utm = 'utm_source=creator_report_card&utm_medium=email&utm_campaign=next_shoot';
+    const dateStr = d.date ? new Date(String(d.date).slice(0, 10) + 'T00:00:00Z').toLocaleDateString(LOCALE_TAG[lang] || 'en-GB', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) : '';
+    const ig = d.ig || null;
+    const rows = [];
+    if (ig && ig.reach > 0) {
+      rows.push([C.reach, ig.reach], [C.likes, ig.likes], [C.saved, ig.saved], [C.shares, ig.shares]);
+    }
+    if (Number(d.web) > 0) rows.push([C.web, Number(d.web)]);
+    const statRows = rows.map(([k, v], i) => `
+        <tr><td style="padding:12px 0;border-top:1px solid #e5e5e5;font-size:13px;color:#555;">${escapeHtml(k)}</td>
+            <td align="right" style="padding:12px 0;border-top:1px solid #e5e5e5;font-family:${MONT};font-size:${i === 0 ? 22 : 16}px;font-weight:800;color:${i === 0 ? '#891717' : '#111'};">${R.fmtNum(v)}</td></tr>`).join('');
+    const pageUrl = d.slug ? `${FRONTEND_URL}/editorial/${encodeURIComponent(d.slug)}?utm_source=creator_report_card&utm_medium=email` : '';
+    const subject = R.fill(C.subject, { title, days: d.days || '' });
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PAP</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;"><tr><td align="center" style="padding:0 0 32px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;font-family:'Inter',-apple-system,Helvetica,Arial,sans-serif;background:#ffffff;">
+    <tr><td align="center" style="background-color:#000000;padding:26px 20px;"><img src="${FRONTEND_URL}/pap-logo.png" width="72" style="display:block;" alt="PAP MAGAZINE"></td></tr>
+    <tr><td align="center" style="padding:40px 32px 0;font-family:${MONT};font-size:10px;font-weight:800;color:#891717;letter-spacing:4px;text-transform:uppercase;">EDITORIAL REPORT</td></tr>
+    <tr><td align="center" style="padding:12px 32px 0;font-family:${MONT};font-size:22px;font-weight:800;color:#111;line-height:1.4;letter-spacing:1px;text-transform:uppercase;">${escapeHtml(C.heading)}</td></tr>
+    <tr><td style="padding:28px 40px 0;font-size:14px;color:#555;line-height:1.85;">${escapeHtml(R.fill(C.greet, { name }))}<br>${escapeHtml(R.fill(C.intro, { title: '"' + title + '"' }))}</td></tr>
+    <tr><td style="padding:18px 40px 0;"><table width="100%" cellpadding="0" cellspacing="0">${statRows}</table></td></tr>
+    <tr><td style="padding:10px 40px 0;font-size:11px;color:#999;line-height:1.6;">${escapeHtml(R.fill(C.asOf, { date: dateStr }))}</td></tr>
+    ${pageUrl ? `<tr><td style="padding:14px 40px 0;"><a href="${pageUrl}" style="color:#111;font-size:13px;font-weight:700;">${escapeHtml(C.view)}</a></td></tr>` : ''}
+    <tr><td style="padding:28px 40px 0;font-size:14px;color:#555;line-height:1.85;border-top:0;">${escapeHtml(C.next)}</td></tr>
+    <tr><td align="center" style="padding:24px 40px 0;">
+      <a href="${FRONTEND_URL}/submission.html?${utm}" style="display:inline-block;background:#000000;color:#ffffff;padding:14px 36px;font-family:${MONT};font-size:11px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;text-decoration:none;">${escapeHtml(C.cta)}</a>
+    </td></tr>
+    <tr><td align="center" style="padding:14px 40px 0;"><a href="${FRONTEND_URL}/mypage?${utm}#mp-pullletters" style="color:#891717;font-size:12px;font-weight:700;">${escapeHtml(C.plCta)}</a></td></tr>
+    <tr><td style="padding:30px 40px 30px;font-size:11px;color:#999;line-height:1.6;">${escapeHtml(C.footer)}</td></tr>
+    <tr><td align="center" style="background-color:#1a1a1a;padding:24px 20px;"><div style="font-size:11px;font-weight:700;color:#ffffff;letter-spacing:4px;">P A P &nbsp; M A G A Z I N E</div></td></tr>
+  </table>
+  </td></tr></table>
+</body>
+</html>`;
+    return { subject, html };
+  },
+
+  creatorMonthly: (campaign, user, unsubToken) => {
+    const { MONTHLY, LOCALE_TAG } = require('./creatorMailCopy');
+    const R = require('./creatorReport');
+    const lang = (user && user.language) || 'en';
+    const C = MONTHLY[lang] || MONTHLY.en;
+    const U = emailUiStrings(lang);
+    const p = (campaign && campaign.payload) || {};
+    const month = R.monthLabel(p.month, LOCALE_TAG[lang]);
+    const totals = p.totals || { n: 0, reach: 0 };
+    const items = Array.isArray(p.items) ? p.items : [];
+    const MONT = "'Montserrat','Inter',Helvetica,Arial,sans-serif";
+    const utm = 'utm_source=creator_monthly&utm_medium=email&utm_campaign=' + encodeURIComponent('creator-monthly-' + (p.month || ''));
+    // 제목·프리헤더는 수신자 언어. 관리자가 payload.i18n[lang] 로 덮을 수 있다 (weeklyNews 관례).
+    const ov = (p.i18n || {})[lang] || {};
+    const subject = ov.subject || R.fill(C.subject, { month });
+    const preheader = ov.preheader || R.fill(C.preheader, { month });
+    const statsText = totals.n > 0
+      ? R.fill(C.stats, { month, n: totals.n, reach: R.fmtNum(totals.reach) })
+      : R.fill(C.statsEmpty, { month });
+    // 이달의 테마: 관리자가 캠페인 편집기의 '헤드라인·본문' 칸에 쓴다. 비어 있으면 블록을 싣지 않는다.
+    const themeHead = String((campaign && campaign.hero_headline) || '').trim();
+    const themeBody = String((campaign && campaign.hero_body) || '').trim();
+    const themeBlock = (themeHead || themeBody) ? `
+    <tr><td style="padding:30px 40px 0;"><div style="padding:18px 20px;background:#000;color:#fff;">
+      <div style="font-family:${MONT};font-size:10px;font-weight:800;letter-spacing:3px;color:#c9a86a;text-transform:uppercase;">${escapeHtml(C.theme)}</div>
+      ${themeHead ? `<div style="font-family:${MONT};font-size:17px;font-weight:800;margin-top:8px;line-height:1.4;">${escapeHtml(themeHead)}</div>` : ''}
+      ${themeBody ? `<div style="font-size:13px;color:#ccc;margin-top:8px;line-height:1.7;white-space:pre-line;">${escapeHtml(themeBody)}</div>` : ''}
+    </div></td></tr>` : '';
+    const cards = items.map((it) => {
+      const t = (lang !== 'ko' && it.title_en) ? it.title_en : it.title;
+      const url = `${FRONTEND_URL}/editorial/${encodeURIComponent(it.slug)}?${utm}`;
+      return `
+        <tr><td style="padding:14px 0 0;"><a href="${url}" style="text-decoration:none;color:#111;">
+          <table width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td width="96" valign="top"><img src="${escapeHtml(it.image)}" width="96" style="display:block;width:96px;height:120px;object-fit:cover;" alt=""></td>
+            <td valign="top" style="padding-left:16px;">
+              <div style="font-size:14px;font-weight:700;color:#111;line-height:1.5;">${escapeHtml(t)}</div>
+              ${it.reach > 0 ? `<div style="margin-top:6px;font-family:${MONT};font-size:11px;font-weight:800;color:#891717;letter-spacing:1px;">${escapeHtml(C.reachLabel)} ${R.fmtNum(it.reach)}</div>` : ''}
+            </td></tr></table></a></td></tr>`;
+    }).join('');
+    const langBar = SUPPORTED_LANGS.map((l) => l === lang
+      ? `<span style="color:#111;font-weight:700;text-decoration:underline;white-space:nowrap;">${LANG_LABELS[l]}</span>`
+      : `<a href="${FRONTEND_URL}/api/email/language?token=${unsubToken}&amp;lang=${l}" style="color:#999;text-decoration:none;white-space:nowrap;">${LANG_LABELS[l]}</a>`
+    ).join(' &nbsp;·&nbsp; ');
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PAP Creator News</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;">
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader)}</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;"><tr><td align="center" style="padding:0 0 32px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;font-family:'Inter',-apple-system,Helvetica,Arial,sans-serif;background:#ffffff;">
+    <tr><td align="center" style="background-color:#000000;padding:26px 20px;"><a href="${FRONTEND_URL}/?${utm}" style="text-decoration:none;"><img src="${FRONTEND_URL}/pap-logo.png" width="72" style="display:block;" alt="PAP MAGAZINE"></a></td></tr>
+    <tr><td align="center" style="padding:40px 32px 0;font-family:${MONT};font-size:10px;font-weight:800;color:#891717;letter-spacing:4px;text-transform:uppercase;">${escapeHtml(C.kicker)}</td></tr>
+    <tr><td align="center" style="padding:12px 32px 0;font-family:${MONT};font-size:22px;font-weight:800;color:#111;line-height:1.4;letter-spacing:1px;text-transform:uppercase;">${escapeHtml(R.fill(C.headline, { month }))}</td></tr>
+    <tr><td style="padding:26px 40px 0;font-size:14px;color:#555;line-height:1.85;">${escapeHtml(statsText)}</td></tr>
+    ${themeBlock}
+    ${cards ? `<tr><td style="padding:30px 40px 0;"><div style="font-family:${MONT};font-size:10px;font-weight:800;color:#999;letter-spacing:3px;text-transform:uppercase;border-top:1px solid #e5e5e5;padding-top:20px;">${escapeHtml(C.featured)}</div><table width="100%" cellpadding="0" cellspacing="0">${cards}</table></td></tr>` : ''}
+    <tr><td style="padding:32px 40px 0;"><div style="border-top:1px solid #e5e5e5;padding-top:22px;font-family:${MONT};font-size:15px;font-weight:800;color:#111;">${escapeHtml(C.nextTitle)}</div>
+      <div style="font-size:14px;color:#555;line-height:1.85;margin-top:8px;">${escapeHtml(C.nextBody)}</div></td></tr>
+    <tr><td align="center" style="padding:24px 40px 0;">
+      <a href="${FRONTEND_URL}/submission.html?${utm}" style="display:inline-block;background:#000000;color:#ffffff;padding:14px 36px;font-family:${MONT};font-size:11px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;text-decoration:none;">${escapeHtml(C.cta)}</a>
+    </td></tr>
+    <tr><td align="center" style="padding:14px 40px 0;"><a href="${FRONTEND_URL}/mypage?${utm}#mp-pullletters" style="color:#891717;font-size:12px;font-weight:700;">${escapeHtml(C.plCta)}</a></td></tr>
+    <tr><td align="center" style="padding:30px 28px 0;font-size:11px;color:#999;line-height:1.9;">${langBar}</td></tr>
+    <tr><td style="padding:18px 28px 0;font-size:11px;color:#888;line-height:1.6;">
+      ${U.consentNotice.replace(/<strong>/g, '<strong style="color:#555;">')}
+      &nbsp;·&nbsp;
+      <a href="${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(U.unsubscribe)}</a>
+      &nbsp;·&nbsp;
+      <a href="${FRONTEND_URL}/mypage#mp-preferences" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(U.managePrefs)}</a>
+    </td></tr>
+    <tr><td align="center" style="background-color:#1a1a1a;padding:28px 20px;">
+      <div style="font-size:11px;font-weight:700;color:#ffffff;letter-spacing:4px;">P A P &nbsp; M A G A Z I N E</div>
+      <div style="font-size:11px;color:#888;margin-top:6px;">pap-magazine.com | @pap_magazine</div>
+    </td></tr>
+  </table>
+  </td></tr></table>
+</body>
+</html>`;
+    return { subject, html };
+  },
+
   // ── creator-pullletter — 풀레터 소개 캠페인 (2026-08-26) ─────────
   // 유료 구독자 늘리기 1탄-②: 이미 서브미션을 제출한 무료 크리에이터
   // (payload.audience='submitters_free', 발송기 측에서 세그먼트)에게
