@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="mypage" data-v="11">
+<meta name="pap-ui-i18n" content="mypage" data-v="12">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP Magazine - My Page">
@@ -1744,6 +1744,8 @@ async function _mpRenderSubDetail(id, box){
     // 2026-09-12 — 심사 대기 중 자기 수정: 프리미엄은 버튼, 그 외는 안내.
     if(s.status === 'pending'){
       if(s.canSelfEdit){
+        // 2026-09-24 도메니코 — 연간 프리미엄은 여기서 공동작업자도 바꿀 수 있다고 알린다(고르는 자격 판정은 서버).
+        h += '<div style="margin-top:14px;font-size:11px;line-height:1.7;color:rgba(255,255,255,.55)">' + esc(_papUIL('연간 프리미엄 회원은 심사가 끝나기 전까지 수정하기에서 인스타그램 공동작업자(최대 5명, PAP 회원)도 바꿀 수 있습니다.','Yearly Premium members can also change their Instagram collaborators (up to 5 PAP members) here until the review is finished.')) + '</div>';
         h += '<button onclick="window.location.href=\'/submission?revise=' + encodeURIComponent(id) + '\'" style="margin-top:16px;background:rgba(201,168,106,.15);border:1px solid rgba(201,168,106,.5);color:#fff;padding:8px 16px;font-size:11px;font-weight:700;letter-spacing:.05em;cursor:pointer;border-radius:2px;font-family:inherit">' + esc(_papUIL('제출 내용 수정하기','Edit this submission')) + '</button>';
       } else if(s.selfEditBlockedReason === 'not_premium'){
         h += '<div style="margin-top:14px;font-size:11px;color:rgba(255,255,255,.5)">' + esc(_papUIL('심사 대기 중 제출 내용을 직접 수정하는 것은 프리미엄 회원만 가능합니다.','Editing a submission while it is awaiting review is a Premium member benefit.')) + ' <a href="/subscribe?utm_source=mypage_selfedit&utm_medium=web" style="color:#c9a86a;text-decoration:underline">' + esc(_papUIL('프리미엄 알아보기','Learn about Premium')) + '</a></div>';

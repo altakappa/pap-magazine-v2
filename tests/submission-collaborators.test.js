@@ -146,10 +146,15 @@ const Y = { userId: 'yearly' }, M = { userId: 'monthly' }, N = { userId: 'none' 
     && /2\/5/.test(C.collaboratorAlertText('new', { id: 's1', title: 'T' }, [{ handle: 'prem' }, 'std'], 'me'))
     && /재제출/.test(C.collaboratorAlertText('resubmit', { id: 's1', title: 'T' }, ['a'], 'me'))
     && C.collaboratorAlertText('new', { id: 's1' }, [], 'me') === '');
-  ok('제출·재제출 API 가 공동작업자 있을 때만 sendTextToTelegramSafe 를 await 한다', ['api/submissions/index.js', 'api/submissions/[id].js'].every((f) => {
-    const src = read(f);
-    return /collaboratorAlertText/.test(src) && /if \(collaborators && collaborators\.length\) \{[\s\S]{0,200}await sendTextToTelegramSafe\(collaboratorAlertText\(/.test(src);
-  }));
+  ok('제출 API: 공동작업자 있을 때 ① 머리말 ② 크레딧을 await 하고 ③ 이미지 워커를 깨운다', (() => {
+    const src = read('api/submissions/index.js');
+    return /if \(collaborators && collaborators\.length\) \{[\s\S]{0,300}await sendTextToTelegramSafe\(collaboratorAlertText\('new'[\s\S]{0,200}await sendTextToTelegramSafe\(collabCreditText\([\s\S]{0,120}await dispatchCollabImages\(submission\.id, 'new'\)/.test(src);
+  })());
+  ok('재제출 API: 목록이 바뀐 수정일 때만 ①②③, 전부 지우면 해제 알림', (() => {
+    const src = read('api/submissions/[id].js');
+    return /if \(collaborators && collaborators\.length && collaboratorsChanged\(_prevCollabs, collaborators\)\) \{[\s\S]{0,300}collaboratorAlertText\('resubmit'[\s\S]{0,200}collabCreditText\([\s\S]{0,120}dispatchCollabImages\(updated\.id, 'resubmit'\)/.test(src)
+      && /공동작업자 지정 해제/.test(src);
+  })());
   ok('lib 의 lookupHandles 는 여전히 활동 국가·도시를 읽는다(관리자 참고용)', /activity_country, activity_city/.test(lib));
 
   console.log('\npassed: ' + passed + '   failed: ' + failed);

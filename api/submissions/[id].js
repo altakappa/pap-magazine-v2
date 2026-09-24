@@ -14,6 +14,7 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit, lookItemsMissingInstagram, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
 const { validateCollaborators, collaboratorAlertText } = require('../_lib/collaborators');
+const { collabCreditText, dispatchCollabImages, collaboratorsChanged } = require('../_lib/collabTelegram');   // 2026-09-24
 const { sendTextToTelegramSafe } = require('../_lib/telegram');   // 2026-09-12 공동작업자 지정 알림
 const { isPremiumUser, resolveCoverIndex } = require('../_lib/premiumCover');   // 2026-09-12 커버 선택은 프리미엄만
 const { brandRolesIn } = require('../_lib/brandRoleGuard');   // 2026-09-12 브랜드/디자이너는 팀 크레딧 금지
@@ -298,7 +299,7 @@ module.exports = async function handler(req, res) {
             contactName: data.contactName || '',
             photographerCredit,
             videoUrl,
-            collaborators,   // 2026-09-12 — [{handle,userId}] 프리미엄 회원만 (비어 있으면 임의 지정 또는 미지정)
+            collaborators,   // 2026-09-24 — [{handle,userId}] 연간 프리미엄 제출자가 고른 PAP 회원 (비어 있으면 임의 지정 또는 미지정)
             looks,
             lookImageMap,
             submissionType,
@@ -327,9 +328,18 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ message: 'Failed to resubmit', code: 'resubmit_failed' });
       }
 
-      // 2026-09-12 도메니코 — 재제출에서도 공동작업자가 지정돼 있으면 텔레그램으로 알린다. 실패해도 재제출은 막지 않는다.
-      if (collaborators && collaborators.length) {
+      // 2026-09-12 도메니코 — 재제출(수정)에서도 공동작업자가 지정돼 있으면 텔레그램으로 알린다. 실패해도 재제출은 막지 않는다.
+      // 2026-09-24 — 크레딧(복사용) + 인스타그램용 이미지(워커)까지. 단 **공동작업자 목록이 바뀐 수정일 때만** —
+      // 연간 프리미엄은 심사 중 몇 번이고 고칠 수 있어서, 목록이 그대로인 수정마다 이미지 20장이 다시 오면 알림이 묻힌다.
+      let _prevCollabs = [];
+      try { const _pd = submission.description ? JSON.parse(submission.description) : {}; _prevCollabs = Array.isArray(_pd.collaborators) ? _pd.collaborators : []; } catch (_) {}
+      if (collaborators && collaborators.length && collaboratorsChanged(_prevCollabs, collaborators)) {
+        const _desc = { team, models: data.models || [], looks, collaborators };
         try { await sendTextToTelegramSafe(collaboratorAlertText('resubmit', updated, collaborators, (data.contactName || data.studio || user.email || user.id))); } catch (_) {}
+        try { await sendTextToTelegramSafe(collabCreditText(updated, _desc, collaborators)); } catch (_) {}
+        try { await dispatchCollabImages(updated.id, 'resubmit'); } catch (_) {}
+      } else if (_prevCollabs.length && !(collaborators && collaborators.length)) {
+        try { await sendTextToTelegramSafe('🤝 공동작업자 지정 해제 (수정)\n제목: ' + String(updated.title || '').slice(0, 80) + '\n이전: ' + _prevCollabs.map((c) => '@' + ((c && c.handle) || c)).join(' ') + '\nsubmission=' + updated.id); } catch (_) {}
       }
 
       return res.status(200).json({ submission: updated });

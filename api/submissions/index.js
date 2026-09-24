@@ -17,6 +17,7 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit, lookItemsMissingInstagram, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
 const { validateCollaborators, collaboratorAlertText } = require('../_lib/collaborators');
+const { collabCreditText, dispatchCollabImages } = require('../_lib/collabTelegram');   // 2026-09-24 크레딧·인스타용 이미지
 const { isPremiumUser, resolveCoverIndex } = require('../_lib/premiumCover');   // 2026-09-12 커버 선택은 프리미엄만
 const { brandRolesIn } = require('../_lib/brandRoleGuard');   // 2026-09-12 브랜드/디자이너는 팀 크레딧 금지
 const { checkPullLetterForSubmission, linkPullLetterToSubmission } = require('../_lib/pullLetterLink');   // 2026-09-13 풀레터 후속 제출
@@ -317,9 +318,14 @@ module.exports = async function handler(req, res) {
       }
 
       // 2026-09-12 도메니코 — 공동작업자가 지정되면 텔레그램으로 알린다(관리자가 인스타그램에서 초대를 보내야 하므로).
+      // 2026-09-24 도메니코 "반드시 인스타그램용 이미지와 크레딧과 함께": ① 머리말 ② 크레딧(복사용 별도 메시지)은 여기서,
+      // ③ 4:5 합성 이미지는 워커(api/submissions/collab-telegram.js)로 — 합성은 무거워 이 요청 안에서 돌리지 않는다.
       // ★ await — 서버리스 프리즈로 fire-and-forget 은 안 나간다. 실패해도 접수는 막지 않는다.
       if (collaborators && collaborators.length) {
+        const _desc = { team, models: data.models || [], looks, collaborators };
         try { await sendTextToTelegramSafe(collaboratorAlertText('new', submission, collaborators, (data.contactName || data.studio || user.email || user.id))); } catch (_) {}
+        try { await sendTextToTelegramSafe(collabCreditText(submission, _desc, collaborators)); } catch (_) {}
+        try { await dispatchCollabImages(submission.id, 'new'); } catch (_) {}
       }
 
       // 2026-09-13 — 풀레터 쪽에도 연결을 남기고 운영자에게 알린다(await — 서버리스 동결).
