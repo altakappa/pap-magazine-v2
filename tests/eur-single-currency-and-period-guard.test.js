@@ -70,9 +70,9 @@ function ok(name, cond, detail) {
 // ── [B] EUR 단일 통화 ───────────────────────────────────────────────────
 const EXPECTED_CENTS = {
   standard_monthly: 549,
-  standard_yearly: 4599,
+  standard_yearly: 5490,   // 2026-09-24 월 × 10 (2개월 무료)
   premium_monthly: 899,
-  premium_yearly: 7499,
+  premium_yearly: 8990,
 };
 
 {

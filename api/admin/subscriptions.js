@@ -26,7 +26,7 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 // PayPal 은 플랜당 통화가 하나뿐이라 구독가를 EUR 단일가로 합쳤는데, 어드민 매출
 // 계산이 안 따라왔다. 환산 코드가 없어 화면의 ₩ 숫자는 어떤 환율로도 맞지 않았다.
 // ⚠️ api/admin/stats.js · frontend/subscribe.html 의 EUR_PRICES 와 같은 값일 것.
-const PLAN_PRICE = { standard_monthly: 549, standard_yearly: 4599, premium_monthly: 899, premium_yearly: 7499 };
+const PLAN_PRICE = { standard_monthly: 549, standard_yearly: 5490, premium_monthly: 899, premium_yearly: 8990 };
 const PLAN_PRICE_CURRENCY = 'EUR';
 function planToMonthly(plan) {
   const p = PLAN_PRICE[plan] || 0;

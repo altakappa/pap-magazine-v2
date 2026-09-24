@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="auth" data-v="4">
+<meta name="pap-ui-i18n" content="auth" data-v="5">
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.portone.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.portone.io https://service.portone.io; frame-src https://service.portone.io;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -415,7 +415,7 @@ a{color:#fff;text-decoration:none}
         <div class="plan-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
         <div class="plan-name" data-i18n="planFreeName">Free</div>
         <div class="plan-price" data-i18n="planFreePrice">무료</div>
-        <div class="plan-features" data-i18n="planFreeFeatures">작품 제출 · 커뮤니티 참여 · 기본 콘텐츠 접근</div>
+        <div class="plan-features" data-i18n="planFreeFeatures">최신 10편 에디토리얼 · 서브미션 제출 · 커뮤니티 참여</div>
       </div>
 
       <div class="plan-card recommended" onclick="selectPlan('standard')">
@@ -423,14 +423,14 @@ a{color:#fff;text-decoration:none}
         <div class="plan-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
         <div class="plan-name" data-i18n="planStdName">Standard</div>
         <div class="plan-price" data-i18n="planStdPrice">&euro;5.49 / 월</div>
-        <div class="plan-features" data-i18n="planStdFeatures">Free 포함 + 프리미엄 에디토리얼 · Pull Letter 발송 · 우선 리뷰</div>
+        <div class="plan-features" data-i18n="planStdFeatures">최근 3개 분기 에디토리얼 · 광고 없음 · 서브미션 피드백 · 이미지·티어시트 다운로드</div>
       </div>
 
       <div class="plan-card" onclick="selectPlan('premium')">
         <div class="plan-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
         <div class="plan-name" data-i18n="planPremName">Premium</div>
         <div class="plan-price" data-i18n="planPremPrice">&euro;8.99 / 월</div>
-        <div class="plan-features" data-i18n="planPremFeatures">Standard 포함 + 비하인드 콘텐츠 · 1:1 피드백 · 독점 이벤트 초대</div>
+        <div class="plan-features" data-i18n="planPremFeatures">전체 아카이브 · Pull-Letter 월 1건 · 우선 심사 · 연간: €380 서브미션 1회 면제 + 공동작업자 5명 지정</div>
       </div>
     </div>
 
@@ -1445,11 +1445,11 @@ ko: {
   step3Title:'플랜 선택',
   step3Desc:'언제든지 변경할 수 있습니다. Free로 시작하고 나중에 업그레이드하세요.',
   planFreeName:'Free', planFreePrice:'무료',
-  planFreeFeatures:'작품 제출 · 커뮤니티 참여 · 기본 콘텐츠 접근',
+  planFreeFeatures:'최신 10편 에디토리얼 · 서브미션 제출 · 커뮤니티 참여',
   planBadge:'POPULAR', planStdName:'Standard', planStdPrice:'€5.49 / 월',
-  planStdFeatures:'Free 포함 + 프리미엄 에디토리얼 · Pull Letter 발송 · 우선 리뷰',
+  planStdFeatures:'최근 3개 분기 에디토리얼 · 광고 없음 · 서브미션 피드백 · 이미지·티어시트 다운로드',
   planPremName:'Premium', planPremPrice:'€8.99 / 월',
-  planPremFeatures:'Standard 포함 + 비하인드 콘텐츠 · 1:1 피드백 · 독점 이벤트 초대',
+  planPremFeatures:'전체 아카이브 · Pull-Letter 월 1건 · 우선 심사 · 연간: €380 서브미션 1회 면제 + 공동작업자 5명 지정',
   loginTitle:'다시 만나서 반가워요', loginGoogle:'Google로 로그인', loginFacebook:'Facebook으로 로그인', loginKakao:'카카오로 로그인',
   forgot:'비밀번호를 잊으셨나요?',
   forgotTitle:'비밀번호 재설정', forgotDesc:'가입하신 이메일을 입력하시면 재설정 링크를 보내드립니다.',
@@ -1481,11 +1481,11 @@ en: {
   step3Title:'Choose your plan',
   step3Desc:'You can change your plan anytime. Start free and upgrade later.',
   planFreeName:'Free', planFreePrice:'Free',
-  planFreeFeatures:'Submit work · Join community · Basic content access',
+  planFreeFeatures:'Latest 10 editorials · Submit work · Join the community',
   planBadge:'POPULAR', planStdName:'Standard', planStdPrice:'€5.49 / mo',
-  planStdFeatures:'Free + Premium editorials · Pull Letters · Priority review',
+  planStdFeatures:'Last 3 quarters of editorials · Ad-free · Submission feedback · Image & tearsheet downloads',
   planPremName:'Premium', planPremPrice:'€8.99 / mo',
-  planPremFeatures:'Standard + Behind-the-scenes · 1:1 feedback · Exclusive event invites',
+  planPremFeatures:'Full archive · 1 Pull-Letter a month · Priority review · Yearly: one €380 submission waived + choose 5 collaborators',
   loginTitle:'Welcome back', loginGoogle:'Log in with Google', loginFacebook:'Log in with Facebook', loginKakao:'Log in with Kakao',
   forgot:'Forgot your password?',
   forgotTitle:'Reset Password', forgotDesc:'Enter the email you signed up with and we\'ll send you a reset link.',
@@ -1517,11 +1517,11 @@ ru:{
   step3Title:'Выберите тариф',
   step3Desc:'Вы можете изменить тариф в любое время. Начните бесплатно и перейдите позже.',
   planFreeName:'Бесплатно', planFreePrice:'Бесплатно',
-  planFreeFeatures:'Отправка работ · участие в сообществе · базовый доступ к контенту',
+  planFreeFeatures:'Последние 10 эдиториалов · Отправка работ · Сообщество',
   planBadge:'ПОПУЛЯРНО', planStdName:'Стандарт', planStdPrice:'€5.49 / мес',
-  planStdFeatures:'Free + премиум-эдиториалы · Pull Letters · приоритетное рассмотрение',
+  planStdFeatures:'Эдиториалы за 3 последних квартала · Без рекламы · Отзыв по заявке · Загрузка изображений и tearsheet',
   planPremName:'Премиум', planPremPrice:'€8.99 / мес',
-  planPremFeatures:'Standard + закулисье · индивидуальный фидбэк · приглашения на эксклюзивные события',
+  planPremFeatures:'Полный архив · 1 Pull-Letter в месяц · Приоритетное рассмотрение · Годовой: одна заявка €380 бесплатно + 5 соавторов на выбор',
   loginTitle:'С возвращением', loginGoogle:'Войти через Google', loginFacebook:'Войти через Facebook', loginKakao:'Войти через Kakao',
   forgot:'Забыли пароль?',
   forgotTitle:'Сброс пароля', forgotDesc:'Введите email, с которым вы регистрировались, и мы отправим ссылку для сброса.',
@@ -1553,11 +1553,11 @@ de:{
   step3Title:'Wählen Sie Ihren Plan',
   step3Desc:'Sie können Ihren Plan jederzeit ändern. Starten Sie kostenlos und upgraden Sie später.',
   planFreeName:'Kostenlos', planFreePrice:'Kostenlos',
-  planFreeFeatures:'Arbeiten einreichen · Community beitreten · Basis-Inhaltszugang',
+  planFreeFeatures:'Neueste 10 Editorials · Arbeiten einreichen · Community',
   planBadge:'BELIEBT', planStdName:'Standard', planStdPrice:'€5,49 / Mon.',
-  planStdFeatures:'Free + Premium-Editorials · Pull Letters · bevorzugte Prüfung',
+  planStdFeatures:'Editorials der letzten 3 Quartale · Werbefrei · Einreichungs-Feedback · Bild- & Tearsheet-Downloads',
   planPremName:'Premium', planPremPrice:'€8,99 / Mon.',
-  planPremFeatures:'Standard + Behind-the-Scenes · 1:1-Feedback · exklusive Event-Einladungen',
+  planPremFeatures:'Gesamtarchiv · 1 Pull-Letter pro Monat · Bevorzugte Prüfung · Jährlich: eine €380-Einreichung erlassen + 5 Collaborators wählen',
   loginTitle:'Willkommen zurück', loginGoogle:'Mit Google anmelden', loginFacebook:'Mit Facebook anmelden', loginKakao:'Mit Kakao anmelden',
   forgot:'Passwort vergessen?',
   forgotTitle:'Passwort zurücksetzen', forgotDesc:'Geben Sie die E-Mail ein, mit der Sie sich registriert haben, und wir senden Ihnen einen Link zum Zurücksetzen.',
@@ -1589,11 +1589,11 @@ it: {
   step3Title:'Scegli il piano',
   step3Desc:'Puoi cambiare piano in qualsiasi momento. Inizia gratis e aggiorna dopo.',
   planFreeName:'Free', planFreePrice:'Gratuito',
-  planFreeFeatures:'Invia lavori · Unisciti alla community · Accesso base',
+  planFreeFeatures:'Ultimi 10 editoriali · Invia lavori · Community',
   planBadge:'POPOLARE', planStdName:'Standard', planStdPrice:'€5,49 / mese',
-  planStdFeatures:'Free + Editoriali premium · Pull Letter · Revisione prioritaria',
+  planStdFeatures:'Editoriali degli ultimi 3 trimestri · Senza pubblicità · Feedback sugli invii · Download immagini e tearsheet',
   planPremName:'Premium', planPremPrice:'€8,99 / mese',
-  planPremFeatures:'Standard + Dietro le quinte · Feedback 1:1 · Inviti esclusivi',
+  planPremFeatures:'Archivio completo · 1 Pull-Letter al mese · Revisione prioritaria · Annuale: una candidatura da €380 esonerata + 5 collaboratori a scelta',
   loginTitle:'Bentornato', loginGoogle:'Accedi con Google', loginFacebook:'Accedi con Facebook', loginKakao:'Accedi con Kakao',
   forgot:'Password dimenticata?',
   forgotTitle:'Reimposta password', forgotDesc:'Inserisci l\'email con cui ti sei registrato e ti invieremo un link per reimpostare la password.',
@@ -1625,11 +1625,11 @@ fr: {
   step3Title:'Choisir le plan',
   step3Desc:'Vous pouvez changer de plan à tout moment. Commencez gratuitement.',
   planFreeName:'Free', planFreePrice:'Gratuit',
-  planFreeFeatures:'Soumettre · Rejoindre la communauté · Accès de base',
+  planFreeFeatures:'Les 10 derniers éditoriaux · Soumettre · Communauté',
   planBadge:'POPULAIRE', planStdName:'Standard', planStdPrice:'€5,49 / mois',
-  planStdFeatures:'Free + Éditoriaux premium · Pull Letters · Examen prioritaire',
+  planStdFeatures:'Éditoriaux des 3 derniers trimestres · Sans publicité · Retour sur les soumissions · Téléchargement images et tearsheet',
   planPremName:'Premium', planPremPrice:'€8,99 / mois',
-  planPremFeatures:'Standard + Coulisses · Feedback 1:1 · Invitations exclusives',
+  planPremFeatures:'Archive complète · 1 Pull-Letter par mois · Examen prioritaire · Annuel : une soumission à €380 offerte + 5 collaborateurs au choix',
   loginTitle:'Content de vous revoir', loginGoogle:'Connexion avec Google', loginFacebook:'Connexion avec Facebook', loginKakao:'Connexion avec Kakao',
   forgot:'Mot de passe oublié ?',
   forgotTitle:'Réinitialiser le mot de passe', forgotDesc:'Saisissez l\'email avec lequel vous vous êtes inscrit, nous vous enverrons un lien de réinitialisation.',
@@ -1661,11 +1661,11 @@ es: {
   step3Title:'Elige tu plan',
   step3Desc:'Puedes cambiar tu plan en cualquier momento. Empieza gratis y actualiza después.',
   planFreeName:'Free', planFreePrice:'Gratis',
-  planFreeFeatures:'Enviar trabajo · Unirse a la comunidad · Acceso básico',
+  planFreeFeatures:'Últimos 10 editoriales · Enviar trabajos · Comunidad',
   planBadge:'POPULAR', planStdName:'Standard', planStdPrice:'€5,49 / mes',
-  planStdFeatures:'Free + Editoriales premium · Pull Letters · Revisión prioritaria',
+  planStdFeatures:'Editoriales de los últimos 3 trimestres · Sin anuncios · Feedback de envíos · Descarga de imágenes y tearsheet',
   planPremName:'Premium', planPremPrice:'€8,99 / mes',
-  planPremFeatures:'Standard + Detrás de escena · Feedback 1:1 · Invitaciones exclusivas',
+  planPremFeatures:'Archivo completo · 1 Pull-Letter al mes · Revisión prioritaria · Anual: una propuesta de €380 exenta + 5 colaboradores a elegir',
   loginTitle:'Bienvenido de vuelta', loginGoogle:'Iniciar con Google', loginFacebook:'Iniciar con Facebook', loginKakao:'Iniciar con Kakao',
   forgot:'¿Olvidó su contraseña?',
   forgotTitle:'Restablecer contraseña', forgotDesc:'Introduzca el correo con el que se registró y le enviaremos un enlace para restablecerla.',
@@ -1697,11 +1697,11 @@ ja: {
   step3Title:'プランを選択',
   step3Desc:'いつでもプランを変更できます。無料で始めて、後でアップグレード。',
   planFreeName:'Free', planFreePrice:'無料',
-  planFreeFeatures:'作品提出 · コミュニティ参加 · 基本コンテンツ',
+  planFreeFeatures:'最新10本のエディトリアル · 作品提出 · コミュニティ',
   planBadge:'人気', planStdName:'Standard', planStdPrice:'€5.49 / 月',
-  planStdFeatures:'Free + プレミアム記事 · Pull Letter · 優先レビュー',
+  planStdFeatures:'直近3四半期のエディトリアル · 広告なし · 投稿フィードバック · 画像・ティアシートDL',
   planPremName:'Premium', planPremPrice:'€8.99 / 月',
-  planPremFeatures:'Standard + 舞台裏 · 1:1フィードバック · 限定イベント招待',
+  planPremFeatures:'全アーカイブ · Pull-Letter 月1件 · 優先審査 · 年間: €380の応募1回免除 + コラボレーター5名指定',
   loginTitle:'おかえりなさい', loginGoogle:'Googleでログイン', loginFacebook:'Facebookでログイン', loginKakao:'カカオでログイン',
   forgot:'パスワードをお忘れですか？',
   forgotTitle:'パスワードのリセット', forgotDesc:'ご登録のメールアドレスを入力していただければ、リセット用リンクをお送りします。',
@@ -1733,11 +1733,11 @@ zh: {
   step3Title:'选择计划',
   step3Desc:'随时可以更改计划。从免费开始，之后再升级。',
   planFreeName:'Free', planFreePrice:'免费',
-  planFreeFeatures:'提交作品 · 加入社区 · 基础内容访问',
+  planFreeFeatures:'最新 10 篇专题 · 提交作品 · 社区',
   planBadge:'热门', planStdName:'Standard', planStdPrice:'€5.49 / 月',
-  planStdFeatures:'Free + 高级专题 · Pull Letter · 优先审核',
+  planStdFeatures:'最近三个季度的专题 · 无广告 · 投稿反馈 · 图片与 Tearsheet 下载',
   planPremName:'Premium', planPremPrice:'€8.99 / 月',
-  planPremFeatures:'Standard + 幕后内容 · 1:1反馈 · 独家活动邀请',
+  planPremFeatures:'全部存档 · 每月 1 次 Pull-Letter · 优先审核 · 年付：免除 1 次 €380 投稿 + 指定 5 位合作者',
   loginTitle:'欢迎回来', loginGoogle:'使用Google登录', loginFacebook:'使用Facebook登录', loginKakao:'使用Kakao登录',
   forgot:'忘记密码？',
   forgotTitle:'重置密码', forgotDesc:'输入您注册时使用的邮箱，我们将向您发送重置链接。',
@@ -1769,11 +1769,11 @@ ru: {
   step3Title:'Выберите план',
   step3Desc:'Вы можете изменить план в любое время. Начните бесплатно.',
   planFreeName:'Free', planFreePrice:'Бесплатно',
-  planFreeFeatures:'Отправка работ · Сообщество · Базовый контент',
+  planFreeFeatures:'Последние 10 эдиториалов · Отправка работ · Сообщество',
   planBadge:'ПОПУЛЯРНЫЙ', planStdName:'Standard', planStdPrice:'€5,49 / мес',
-  planStdFeatures:'Free + Премиум-статьи · Pull Letters · Приоритетный обзор',
+  planStdFeatures:'Эдиториалы за 3 последних квартала · Без рекламы · Отзыв по заявке · Загрузка изображений и tearsheet',
   planPremName:'Premium', planPremPrice:'€8,99 / мес',
-  planPremFeatures:'Standard + Закулисье · Обратная связь 1:1 · Эксклюзивные приглашения',
+  planPremFeatures:'Полный архив · 1 Pull-Letter в месяц · Приоритетное рассмотрение · Годовой: одна заявка €380 бесплатно + 5 соавторов на выбор',
   loginTitle:'С возвращением', loginGoogle:'Войти через Google', loginFacebook:'Войти через Facebook', loginKakao:'Войти через Kakao',
   forgot:'Забыли пароль?',
   forgotTitle:'Сброс пароля', forgotDesc:'Введите email, с которым вы регистрировались, и мы отправим вам ссылку для сброса.',
@@ -2215,7 +2215,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <!-- QA(2026-07) #2 — 햄버거 메뉴 라벨 통일: data-i18n 을 쓰면서 번역기
      (pap-i18n.js)를 로드하지 않아 표준 메뉴가 영어 기본값으로 남던 문제 해소. -->
-<script src="/pap-i18n.js?v=11" defer></script>
+<script src="/pap-i18n.js?v=12" defer></script>
 <script src="/pap-header.js?v=29" defer></script>
 </body>
 </html>

@@ -27,9 +27,9 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 //    tests/subscription-price-single-source.test.js 가 그 일치를 고정한다.
 const PLAN_PRICE = {
   standard_monthly: 549,
-  standard_yearly: 4599,
+  standard_yearly: 5490,
   premium_monthly: 899,
-  premium_yearly: 7499,
+  premium_yearly: 8990,
 };
 const PLAN_PRICE_CURRENCY = 'EUR';
 

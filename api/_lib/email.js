@@ -147,7 +147,7 @@ const SUBMISSION_REVIEW_I18N = {
     upBody: '다음 서브미션부터 프리미엄 회원은 아래 혜택을 받습니다.',
     upB1: '우선 심사 — 2영업일 이내 결과 (일반 최대 7영업일)',
     upB3: 'PAP 인증 크리에이터 프로필 — 배지 · 활동 도시 · 연락 버튼 · 첫 게재부터 공개',
-    upB4: '연간 프리미엄: 유료 서브미션(€380) 1회 면제 + 심사 대기 중 제출 수정 · 크레딧 수정 · 공동작업자 지정',
+    upB4: '심사 대기 중 제출 수정 · 게재 후 크레딧 수정 (에디토리얼당 3회)', upB5:'연간 프리미엄 전용: 유료 서브미션(€380) 구독 연도당 1회 면제 · 인스타그램 공동작업자 최대 5명 직접 지정 (PAP 회원이면 무료 회원도 가능)',
     upCta: '프리미엄 혜택 보기',
   },
   en: {
@@ -172,7 +172,7 @@ const SUBMISSION_REVIEW_I18N = {
     upBody: 'From your next submission, Premium members get:',
     upB1: 'Priority review — result within 2 business days (up to 7 for others)',
     upB3: 'PAP Verified creator profile — badge, city, contact button, live from your first editorial',
-    upB4: 'Yearly Premium: one paid submission (€380) waived, plus edit while pending, credit edits and collaborator tagging',
+    upB4: 'Edit while your submission is pending · credit edits after publication (3 per editorial)', upB5:'Yearly Premium only: one paid submission (€380) waived per subscription year · choose up to 5 Instagram collaborators yourself (any PAP member, free members included)',
     upCta: 'SEE PREMIUM BENEFITS',
   },
   it: {
@@ -197,7 +197,7 @@ const SUBMISSION_REVIEW_I18N = {
     upBody: 'Dalla prossima candidatura, i membri Premium ottengono:',
     upB1: 'Revisione prioritaria — esito entro 2 giorni lavorativi (fino a 7 per gli altri)',
     upB3: 'Profilo creativo verificato PAP — badge, città, pulsante contatto, attivo dal primo editoriale',
-    upB4: 'Premium annuale: una candidatura a pagamento (€380) esonerata, più modifica in attesa, modifica crediti e tag collaboratori',
+    upB4: 'Modifica mentre la candidatura è in attesa · modifica dei crediti dopo la pubblicazione (3 per editoriale)', upB5:'Solo Premium annuale: una candidatura a pagamento (€380) esonerata per anno di abbonamento · scegli tu fino a 5 collaboratori Instagram (qualsiasi membro PAP, anche gratuito)',
     upCta: 'VEDI I VANTAGGI PREMIUM',
   },
   fr: {
@@ -222,7 +222,7 @@ const SUBMISSION_REVIEW_I18N = {
     upBody: 'Dès votre prochaine soumission, les membres Premium bénéficient de :',
     upB1: 'Examen prioritaire — réponse sous 2 jours ouvrés (jusqu’à 7 pour les autres)',
     upB3: 'Profil créatif certifié PAP — badge, ville, bouton contact, actif dès le premier éditorial',
-    upB4: 'Premium annuel : une soumission payante (€380) offerte, plus modification en attente, correction des crédits et tag des collaborateurs',
+    upB4: 'Modification pendant l’examen · correction des crédits après publication (3 par éditorial)', upB5:'Premium annuel uniquement : une soumission payante (€380) offerte par année d’abonnement · choisissez vous-même jusqu’à 5 collaborateurs Instagram (tout membre PAP, gratuits inclus)',
     upCta: 'VOIR LES AVANTAGES PREMIUM',
   },
   es: {
@@ -247,7 +247,7 @@ const SUBMISSION_REVIEW_I18N = {
     upBody: 'Desde tu próxima propuesta, los miembros Premium reciben:',
     upB1: 'Revisión prioritaria — resultado en 2 días hábiles (hasta 7 para el resto)',
     upB3: 'Perfil de creador verificado por PAP — insignia, ciudad, botón de contacto, activo desde el primer editorial',
-    upB4: 'Premium anual: una propuesta de pago (€380) exenta, más edición en espera, corrección de créditos y etiquetado de colaboradores',
+    upB4: 'Edición mientras tu propuesta está en espera · corrección de créditos tras la publicación (3 por editorial)', upB5:'Solo Premium anual: una propuesta de pago (€380) exenta por año de suscripción · elige tú mismo hasta 5 colaboradores de Instagram (cualquier miembro de PAP, gratuitos incluidos)',
     upCta: 'VER VENTAJAS PREMIUM',
   },
   ja: {
@@ -272,7 +272,7 @@ const SUBMISSION_REVIEW_I18N = {
     upBody: '次回の応募から、プレミアム会員には以下が適用されます。',
     upB1: '優先審査 — 営業日2日以内に結果（通常は最大7営業日）',
     upB3: 'PAP認証クリエイタープロフィール — バッジ・活動都市・連絡ボタン、初掲載から公開',
-    upB4: '年間プレミアム：有料応募（€380）1回免除、審査中の編集・クレジット修正・共同作業者指定',
+    upB4: '審査待ちの間の提出内容の編集 · 掲載後のクレジット修正（エディトリアルごとに3回）', upB5:'年間プレミアム限定：有料応募（€380）が購読年ごとに1回免除 · Instagramコラボレーターを最大5名まで自分で指定（PAP会員なら無料会員も可）',
     upCta: 'プレミアム特典を見る',
   },
   zh: {
@@ -297,7 +297,7 @@ const SUBMISSION_REVIEW_I18N = {
     upBody: '从下一次投稿起，高级会员将获得：',
     upB1: '优先审核 — 2个工作日内出结果（其他最多7个工作日）',
     upB3: 'PAP认证创作者主页 — 徽章、活动城市、联系按钮，首次刊登即公开',
-    upB4: '年付高级会员：免除1次付费投稿（€380），并可在待审时修改、修改署名、指定合作者',
+    upB4: '待审期间可修改投稿 · 发布后可修改署名（每篇 3 次）', upB5:'仅限年度高级会员：每个订阅年度免除 1 次付费投稿（€380）· 自行指定最多 5 位 Instagram 合作者（任何 PAP 会员，含免费会员）',
     upCta: '查看高级会员权益',
   },
   ru: {
@@ -322,7 +322,7 @@ const SUBMISSION_REVIEW_I18N = {
     upBody: 'Со следующей заявки участники Premium получают:',
     upB1: 'Приоритетное рассмотрение — результат в течение 2 рабочих дней (у остальных до 7)',
     upB3: 'Верифицированный профиль автора PAP — бейдж, город, кнопка связи, доступен с первой публикации',
-    upB4: 'Годовой Premium: одна платная заявка (€380) без оплаты, плюс правка в ожидании, правка кредитов и указание соавторов',
+    upB4: 'Правка заявки во время ожидания · правка кредитов после публикации (3 раза на эдиториал)', upB5:'Только годовой Premium: одна платная заявка (€380) бесплатно за год подписки · сами выбираете до 5 соавторов в Instagram (любые участники PAP, включая бесплатных)',
     upCta: 'СМОТРЕТЬ ПРЕИМУЩЕСТВА PREMIUM',
   },
   de: {
@@ -347,7 +347,7 @@ const SUBMISSION_REVIEW_I18N = {
     upBody: 'Ab Ihrer nächsten Einreichung erhalten Premium-Mitglieder:',
     upB1: 'Vorrangige Prüfung — Ergebnis innerhalb von 2 Werktagen (sonst bis zu 7)',
     upB3: 'PAP-verifiziertes Creator-Profil — Badge, Stadt, Kontaktbutton, ab dem ersten Editorial öffentlich',
-    upB4: 'Premium jährlich: eine kostenpflichtige Einreichung (€380) erlassen, dazu Bearbeiten während der Prüfung, Credit-Korrekturen und Mitwirkende markieren',
+    upB4: 'Bearbeiten während der Prüfung · Credit-Korrekturen nach Veröffentlichung (3 pro Editorial)', upB5:'Nur Jahres-Premium: eine kostenpflichtige Einreichung (€380) pro Abojahr erlassen · bis zu 5 Instagram-Collaborators selbst auswählen (alle PAP-Mitglieder, auch kostenlose)',
     upCta: 'PREMIUM-VORTEILE ANSEHEN',
   },
 };
@@ -965,7 +965,7 @@ const templates = {
            <span style="color:#c9a86a;font-size:10px;text-transform:uppercase;letter-spacing:2px;font-weight:700;">${L.upTitle}</span><br>
            <span style="color:#ccc;font-size:13px;line-height:1.7;">${L.upBody}</span>
            <ul style="margin:10px 0 0;padding-left:18px;color:#ddd;font-size:13px;line-height:1.8;">
-             <li>${L.upB1}</li><li>${L.upB3}</li><li>${L.upB4}</li>
+             <li>${L.upB1}</li><li>${L.upB3}</li><li>${L.upB4}</li><li>${L.upB5}</li>
            </ul>
            <a href="${FRONTEND_URL}/subscribe?utm_source=submission_approved_email&utm_medium=email&utm_campaign=premium_upsell" style="display:inline-block;background:#c9a86a;color:#000;padding:12px 28px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:14px;">${L.upCta}</a>
          </div>`

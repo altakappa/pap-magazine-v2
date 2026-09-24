@@ -73,7 +73,7 @@
       go: '동의하고 제출',
       waivedTitle: '연간 프리미엄 혜택 — 이번 게재료(€380)는 면제됩니다',
       waivedBody: '이 제출은 유료 유형(€380)이지만, 연간 프리미엄 회원 혜택으로 <b>이번 1회는 면제</b>됩니다. 결제 승인 없이 바로 접수되고, 수락돼도 <b>청구되지 않습니다.</b> 면제는 구독 연도당 1회입니다.',
-      waivedAgree: '위 내용을 이해했습니다. 이번 제출에 연간 프리미엄 면제 1회를 사용하는 데 동의합니다.',
+      waivedAgree: '위 내용을 이해했습니다. 이번 제출에 연간 프리미엄 면제 1회를 사용하는 데 동의합니다.', yearlyTipLabel:'연간 프리미엄이라면', yearlyTip:'연간 프리미엄 회원은 €380 유료 서브미션이 구독 연도당 <b>1회 면제</b>됩니다. 연간 프리미엄에 가입한 뒤 제출하면 이번 건은 청구되지 않습니다. <a href="/subscribe?utm_source=submission_fee_modal&utm_medium=web" target="_blank" rel="noopener" style="color:#ffb347;text-decoration:underline">연간 프리미엄 보기</a> (새 탭에서 열립니다. 이 창은 그대로 남습니다)',
     },
     en: {
       title: 'Before you submit — a publication fee may apply',
@@ -101,7 +101,7 @@
       go: 'Agree and submit',
       waivedTitle: 'Yearly Premium benefit — this publication fee (€380) is waived',
       waivedBody: 'This submission is a paid type (€380), but as a Yearly Premium member <b>this one is waived</b>. It is accepted for review with no payment authorization, and <b>nothing is charged</b> even if accepted. One waiver per subscription year.',
-      waivedAgree: 'I understand the above. I agree to use my one Yearly Premium waiver on this submission.',
+      waivedAgree: 'I understand the above. I agree to use my one Yearly Premium waiver on this submission.', yearlyTipLabel:'With Yearly Premium', yearlyTip:'Yearly Premium members get one €380 paid submission <b>waived per subscription year</b>. If you join Yearly Premium and then submit, this one will not be charged. <a href="/subscribe?utm_source=submission_fee_modal&utm_medium=web" target="_blank" rel="noopener" style="color:#ffb347;text-decoration:underline">See Yearly Premium</a> (opens in a new tab; this form stays as it is)',
     },
     it: {
       title: 'Prima di inviare — potrebbe essere previsto un costo di pubblicazione',
@@ -129,7 +129,7 @@
       go: 'Accetto e invio',
       waivedTitle: 'Vantaggio Premium annuale — la quota di pubblicazione (€380) è esonerata',
       waivedBody: 'Questa candidatura è a pagamento (€380), ma come membro Premium annuale <b>questa volta è esonerata</b>. Viene accettata senza autorizzazione di pagamento e <b>non viene addebitato nulla</b> anche se accettata. Un esonero per anno di abbonamento.',
-      waivedAgree: 'Ho capito quanto sopra. Accetto di usare il mio esonero Premium annuale per questa candidatura.',
+      waivedAgree: 'Ho capito quanto sopra. Accetto di usare il mio esonero Premium annuale per questa candidatura.', yearlyTipLabel:'Con Premium annuale', yearlyTip:'I membri Premium annuali hanno una candidatura a pagamento da €380 <b>esonerata per ogni anno di abbonamento</b>. Se ti abboni a Premium annuale e poi invii, questa non ti verrà addebitata. <a href="/subscribe?utm_source=submission_fee_modal&utm_medium=web" target="_blank" rel="noopener" style="color:#ffb347;text-decoration:underline">Scopri Premium annuale</a> (si apre in una nuova scheda; questo modulo resta com’è)',
     },
     fr: {
       title: "Avant d'envoyer — des frais de publication peuvent s'appliquer",
@@ -157,7 +157,7 @@
       go: "J'accepte et j'envoie",
       waivedTitle: 'Avantage Premium annuel — ces frais de publication (€380) sont offerts',
       waivedBody: 'Cette soumission est payante (€380), mais en tant que membre Premium annuel <b>celle-ci est offerte</b>. Elle est acceptée sans autorisation de paiement et <b>rien n’est prélevé</b> même si elle est retenue. Une exonération par année d’abonnement.',
-      waivedAgree: 'J’ai compris ce qui précède. J’accepte d’utiliser mon exonération Premium annuelle pour cette soumission.',
+      waivedAgree: 'J’ai compris ce qui précède. J’accepte d’utiliser mon exonération Premium annuelle pour cette soumission.', yearlyTipLabel:'Avec Premium annuel', yearlyTip:'Les membres Premium annuels bénéficient d’une soumission payante à €380 <b>offerte par année d’abonnement</b>. Si vous souscrivez Premium annuel puis soumettez, celle-ci ne sera pas facturée. <a href="/subscribe?utm_source=submission_fee_modal&utm_medium=web" target="_blank" rel="noopener" style="color:#ffb347;text-decoration:underline">Voir Premium annuel</a> (s’ouvre dans un nouvel onglet ; ce formulaire reste tel quel)',
     },
     es: {
       title: 'Antes de enviar — puede aplicarse una tarifa de publicación',
@@ -185,7 +185,7 @@
       go: 'Acepto y envío',
       waivedTitle: 'Ventaja Premium anual — esta tarifa de publicación (€380) queda exenta',
       waivedBody: 'Esta propuesta es de pago (€380), pero como miembro Premium anual <b>esta vez queda exenta</b>. Se acepta sin autorización de pago y <b>no se cobra nada</b> aunque sea aceptada. Una exención por año de suscripción.',
-      waivedAgree: 'He entendido lo anterior. Acepto usar mi exención Premium anual en esta propuesta.',
+      waivedAgree: 'He entendido lo anterior. Acepto usar mi exención Premium anual en esta propuesta.', yearlyTipLabel:'Con Premium anual', yearlyTip:'Los miembros Premium anuales tienen una propuesta de pago de €380 <b>exenta por año de suscripción</b>. Si te suscribes a Premium anual y luego envías, esta no se cobrará. <a href="/subscribe?utm_source=submission_fee_modal&utm_medium=web" target="_blank" rel="noopener" style="color:#ffb347;text-decoration:underline">Ver Premium anual</a> (se abre en una pestaña nueva; este formulario se queda como está)',
     },
     de: {
       title: 'Vor dem Einreichen — es kann eine Veröffentlichungsgebühr anfallen',
@@ -213,7 +213,7 @@
       go: 'Zustimmen und einreichen',
       waivedTitle: 'Premium-Jahresvorteil — diese Gebühr (€380) wird erlassen',
       waivedBody: 'Diese Einreichung ist kostenpflichtig (€380), aber als Premium-Jahresmitglied <b>wird sie diesmal erlassen</b>. Sie wird ohne Zahlungsautorisierung angenommen und <b>nichts wird berechnet</b>, auch bei Annahme. Ein Erlass pro Abojahr.',
-      waivedAgree: 'Ich habe das Obige verstanden. Ich stimme zu, meinen Premium-Jahreserlass für diese Einreichung zu nutzen.',
+      waivedAgree: 'Ich habe das Obige verstanden. Ich stimme zu, meinen Premium-Jahreserlass für diese Einreichung zu nutzen.', yearlyTipLabel:'Mit Jahres-Premium', yearlyTip:'Jahres-Premium-Mitglieder erhalten <b>pro Abojahr eine kostenpflichtige Einreichung (€380) erlassen</b>. Wenn Sie Jahres-Premium abschließen und dann einreichen, wird diese nicht berechnet. <a href="/subscribe?utm_source=submission_fee_modal&utm_medium=web" target="_blank" rel="noopener" style="color:#ffb347;text-decoration:underline">Jahres-Premium ansehen</a> (öffnet sich in einem neuen Tab; dieses Formular bleibt erhalten)',
     },
     ja: {
       title: '送信前のご確認 — 掲載料が発生する場合があります',
@@ -241,7 +241,7 @@
       go: '同意して送信',
       waivedTitle: '年間プレミアム特典 — 今回の掲載料（€380）は免除されます',
       waivedBody: 'この応募は有料区分（€380）ですが、年間プレミアム会員特典により<b>今回は免除</b>されます。決済承認なしで受付され、採用されても<b>請求はありません。</b>免除は契約年ごとに1回です。',
-      waivedAgree: '上記を理解しました。この応募に年間プレミアム免除1回を使用することに同意します。',
+      waivedAgree: '上記を理解しました。この応募に年間プレミアム免除1回を使用することに同意します。', yearlyTipLabel:'年間プレミアムなら', yearlyTip:'年間プレミアム会員は€380の有料応募が<b>購読年ごとに1回免除</b>されます。年間プレミアムに加入してから提出すれば、今回の分は請求されません。<a href="/subscribe?utm_source=submission_fee_modal&utm_medium=web" target="_blank" rel="noopener" style="color:#ffb347;text-decoration:underline">年間プレミアムを見る</a>（新しいタブで開きます。このフォームはそのまま残ります）',
     },
     zh: {
       title: '提交前确认 — 可能产生刊登费',
@@ -269,7 +269,7 @@
       go: '同意并提交',
       waivedTitle: '年付高级会员权益 — 本次刊登费（€380）免除',
       waivedBody: '本次投稿属于付费类型（€380），但作为年付高级会员，<b>本次免除</b>。无需付款授权即可受理，即使通过审核也<b>不会收费</b>。每订阅年免除1次。',
-      waivedAgree: '我已了解以上内容。同意在本次投稿中使用年付高级会员免除1次。',
+      waivedAgree: '我已了解以上内容。同意在本次投稿中使用年付高级会员免除1次。', yearlyTipLabel:'若是年度高级会员', yearlyTip:'年度高级会员每个订阅年度可<b>免除 1 次 €380 付费投稿</b>。先加入年度高级会员再提交，本次将不收费。<a href="/subscribe?utm_source=submission_fee_modal&utm_medium=web" target="_blank" rel="noopener" style="color:#ffb347;text-decoration:underline">查看年度高级会员</a>（在新标签页打开，本表单保持不变）',
     },
     ru: {
       title: 'Перед отправкой — может взиматься плата за публикацию',
@@ -297,7 +297,7 @@
       go: 'Согласен и отправить',
       waivedTitle: 'Преимущество годового Premium — этот сбор (€380) не взимается',
       waivedBody: 'Эта заявка платная (€380), но как участник годового Premium <b>в этот раз вы освобождены</b>. Она принимается без авторизации оплаты, и <b>ничего не списывается</b> даже при принятии. Одно освобождение за год подписки.',
-      waivedAgree: 'Я понимаю изложенное выше. Согласен(на) использовать своё освобождение годового Premium для этой заявки.',
+      waivedAgree: 'Я понимаю изложенное выше. Согласен(на) использовать своё освобождение годового Premium для этой заявки.', yearlyTipLabel:'С годовым Premium', yearlyTip:'Участники с годовым Premium получают <b>одну платную заявку (€380) бесплатно за каждый год подписки</b>. Если оформить годовой Premium и затем отправить заявку, эту не спишут. <a href="/subscribe?utm_source=submission_fee_modal&utm_medium=web" target="_blank" rel="noopener" style="color:#ffb347;text-decoration:underline">Годовой Premium</a> (откроется в новой вкладке; эта форма останется как есть)',
     },
   };
 
@@ -360,6 +360,10 @@
     // 최종 판정은 서버(POST)가 다시 한다 — 여기서 잘못 보여도 돈은 서버 판정대로 움직인다.
     var waived = false;
     try { waived = r.submissionType === 'paid_few_looks' && !!(window._papFeeWaiver && window._papFeeWaiver.eligible); } catch (_) { waived = false; }
+    // 2026-09-24 도메니코 — 연간 프리미엄 혜택을 설명이 필요한 곳에. €380 를 막 내려는 순간이 가장 필요한 곳이다.
+    // 연간 프리미엄이 아닌 게 확실하지 않은 사람(이미 연간이면서 면제를 쓴 사람)에게는 권하지 않는다. 브랜디드 €790 은 면제 대상이 아니다.
+    var yearlyTip = false;
+    try { yearlyTip = !waived && r.submissionType === 'paid_few_looks' && window._papYearlyPremium !== true; } catch (_) { yearlyTip = false; }
 
     return new Promise(function (resolve) {
       var back = document.createElement('div');
@@ -382,6 +386,7 @@
             : (row(t('whenLabel'), t('when'))
                + row(t('howLabel'), t('how'))
                + row(t('ifNotLabel'), t('ifNot'))))
+        + (yearlyTip ? row(t('yearlyTipLabel'), t('yearlyTip')) : '')
         + row(t('fixLabel'), esc(r.submissionType === 'paid_few_looks'
             ? (r.paidReason === 'no_clothing_brands' ? t('fixNoBrands')
                : r.paidReason === 'few_clothing_brands' ? t('fixFewBrands') : t('fixFewLooks'))

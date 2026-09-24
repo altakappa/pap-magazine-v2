@@ -75,7 +75,7 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   ok('마이페이지: waived 는 payment_required 가 아니다', /s\.payment_status !== 'paid' && s\.payment_status !== 'waived'\) return 'payment_required'/.test(mp));
   const adm = read('frontend/pap-admin.js');
   ok('관리자: waived 배지 + 미결제 판정 4곳에서 waived 제외', /paymentStatus==='waived'/.test(adm) && (adm.match(/payment_status ?!== ?'waived'/g) || []).length >= 4);
-  ok('캐시버스트: fee v9 · consent v5 · admin ≥159', /pap-submission-fee\.js\?v=9/.test(sub) && /pap-submission-fee\.js\?v=9/.test(mp) && /pap-submission-fee-consent\.js\?v=5/.test(sub) && /pap-admin\.js\?v=(159|1[6-9]\d)/.test(read('frontend/admin.html')));
+  ok('캐시버스트: fee v9 · consent ≥5 · admin ≥159', /pap-submission-fee\.js\?v=9/.test(sub) && /pap-submission-fee\.js\?v=9/.test(mp) && /pap-submission-fee-consent\.js\?v=([5-9]|[1-9]\d)"/.test(sub) && /pap-admin\.js\?v=(159|1[6-9]\d)/.test(read('frontend/admin.html')));
 
   console.log('\n=== 1. 심사 우선권 — premiumReviewSla ===');
   const S = require(path.join(ROOT, 'api', '_lib', 'premiumReviewSla'));
@@ -135,7 +135,7 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   // 2026-09-15 도메니코: "스탠다드 회원은 서브미션 통과 시 에디토리얼이 게시되면 페이지 내에서 로고 이미지와 티어시트 다운로드 가능하다고 써줘"
   ok('가이드라인 절차: 스탠다드 이상 로고 이미지·티어시트 다운로드 줄 9개 언어 + 정적', (sub.match(/glProcBody:'<ul>(?:<li>[^<]*<\/li>){2}<li>[^<]*(스탠다드|Standard|スタンダード|标准)[^<]*(티어시트|tearsheet|Tearsheet|ティアシート|Tearsheet|тиршит)[^<]*<\/li>/gi) || []).length === 9 && /data-i18n-html="glProcBody"><ul>(?:<li>[^<]*<\/li>){2}<li>Standard members and above can download the logo images and tearsheets directly from the published editorial page<\/li>/.test(sub));
   ok('가이드라인 프리미엄 혜택(glAddBody): 보장 문구 없음 — 9개 언어 + 정적', !IG_GUARANTEE.test((sub.match(/glAddBody:'(?:\\.|[^'])*'/g) || []).join('\n')) && !/data-i18n-html="glAddBody">[^]*?Guaranteed Instagram/.test(sub));
-  ok('업그레이드 메일: upB2 삭제, 목록은 upB1·upB3·upB4', !/upB2/.test(em) && /<li>\$\{L\.upB1\}<\/li><li>\$\{L\.upB3\}<\/li><li>\$\{L\.upB4\}<\/li>/.test(em));
+  ok('업그레이드 메일: upB2 삭제, 목록은 upB1·upB3·upB4·upB5(연간 전용, 2026-09-24)', !/upB2/.test(em) && /<li>\$\{L\.upB1\}<\/li><li>\$\{L\.upB3\}<\/li><li>\$\{L\.upB4\}<\/li><li>\$\{L\.upB5\}<\/li>/.test(em));
   const sbx = read('frontend/subscribe.html');
   ok('/subscribe: 프리미엄 카드·비교표에 보장 문구 없음 (전 언어)', !IG_GUARANTEE.test(sbx) && !/\['인스타그램 게시'/.test(sbx) && !/'Instagram posting'/.test(sbx));
 

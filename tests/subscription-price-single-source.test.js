@@ -60,8 +60,8 @@ console.log('\n=== 4. 결제 화면(subscribe.html)이 기준값이다 ===');
 const sub = read('frontend','subscribe.html');
 t('EUR_PRICES std_m = 5.49',  /std_m:\s*5\.49/.test(sub));
 t('EUR_PRICES prem_m = 8.99', /prem_m:\s*8\.99/.test(sub));
-t('EUR_PRICES std_y = 45.99', /std_y:\s*45\.99/.test(sub));
-t('EUR_PRICES prem_y = 74.99',/prem_y:\s*74\.99/.test(sub));
+t('EUR_PRICES std_y = 54.90 (월 × 10, 2개월 무료 — 2026-09-24)', /std_y:\s*54\.90/.test(sub));
+t('EUR_PRICES prem_y = 89.90 (월 × 10, 2개월 무료 — 2026-09-24)',/prem_y:\s*89\.90/.test(sub));
 
 console.log('\n=== 5. 푸터 법적 고지 9개 언어 ===');
 const i18n = read('frontend','pap-i18n.js');
