@@ -36,6 +36,12 @@
 # 기본값은 맥의 실제 경로. 환경변수는 **시험용**이다 — 이 안전장치를 테스트가
 # 실제로 돌려 볼 수 있어야 안전핀이 살아 있는지 확인할 수 있다(2026-09-05).
 REPO="${PAP_AUTOPUSH_REPO:-/Users/pap/Documents/문서/PAP_Magazine_Deploy}"
+
+# 2026-09-25 — 볼트 푸시(도메니코 "볼트에도 푸시할 수 있게"). 같은 LaunchAgent 가 60초마다
+# 볼트 요청서도 확인한다. 웹사이트 요청서가 없어도 돌아야 하므로 맨 앞에서 부른다.
+# 볼트 쪽 실패는 웹사이트 푸시를 막지 않는다(서브셸로 따로 돈다). 규칙은 vault-autopush.sh 머리말.
+VAULT_SCRIPT="$(cd "$(dirname "$0")" && pwd)/vault-autopush.sh"
+[ -f "$VAULT_SCRIPT" ] && ( bash "$VAULT_SCRIPT" ) >/dev/null 2>&1
 DIR="$REPO/.autopush"
 REQ="$DIR/request"
 LOG="$DIR/log.txt"
