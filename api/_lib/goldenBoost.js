@@ -108,7 +108,11 @@ async function postWithTransientRetry(attempt, opts) {
 
   await waitBeforeRetry(o.retryWaitMs);
   const second = await once();
-  if (second.ok) return { ok: true, err: '', retried: true };
+  /* 2026-09-24 — 재시도로 건졌을 때도 첫 시도의 사유(firstErr)를 버리지
+     않는다. 실측 9/17~9/24: 부스트 7건 중 5건(71%)이 첫 시도에서 죽고 재시도로
+     살았다. '가끔 오는 일시 오류' 라기엔 너무 잦다. 첫 사유가 한 종류로
+     모이는지 봐야 다음 수리(예: 게시 전 대기)를 추측 없이 정할 수 있다. */
+  if (second.ok) return { ok: true, err: '', retried: true, firstErr: first.err };
   /* 두 번 다 죽었으면 **두 사유를 다 남긴다.** 재시도가 있었다는 사실이
      사유에서 사라지면 "한 번 시도하고 포기했다"로 잘못 읽힌다 (교훈 1). */
   return { ok: false, retried: true, err: ('재시도 후에도 실패: ' + second.err).slice(0, 160) };
@@ -185,6 +189,7 @@ async function maybeBoostPost(m, opts) {
        두는 이유는 교훈 2 — 두 벌이면 한쪽만 고쳐진다. X 는 지금 13/14 로
        거의 안 죽지만, 죽는 날 규칙이 없으면 같은 구멍이 된다. */
     let threadsRetried = false, xRetried = false;
+    let threadsFirstErr = '', xFirstErr = '';
 
     {
       const r = await postWithTransientRetry(async () => {
@@ -192,6 +197,7 @@ async function maybeBoostPost(m, opts) {
         return await threads.postText(text);
       }, { retryWaitMs: o.retryWaitMs });
       threadsOk = r.ok; threadsErr = r.ok ? '' : r.err; threadsRetried = r.retried;
+      threadsFirstErr = r.firstErr || '';
       if (!threadsOk) console.warn('[boost] threads 실패:', threadsErr);
     }
 
@@ -208,6 +214,7 @@ async function maybeBoostPost(m, opts) {
           throw new Error(String((tr && (tr.error || tr.reason)) || '게시 실패'));
         }, { retryWaitMs: o.retryWaitMs });
         xOk = r.ok; xErr = r.ok ? '' : r.err; xRetried = r.retried;
+        xFirstErr = r.firstErr || '';
         if (!xOk) console.warn('[boost] x 실패:', xErr);
       }
     }
@@ -218,7 +225,8 @@ async function maybeBoostPost(m, opts) {
         .update({ threads_ok: threadsOk, x_ok: xOk }).eq('post_id', String(m.id));
     } catch (_) {}
 
-    return { boosted: true, threadsOk, xOk, pushSent, threadsErr, xErr, threadsRetried, xRetried };
+    return { boosted: true, threadsOk, xOk, pushSent, threadsErr, xErr, threadsRetried, xRetried,
+      threadsFirstErr, xFirstErr };
   } catch (e) {
     return { boosted: false, reason: String((e && e.message) || e).slice(0, 120) };
   }

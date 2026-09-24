@@ -57,11 +57,23 @@ function recordBoost(results, b){
   results.boost_x = results.boost_x || [];
   /* 2026-09-17 — 재시도로 건진 건은 'ok' 로만 적으면 재시도가 일한 증거가
      사라진다. 'ok(재시도)' 로 구분해 남긴다 (교훈 1: 돌았다 ≠ 했다). */
-  const mark = (okFlag, err, retried) => (okFlag
-    ? (retried ? 'ok(재시도)' : 'ok')
+  /* 2026-09-24 — 재시도로 건진 건에 첫 시도 사유를 60자까지 붙인다
+     ('ok(재시도: …)'). 첫 시도 실패율이 71%라 그 사유가 다음 수리 대상이다. */
+  const mark = (okFlag, err, retried, firstErr) => (okFlag
+    ? (retried
+        ? (firstErr ? 'ok(재시도: ' + scrubSecret(firstErr).slice(0, 60) + ')' : 'ok(재시도)')
+        : 'ok')
     : ('실패: ' + (scrubSecret(err) || '사유 없음')));
-  results.boost_threads.push(mark(b.threadsOk, b.threadsErr, b.threadsRetried));
-  results.boost_x.push(mark(b.xOk, b.xErr, b.xRetried));
+  results.boost_threads.push(mark(b.threadsOk, b.threadsErr, b.threadsRetried, b.threadsFirstErr));
+  results.boost_x.push(mark(b.xOk, b.xErr, b.xRetried, b.xFirstErr));
+}
+
+/* 부스트 성공 판정 — 'ok' 와 'ok(재시도…)' 가 성공, '실패: …' 만 실패.
+   2026-09-24 이전엔 'ok' 와 글자가 같은지만 봐서 재시도로 건진 성공을 실패로 셌다:
+   9/17~9/23 note 5건이 '스레드 0/1 [ok(재시도)]' — ig_boosts 는 7/7 성공인데
+   기록은 '실패' 로 읽혔다 (교훈 1의 거꾸로: 했다 ≠ 기록됐다). */
+function isBoostOk(v){
+  return /^ok(\(|$)/.test(String(v || ''));
 }
 const { postTweet, isConfigured: xConfigured, buildThreadsParityTweet, uploadArticleMedia } = require('../_lib/xPost');
 const { postArticleToThreads } = require('../_lib/threadsAutopost');
@@ -683,12 +695,16 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         + (function (){
             const T = results.boost_threads || [], X = results.boost_x || [];
             if (!T.length) return '';
-            const tFail = T.filter((v) => v !== 'ok'), xFail = X.filter((v) => v !== 'ok');
+            const tFail = T.filter((v) => !isBoostOk(v)), xFail = X.filter((v) => !isBoostOk(v));
+            /* 재시도로 건진 건은 실패가 아니지만 증거는 남긴다 */
+            const tRe = T.filter((v) => String(v).startsWith('ok(')), xRe = X.filter((v) => String(v).startsWith('ok('));
             return ' · 부스트 ' + T.length + '건'
               + ' (스레드 ' + (T.length - tFail.length) + '/' + T.length
               + (tFail.length ? ' [' + tFail.join('; ').slice(0, 160) + ']' : '')
+              + (tRe.length ? ' [' + tRe.join('; ').slice(0, 160) + ']' : '')
               + ' · X ' + (X.length - xFail.length) + '/' + X.length
-              + (xFail.length ? ' [' + xFail.join('; ').slice(0, 160) + ']' : '') + ')';
+              + (xFail.length ? ' [' + xFail.join('; ').slice(0, 160) + ']' : '')
+              + (xRe.length ? ' [' + xRe.join('; ').slice(0, 160) + ']' : '') + ')';
           })()
         + (function (){
             const L = results.body_len || [];
