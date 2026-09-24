@@ -1446,9 +1446,17 @@ const templates = {
     const statsText = totals.n > 0
       ? R.fill(C.stats, { month, n: totals.n, reach: R.fmtNum(totals.reach) })
       : R.fill(C.statsEmpty, { month });
-    // 이달의 테마: 관리자가 캠페인 편집기의 '헤드라인·본문' 칸에 쓴다. 비어 있으면 블록을 싣지 않는다.
-    const themeHead = String((campaign && campaign.hero_headline) || '').trim();
-    const themeBody = String((campaign && campaign.hero_body) || '').trim();
+    // 이달의 테마 (2026-09-24 도메니코 "키워드 기반 후보 중 내가 고른다"):
+    //   · 고른 후보(payload.theme, 9개 언어)가 있으면 수신자 언어로 싣는다.
+    //   · 한국어 수신자는 편집기 '헤드라인·본문' 칸(도메니코가 다듬은 글)이 우선.
+    //   · 후보 없이 칸만 채웠으면 그 글을 모든 수신자에게 그대로 싣는다(종전 동작).
+    //   · 둘 다 없으면 테마 블록을 싣지 않는다.
+    const _chosen = p.theme && p.theme.i18n ? (p.theme.i18n[lang] || p.theme.i18n.en || null) : null;
+    const _heroHead = String((campaign && campaign.hero_headline) || '').trim();
+    const _heroBody = String((campaign && campaign.hero_body) || '').trim();
+    const _useHero = (_heroHead || _heroBody) && (!_chosen || lang === 'ko');
+    const themeHead = _useHero ? _heroHead : String((_chosen && _chosen.title) || '').trim();
+    const themeBody = _useHero ? _heroBody : String((_chosen && _chosen.body) || '').trim();
     const themeBlock = (themeHead || themeBody) ? `
     <tr><td style="padding:30px 40px 0;"><div style="padding:18px 20px;background:#000;color:#fff;">
       <div style="font-family:${MONT};font-size:10px;font-weight:800;letter-spacing:3px;color:#c9a86a;text-transform:uppercase;">${escapeHtml(C.theme)}</div>

@@ -115,7 +115,51 @@ ok(/'creator-monthly'\s*\n?\s*\? templates\.creatorMonthly/.test(sdc), '발송�
 ok(/templates\.creatorMonthly/.test(read('api/admin/campaigns/[id]/send-test.js')), '테스트 발송도 creator-monthly 지원');
 const adm = read('frontend/pap-admin-campaigns.js');
 ok(/state\.existingPayload/.test(adm) && /payload = state\.existingPayload/.test(adm), '관리자 편집기가 크론이 만든 payload 를 덮어쓰지 않는다');
-ok(/pap-admin-campaigns\.js\?v=3/.test(read('frontend/admin.html')), '관리자 캠페인 스크립트 캐시버스트');
+ok(/pap-admin-campaigns\.js\?v=4/.test(read('frontend/admin.html')), '관리자 캠페인 스크립트 캐시버스트');
+
+(async () => {
+console.log('\n=== 이달의 테마 후보 (브랜드 키워드 기반, 고르는 건 도메니코) ===');
+const T = require(path.join(ROOT, 'api/_lib/creatorTheme'));
+ok(T.KEYWORDS.length === 9 && T.KEYWORDS.includes('SURREALISM') && T.KEYWORDS.includes('WITTY'), '코어 키워드 9개 (볼트 50_Brand/PAP-브랜드-가이드.md)');
+const seen = new Set(['2026-10', '2026-11', '2026-12'].flatMap((m) => T.keywordsForMonth(m)));
+ok(seen.size === 9, '강조 키워드는 3달에 9개가 한 바퀴 돈다');
+ok(T.nextMonthKey('2026-09') === '2026-10' && T.nextMonthKey('2026-12') === '2027-01', '테마는 소식 다음 달(촬영할 달) 기준');
+const fb = T.fallbackCandidates('2026-10');
+ok(fb.length === 3 && fb.every((c) => c.i18n.ko.title && c.i18n.en.title), 'AI 없이도 후보 3개 (ko·en)');
+ok(!/[—–]/.test(JSON.stringify(T.FALLBACK)), '고정 후보 문구에 대시 없음');
+const norm = T.normalizeCandidates({ candidates: [
+  { keywords: ['dreamy', 'X'], ko: { title: '가 — 나', body: '본문' }, en: { title: 'A', body: 'B' }, de: { title: 'D', body: 'E' } },
+  { ko: { title: '영어 없음' } },
+] }, '2026-10');
+ok(norm.length === 3 && norm[0].source === 'ai' && norm[1].source === 'fallback', '쓸 수 없는 후보는 버리고 고정 후보로 3개를 채운다');
+ok(!/—/.test(norm[0].i18n.ko.title) && norm[0].keywords.join() === 'DREAMY', '모델 출력의 대시를 지우고, 없는 키워드는 버린다');
+const _key = process.env.ANTHROPIC_API_KEY; delete process.env.ANTHROPIC_API_KEY;
+const g0 = await T.generateThemeCandidates('2026-10', '');
+ok(g0.candidates.length === 3 && /고정/.test(g0.note), 'AI 키가 없으면 고정 후보 + 사유');
+process.env.ANTHROPIC_API_KEY = 'test';
+const aiJson = { candidates: [0, 1, 2].map((i) => { const o = { keywords: [T.keywordsForMonth('2026-10')[i]] }; for (const l of T.LANGS) o[l] = { title: l + i, body: 'b' + i }; return o; }) };
+const fakeFetch = async () => ({ ok: true, json: async () => ({ content: [{ type: 'text', text: JSON.stringify(aiJson) }] }) });
+const g1 = await T.generateThemeCandidates('2026-10', 'ctx', { fetch: fakeFetch });
+ok(g1.candidates.length === 3 && g1.candidates.every((c) => c.source === 'ai' && c.i18n.ru && c.i18n.ja), 'AI 후보 3개, 9개 언어');
+const g2 = await T.generateThemeCandidates('2026-10', 'ctx', { fetch: async () => { throw new Error('boom'); } });
+ok(g2.candidates.length === 3 && /실패/.test(g2.note), 'AI 가 터져도 throw 하지 않고 고정 후보');
+if (_key) process.env.ANTHROPIC_API_KEY = _key; else delete process.env.ANTHROPIC_API_KEY;
+const pr = T.buildPrompt('2026-10', '');
+ok(/채도 높고 파격/.test(pr.system) && /스며드는 수준/.test(pr.system) && /초현실·몽환/.test(pr.system), '프롬프트에 도메니코 화보 규칙(채도·아트는 스며들게·창의 초현실 몽환)');
+
+const chosenTheme = { i18n: { ko: { title: '크기가 틀린 방', body: '소품' }, en: { title: 'Wrong Sizes', body: 'Prop' }, de: { title: 'Falsche Größen', body: 'Requisite' } } };
+const withTheme = { hero_headline: '크기가 틀린 방', hero_body: '도메니코가 다듬은 문장', payload: Object.assign({}, base.payload, { theme: chosenTheme }) };
+const tDe = templates.creatorMonthly(withTheme, { language: 'de' }, 'T');
+ok(/Falsche Größen/.test(tDe.html) && !/도메니코가 다듬은/.test(tDe.html), '고른 후보: 독일어 수신자에게는 독일어 테마');
+const tKo = templates.creatorMonthly(withTheme, { language: 'ko' }, 'T');
+ok(/도메니코가 다듬은 문장/.test(tKo.html), '한국어 수신자에게는 편집기에서 다듬은 한국어가 우선');
+const tFr = templates.creatorMonthly(withTheme, { language: 'fr' }, 'T');
+ok(/Wrong Sizes/.test(tFr.html), '그 언어 번역이 없으면 영어 후보로');
+const cmSrc2 = read('api/cron/creator-monthly.js');
+ok(/theme_candidates = theme\.candidates/.test(cmSrc2) && /generateThemeCandidates/.test(cmSrc2) && !/sendEmail/.test(cmSrc2), '월간 크론이 후보를 만들어 초안에 담는다 (보내지는 않는다)');
+const adm2 = read('frontend/pap-admin-campaigns.js');
+ok(/function pickTheme/.test(adm2) && /pickTheme,/.test(adm2) && /theme_candidates/.test(adm2), '관리자 편집기에서 후보를 눌러 고른다');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
+})();

@@ -123,6 +123,8 @@
     $('campBody').value = (existing && existing.hero_body) || '';
     $('campScheduledAt').value = existing && existing.scheduled_at ? toLocalDatetimeInput(existing.scheduled_at) : '';
 
+    renderThemeCandidates(type);
+
     $('campEditorialsSection').style.display = type === 'editorial-weekly' ? 'block' : 'none';
     $('campNewsSection').style.display = type === 'news-weekly' ? 'block' : 'none';
 
@@ -146,6 +148,47 @@
     // → display:flex. Using the wrong class made the modal stay hidden
     // even though all the markup was rendered correctly.
     $('campaignEditorModal').classList.add('show');
+  }
+
+  // ── 이달의 테마 후보 (2026-09-24, creator-monthly 전용) ──────────
+  // 크론이 브랜드 키워드로 만든 후보 3개를 버튼으로 보여 준다. 누르면 payload.theme 에
+  // 9개 언어가 통째로 들어가고, 헤드라인·본문 칸에는 한국어가 채워진다(고쳐 써도 된다:
+  // 한국어 수신자에게만 반영, 다른 언어는 후보 번역 그대로).
+  function renderThemeCandidates(type) {
+    let box = $('campThemeCands');
+    const cands = (state.existingPayload && Array.isArray(state.existingPayload.theme_candidates)) ? state.existingPayload.theme_candidates : [];
+    if (type !== 'creator-monthly' || !cands.length) { if (box) box.style.display = 'none'; return; }
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'campThemeCands';
+      box.style.cssText = 'margin:10px 0 14px;padding:12px;border:1px solid #3a3223;background:#121212;';
+      const anchor = $('campHeadline');
+      anchor.parentNode.insertBefore(box, anchor);
+    }
+    const kws = (state.existingPayload.theme_keywords || []).join(' · ');
+    const chosen = state.existingPayload.theme;
+    box.style.display = 'block';
+    box.innerHTML = '<div style="font-size:11px;color:#c9a86a;margin-bottom:8px">이달의 테마 후보 (' + esc(kws) + ') · 하나를 누르세요. 안 고르면 테마 블록 없이 나갑니다.</div>'
+      + cands.map((c, i) => {
+          const ko = (c.i18n && c.i18n.ko) || {};
+          const on = chosen && chosen.i18n && chosen.i18n.ko && chosen.i18n.ko.title === ko.title;
+          return '<button type="button" class="btn btn-sm' + (on ? ' btn-primary' : '') + '" style="display:block;width:100%;text-align:left;margin:4px 0;white-space:normal" onclick="campaigns.pickTheme(' + i + ')">'
+            + (i + 1) + '. <b>' + esc(ko.title || '') + '</b> : ' + esc(ko.body || '') + ' <span style="opacity:.6">[' + esc((c.keywords || []).join(', ')) + ']</span></button>';
+        }).join('')
+      + (chosen ? '<button type="button" class="btn btn-sm btn-red" style="margin-top:6px" onclick="campaigns.pickTheme(-1)">선택 해제</button>' : '');
+  }
+  function pickTheme(i) {
+    if (!state.existingPayload) return;
+    const cands = state.existingPayload.theme_candidates || [];
+    if (i < 0 || !cands[i]) {
+      state.existingPayload.theme = null;
+      $('campHeadline').value = ''; $('campBody').value = '';
+    } else {
+      state.existingPayload.theme = cands[i];
+      const ko = (cands[i].i18n && cands[i].i18n.ko) || {};
+      $('campHeadline').value = ko.title || ''; $('campBody').value = ko.body || '';
+    }
+    renderThemeCandidates('creator-monthly');
   }
 
   function closeEditor() {
@@ -466,7 +509,7 @@
     pick, unpick, movePicked,
     filterEditorialPool,
     addNewsItem, updateNewsItem, removeNewsItem,
-    save, sendTest, edit, remove, viewStats,
+    save, sendTest, edit, remove, viewStats, pickTheme,
   };
 
   // Auto-load when admin.html's `go('campaigns')` activates the tab.
