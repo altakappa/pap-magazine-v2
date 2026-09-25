@@ -222,6 +222,21 @@ console.log('\n=== 11. 구독 페이지: 언어 블록에 영어 복사본이 �
   t('독일어 카드·비교표가 독일어', D.de.features.prem[2].text.startsWith('Alle Editorials') && D.de.comparison.rows[0][0] === 'Registrierung nötig' && D.de.save2mo === '2 MONATE GRATIS');
 }
 
+console.log('\n=== 12. 국내 결제 수요 버튼 (8/10 결정의 실측 장치) ===');
+{
+  const sub = R('frontend/subscribe.html');
+  const ctx = {}; vm.runInNewContext(sub.match(/var L = \{[\s\S]*?\n\};/)[0] + '\nthis.out = L;', ctx);
+  const D = ctx.out;
+  const langs = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
+  t('버튼·감사 문구 9개 언어', langs.every((l) => D[l].krPayAsk && D[l].krPayThanks), langs.filter((l) => !D[l].krPayAsk).join(','));
+  t('사전 블록 10개 전부', (sub.match(/krPayThanks:'/g) || []).length === 10);
+  t('마크업: 결제 안내 아래, 기본 숨김, 한글 없음', /data-i18n="paymentNote">[\s\S]*?<\/p>\s*<!--[^>]*-->\s*<div class="kr-pay" id="krPay" hidden>/.test(sub) && /id="krPayBtn" data-i18n="krPayAsk"><\/button>/.test(sub));
+  t('한국어 화면 또는 한국 시간대에서만 보인다', /if\(lang!=='ko' && tz!=='Asia\/Seoul'\) return;/.test(sub));
+  t('누르면 kr_pay_interest 기록, 같은 브라우저 1회', /step:'kr_pay_interest'/.test(sub) && /pap-kr-pay-asked/.test(sub));
+  const st = R('api/funnel/step.js');
+  t('서버가 kr_pay_interest 를 받는다', /'kr_pay_interest'\]\);/.test(st));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ yearly-price-and-perks FAILED'); process.exit(1); }
 console.log('✅ yearly-price-and-perks passed');

@@ -32,7 +32,8 @@ const { verifyToken } = require('../_lib/auth');
    locked_popup_view  = 못 여는 화보를 눌러 팝업이 뜬 횟수
    그 다음 걸음(subscribe_view)은 이미 재고 있고, CTA 에 utm 이 붙어 있어
    어느 벽에서 넘어왔는지도 구분된다. */
-const STEPS = new Set(['subscribe_view', 'gallery_lock_view', 'locked_popup_view']);
+/* kr_pay_interest (2026-09-25): 구독 페이지의 '한국 카드로 결제하고 싶다' 버튼. 결제 단계가 아니라 수요 표시다. */
+const STEPS = new Set(['subscribe_view', 'gallery_lock_view', 'locked_popup_view', 'kr_pay_interest']);
 
 /* 성장 헌법 3항의 utm_source 목록 + 내부 유입. 그 외는 'other' 로 접는다 —
    자유 문자열을 그대로 저장하면 집계가 안 된다. */
