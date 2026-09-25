@@ -29,22 +29,34 @@ function getTransporter() {
      * 원인은 주소가 아니라 우리 쪽이었다. 풀 없는 트랜스포터에 50통을 동시에 던지면
      * 메일마다 SMTP 연결을 새로 열고 로그인한다 → 몇 초 사이 50번 로그인 → Gmail 이 막는다.
      * 연결 2개를 재사용하고 초당 4통으로 묶으면 로그인은 2번이다. */
-    transporter = nodemailer.createTransport({
-      pool: true,
-      maxConnections: 2,
-      maxMessages: 100,
-      rateDelta: 1000,
-      rateLimit: 4,
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    transporter = nodemailer.createTransport(transportOptions(process.env));
   }
   return transporter;
+}
+
+/* 2026-09-25 — 보내는 곳에 맞춰 속도를 고른다.
+ *   Gmail(기본): 연결 2개 · 초당 4통  (위 실측: 50통 동시 로그인이 421·454 를 불렀다)
+ *   Amazon SES : 연결 4개 · 초당 10통 (계정 한도 초당 14통, 여유를 남긴다)
+ * SMTP_HOST 만 바꾸면 속도도 같이 바뀐다. 주간 발송 함수는 300초라, 초당 4통이면
+ * 약 1,100명이 한계다. SES 로 옮기면 약 2,900명까지 한 번에 간다. */
+function transportOptions(env) {
+  const e = env || {};
+  const host = e.SMTP_HOST || 'smtp.gmail.com';
+  const isSes = /\.amazonaws\.com$/i.test(host);
+  return {
+    pool: true,
+    maxConnections: isSes ? 4 : 2,
+    maxMessages: 100,
+    rateDelta: 1000,
+    rateLimit: isSes ? 10 : 4,
+    host,
+    port: parseInt(e.SMTP_PORT || '587'),
+    secure: false,
+    auth: {
+      user: e.SMTP_USER,
+      pass: e.SMTP_PASS,
+    },
+  };
 }
 
 const FROM = process.env.EMAIL_FROM || 'PAP Magazine <contact@pap-magazine.com>';
@@ -1868,4 +1880,4 @@ async function sendEmail(to, template, opts) {
   }
 }
 
-module.exports = { sendEmail, templates, DEFAULT_REJECTION_NOTE, REJECTION_LETTER_BODY };
+module.exports = { sendEmail, templates, DEFAULT_REJECTION_NOTE, REJECTION_LETTER_BODY, transportOptions };

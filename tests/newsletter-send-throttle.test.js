@@ -6,7 +6,7 @@
  *   421 4.3.0 Temporary System Problem (158) · 454 4.7.0 Too many login attempts (33).
  * 원인: 풀 없는 트랜스포터에 50통을 동시에 던져 메일마다 새 연결·새 로그인.
  *
- *  1. email.js 트랜스포터: 연결 풀(2) + 초당 4통
+ *  1. email.js 트랜스포터: 연결 풀 + 속도 (Gmail 2개·초당 4통 / SES 4개·초당 10통, 2026-09-25)
  *  2. 발송기: 한 번에 5명씩(50 아님), 300초 함수
  *  3. 일시 오류가 두 번 나면 기록하지 않고 끝에서 30초 뒤 1회 더 — 실제로 돌려 본다
  *     (가짜 supabase · 가짜 sendEmail, 타이머는 즉시)
@@ -21,8 +21,18 @@ function t(n, ok, x) { if (ok) { pass++; console.log('  ✓ ' + n); } else { fai
 console.log('=== 1. 트랜스포터 ===');
 const em = R('api/_lib/email.js');
 t('pool: true', /pool: true/.test(em));
-t('연결 2개', /maxConnections: 2/.test(em));
-t('초당 4통 (rateDelta 1000 · rateLimit 4)', /rateDelta: 1000/.test(em) && /rateLimit: 4/.test(em));
+{
+  const { transportOptions } = require(path.join(ROOT, 'api/_lib/email.js'));
+  const g = transportOptions({ SMTP_USER: 'u', SMTP_PASS: 'p' });
+  const g2 = transportOptions({ SMTP_HOST: 'smtp.gmail.com' });
+  const ses = transportOptions({ SMTP_HOST: 'email-smtp.ap-northeast-2.amazonaws.com', SMTP_PORT: '587' });
+  const fake = transportOptions({ SMTP_HOST: 'amazonaws.com.evil.io' });
+  t('Gmail(기본): 연결 2개', g.maxConnections === 2 && g2.maxConnections === 2 && g.host === 'smtp.gmail.com');
+  t('Gmail: 초당 4통 (rateDelta 1000 · rateLimit 4)', g.rateDelta === 1000 && g.rateLimit === 4 && g.pool === true);
+  t('SES: 연결 4개 · 초당 10통 (한도 14 아래)', ses.maxConnections === 4 && ses.rateLimit === 10 && ses.rateDelta === 1000 && ses.pool === true && ses.port === 587);
+  t('이름만 비슷한 주소는 SES 로 안 본다', fake.rateLimit === 4);
+  t('계정 값은 env 에서', g.auth.user === 'u' && g.auth.pass === 'p');
+}
 
 console.log('\n=== 2. 발송기 설정 ===');
 const src = R('api/cron/send-due-campaigns.js');
