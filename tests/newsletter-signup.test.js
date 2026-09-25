@@ -35,13 +35,15 @@ function makeDb(tables) {
       if (st.op === 'update') {
         const hit = rows().filter(match); hit.forEach((r) => Object.assign(r, st.payload)); return { data: hit, error: null };
       }
-      return { data: rows().filter(match), error: null };
+      const all = rows().filter(match);
+      return { data: st.range ? all.slice(st.range[0], st.range[1] + 1) : all, error: null };
     };
     const b = {
       select() { return b; },
       eq(k, v) { st.filters.push(['eq', k, v]); return b; },
       ilike(k, v) { st.filters.push(['ilike', k, v]); return b; },
       not() { return b; }, lte() { return b; }, order() { return b; }, limit() { return b; },
+      range(a, z) { st.range = [a, z]; return b; },
       insert(p) { st.op = 'insert'; st.payload = p; return b; },
       update(p) { st.op = 'update'; st.payload = p; return b; },
       maybeSingle() { const r = run(); return Promise.resolve({ data: (r.data || [])[0] || null, error: null }); },
@@ -170,6 +172,9 @@ function mkRes() {
     const m = sent.find((s) => s.to === 'member@x.com');
     t('회원: 기존 수신거부·언어 바 그대로', m && m.tpl.html.includes('/api/auth/unsubscribe?token=') && m.tpl.html.includes('/api/email/language'));
     t('비회원은 회원 토큰 표에 줄을 만들지 않는다', db.tables.email_unsubscribe_tokens.length === 1);
+    const src0 = R('api/cron/send-due-campaigns.js');
+    t('회원 주소는 1,000행씩 나눠 읽는다(상한에 잘리지 않게)', /\.range\(from, from \+ 999\)/.test(src0));
+    t('확인 API: ilike 와일드카드 이스케이프', /replace\(\/\[\\\\%_\]\/g/.test(R('api/newsletter/confirm.js')));
     const src = R('api/cron/send-due-campaigns.js');
     t('주간 뉴스 전체 발송에만 붙는다', /if \(!audience && campaign\.type === 'news-weekly'\)/.test(src));
   }

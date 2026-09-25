@@ -147,9 +147,15 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
             .from('newsletter_signups').select('email, language, token').eq('status', 'confirmed');
           if (sgErr) throw sgErr;
           if (sgRows && sgRows.length) {
-            const { data: memRows, error: memErr } = await supabaseAdmin.from('profiles').select('email');
-            if (memErr) throw memErr;
-            const memberEmails = new Set((memRows || []).map((m) => String(m.email || '').toLowerCase()).filter(Boolean));
+            // 회원 주소 전체 — PostgREST 기본 상한이 1,000행이라 나눠서 읽는다(회원 1,357명).
+            const memberEmails = new Set();
+            for (let from = 0; ; from += 1000) {
+              const { data: memRows, error: memErr } = await supabaseAdmin
+                .from('profiles').select('email').order('id', { ascending: true }).range(from, from + 999);
+              if (memErr) throw memErr;
+              (memRows || []).forEach((m) => { const e = String(m.email || '').toLowerCase(); if (e) memberEmails.add(e); });
+              if (!memRows || memRows.length < 1000) break;
+            }
             sgRows.forEach((g) => {
               const em = String(g.email || '').toLowerCase();
               if (!em || memberEmails.has(em)) return;

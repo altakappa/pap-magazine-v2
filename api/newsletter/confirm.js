@@ -41,8 +41,10 @@ module.exports = async function handler(req, res) {
     // 이미 회원인 주소 → 회원 수신동의를 켠다 (본인 메일함에서 확인 버튼을 눌렀으니 동의 증명이 된다)
     let member = null;
     try {
+      // ilike 는 _ 와 % 를 와일드카드로 읽는다 → a_b@x.com 이 aXb@x.com 회원과 맞을 수 있다. 이스케이프.
+      const likeSafe = String(row.email).replace(/[\\%_]/g, (c) => '\\' + c);
       const { data: prof } = await supabaseAdmin.from('profiles')
-        .select('id, email_consent').ilike('email', row.email).maybeSingle();
+        .select('id, email_consent').ilike('email', likeSafe).maybeSingle();
       member = prof || null;
       if (member && !member.email_consent) {
         await supabaseAdmin.from('profiles').update({ email_consent: true, email_consent_at: now }).eq('id', member.id);
