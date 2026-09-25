@@ -151,7 +151,7 @@ function t(n, ok, x) { if (ok) { pass++; console.log('  ✓ ' + n); } else { fai
     t('마이페이지: 심사 중 수정 버튼 옆 "연간 프리미엄은 공동작업자도 수정" 안내 + 사전 8개 언어', /연간 프리미엄 회원은 심사가 끝나기 전까지 수정하기에서 인스타그램 공동작업자/.test(mp)
       && ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => JSON.parse(R('frontend/i18n/ui/mypage.' + l + '.json'))['연간 프리미엄 회원은 심사가 끝나기 전까지 수정하기에서 인스타그램 공동작업자(최대 5명, PAP 회원)도 바꿀 수 있습니다.']));
     const sb = R('frontend/subscribe.html');
-    t('구독 페이지 혜택 목록: 무료 회원도 지정 가능 · 제출 후 수정 가능 (9개 언어 블록 + ru 중복)', (sb.match(/\{on:true, text:'[^']*(연간 프리미엄|Yearly Premium|Годовой Premium|Jahres-Premium|Premium annuale|Premium annuel|Premium anual|年間プレミアム|年度高级会员)[^']*(제출 후 수정|editable after|изменить после|nach dem Einreichen|modificabili dopo|modifiables après|editables tras|提出後も変更|提交后可修改)[^']*'\}/g) || []).length >= 9);
+    t('구독 페이지 혜택 목록: 무료 회원도 지정 가능 · 제출 후 수정 가능 (9개 언어 블록 + ru 중복)', (sb.match(/\{on:true, (?:y:true, )?text:'[^']*(연간 프리미엄|Yearly Premium|Годовой Premium|Jahres-Premium|Premium annuale|Premium annuel|Premium anual|年間プレミアム|年度高级会员)[^']*(제출 후 수정|editable after|изменить после|nach dem Einreichen|modificabili dopo|modifiables après|editables tras|提出後も変更|提交后可修改)[^']*'\}/g) || []).length >= 9);
   }
 
   console.log('\npassed: ' + pass + '   failed: ' + fail);

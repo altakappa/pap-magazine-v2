@@ -69,6 +69,24 @@ a{color:#fff;text-decoration:none}
 .toggle-knob{width:20px;height:20px;background:#fff;border-radius:50%;position:absolute;top:3px;left:3px;transition:transform .3s cubic-bezier(.4,0,.2,1)}
 .toggle-track.yearly .toggle-knob{transform:translateX(22px)}
 .billing-save{font-size:10px;font-weight:700;letter-spacing:.1em;color:#000;background:#fff;padding:3px 10px;border-radius:10px}
+/* 2026-09-25 도메니코 "연간 혜택이 눈에 띄게": 연간 프리미엄 전용 혜택 2개(€380 면제 · 공동작업자 5명)를
+   카드 목록 13줄 중 10·13번째 흐린 글씨에서 꺼내 토글 바로 아래 금색 상자로 올린다.
+   월간 상태에서도 보인다(연간을 안 눌러 본 사람이 대부분이라). 누르면 연간으로 바뀐다. */
+.yearly-perks{max-width:640px;margin:-24px auto 56px;border:1px solid rgba(255,212,59,.35);padding:24px 26px 20px;cursor:pointer;text-align:center;transition:border-color .3s,background .3s}
+.yearly-perks:hover,.yearly-perks:focus-visible{border-color:#ffd43b;outline:none}
+.yearly-perks.on{border-color:#ffd43b;background:rgba(255,212,59,.06)}
+.yp-tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.18em;background:#ffd43b;color:#000;padding:5px 12px;text-transform:uppercase}
+.yp-title{display:block;font-size:14px;font-weight:700;color:#fff;margin-top:12px;letter-spacing:.02em}
+.yp-items{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:20px 0 16px}
+.yp-big{font-size:34px;font-weight:800;color:#ffd43b;line-height:1}
+.yp-text{font-size:13px;font-weight:600;color:#fff;margin-top:10px;line-height:1.4}
+.yp-sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:5px;line-height:1.5}
+.yp-value{font-size:12px;font-weight:700;color:#ffd43b;letter-spacing:.02em}
+.yp-hint{font-size:11px;color:rgba(255,255,255,.5);margin-top:8px}
+.yearly-perks.on .yp-hint{display:none}
+.plan-features li.yp{color:#ffd43b;font-weight:600}
+.plan-features li.yp .icon.check svg{stroke:#ffd43b;opacity:1}
+@media(max-width:600px){.yp-items{grid-template-columns:1fr;gap:16px}.yearly-perks{margin:-24px 16px 40px;padding:20px 18px 18px}}
 
 /* Price transition */
 .plan-price,.plan-price-free{transition:opacity .3s}
@@ -417,6 +435,26 @@ function navigateWithInterstitial(url){
     <span class="billing-save" id="billingSave" data-i18n="save2mo">2개월 무료</span>
   </div>
 
+  <!-- 연간 프리미엄 전용 혜택 상자 (2026-09-25). 문구는 L 사전(ypTag·ypTitle·ypWaiver…)으로만 채운다. -->
+  <div class="yearly-perks" id="yearlyPerks" role="button" tabindex="0" onclick="setBilling('yearly')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setBilling('yearly');}">
+    <span class="yp-tag" data-i18n="ypTag"></span>
+    <span class="yp-title" data-i18n="ypTitle"></span>
+    <div class="yp-items">
+      <div class="yp-item">
+        <div class="yp-big">€380</div>
+        <div class="yp-text" data-i18n="ypWaiver"></div>
+        <div class="yp-sub" data-i18n="ypWaiverSub"></div>
+      </div>
+      <div class="yp-item">
+        <div class="yp-big">5</div>
+        <div class="yp-text" data-i18n="ypCollab"></div>
+        <div class="yp-sub" data-i18n="ypCollabSub"></div>
+      </div>
+    </div>
+    <div class="yp-value" id="ypValue"></div>
+    <div class="yp-hint" data-i18n="ypHint"></div>
+  </div>
+
   <!-- PRICING CARDS -->
   <div class="pricing-grid">
 
@@ -508,6 +546,7 @@ var L = {
 ko: {
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'월간', yearly:'연간', save2mo:'2개월 무료', perYear:'/ 연',
+  ypTag:'연간 프리미엄 전용', ypTitle:'월간 프리미엄에는 없는 혜택', ypWaiver:'유료 서브미션 1회 면제', ypWaiverSub:'구독 1년마다 1회 · €790 유형은 제외', ypCollab:'인스타그램 공동작업자 직접 지정', ypCollabSub:'최대 5명 · PAP 회원이면 무료 회원도 가능 · 제출 후에도 수정', ypValue:'연 {price} · 유료 서브미션 한 번만 써도 €380 절약', ypHint:'연간 결제에만 적용 · 눌러서 연간 가격 보기',
   heroTitle:'SUBSCRIBE',
   heroDesc:'스탠다드 멤버는 최근 3개 분기(약 6~9개월) 에디토리얼 열람과 이미지·로고 이미지·티어시트 다운로드가 가능합니다. 전체 아카이브 열람과 Pull-Letter 요청 등 프리미엄 혜택이 필요하다면 프리미엄 멤버가 되어보세요.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -541,6 +580,8 @@ ko: {
       {on:false, text:'Pull-Letter 요청 불가'}
     ],
     prem: [
+      {on:true, y:true, text:'연간 결제 시 유료 서브미션(€380) 1회 면제'},
+      {on:true, y:true, text:'연간 프리미엄: 인스타그램 공동작업자 5명 직접 지정 (PAP 회원이면 무료 회원도 가능 · 제출 후 수정 가능)'},
       {on:true, text:'모든 에디토리얼 보기 (전체 아카이브)'},
       {on:true, text:'광고 없는 콘텐츠 이용'},
       {on:true, text:'서브미션 제출 가능'},
@@ -549,10 +590,8 @@ ko: {
       {on:true, text:'이미지 · 로고 이미지 · 티어시트 다운로드'},
       {on:true, text:'심사 대기 중 제출 내용 직접 수정'},
       {on:true, text:'게재 후 크레딧 직접 수정 (에디토리얼당 3회)'},
-      {on:true, text:'연간 프리미엄: 인스타그램 공동작업자 5명 직접 지정 (PAP 회원이면 무료 회원도 가능 · 제출 후 수정 가능)'},
       {on:true, text:'우선 심사: 2영업일 이내 결과 (일반 최대 7영업일)'},
-      {on:true, text:'PAP 인증 크리에이터 프로필 (배지 · 활동 도시 · 연락 버튼 · 첫 게재부터)'},
-      {on:true, text:'연간 결제 시 유료 서브미션(€380) 1회 면제'}
+      {on:true, text:'PAP 인증 크리에이터 프로필 (배지 · 활동 도시 · 연락 버튼 · 첫 게재부터)'}
     ]
   },
   comparison: {
@@ -579,6 +618,7 @@ en: {
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
   priceFree:'€0',
+  ypTag:'YEARLY PREMIUM ONLY', ypTitle:'Not included in monthly Premium', ypWaiver:'One paid submission waived', ypWaiverSub:'Once per subscription year · excludes the €790 type', ypCollab:'Instagram collaborators you choose', ypCollabSub:'Up to 5 · any PAP member, free members included · editable after submitting', ypValue:'{price} a year · use it once and you save €380', ypHint:'Yearly billing only · tap to see yearly prices',
   heroTitle:'SUBSCRIBE',
   heroDesc:'Standard members can browse the last three quarters of editorials (about 6 to 9 months) and download images, logo images and tearsheets. For full archive access, Pull-Letter requests and more, upgrade to Premium.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -611,6 +651,8 @@ en: {
       {on:false, text:'No Pull-Letter request'}
     ],
     prem: [
+      {on:true, y:true, text:'Yearly plan: one paid submission (€380) waived'},
+      {on:true, y:true, text:'Yearly Premium: choose 5 Instagram collaborators yourself (any PAP member, free members included · editable after submitting)'},
       {on:true, text:'View all editorials (full archive)'},
       {on:true, text:'Ad-free browsing'},
       {on:true, text:'Submit work'},
@@ -619,10 +661,8 @@ en: {
       {on:true, text:'Download images, logo images & tearsheets'},
       {on:true, text:'Edit your submission while it is awaiting review'},
       {on:true, text:'Edit credits after publication (3 times per editorial)'},
-      {on:true, text:'Yearly Premium: choose 5 Instagram collaborators yourself (any PAP member, free members included · editable after submitting)'},
       {on:true, text:'Priority review: result within 2 business days (up to 7 for others)'},
-      {on:true, text:'PAP Verified creator profile (badge · city · contact button · from your first editorial)'},
-      {on:true, text:'Yearly plan: one paid submission (€380) waived'}
+      {on:true, text:'PAP Verified creator profile (badge · city · contact button · from your first editorial)'}
     ]
   },
   comparison: {
@@ -649,6 +689,7 @@ ru:{
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
   priceFree:'€0',
+  ypTag:'ТОЛЬКО ГОДОВОЙ PREMIUM', ypTitle:'Нет в месячном Premium', ypWaiver:'Одна платная заявка бесплатно', ypWaiverSub:'Раз в год подписки · кроме типа за €790', ypCollab:'Соавторы в Instagram на ваш выбор', ypCollabSub:'До 5 человек · любой участник PAP, даже бесплатный · можно изменить после отправки', ypValue:'{price} в год · одна заявка уже экономит €380', ypHint:'Только при оплате за год · нажмите, чтобы увидеть цены',
   heroTitle:'SUBSCRIBE',
   heroDesc:'Участники Standard могут просматривать эдиториалы за последние три квартала (около 6–9 месяцев) и скачивать изображения, изображения с логотипом и тиршиты. Для полного доступа к архиву, запросов Pull-Letter и других возможностей перейдите на Premium.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -681,6 +722,8 @@ ru:{
       {on:false, text:'No Pull-Letter request'}
     ],
     prem: [
+      {on:true, y:true, text:'Годовой план: одна платная заявка (€380) без оплаты'},
+      {on:true, y:true, text:'Годовой Premium: сами выбираете 5 соавторов в Instagram (любые участники PAP, включая бесплатных · можно изменить после отправки)'},
       {on:true, text:'View all editorials (full archive)'},
       {on:true, text:'Ad-free browsing'},
       {on:true, text:'Submit work'},
@@ -689,10 +732,8 @@ ru:{
       {on:true, text:'Download images, logo images & tearsheets'},
       {on:true, text:'Редактирование заявки во время ожидания проверки'},
       {on:true, text:'Редактирование credits после публикации (3 раза на эдиториал)'},
-      {on:true, text:'Годовой Premium: сами выбираете 5 соавторов в Instagram (любые участники PAP, включая бесплатных · можно изменить после отправки)'},
       {on:true, text:'Приоритетное рассмотрение: результат в течение 2 рабочих дней (у остальных до 7)'},
-      {on:true, text:'Верифицированный профиль автора PAP (бейдж · город · кнопка связи · с первой публикации)'},
-      {on:true, text:'Годовой план: одна платная заявка (€380) без оплаты'}
+      {on:true, text:'Верифицированный профиль автора PAP (бейдж · город · кнопка связи · с первой публикации)'}
     ]
   },
   comparison: {
@@ -719,6 +760,7 @@ de:{
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
   priceFree:'€0',
+  ypTag:'NUR JAHRES-PREMIUM', ypTitle:'Nicht im monatlichen Premium enthalten', ypWaiver:'Eine kostenpflichtige Einreichung erlassen', ypWaiverSub:'Einmal pro Abojahr · ohne den €790-Typ', ypCollab:'Instagram-Collaborators selbst wählen', ypCollabSub:'Bis zu 5 · jedes PAP-Mitglied, auch kostenlose · nach dem Einreichen änderbar', ypValue:'{price} im Jahr · schon eine Einreichung spart €380', ypHint:'Nur bei jährlicher Zahlung · tippen für Jahrespreise',
   heroTitle:'SUBSCRIBE',
   heroDesc:'Standard-Mitglieder können die Editorials der letzten drei Quartale (etwa 6 bis 9 Monate) durchsehen und Bilder, Logo-Bilder sowie Tearsheets herunterladen. Für vollen Archivzugang, Pull-Letter-Anfragen und mehr wechseln Sie zu Premium.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -751,6 +793,8 @@ de:{
       {on:false, text:'No Pull-Letter request'}
     ],
     prem: [
+      {on:true, y:true, text:'Jahresplan: eine kostenpflichtige Einreichung (€380) erlassen'},
+      {on:true, y:true, text:'Jahres-Premium: 5 Instagram-Collaborators selbst auswählen (alle PAP-Mitglieder, auch kostenlose · nach dem Einreichen änderbar)'},
       {on:true, text:'View all editorials (full archive)'},
       {on:true, text:'Ad-free browsing'},
       {on:true, text:'Submit work'},
@@ -759,10 +803,8 @@ de:{
       {on:true, text:'Download images, logo images & tearsheets'},
       {on:true, text:'Einreichung während der Prüfung selbst bearbeiten'},
       {on:true, text:'Credits nach der Veröffentlichung bearbeiten (3× je Editorial)'},
-      {on:true, text:'Jahres-Premium: 5 Instagram-Collaborators selbst auswählen (alle PAP-Mitglieder, auch kostenlose · nach dem Einreichen änderbar)'},
       {on:true, text:'Vorrangige Prüfung: Ergebnis innerhalb von 2 Werktagen (sonst bis zu 7)'},
-      {on:true, text:'PAP-verifiziertes Creator-Profil (Badge · Stadt · Kontaktbutton · ab dem ersten Editorial)'},
-      {on:true, text:'Jahresplan: eine kostenpflichtige Einreichung (€380) erlassen'}
+      {on:true, text:'PAP-verifiziertes Creator-Profil (Badge · Stadt · Kontaktbutton · ab dem ersten Editorial)'}
     ]
   },
   comparison: {
@@ -788,6 +830,7 @@ de:{
 it: {
   business:'BUSINESS', contact:'CONTATTI', about:'CHI SIAMO', subscribe:'ABBONATI',
   monthly:'MENSILE', yearly:'ANNUALE', save2mo:'2 MESI GRATIS', perYear:'/ anno',
+  ypTag:'SOLO PREMIUM ANNUALE', ypTitle:'Non incluso nel Premium mensile', ypWaiver:'Una candidatura a pagamento esonerata', ypWaiverSub:'Una volta per anno di abbonamento · escluso il tipo da €790', ypCollab:'Collaboratori Instagram scelti da te', ypCollabSub:'Fino a 5 · qualsiasi membro PAP, anche gratuito · modificabili dopo l\'invio', ypValue:'{price} all\'anno · una sola candidatura ti fa risparmiare €380', ypHint:'Solo con pagamento annuale · tocca per vedere i prezzi annuali',
   heroTitle:'ABBONATI',
   heroDesc:'Con la registrazione gratuita vedi i 10 editoriali più recenti. I membri Standard accedono agli ultimi tre trimestri (circa 6-9 mesi), i membri Premium a tutto il catalogo. Quando sei pronto per vantaggi professionali come feedback sulle submission e richiesta Pull-Letter, diventa membro.',
   tierFree:'LIVELLO 1', tierStandard:'LIVELLO 2', tierPremium:'LIVELLO 3',
@@ -821,6 +864,8 @@ it: {
       {on:false, text:'Richiesta Pull-Letter non disponibile'}
     ],
     prem: [
+      {on:true, y:true, text:'Piano annuale: una candidatura a pagamento (€380) esonerata'},
+      {on:true, y:true, text:'Premium annuale: scegli tu 5 collaboratori Instagram (qualsiasi membro PAP, anche gratuito · modificabili dopo l’invio)'},
       {on:true, text:'Visualizza tutti gli editoriali (archivio completo)'},
       {on:true, text:'Navigazione senza pubblicità'},
       {on:true, text:'Invia lavori'},
@@ -829,10 +874,8 @@ it: {
       {on:true, text:'Download immagini, immagini con logo e tearsheet'},
       {on:true, text:'Modifica la tua submission in attesa di revisione'},
       {on:true, text:'Modifica i credit dopo la pubblicazione (3 volte per editoriale)'},
-      {on:true, text:'Premium annuale: scegli tu 5 collaboratori Instagram (qualsiasi membro PAP, anche gratuito · modificabili dopo l’invio)'},
       {on:true, text:'Revisione prioritaria: esito entro 2 giorni lavorativi (fino a 7 per gli altri)'},
-      {on:true, text:'Profilo creativo verificato PAP (badge · città · pulsante contatto · dal primo editoriale)'},
-      {on:true, text:'Piano annuale: una candidatura a pagamento (€380) esonerata'}
+      {on:true, text:'Profilo creativo verificato PAP (badge · città · pulsante contatto · dal primo editoriale)'}
     ]
   },
   comparison: {
@@ -857,6 +900,7 @@ it: {
 },
 fr: {
   business:'BUSINESS', contact:'CONTACT', about:'À PROPOS', subscribe:'S\'ABONNER',
+  ypTag:'PREMIUM ANNUEL UNIQUEMENT', ypTitle:'Absent du Premium mensuel', ypWaiver:'Une soumission payante offerte', ypWaiverSub:'Une fois par année d\'abonnement · hors formule à €790', ypCollab:'Collaborateurs Instagram de votre choix', ypCollabSub:'Jusqu\'à 5 · tout membre PAP, même gratuit · modifiables après l\'envoi', ypValue:'{price} par an · une seule soumission vous fait économiser €380', ypHint:'Paiement annuel uniquement · touchez pour voir les prix annuels',
   heroTitle:'S\'ABONNER',
   heroDesc:'Devenez membre de PAP Magazine et accédez à des éditoriaux exclusifs, des retours sur vos soumissions, des demande de Pull-Letter et bien plus.',
   tierFree:'NIVEAU 1', tierStandard:'NIVEAU 2', tierPremium:'NIVEAU 3',
@@ -890,6 +934,8 @@ fr: {
       {on:false, text:'Demande de Pull-Letter non disponible'}
     ],
     prem: [
+      {on:true, y:true, text:'Formule annuelle : une soumission payante (€380) offerte'},
+      {on:true, y:true, text:'Premium annuel : choisissez vous-même 5 collaborateurs Instagram (tout membre PAP, gratuits inclus · modifiables après l’envoi)'},
       {on:true, text:'Voir tous les éditoriaux (archives complètes)'},
       {on:true, text:'Navigation sans publicité'},
       {on:true, text:'Soumettre des travaux'},
@@ -898,10 +944,8 @@ fr: {
       {on:true, text:'Téléchargement d\'images avec logo'},
       {on:true, text:'Modifier votre soumission en attente de révision'},
       {on:true, text:'Modifier les crédits après publication (3 fois par éditorial)'},
-      {on:true, text:'Premium annuel : choisissez vous-même 5 collaborateurs Instagram (tout membre PAP, gratuits inclus · modifiables après l’envoi)'},
       {on:true, text:'Examen prioritaire : réponse sous 2 jours ouvrés (jusqu’à 7 pour les autres)'},
-      {on:true, text:'Profil créatif certifié PAP (badge · ville · bouton contact · dès le premier éditorial)'},
-      {on:true, text:'Formule annuelle : une soumission payante (€380) offerte'}
+      {on:true, text:'Profil créatif certifié PAP (badge · ville · bouton contact · dès le premier éditorial)'}
     ]
   },
   comparison: {
@@ -927,6 +971,7 @@ fr: {
 es: {
   business:'NEGOCIOS', contact:'CONTACTO', about:'ACERCA DE', subscribe:'SUSCRIBIRSE',
   monthly:'MENSUAL', yearly:'ANUAL', save2mo:'2 MESES GRATIS', perYear:'/ año',
+  ypTag:'SOLO PREMIUM ANUAL', ypTitle:'No incluido en Premium mensual', ypWaiver:'Una propuesta de pago exenta', ypWaiverSub:'Una vez por año de suscripción · excluye el tipo de €790', ypCollab:'Colaboradores de Instagram a tu elección', ypCollabSub:'Hasta 5 · cualquier miembro de PAP, incluso gratuito · editable tras el envío', ypValue:'{price} al año · una sola propuesta te ahorra €380', ypHint:'Solo con pago anual · toca para ver los precios anuales',
   heroTitle:'SUSCRIBIRSE',
   heroDesc:'Conviértase en miembro de PAP Magazine y desbloquee editoriales exclusivos, feedback de submissions, solicitud de Pull-Letter y más beneficios premium.',
   tierFree:'NIVEL 1', tierStandard:'NIVEL 2', tierPremium:'NIVEL 3',
@@ -960,6 +1005,8 @@ es: {
       {on:false, text:'Solicitud de Pull-Letter no disponible'}
     ],
     prem: [
+      {on:true, y:true, text:'Plan anual: una propuesta de pago (€380) exenta'},
+      {on:true, y:true, text:'Premium anual: elige tú mismo 5 colaboradores de Instagram (cualquier miembro de PAP, gratuitos incluidos · editables tras el envío)'},
       {on:true, text:'Ver todos los editoriales (archivo completo)'},
       {on:true, text:'Navegación sin anuncios'},
       {on:true, text:'Enviar trabajos'},
@@ -968,10 +1015,8 @@ es: {
       {on:true, text:'Descarga de imágenes, imágenes con logo y tearsheets'},
       {on:true, text:'Editar tu envío mientras está en revisión'},
       {on:true, text:'Editar los créditos tras la publicación (3 veces por editorial)'},
-      {on:true, text:'Premium anual: elige tú mismo 5 colaboradores de Instagram (cualquier miembro de PAP, gratuitos incluidos · editables tras el envío)'},
       {on:true, text:'Revisión prioritaria: resultado en 2 días hábiles (hasta 7 para el resto)'},
-      {on:true, text:'Perfil de creador verificado por PAP (insignia · ciudad · botón de contacto · desde el primer editorial)'},
-      {on:true, text:'Plan anual: una propuesta de pago (€380) exenta'}
+      {on:true, text:'Perfil de creador verificado por PAP (insignia · ciudad · botón de contacto · desde el primer editorial)'}
     ]
   },
   comparison: {
@@ -997,6 +1042,7 @@ es: {
 ja: {
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'購読',
   monthly:'月間', yearly:'年間', save2mo:'2ヶ月無料', perYear:'/ 年',
+  ypTag:'年間プレミアム限定', ypTitle:'月額プレミアムにはない特典', ypWaiver:'有料応募1回免除', ypWaiverSub:'購読1年ごとに1回・€790タイプは対象外', ypCollab:'Instagramコラボレーターを自分で指定', ypCollabSub:'最大5名・PAP会員なら無料会員も可・提出後も変更可', ypValue:'年{price}・応募1回だけで€380の節約', ypHint:'年払いのみ・タップで年間価格を表示',
   heroTitle:'購読',
   heroDesc:'無料会員登録で最新10本のエディトリアルをご覧いただけます。Standard会員は直近3四半期（約6～9か月）、Premium会員は全アーカイブをご覧いただけます。サブミッションフィードバックやフルレターコンサルティングなどのプロフェッショナルな特典が必要な方は、ぜひメンバーになってください。',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -1030,6 +1076,8 @@ ja: {
       {on:false, text:'フルレター問い合わせ不可'}
     ],
     prem: [
+      {on:true, y:true, text:'年間プラン：有料応募（€380）1回免除'},
+      {on:true, y:true, text:'年間プレミアム: Instagramコラボレーター5名を自分で指定(PAP会員なら無料会員も可・提出後も変更可)'},
       {on:true, text:'全エディトリアル閲覧（全アーカイブ）'},
       {on:true, text:'広告なしで閲覧'},
       {on:true, text:'作品提出可能'},
@@ -1038,10 +1086,8 @@ ja: {
       {on:true, text:'画像・ロゴ入り画像・ティアシートのダウンロード'},
       {on:true, text:'審査待ちの提出内容を直接修正'},
       {on:true, text:'掲載後のクレジット修正(エディトリアル1件につき3回)'},
-      {on:true, text:'年間プレミアム: Instagramコラボレーター5名を自分で指定(PAP会員なら無料会員も可・提出後も変更可)'},
       {on:true, text:'優先審査：営業日2日以内に結果（通常は最大7営業日）'},
-      {on:true, text:'PAP認証クリエイタープロフィール（バッジ・活動都市・連絡ボタン・初掲載から）'},
-      {on:true, text:'年間プラン：有料応募（€380）1回免除'}
+      {on:true, text:'PAP認証クリエイタープロフィール（バッジ・活動都市・連絡ボタン・初掲載から）'}
     ]
   },
   comparison: {
@@ -1067,6 +1113,7 @@ ja: {
 zh: {
   business:'商务', contact:'联系', about:'关于', subscribe:'订阅',
   monthly:'月付', yearly:'年付', save2mo:'免费2个月', perYear:'/ 年',
+  ypTag:'年度高级会员专享', ypTitle:'月付高级会员没有的权益', ypWaiver:'免除1次付费投稿', ypWaiverSub:'每个订阅年度1次 · 不含€790类型', ypCollab:'自行指定 Instagram 合作者', ypCollabSub:'最多5位 · 任何 PAP 会员（含免费会员）· 提交后可修改', ypValue:'每年 {price} · 只投稿一次就省下 €380', ypHint:'仅限年付 · 点击查看年付价格',
   heroTitle:'订阅',
   heroDesc:'免费注册即可查看最新10篇专题。Standard会员可查看最近三个季度（约6～9个月），Premium会员可查看全部档案。当您需要投稿反馈、Pull-Letter咨询等专业权益时，欢迎成为订阅会员。',
   tierFree:'等级 1', tierStandard:'等级 2', tierPremium:'等级 3',
@@ -1100,6 +1147,8 @@ zh: {
       {on:false, text:'无Pull-Letter咨询'}
     ],
     prem: [
+      {on:true, y:true, text:'年付方案：免除1次付费投稿（€380）'},
+      {on:true, y:true, text:'年度高级会员：自行指定 5 位 Instagram 合作者(任何 PAP 会员，含免费会员 · 提交后可修改)'},
       {on:true, text:'浏览所有编辑内容（完整存档）'},
       {on:true, text:'无广告浏览'},
       {on:true, text:'可提交作品'},
@@ -1108,10 +1157,8 @@ zh: {
       {on:true, text:'下载图片、带Logo图片与内页样张'},
       {on:true, text:'审核等待期间自行修改投稿'},
       {on:true, text:'发布后自行修改署名(每篇 3 次)'},
-      {on:true, text:'年度高级会员：自行指定 5 位 Instagram 合作者(任何 PAP 会员，含免费会员 · 提交后可修改)'},
       {on:true, text:'优先审核：2个工作日内出结果（其他最多7个工作日）'},
-      {on:true, text:'PAP认证创作者主页（徽章·活动城市·联系按钮·首次刊登起）'},
-      {on:true, text:'年付方案：免除1次付费投稿（€380）'}
+      {on:true, text:'PAP认证创作者主页（徽章·活动城市·联系按钮·首次刊登起）'}
     ]
   },
   comparison: {
@@ -1137,6 +1184,7 @@ zh: {
 ru:{
   business:'БИЗНЕС', contact:'КОНТАКТ', about:'О НАС', subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',
   monthly:'МЕСЯЦ', yearly:'ГОД', save2mo:'2 МЕСЯЦА БЕСПЛАТНО', perYear:'/ год',
+  ypTag:'ТОЛЬКО ГОДОВОЙ PREMIUM', ypTitle:'Нет в месячном Premium', ypWaiver:'Одна платная заявка бесплатно', ypWaiverSub:'Раз в год подписки · кроме типа за €790', ypCollab:'Соавторы в Instagram на ваш выбор', ypCollabSub:'До 5 человек · любой участник PAP, даже бесплатный · можно изменить после отправки', ypValue:'{price} в год · одна заявка уже экономит €380', ypHint:'Только при оплате за год · нажмите, чтобы увидеть цены',
   heroTitle:'ПОДПИСКА',
   heroDesc:'Бесплатная регистрация открывает 10 последних материалов. Standard — последние три квартала (около 6–9 месяцев), Premium — весь архив. Когда будете готовы к профессиональным преимуществам, станьте участником.',
   tierFree:'УРОВЕНЬ 1', tierStandard:'УРОВЕНЬ 2', tierPremium:'УРОВЕНЬ 3',
@@ -1170,6 +1218,8 @@ ru:{
       {on:false, text:'Нет запроса Pull-Letter'}
     ],
     prem: [
+      {on:true, y:true, text:'Годовой план: одна платная заявка (€380) без оплаты'},
+      {on:true, y:true, text:'Годовой Premium: сами выбираете 5 соавторов в Instagram (любые участники PAP, включая бесплатных · можно изменить после отправки)'},
       {on:true, text:'Просмотр всех редакционных материалов (полный архив)'},
       {on:true, text:'Просмотр без рекламы'},
       {on:true, text:'Возможность подачи работ'},
@@ -1178,10 +1228,8 @@ ru:{
       {on:true, text:'Загрузка изображений, изображений с логотипом и тиршитов'},
       {on:true, text:'Редактирование заявки во время ожидания проверки'},
       {on:true, text:'Редактирование credits после публикации (3 раза на эдиториал)'},
-      {on:true, text:'Годовой Premium: сами выбираете 5 соавторов в Instagram (любые участники PAP, включая бесплатных · можно изменить после отправки)'},
       {on:true, text:'Приоритетное рассмотрение: результат в течение 2 рабочих дней (у остальных до 7)'},
-      {on:true, text:'Верифицированный профиль автора PAP (бейдж · город · кнопка связи · с первой публикации)'},
-      {on:true, text:'Годовой план: одна платная заявка (€380) без оплаты'}
+      {on:true, text:'Верифицированный профиль автора PAP (бейдж · город · кнопка связи · с первой публикации)'}
     ]
   },
   comparison: {
@@ -1213,7 +1261,9 @@ function renderFeatures(containerId, features) {
   var html = '';
   for (var i = 0; i < features.length; i++) {
     var f = features[i];
-    if (f.on) {
+    if (f.on && f.y) {
+      html += '<li class="yp">' + checkIcon + '<span class="feat-text">' + f.text + '</span></li>';
+    } else if (f.on) {
       html += '<li>' + checkIcon + '<span class="feat-text">' + f.text + '</span></li>';
     } else {
       html += '<li class="disabled">' + crossIcon + '<span class="feat-text">' + f.text + '</span></li>';
@@ -1337,6 +1387,13 @@ function updatePrices() {
     stdOrig.textContent = '';
     stdEl.innerHTML = '<span class="currency">' + sym + '</span>' + formatPrice(p.std_m) + '<span class="period">' + periodText + '</span>';
   }
+
+  // 연간 프리미엄 전용 혜택 상자
+  var yp = document.getElementById('yearlyPerks');
+  if (yp) yp.classList.toggle('on', isYearly);
+  var ypv = document.getElementById('ypValue');
+  var ypTpl = d.ypValue || (L.en && L.en.ypValue) || '';
+  if (ypv) ypv.textContent = ypTpl.replace('{price}', sym + formatPrice(p.prem_y));
 
   // Premium
   var premEl = document.getElementById('premPrice');
