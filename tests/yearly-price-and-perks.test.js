@@ -14,6 +14,7 @@
  *  8. 마이페이지 멤버십 카드: 연간 혜택 줄 9개 언어, 프리미엄이면 fee-waiver.yearlyPremium 으로 켠다
  *  9. 가입 화면(auth.html): 없는 혜택(비하인드·1:1 피드백·이벤트 초대, 스탠다드의 Pull Letter·우선 리뷰)을 더 이상 적지 않는다
  * 10. 구독 페이지 연간 혜택 상자 (2026-09-25 "연간 혜택이 눈에 띄게"): 토글 바로 아래 금색 상자 + 프리미엄 카드 맨 위 두 줄
+ * 11. 구독 페이지 언어 블록이 영어 복사본으로 남지 않는다 (2026-09-25 발견: 독일어 38줄이 영어, 프랑스어 월간/연간 라벨 없음)
  */
 const fs = require('fs');
 const path = require('path');
@@ -190,6 +191,33 @@ console.log('\n=== 10. 구독 페이지: 연간 프리미엄 혜택 상자 ===')
   const y2 = els.yearlyPerks._cls.has('on'), v2 = els.ypValue.textContent;
   t('연간: 상자 켜짐 + 가치 문구 €89.90', y1 && v1.includes('€89.90') && !v1.includes('{price}'), v1);
   t('월간: 상자 꺼짐(안내 보임), 가치 문구는 영어로 €89.90', !y2 && v2.includes('€89.90') && /a year/.test(v2), v2);
+}
+
+console.log('\n=== 11. 구독 페이지: 언어 블록에 영어 복사본이 남지 않는다 ===');
+{
+  const sub = R('frontend/subscribe.html');
+  const ctx = {}; vm.runInNewContext(sub.match(/var L = \{[\s\S]*?\n\};/)[0] + '\nthis.out = L;', ctx);
+  const D = ctx.out;
+  const flat = (o, p, out) => {
+    if (typeof o === 'string') { out[p] = o; return out; }
+    if (Array.isArray(o)) { o.forEach((x, i) => flat(x, p + '[' + i + ']', out)); return out; }
+    if (o && typeof o === 'object') { for (const k in o) flat(o[k], p ? p + '.' + k : k, out); }
+    return out;
+  };
+  // 브랜드·등급 이름과 메뉴 고유명사는 모든 언어에서 영어 그대로 쓴다(일본어 블록과 같은 규칙).
+  const BRAND = /^(BUSINESS|CONTACT|ABOUT|SUBMISSION|PULL-LETTER|TIER \d|FREE|STANDARD|PREMIUM|No)$/;
+  const en = flat(D.en, '', {});
+  const bad = [];
+  ['de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].forEach((l) => {
+    const d = flat(D[l], '', {});
+    Object.keys(en).forEach((k) => { if (d[k] === en[k] && /[A-Za-z]{2,}/.test(en[k]) && !BRAND.test(en[k])) bad.push(l + ':' + k); });
+  });
+  t('영어와 똑같은 UI 문구가 다른 언어 블록에 없다 (브랜드명 제외)', bad.length === 0, bad.slice(0, 8).join(', '));
+  const need = ['monthly', 'yearly', 'save2mo', 'perYear', 'perMonth'];
+  const miss = [];
+  ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].forEach((l) => need.forEach((k) => { if (!D[l][k]) miss.push(l + ':' + k); }));
+  t('월간·연간·2개월 무료·기간 표시 라벨 9개 언어 (영어로 떨어지지 않게)', miss.length === 0, miss.join(', '));
+  t('독일어 카드·비교표가 독일어', D.de.features.prem[2].text.startsWith('Alle Editorials') && D.de.comparison.rows[0][0] === 'Registrierung nötig' && D.de.save2mo === '2 MONATE GRATIS');
 }
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
