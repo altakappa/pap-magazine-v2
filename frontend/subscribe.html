@@ -1261,7 +1261,8 @@ var currentBilling = 'monthly';
 //   · PayPal 체크아웃이 고객에게 자국 통화 환산액을 보여주므로 표시는 € 하나로 족하다.
 // 언어별로 나눠 두었던 표를 값 하나로 접었다. 언어를 추가해도 가격은 안 갈라진다.
 // 2026-09-24 도메니코 — 연간 = 월간 × 10 (정확히 '2개월 무료'). 종전 연간가(45.99 · 74.99 유로)는 근거 없는 약 30% 할인이었다.
-//   PayPal 연간 플랜도 같은 날 새로 만든다(PAYPAL_PLANS_JSON 의 standard_yearly·premium_yearly 교체).
+//   PayPal 연간 플랜은 새로 만들지 않고 기존 플랜의 가격만 고쳤다(2026-09-25, 대시보드 '가격 → 업데이트').
+//   플랜 ID 가 그대로라 PAYPAL_PLANS_JSON 은 바꾸지 않는다. 가격을 또 바꿀 때도 같은 방법이 먼저다.
 var EUR_PRICES = { symbol:'€', std_m:5.49, prem_m:8.99, std_y:54.90, prem_y:89.90 };
 var PRICES = new Proxy({}, { get: function(){ return EUR_PRICES; } });
 
