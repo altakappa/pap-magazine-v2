@@ -1829,7 +1829,7 @@ function wrapMarketing({ preheader, body, unsubUrl, lang }) {
 }
 
 // ── Send function ──
-async function sendEmail(to, template) {
+async function sendEmail(to, template, opts) {
   // Skip if SMTP is not configured
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     /* 2026-08-07 — 사유를 명시한다. 예전엔 { skipped:true } 만 돌려줘서
@@ -1837,6 +1837,19 @@ async function sendEmail(to, template) {
        "왜 안 갔지" 를 로그만 보고는 절대 알 수 없다. */
     console.error('[EMAIL] SMTP 미설정 — 발송 건너뜀:', to);
     return { skipped: true, error: 'SMTP 미설정 (SMTP_USER/SMTP_PASS)' };
+  }
+
+  /* 2026-09-25 — 발송 금지 목록 (SES 반송·스팸 신고). 영구 반송 주소엔 아무것도,
+   * 스팸 신고 주소엔 홍보·소식을 보내지 않는다. 인증번호·결제 확인은 호출부가
+   * { transactional: true } 를 넘기면 신고 주소에도 간다. 조회 실패는 막지 않는다. */
+  try {
+    const why = await require('./emailSuppression').suppressionFor(to, { transactional: !!(opts && opts.transactional) });
+    if (why) {
+      console.warn('[EMAIL] 발송 금지 주소 — 건너뜀:', why, to);
+      return { skipped: true, suppressed: why, error: 'suppressed: ' + why };
+    }
+  } catch (supErr) {
+    console.error('[EMAIL] 금지 목록 확인 실패 — 보낸다:', (supErr && supErr.message) || supErr);
   }
 
   try {

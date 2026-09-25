@@ -169,7 +169,7 @@ module.exports = async function handler(req, res) {
               { name: profile.display_name || profile.email },
               profile.subscription_plan,
               resolveEmailLang(profile)
-            ));
+            ), { transactional: true });
           } catch (_e) { console.error('[portone-webhook] 구독 메일 실패:', (_e && _e.message) || _e); }
         }
 

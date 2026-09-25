@@ -95,7 +95,7 @@ module.exports = async function handler(req, res) {
     );
 
     // Send the code via email
-    const result = await sendEmail(email.trim(), buildVerificationEmail(code));
+    const result = await sendEmail(email.trim(), buildVerificationEmail(code), { transactional: true });
 
     if (result.skipped) {
       // SMTP not configured — log warning but do NOT expose code in response

@@ -22,6 +22,7 @@ const { handleCors } = require('../_lib/cors');
 const { sendEmail, templates } = require('../_lib/email');
 const { resolveEmailLang } = require('../_lib/emailLocale');
 const { hasActivePlan } = require('../_lib/subscriptionAccess');
+const { getSuppressionMap, blockReason } = require('../_lib/emailSuppression');   // 반송·신고 주소 (2026-09-25)
 
 /* 2026-09-25 — 50 → 5. 50통을 한꺼번에 던지던 것이 Gmail 차단(421·454)의 원인이었다
  * (816통 중 191통 실패). 트랜스포터 풀(연결 2·초당 4통)이 실제 속도를 정하고,
@@ -167,6 +168,21 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
         }
       }
 
+      /* 3-d) 발송 금지 주소 빼기 (2026-09-25, SES 반송·스팸 신고). 소식 메일이라 transactional 아님.
+       * sendEmail 도 한 번 더 막지만, 여기서 미리 빼야 email_log 에 '실패' 로 쌓이지 않는다. */
+      let suppressedCount = 0;
+      {
+        const supMap = await getSuppressionMap();
+        if (supMap.size) {
+          recipientList = recipientList.filter((r) => {
+            const hit = blockReason(supMap.get(String(r.email || '').toLowerCase().trim()), false);
+            if (hit) suppressedCount++;
+            return !hit;
+          });
+          if (suppressedCount) console.log('[cron/send-due-campaigns] 발송 금지 주소 제외:', suppressedCount, campaign.id);
+        }
+      }
+
       let sent = 0, failed = 0;
       const lateRetry = [];   // 일시 오류가 두 번 난 수신자 — 끝에서 한 번 더
 
@@ -303,7 +319,7 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
         })
         .eq('id', campaign.id);
 
-      summary.push({ id: campaign.id, sent, failed, recipients: recipientList.length });
+      summary.push({ id: campaign.id, sent, failed, recipients: recipientList.length, suppressed: suppressedCount });
     } catch (err) {
       console.error('[cron/send-due-campaigns] campaign failed:', campaign.id, err.message || err);
       await supabaseAdmin
