@@ -790,16 +790,19 @@ const PULLLETTER_EDITORIAL_REMINDER_I18N = {
   de: { subject: 'Das Editorial zu Ihrer Pull-Letter steht aus', heading: 'Bitte reichen Sie das fertige Editorial ein', body: 'Seit der Ausstellung Ihrer Pull-Letter sind 4 Wochen vergangen. Wenn das Shooting abgeschlossen ist, reichen Sie das fertige Editorial über My Page → PULL-LETTERS → „Fertiges Editorial einreichen“ ein. Eine neue Pull-Letter kann erst nach dieser Einreichung angefordert werden.', cta: 'EDITORIAL EINREICHEN' },
 };
 
+/* 2026-09-25 도메니코 확정 — 승인·발급이 한 버튼이 되어 신청자가 받는 "승인 메일"은 이것 1통.
+   톤: 사용법을 구체적으로 설명하지 않고 "이 레터로 촬영이 원활하도록" 만 말한다.
+   PAP 가 의상 전달을 조율한다는 약속은 절대 넣지 않는다. PDF 는 버튼(마이페이지)으로만 전달. */
 const PULLLETTER_ISSUED_I18N = {
-  ko: { subject: 'Pull-Letter가 발급되었습니다', heading: 'Pull-Letter 발급 완료', body: '요청하신 Pull-Letter가 발급되었습니다. 마이페이지에서 PDF를 다운로드하실 수 있습니다. 이 레터를 활용해 이번 촬영을 더 원활하게 진행하시길 바랍니다. 촬영을 마치면 마이페이지 → PULL-LETTERS 의 "완성된 에디토리얼 제출하기"로 완성 에디토리얼을 제출해 주세요. 일반 서브미션과 같은 절차로 심사됩니다.', cta: 'PDF 다운로드' },
-  en: { subject: 'Your Pull-Letter Has Been Issued', heading: 'Pull-Letter Issued', body: 'Your pull-letter has been issued. You can download the PDF from your My Page. Use this letter to help your shoot run smoothly. Once the shoot is done, submit the finished editorial via My Page → PULL-LETTERS → "Submit finished editorial". It goes through the same review as a regular submission.', cta: 'DOWNLOAD PDF' },
-  it: { subject: 'La tua Pull-Letter è stata emessa', heading: 'Pull-Letter emessa', body: 'La tua pull-letter è stata emessa. Puoi scaricare il PDF dalla tua My Page. Usa questa lettera per far procedere lo shooting senza intoppi. A shooting concluso, invia l\'editoriale finito da My Page → PULL-LETTERS → "Invia l\'editoriale finito". Segue la stessa revisione di una submission normale.', cta: 'SCARICA PDF' },
-  fr: { subject: 'Votre Pull-Letter a été émise', heading: 'Pull-Letter émise', body: 'Votre pull-letter a été émise. Vous pouvez télécharger le PDF depuis votre My Page. Servez-vous de cette lettre pour faciliter le bon déroulement de votre shooting. Une fois le shooting terminé, soumettez l\'éditorial final via My Page → PULL-LETTERS → « Soumettre l\'éditorial final ». Il suit la même révision qu\'une soumission classique.', cta: 'TÉLÉCHARGER LE PDF' },
-  es: { subject: 'Tu Pull-Letter ha sido emitida', heading: 'Pull-Letter emitida', body: 'Tu pull-letter ha sido emitida. Puedes descargar el PDF desde tu My Page. Usa esta carta para que tu sesión salga sin contratiempos. Cuando termine la sesión, envía el editorial terminado desde My Page → PULL-LETTERS → "Enviar el editorial terminado". Pasa por la misma revisión que un envío normal.', cta: 'DESCARGAR PDF' },
-  ja: { subject: 'Pull-Letterが発行されました', heading: 'Pull-Letter 発行完了', body: 'Pull-Letterが発行されました。マイページからPDFをダウンロードできます。このレターを、撮影をスムーズに進めるためにお役立てください。 撮影が終わったら、マイページ → PULL-LETTERS の「完成エディトリアルを提出」から完成エディトリアルを提出してください。通常のサブミッションと同じ審査を受けます。', cta: 'PDFをダウンロード' },
-  zh: { subject: '您的 Pull-Letter 已签发', heading: 'Pull-Letter 已签发', body: '您的 pull-letter 已签发。您可以在“我的页面”下载 PDF。希望这封信函能帮助您的拍摄顺利进行。 拍摄完成后，请通过“我的页面 → PULL-LETTERS → 提交完整作品”提交完整作品。将按与普通投稿相同的流程审核。', cta: '下载 PDF' },
-  ru: { subject: 'Ваш Pull-Letter выписан', heading: 'Pull-Letter выписан', body: 'Ваш pull-letter выписан. Вы можете скачать PDF в личном кабинете (My Page). Пусть это письмо поможет вашей съёмке пройти гладко. Когда съёмка завершена, отправьте готовый эдиториал через My Page → PULL-LETTERS → «Отправить готовый эдиториал». Он проходит ту же проверку, что и обычная заявка.', cta: 'СКАЧАТЬ PDF' },
-  de: { subject: 'Ihre Pull-Letter wurde ausgestellt', heading: 'Pull-Letter ausgestellt', body: 'Ihre Pull-Letter wurde ausgestellt. Sie können das PDF in Ihrer My Page herunterladen. Nutzen Sie diese Letter, damit Ihr Shooting reibungslos verläuft. Wenn das Shooting abgeschlossen ist, reichen Sie das fertige Editorial über My Page → PULL-LETTERS → „Fertiges Editorial einreichen“ ein. Es durchläuft dieselbe Prüfung wie eine normale Einreichung.', cta: 'PDF HERUNTERLADEN' },
+  ko: {"subject": "[PAP Magazine] Pull-Letter가 승인되었습니다", "heading": "축하합니다. Pull-Letter가 승인되었습니다", "body1": "\"{title}\" 촬영을 위한 PAP Magazine 공식 Pull-Letter가 발급되었습니다.", "body1NoTitle": "요청하신 촬영을 위한 PAP Magazine 공식 Pull-Letter가 발급되었습니다.", "body2": "이 레터가 이번 촬영을 원활하게 진행하는 데 도움이 되길 바랍니다.", "cta": "풀레터 PDF 받기", "body3": "촬영을 마치면 완성된 에디토리얼을 PAP에 보내주세요. 마이페이지 PULL-LETTERS에서 바로 제출할 수 있습니다.", "signoff": "멋진 촬영이 되길 바랍니다.", "team": "PAP Magazine 에디토리얼 팀"},
+  en: {"subject": "[PAP Magazine] Your Pull-Letter Has Been Approved", "heading": "Congratulations. Your Pull-Letter has been approved", "body1": "Your official PAP Magazine Pull-Letter for \"{title}\" has been issued.", "body1NoTitle": "Your official PAP Magazine Pull-Letter for your shoot has been issued.", "body2": "We hope it helps your shoot run smoothly.", "cta": "GET YOUR PULL-LETTER PDF", "body3": "Once the shoot is done, send us the finished editorial. You can submit it directly from My Page, under PULL-LETTERS.", "signoff": "Wishing you a wonderful shoot.", "team": "PAP Magazine Editorial Team"},
+  it: {"subject": "[PAP Magazine] La tua Pull-Letter è stata approvata", "heading": "Congratulazioni. La tua Pull-Letter è stata approvata", "body1": "La Pull-Letter ufficiale di PAP Magazine per \"{title}\" è stata emessa.", "body1NoTitle": "La Pull-Letter ufficiale di PAP Magazine per il tuo shooting è stata emessa.", "body2": "Speriamo che ti aiuti a realizzare lo shooting senza intoppi.", "cta": "SCARICA LA PULL-LETTER", "body3": "A shooting concluso, inviaci l’editoriale finito. Puoi farlo direttamente dalla tua My Page, nella sezione PULL-LETTERS.", "signoff": "Ti auguriamo un ottimo shooting.", "team": "Il team editoriale di PAP Magazine"},
+  fr: {"subject": "[PAP Magazine] Votre Pull-Letter a été approuvée", "heading": "Félicitations. Votre Pull-Letter a été approuvée", "body1": "La Pull-Letter officielle de PAP Magazine pour « {title} » a été émise.", "body1NoTitle": "La Pull-Letter officielle de PAP Magazine pour votre shooting a été émise.", "body2": "Nous espérons qu’elle facilitera le bon déroulement de votre shooting.", "cta": "TÉLÉCHARGER LA PULL-LETTER", "body3": "Une fois le shooting terminé, envoyez-nous l’éditorial final. Vous pouvez le soumettre directement depuis votre My Page, rubrique PULL-LETTERS.", "signoff": "Nous vous souhaitons un très beau shooting.", "team": "L’équipe éditoriale de PAP Magazine"},
+  es: {"subject": "[PAP Magazine] Tu Pull-Letter ha sido aprobada", "heading": "Enhorabuena. Tu Pull-Letter ha sido aprobada", "body1": "La Pull-Letter oficial de PAP Magazine para \"{title}\" ha sido emitida.", "body1NoTitle": "La Pull-Letter oficial de PAP Magazine para tu sesión ha sido emitida.", "body2": "Esperamos que te ayude a que la sesión salga sin contratiempos.", "cta": "DESCARGAR LA PULL-LETTER", "body3": "Cuando termines la sesión, envíanos el editorial terminado. Puedes enviarlo directamente desde tu My Page, en PULL-LETTERS.", "signoff": "Te deseamos una sesión estupenda.", "team": "Equipo editorial de PAP Magazine"},
+  ja: {"subject": "[PAP Magazine] Pull-Letterが承認されました", "heading": "おめでとうございます。Pull-Letterが承認されました", "body1": "「{title}」の撮影のためのPAP Magazine公式Pull-Letterを発行しました。", "body1NoTitle": "ご依頼の撮影のためのPAP Magazine公式Pull-Letterを発行しました。", "body2": "このレターが、撮影をスムーズに進めるお役に立てば幸いです。", "cta": "Pull-Letter PDFを受け取る", "body3": "撮影が終わりましたら、完成したエディトリアルをPAPにお送りください。マイページのPULL-LETTERSから直接提出できます。", "signoff": "素敵な撮影になりますように。", "team": "PAP Magazine エディトリアルチーム"},
+  zh: {"subject": "[PAP Magazine] 您的 Pull-Letter 已获批准", "heading": "恭喜，您的 Pull-Letter 已获批准", "body1": "为“{title}”拍摄签发的 PAP Magazine 官方 Pull-Letter 已发出。", "body1NoTitle": "为您的拍摄签发的 PAP Magazine 官方 Pull-Letter 已发出。", "body2": "希望它能帮助您的拍摄顺利进行。", "cta": "获取 Pull-Letter PDF", "body3": "拍摄完成后，请将完整的作品发给 PAP。您可以在“我的页面”的 PULL-LETTERS 中直接提交。", "signoff": "祝拍摄顺利精彩。", "team": "PAP Magazine 编辑团队"},
+  ru: {"subject": "[PAP Magazine] Ваш Pull-Letter одобрен", "heading": "Поздравляем. Ваш Pull-Letter одобрен", "body1": "Официальный Pull-Letter от PAP Magazine для «{title}» выписан.", "body1NoTitle": "Официальный Pull-Letter от PAP Magazine для вашей съёмки выписан.", "body2": "Надеемся, он поможет вашей съёмке пройти гладко.", "cta": "ПОЛУЧИТЬ PULL-LETTER", "body3": "Когда съёмка завершится, пришлите нам готовый эдиториал. Отправить его можно прямо в My Page, в разделе PULL-LETTERS.", "signoff": "Желаем прекрасной съёмки.", "team": "Редакция PAP Magazine"},
+  de: {"subject": "[PAP Magazine] Ihre Pull-Letter wurde genehmigt", "heading": "Herzlichen Glückwunsch. Ihre Pull-Letter wurde genehmigt", "body1": "Die offizielle Pull-Letter von PAP Magazine für „{title}“ wurde ausgestellt.", "body1NoTitle": "Die offizielle Pull-Letter von PAP Magazine für Ihr Shooting wurde ausgestellt.", "body2": "Wir hoffen, sie hilft Ihnen, Ihr Shooting reibungslos umzusetzen.", "cta": "PULL-LETTER HERUNTERLADEN", "body3": "Wenn das Shooting abgeschlossen ist, senden Sie uns das fertige Editorial. Sie können es direkt in Ihrer My Page unter PULL-LETTERS einreichen.", "signoff": "Wir wünschen Ihnen ein wunderbares Shooting.", "team": "Die Redaktion von PAP Magazine"},
 };
 
 /* ── 접수 확인·환영 메일 i18n (2026-08-26) ─────────────────────────
@@ -1113,18 +1116,25 @@ const templates = {
   },
 
   // 7b. Pull-letter issued (PDF ready to download) — B-3
-  pullletterIssued(user, note, lang) {
+  pullletterIssued(user, note, lang, opts) {
     var L = PULLLETTER_ISSUED_I18N[lang] || PULLLETTER_ISSUED_I18N.en;
     var greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
     var detailsLabel = (PULLLETTER_I18N[lang] || PULLLETTER_I18N.en).accepted.detailsLabel;
+    var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+    var title = opts && opts.title ? String(opts.title).trim() : '';
+    var body1 = title ? L.body1.replace('{title}', '<strong style="color:#fff;">' + esc(title) + '</strong>') : L.body1NoTitle;
     var noteHtml = note ? ('<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #4CAF50;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">' + detailsLabel + '</span><br><span style="color:#ccc;font-size:14px;">' + note + '</span></div>') : '';
     var html = '<h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">' + L.heading + '</h2>'
       + '<p>' + greet + '</p>'
-      + '<p>' + L.body + '</p>'
+      + '<p>' + body1 + '</p>'
+      + '<p>' + L.body2 + '</p>'
       + noteHtml
-      + '<a href="' + FRONTEND_URL + '/mypage#mp-pullletters" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">' + L.cta + '</a>';
+      + '<a href="' + FRONTEND_URL + '/mypage#mp-pullletters" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin:8px 0 20px;">' + L.cta + '</a>'
+      + '<p>' + L.body3 + '</p>'
+      + '<p style="margin-top:24px;">' + L.signoff + '<br><span style="color:#999;">' + L.team + '</span></p>';
     return { subject: L.subject, html: wrapHtml(html, lang) };
   },
+
 
   // 7e. 기여자 프로필 연락 버튼 → 크리에이터에게 전달 (2026-09-13)
   contributorContact(creator, sender, handle, message, lang) {

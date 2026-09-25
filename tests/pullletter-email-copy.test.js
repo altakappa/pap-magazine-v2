@@ -46,6 +46,21 @@ LANGS.forEach(function (lang) {
   ok(/PDF/.test(acc) && /PDF/.test(rec), lang + ' accepted/received should mention the PDF letter');
 });
 
+// 2b) 승인 메일(=발급 메일) 구성 (2026-09-25 도메니코 확정 초안)
+//     축하 제목, 프로젝트명 첫 문장(이스케이프), 원활 한 줄, PDF 버튼, 짧은 제출 요청, 맺음말
+LANGS.forEach(function (lang) {
+  const r = templates.pullletterIssued({ name: 'Tester' }, '', lang, { title: 'Echo <Form>' });
+  ok(r.html.indexOf('Echo &lt;Form&gt;') !== -1 && r.html.indexOf('Echo <Form>') === -1, lang + ' issued mail inserts escaped project title');
+  ok(/mypage#mp-pullletters/.test(r.html), lang + ' issued mail has PDF button to My Page');
+  ok(!/<a [^>]*\.pdf/i.test(r.html), lang + ' issued mail does not link/attach the PDF directly (button only)');
+  const r2 = templates.pullletterIssued({ name: 'Tester' }, '', lang);
+  ok(r2.html.indexOf('{title}') === -1, lang + ' issued mail without title has no raw placeholder');
+});
+ok(/승인/.test(templates.pullletterIssued({}, '', 'ko').subject), 'ko subject says 승인');
+ok(/Approved/.test(templates.pullletterIssued({}, '', 'en').subject), 'en subject says Approved');
+const REVJS = fs.readFileSync(path.join(ROOT, 'api/pullletters/[id]/review.js'), 'utf8');
+ok(/pullletterIssued\(\{ name: profile\.name \}, reviewNote, _lang, \{ title: pullLetter\.title \}\)/.test(REVJS), 'review.js passes project title to issued mail');
+
 // 3) 풀레터 페이지가 it/fr/ja/zh 에서 "피드백·컨설팅 서비스" 로 잘못 설명하지 않는다
 const html = fs.readFileSync(path.join(ROOT, 'frontend/pullletter.html'), 'utf8');
 ['servizio di consulenza', 'service de consultation', 'コンサルティングサービス', '专业咨询服务', 'Il feedback pull-letter', 'Le feedback pull-letter', 'フルレターフィードバック', 'Pull-Letter反馈']

@@ -144,7 +144,7 @@ module.exports = async function handler(req, res) {
       const _lang = resolveEmailLang(profile);
       const isPositive = status === 'accepted' || status === 'approved' || status === 'issued';
       const tpl = status === 'issued'
-        ? templates.pullletterIssued({ name: profile.name }, reviewNote, _lang)
+        ? templates.pullletterIssued({ name: profile.name }, reviewNote, _lang, { title: pullLetter.title })
         : status === 'revision'
           ? templates.pullletterRevision({ name: profile.name }, reviewNote, _lang)
           : isPositive
