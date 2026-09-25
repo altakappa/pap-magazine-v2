@@ -150,7 +150,7 @@ console.log('\n=== 9. 가입 화면 플랜 문구 ===');
 console.log('\n=== 10. 구독 페이지: 연간 프리미엄 혜택 상자 ===');
 {
   const sub = R('frontend/subscribe.html');
-  const KEYS = ['ypTag', 'ypTitle', 'ypWaiver', 'ypWaiverSub', 'ypCollab', 'ypCollabSub', 'ypValue', 'ypHint'];
+  const KEYS = ['ypTag', 'ypTitle', 'ypWaiver', 'ypWaiverSub', 'ypCollab', 'ypCollabSub', 'ypValue', 'ypValue2', 'ypHint'];
   const iToggle = sub.indexOf('<div class="billing-toggle">');
   const iBox = sub.indexOf('<div class="yearly-perks" id="yearlyPerks"');
   const iGrid = sub.indexOf('<div class="pricing-grid">');
@@ -163,9 +163,11 @@ console.log('\n=== 10. 구독 페이지: 연간 프리미엄 혜택 상자 ===')
   const ctx = {}; vm.runInNewContext(sub.match(/var L = \{[\s\S]*?\n\};/)[0] + '\nthis.out = L;', ctx);
   const D = ctx.out;
   const langs = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
-  t('사전 키 8개 × 9개 언어', langs.every((l) => D[l] && KEYS.every((k) => typeof D[l][k] === 'string' && D[l][k].trim())), langs.filter((l) => !D[l] || KEYS.some((k) => !D[l][k])).join(','));
+  t('사전 키 9개 × 9개 언어', langs.every((l) => D[l] && KEYS.every((k) => typeof D[l][k] === 'string' && D[l][k].trim())), langs.filter((l) => !D[l] || KEYS.some((k) => !D[l][k])).join(','));
   t('사전 블록 10개(ru 중복 포함) 전부에 키가 있다', (sub.match(/ypCollabSub:'/g) || []).length === 10);
-  t('가치 문구의 가격은 {price} 자리표시자 (EUR_PRICES 한 곳)', langs.every((l) => D[l].ypValue.includes('{price}') && /€380/.test(D[l].ypValue) && !/89[.,]90/.test(D[l].ypValue)));
+  t('가치 문구: {price}·{save} 자리표시자 (EUR_PRICES 한 곳), 2개월치 절약', langs.every((l) => D[l].ypValue.includes('{price}') && D[l].ypValue.includes('{save}') && /2/.test(D[l].ypValue) && !/89[.,]90|17[.,]98/.test(D[l].ypValue)));
+  t('둘째 가치 줄: €380 추가 절약 9개 언어 + 마크업', langs.every((l) => /€380/.test(D[l].ypValue2 || '')) && box.includes('data-i18n="ypValue2"'));
+  t('무료 회원도 "지정" 가능 (상자·카드)', /PAP 회원이면 무료 회원도 지정 가능 · 제출 후에도 수정/.test(D.ko.ypCollabSub) && /무료 회원도 지정 가능 · 제출 후 수정 가능/.test(D.ko.features.prem[1].text));
   t('€790 유형 제외를 밝힌다 (면제는 €380 유형만)', langs.every((l) => /€790/.test(D[l].ypWaiverSub)));
   t('공동작업자: 5명 · 제출 후 수정', langs.every((l) => /5/.test(D[l].ypCollabSub)));
   t('프리미엄 카드 맨 위 두 줄 = €380 면제 · 공동작업자 (y:true), 10블록', (() => {
@@ -189,7 +191,7 @@ console.log('\n=== 10. 구독 페이지: 연간 프리미엄 혜택 상자 ===')
   const y1 = els.yearlyPerks._cls.has('on'), v1 = els.ypValue.textContent;
   run('monthly', 'en');
   const y2 = els.yearlyPerks._cls.has('on'), v2 = els.ypValue.textContent;
-  t('연간: 상자 켜짐 + 가치 문구 €89.90', y1 && v1.includes('€89.90') && !v1.includes('{price}'), v1);
+  t('연간: 상자 켜짐 + 가치 문구 €89.90 · 2개월치 €17.98', y1 && v1.includes('€89.90') && v1.includes('€17.98') && !/\{(price|save)\}/.test(v1), v1);
   t('월간: 상자 꺼짐(안내 보임), 가치 문구는 영어로 €89.90', !y2 && v2.includes('€89.90') && /a year/.test(v2), v2);
 }
 
