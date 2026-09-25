@@ -9,7 +9,7 @@
  *   · 본문의 사이트 메뉴 이름이 영어(MY SUBMISSIONS · PULL-LETTERS · My Page) → 사이트 화면 글자와 달라 못 찾는다
  *   · 한국어 메일의 "Pull-Letter" (사이트 표기는 풀레터)
  *   · 인증번호 메일: 한국어·영어 병기
- * 22개 템플릿 × 9개 언어를 실제로 그려서 확인한다.
+ * 23개 템플릿 × 9개 언어를 실제로 그려서 확인한다.
  */
 const fs = require('fs');
 const path = require('path');
@@ -39,6 +39,7 @@ const CALLS = {
   contributorContact: (l) => templates.contributorContact(user, { name: 'Sender', email: 's@x.y' }, 'handle', 'hello', l),
   pullletterEditorialReminder: (l) => templates.pullletterEditorialReminder(user, l),
   pullletterRevision: (l) => templates.pullletterRevision(user, 'note', l),
+  pullletterTeamNotice: (l) => templates.pullletterTeamNotice(user, { requester: 'Jin', title: 'Blue', role: 'stylist', id: 'x' }, l),
   subscriptionConfirmed: (l) => templates.subscriptionConfirmed(user, 'standard', l),
   trialEndingSoon: (l) => templates.trialEndingSoon(user, { lang: l, language: l, endsAt: '2026-10-01' }),
   weeklyEditorial: (l) => templates.weeklyEditorial(camp, U(l), 'tok'),
@@ -69,8 +70,8 @@ for (const [k, fn] of Object.entries(CALLS)) {
     if (l === 'ko') KO_BANNED.forEach((b) => { if (txt.includes(b)) mixed.push(k + '/ko: ' + b); });
   }
 }
-t('198개 조합 모두 그려진다 (에러 0)', errs.length === 0, errs.join(' | '));
-t('en 이 아닌 176개 메일에 영어 틀 문구 0개', mixed.length === 0, mixed.slice(0, 20).join(' | '));
+t('207개 조합 모두 그려진다 (에러 0)', errs.length === 0, errs.join(' | '));
+t('en 이 아닌 184개 메일에 영어 틀 문구 0개', mixed.length === 0, mixed.slice(0, 20).join(' | '));
 {
   const ko = CALLS.subscriptionConfirmed('ko');
   t('공통 바닥 (ko): 인스타 팔로우 · 저작권 줄이 한국어', vis(ko.html).includes('@PAP_MAGAZINE 팔로우') && vis(ko.html).includes('모든 권리 보유.') && vis(ko.html).includes('PAP 매거진 인스타그램'));

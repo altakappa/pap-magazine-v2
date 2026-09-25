@@ -59,7 +59,8 @@ LANGS.forEach(function (lang) {
 ok(/승인/.test(templates.pullletterIssued({}, '', 'ko').subject), 'ko subject says 승인');
 ok(/Approved/.test(templates.pullletterIssued({}, '', 'en').subject), 'en subject says Approved');
 const REVJS = fs.readFileSync(path.join(ROOT, 'api/pullletters/[id]/review.js'), 'utf8');
-ok(/pullletterIssued\(\{ name: profile\.name \}, reviewNote, _lang, \{ title: pullLetter\.title \}\)/.test(REVJS), 'review.js passes project title to issued mail');
+// 2026-09-25 팀원 초대(id · inviteNames)가 opts 에 더해짐 — title 은 그대로 넘긴다
+ok(/pullletterIssued\(\{ name: profile\.name \}, reviewNote, _lang, \{ title: pullLetter\.title[,} ]/.test(REVJS), 'review.js passes project title to issued mail');
 
 // 3) 풀레터 페이지가 it/fr/ja/zh 에서 "피드백·컨설팅 서비스" 로 잘못 설명하지 않는다
 const html = fs.readFileSync(path.join(ROOT, 'frontend/pullletter.html'), 'utf8');

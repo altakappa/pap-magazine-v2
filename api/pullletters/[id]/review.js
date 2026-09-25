@@ -8,6 +8,7 @@ const { handleCors } = require('../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 const { sendEmail, templates } = require('../../_lib/email');
 const { resolveEmailLang } = require('../../_lib/emailLocale');
+const { planTeam } = require('../../_lib/pullletterTeam');   // 2026-09-25 팀원 알림·초대
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -124,6 +125,10 @@ module.exports = async function handler(req, res) {
       update.revision_history = hist;
     }
 
+    // 2026-09-25 — 발급을 두 번 눌러도 팀원 알림이 두 번 가지 않게, 바꾸기 전 상태를 본다.
+    const { data: before } = await supabaseAdmin.from('pullletters').select('status').eq('id', id).maybeSingle();
+    const firstIssue = status === 'issued' && !(before && before.status === 'issued');
+
     const { data: pullLetter, error } = await supabaseAdmin
       .from('pullletters')
       .update(update)
@@ -143,8 +148,10 @@ module.exports = async function handler(req, res) {
     if (profile && !_silent) {
       const _lang = resolveEmailLang(profile);
       const isPositive = status === 'accepted' || status === 'approved' || status === 'issued';
+      // 발급 메일에 "팀원에게 알려 주세요"(회원 아닌 팀원), 회원인 팀원에게는 따로 알림 (첫 발급 때만)
+      const plan = status === 'issued' ? await planTeam(supabaseAdmin, pullLetter) : { members: [], inviteNames: [] };
       const tpl = status === 'issued'
-        ? templates.pullletterIssued({ name: profile.name }, reviewNote, _lang, { title: pullLetter.title })
+        ? templates.pullletterIssued({ name: profile.name }, reviewNote, _lang, { title: pullLetter.title, id: pullLetter.id, inviteNames: plan.inviteNames })
         : status === 'revision'
           ? templates.pullletterRevision({ name: profile.name }, reviewNote, _lang)
           : isPositive
@@ -152,6 +159,16 @@ module.exports = async function handler(req, res) {
             : templates.pullletterRejected({ name: profile.name }, reviewNote, _lang);
       try { await sendEmail(profile.email, tpl); }
       catch (_e) { console.error('[pullletter-review] 결과 메일 실패(심사는 저장됨):', (_e && _e.message) || _e); }
+      if (firstIssue) {
+        for (const m of plan.members) {
+          try {
+            await sendEmail(m.profile.email, templates.pullletterTeamNotice(
+              { name: m.profile.name || m.profile.display_name },
+              { requester: profile.name || '', title: pullLetter.title, role: m.role, id: pullLetter.id },
+              resolveEmailLang(m.profile)));
+          } catch (_e) { console.error('[pullletter-review] 팀원 알림 실패:', (_e && _e.message) || _e); }
+        }
+      }
     }
 
     return res.status(200).json({ pullLetter });

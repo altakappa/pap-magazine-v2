@@ -105,6 +105,22 @@ const DEFAULT_REJECTION_NOTE = [
   REJECTION_LETTER_BODY[4],
 ].join('\n');
 
+/* 풀레터 발급 메일의 "팀원에게 알려 주세요" 블록 (2026-09-25). 회원이 아닌 팀원 이름만 싣고,
+ * 가입 링크는 풀레터 번호로 utm_campaign 을 달아 몇 명이 들어왔는지 잰다. 팀원이 없으면 빈 문자열. */
+function teamInviteBlock(opts, lang, esc) {
+  var names = (opts && Array.isArray(opts.inviteNames) ? opts.inviteNames : []).map(function (n) { return String(n || '').trim(); }).filter(Boolean).slice(0, 8);
+  if (!names.length) return '';
+  var TC = require('./pullletterTeamCopy');
+  var T = TC.TEAM_INVITE[lang] || TC.TEAM_INVITE.en;
+  var url = FRONTEND_URL + '/auth?mode=signup&utm_source=pl_team_invite&utm_medium=email&utm_campaign=' + encodeURIComponent('pl-' + String((opts && opts.id) || '').slice(0, 8));
+  return '<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #fff;">'
+    + '<div style="color:#fff;font-size:13px;font-weight:700;margin-bottom:6px;">' + esc(T.title) + '</div>'
+    + '<div style="color:#bbb;font-size:13px;line-height:1.7;">' + esc(T.body.replace('{names}', names.join(', '))) + '</div>'
+    + '<div style="margin-top:10px;"><a href="' + url + '" style="color:#fff;font-size:12px;font-weight:700;text-decoration:underline;">' + esc(T.link) + '</a>'
+    + '<div style="color:#777;font-size:11px;margin-top:4px;word-break:break-all;">' + url.replace(/&/g, '&amp;') + '</div></div>'
+    + '</div>';
+}
+
 // ── Shared HTML wrapper ──
 function wrapHtml(content, lang) {
   const _ui = emailUiStrings(lang || 'en');
@@ -1158,7 +1174,28 @@ const templates = {
       + noteHtml
       + '<a href="' + FRONTEND_URL + '/mypage#mp-pullletters" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin:8px 0 20px;">' + L.cta + '</a>'
       + '<p>' + L.body3 + '</p>'
+      + teamInviteBlock(opts, lang, esc)
       + '<p style="margin-top:24px;">' + L.signoff + '<br><span style="color:#999;">' + L.team + '</span></p>';
+    return { subject: L.subject, html: wrapHtml(html, lang) };
+  },
+
+  // 7d-2. 풀레터에 이름이 오른 팀원(PAP 회원)에게 알림 (2026-09-25, pullletterTeamCopy.js 설명 참고)
+  pullletterTeamNotice(member, info, lang) {
+    var TC = require('./pullletterTeamCopy');
+    var L = TC.TEAM_NOTICE[lang] || TC.TEAM_NOTICE.en;
+    var R = TC.ROLE[lang] || TC.ROLE.en;
+    var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+    var i = info || {};
+    var greet = emailUiStrings(lang).greeting.replace('{name}', esc((member && member.name) || R._));
+    var title = i.title ? ' "' + esc(String(i.title).trim()) + '"' : '';
+    var body1 = L.body1.replace('{requester}', esc(i.requester || '')).replace('{title}', title).replace('{role}', esc(R[i.role] || R._));
+    var url = FRONTEND_URL + '/mypage?utm_source=pl_team_notice&utm_medium=email&utm_campaign=' + encodeURIComponent('pl-' + String(i.id || '').slice(0, 8)) + '#mp-pullletters';
+    var html = '<h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">' + esc(L.heading) + '</h2>'
+      + '<p>' + greet + '</p>'
+      + '<p>' + body1 + '</p>'
+      + '<p>' + esc(L.body2) + '</p>'
+      + '<a href="' + url + '" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin:8px 0 20px;">' + esc(L.cta) + '</a>'
+      + '<p style="color:#777;font-size:12px;">' + esc(L.foot) + '</p>';
     return { subject: L.subject, html: wrapHtml(html, lang) };
   },
 
@@ -1526,7 +1563,7 @@ const templates = {
     <tr><td align="center" style="padding:24px 40px 0;">
       <a href="${FRONTEND_URL}/submission.html?${utm}" style="display:inline-block;background:#000000;color:#ffffff;padding:14px 36px;font-family:${MONT};font-size:11px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;text-decoration:none;">${escapeHtml(C.cta)}</a>
     </td></tr>
-    <tr><td align="center" style="padding:14px 40px 0;"><a href="${FRONTEND_URL}/mypage?${utm}#mp-pullletters" style="color:#891717;font-size:12px;font-weight:700;">${escapeHtml(C.plCta)}</a></td></tr>
+    <tr><td align="center" style="padding:14px 40px 0;"><a href="${FRONTEND_URL}/mypage?${utm}&utm_content=pullletter#mp-pullletters" style="color:#891717;font-size:12px;font-weight:700;">${escapeHtml(C.plCta)}</a></td></tr>
     <tr><td style="padding:30px 40px 30px;font-size:11px;color:#999;line-height:1.6;">${escapeHtml(C.footer)}</td></tr>
     <tr><td align="center" style="background-color:#1a1a1a;padding:24px 20px;"><div style="font-size:11px;font-weight:700;color:#ffffff;letter-spacing:4px;">P A P &nbsp; M A G A Z I N E</div></td></tr>
   </table>
@@ -1607,7 +1644,7 @@ const templates = {
     <tr><td align="center" style="padding:24px 40px 0;">
       <a href="${FRONTEND_URL}/submission.html?${utm}" style="display:inline-block;background:#000000;color:#ffffff;padding:14px 36px;font-family:${MONT};font-size:11px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;text-decoration:none;">${escapeHtml(C.cta)}</a>
     </td></tr>
-    <tr><td align="center" style="padding:14px 40px 0;"><a href="${FRONTEND_URL}/mypage?${utm}#mp-pullletters" style="color:#891717;font-size:12px;font-weight:700;">${escapeHtml(C.plCta)}</a></td></tr>
+    <tr><td align="center" style="padding:14px 40px 0;"><a href="${FRONTEND_URL}/mypage?${utm}&utm_content=pullletter#mp-pullletters" style="color:#891717;font-size:12px;font-weight:700;">${escapeHtml(C.plCta)}</a></td></tr>
     <tr><td align="center" style="padding:30px 28px 0;font-size:11px;color:#999;line-height:1.9;">${langBar}</td></tr>
     <tr><td style="padding:18px 28px 0;font-size:11px;color:#888;line-height:1.6;">
       ${U.consentNotice.replace(/<strong>/g, '<strong style="color:#555;">')}
