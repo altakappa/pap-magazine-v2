@@ -138,6 +138,29 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
         throw new Error(`Unknown campaign audience "${audience}"`);
       }
 
+      /* 3-c) 비회원 구독자 (2026-09-25, /newsletter 가입창). 주간 뉴스 전체 발송에만 붙는다.
+       * 확인(confirmed)된 주소만. 같은 주소가 회원이면 넣지 않는다 — 회원은 profiles.email_consent 가
+       * 기준이라, 회원이 수신거부했는데 이 표로 다시 받는 일이 없게. 조회 실패는 회원 발송을 막지 않는다. */
+      if (!audience && campaign.type === 'news-weekly') {
+        try {
+          const { data: sgRows, error: sgErr } = await supabaseAdmin
+            .from('newsletter_signups').select('email, language, token').eq('status', 'confirmed');
+          if (sgErr) throw sgErr;
+          if (sgRows && sgRows.length) {
+            const { data: memRows, error: memErr } = await supabaseAdmin.from('profiles').select('email');
+            if (memErr) throw memErr;
+            const memberEmails = new Set((memRows || []).map((m) => String(m.email || '').toLowerCase()).filter(Boolean));
+            sgRows.forEach((g) => {
+              const em = String(g.email || '').toLowerCase();
+              if (!em || memberEmails.has(em)) return;
+              recipientList.push({ id: null, email: em, email_language: g.language, kind: 'signup', signupToken: g.token });
+            });
+          }
+        } catch (sgE) {
+          console.error('[cron/send-due-campaigns] 비회원 구독자 조회 실패 — 회원만 보낸다:', (sgE && sgE.message) || sgE);
+        }
+      }
+
       let sent = 0, failed = 0;
       const lateRetry = [];   // 일시 오류가 두 번 난 수신자 — 끝에서 한 번 더
 
@@ -162,12 +185,19 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
         await Promise.allSettled(batch.map(async (user) => {
           // Mint a per-recipient unsubscribe token. Single-use; redeemed
           // when the user clicks the link in their email.
-          const { data: tok, error: tokErr } = await supabaseAdmin
-            .from('email_unsubscribe_tokens')
-            .insert({ user_id: user.id, campaign_id: campaign.id })
-            .select('token')
-            .single();
-          if (tokErr) throw tokErr;
+          // 비회원 구독자는 가입 때 받은 자기 토큰(newsletter_signups.token)으로 수신거부한다.
+          let tok;
+          if (user.kind === 'signup') {
+            tok = { token: user.signupToken };
+          } else {
+            const { data: tokRow, error: tokErr } = await supabaseAdmin
+              .from('email_unsubscribe_tokens')
+              .insert({ user_id: user.id, campaign_id: campaign.id })
+              .select('token')
+              .single();
+            if (tokErr) throw tokErr;
+            tok = tokRow;
+          }
 
           try {
             // Collapse the locale columns into the single `language`

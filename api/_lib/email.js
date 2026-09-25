@@ -4,6 +4,7 @@
  */
 
 const { SUPPORTED_LANGS, LANG_LABELS, emailUiStrings } = require('./emailLocale');
+const { nlCopy } = require('./newsletterCopy');   // 비회원 뉴스레터 (2026-09-25)
 
 /* nodemailer 는 실제로 메일을 보낼 때만 불러온다 (2026-07-30 CI 실패 후 수정).
  *
@@ -1307,6 +1308,12 @@ const templates = {
   // makes the fallback chain explicit.
   weeklyNews: (campaign, user, unsubToken) => {
     const lang = (user && user.language) || 'en';
+    // 2026-09-25 — 비회원 구독자(/newsletter): 수신거부는 자기 토큰, 언어 바·알림 설정(회원 전용)은 뺀다.
+    const isSignup = !!(user && user.kind === 'signup');
+    const NL = nlCopy(lang);
+    const unsubHref = isSignup
+      ? `${FRONTEND_URL}/api/newsletter/unsubscribe?token=${unsubToken}`
+      : `${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}`;
     // Fixed chrome strings (legal footer, unsubscribe, selector label)
     // follow the SAME locale as the article content, so the whole email
     // reads in one language end-to-end.
@@ -1404,18 +1411,18 @@ const templates = {
     <tr><td style="padding:18px 28px 0;"><hr style="border:none;border-top:1px solid #eee;"></td></tr>
     <!-- Language selector: lets the recipient re-pick their newsletter
          locale without logging in. Current locale is bold/underlined. -->
-    <tr><td align="center" style="padding:16px 28px 0;font-size:11px;color:#999;line-height:2;">
+    ${isSignup ? '' : `<tr><td align="center" style="padding:16px 28px 0;font-size:11px;color:#999;line-height:2;">
       <div style="font-size:9px;letter-spacing:2px;color:#bbb;text-transform:uppercase;margin-bottom:4px;">${escapeHtml(L.languageLabel)}</div>
       ${langBar}
-    </td></tr>
+    </td></tr>`}
     <!-- Legal: unsubscribe + sender info, required for marketing email.
          Localized to the recipient's locale (emailLocale.js). -->
     <tr><td style="padding:18px 28px 0;font-size:11px;color:#888;line-height:1.6;">
-      ${L.consentNotice.replace(/<strong>/g, '<strong style="color:#555;">')}
+      ${isSignup ? escapeHtml(NL.footerNotice) : L.consentNotice.replace(/<strong>/g, '<strong style="color:#555;">')}
       &nbsp;·&nbsp;
-      <a href="${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(L.unsubscribe)}</a>
-      &nbsp;·&nbsp;
-      <a href="${FRONTEND_URL}/mypage#mp-preferences" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(L.managePrefs)}</a>
+      <a href="${unsubHref}" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(isSignup ? NL.unsubscribe : L.unsubscribe)}</a>
+      ${isSignup ? '' : `&nbsp;·&nbsp;
+      <a href="${FRONTEND_URL}/mypage#mp-preferences" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(L.managePrefs)}</a>`}
     </td></tr>
     <tr><td align="center" style="background-color:#1a1a1a;padding:28px 20px;margin-top:18px;">
       <div style="font-size:11px;font-weight:700;color:#ffffff;letter-spacing:4px;">P A P &nbsp; M A G A Z I N E</div>
@@ -1425,6 +1432,33 @@ const templates = {
 </body>
 </html>`;
     return { subject, html };
+  },
+  // ── 비회원 뉴스레터: 확인 메일 · 환영 메일 (2026-09-25, 도메니코 "회원가입 없이 이메일만으로 받는 가입창") ──
+  // 이중 확인: 확인 메일의 버튼을 눌러야 발송 대상이 된다(이탈리아 Garante 2025-06 결정 기준).
+  // 확인 메일은 신청에 따른 거래성 안내라 광고 문구·IG 버튼을 넣지 않는다. 문구는 newsletterCopy.js (9개 언어).
+  newsletterConfirm: ({ lang, confirmUrl }) => {
+    const C = nlCopy(lang);
+    return {
+      subject: C.confirmSubject,
+      html: nlShell(`
+        <div style="font-size:22px;font-weight:700;color:#1a1a1a;line-height:1.35;margin:0 0 12px;">${escapeHtml(C.confirmHeadline)}</div>
+        <div style="font-size:14px;color:#444;line-height:1.8;margin:0 0 26px;">${escapeHtml(C.confirmBody)}</div>
+        <a href="${confirmUrl}" style="display:inline-block;background:#6b1a1a;color:#ffffff;padding:14px 34px;font-size:12px;font-weight:700;letter-spacing:2px;text-decoration:none;">${escapeHtml(C.confirmCta)}</a>
+      `, ''),
+    };
+  },
+  newsletterWelcome: ({ lang, unsubUrl }) => {
+    const C = nlCopy(lang);
+    const edUrl = withMailUtm(FRONTEND_URL + '/') + '&utm_campaign=newsletter_welcome';   // 홈 첫 줄이 최신 화보
+    return {
+      subject: C.welcomeSubject,
+      html: nlShell(`
+        <div style="font-size:22px;font-weight:700;color:#1a1a1a;line-height:1.35;margin:0 0 12px;">${escapeHtml(C.welcomeHeadline)}</div>
+        <div style="font-size:14px;color:#444;line-height:1.8;margin:0 0 26px;">${escapeHtml(C.welcomeBody)}</div>
+        <a href="${edUrl}" style="display:inline-block;background:#6b1a1a;color:#ffffff;padding:14px 34px;font-size:12px;font-weight:700;letter-spacing:2px;text-decoration:none;">${escapeHtml(C.welcomeCta)}</a>
+        <div style="margin-top:22px;"><a href="${IG_FOLLOW_MAIL}" style="color:#6b1a1a;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:underline;">FOLLOW @PAP_MAGAZINE</a></div>
+      `, `<a href="${unsubUrl}" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(C.unsubscribe)}</a>`),
+    };
   },
   // ── creator-report-card / creator-monthly (2026-09-24, 도메니코 "세 조각 설정해줘" ②·③) ──
   // 문구는 api/_lib/creatorMailCopy.js (9개 언어), 숫자 규칙은 api/_lib/creatorReport.js.
@@ -1729,6 +1763,23 @@ function pickI18nForWeekly(campaign, lang) {
 // Distinct from wrapHtml(): adds preheader text (preview snippet in
 // Gmail/Outlook inbox), an unsubscribe link in the footer, and the
 // sender-info block required by 정보통신망법 §50.
+/* 비회원 뉴스레터 메일 껍데기 (2026-09-25) — 주간 뉴스와 같은 브라운 헤더. */
+function nlShell(inner, footer) {
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PAP</title></head>
+<body style="margin:0;padding:0;background:#f5f0eb;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;font-family:'Inter',Helvetica,Arial,sans-serif;background:#ffffff;">
+    <tr><td align="center" style="background-color:#6b1a1a;padding:28px 20px"><img src="https://lh3.googleusercontent.com/d/1IAVkzs1uAj10kM0P3h64ItZvB924WkET" width="50" style="display:block;" alt="PAP"></td></tr>
+    <tr><td style="padding:40px 32px 36px;">${inner}</td></tr>
+    ${footer ? `<tr><td style="padding:0 32px 24px;font-size:11px;color:#888;line-height:1.6;">${footer}</td></tr>` : ''}
+    <tr><td align="center" style="background-color:#1a1a1a;padding:24px 20px;">
+      <div style="font-size:11px;font-weight:700;color:#ffffff;letter-spacing:4px;">P A P &nbsp; M A G A Z I N E</div>
+      <div style="font-size:11px;color:#888;margin-top:6px;">pap-magazine.com | @pap_magazine</div>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+
 function escapeHtml(s) {
   if (s == null) return '';
   return String(s)

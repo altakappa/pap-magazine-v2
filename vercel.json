@@ -674,6 +674,10 @@
       "destination": "/subscribe.html"
     },
     {
+      "source": "/newsletter",
+      "destination": "/newsletter.html"
+    },
+    {
       "source": "/community",
       "destination": "/community.html"
     },

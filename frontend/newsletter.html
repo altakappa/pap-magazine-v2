@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PAP Newsletter · PAP Magazine</title>
+<meta name="description" content="PAP Magazine weekly newsletter: five PAP editorials and articles plus ten fashion, art and beauty trend briefings every Monday. Free, no account needed.">
+<link rel="canonical" href="https://www.pap-magazine.com/newsletter">
+<meta property="og:title" content="PAP Newsletter">
+<meta property="og:description" content="Five PAP editorials and articles plus ten trend briefings, every Monday. Free.">
+<meta property="og:image" content="https://www.pap-magazine.com/apple-touch-icon.png">
+<link rel="icon" type="image/x-icon" href="favicon.ico?v=3">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<!-- 2026-09-25 비회원 뉴스레터 가입창 (도메니코 "만들기"). 인스타 프로필 링크용: /newsletter?utm_source=ig
+     문구는 아래 L 사전(9개 언어)으로만 채운다. 동의 문구(consent)는 서버 api/_lib/newsletterCopy.js 와 같아야 한다(테스트). -->
+<style>
+:root{--gold:#ffd43b}
+*{box-sizing:border-box}
+body{margin:0;background:#000;color:#fff;font-family:'Montserrat',Helvetica,Arial,sans-serif;min-height:100vh;word-break:keep-all}
+.top{display:flex;justify-content:space-between;align-items:center;padding:20px 24px}
+.logo{font-size:22px;font-weight:900;letter-spacing:.45em;color:#fff;text-decoration:none}
+.lang{background:transparent;color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.2);font:inherit;font-size:11px;padding:6px 8px}
+.wrap{max-width:560px;margin:0 auto;padding:40px 24px 80px;text-align:center}
+.kicker{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.22em;background:var(--gold);color:#000;padding:6px 12px}
+h1{font-size:34px;line-height:1.2;font-weight:900;margin:22px 0 14px;letter-spacing:-.01em}
+.desc{font-size:14px;line-height:1.8;color:rgba(255,255,255,.6);margin:0 0 30px}
+ul{list-style:none;padding:0;margin:0 0 34px;text-align:left;display:inline-block}
+li{font-size:14px;line-height:1.6;padding:8px 0;color:rgba(255,255,255,.85)}
+li:before{content:'';display:inline-block;width:6px;height:6px;background:var(--gold);margin-right:12px;vertical-align:middle}
+form{text-align:left}
+input[type=email]{width:100%;background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;font:inherit;font-size:15px;padding:16px 14px;outline:none}
+input[type=email]:focus{border-color:#fff}
+.hp{position:absolute;left:-9999px;opacity:0}
+.consent{display:flex;gap:10px;align-items:flex-start;margin:16px 0 20px;font-size:12px;line-height:1.7;color:rgba(255,255,255,.65);cursor:pointer}
+.consent input{margin-top:4px;flex-shrink:0;width:16px;height:16px;accent-color:#fff}
+button{width:100%;background:#fff;color:#000;border:0;font:inherit;font-size:12px;font-weight:800;letter-spacing:.2em;padding:17px;cursor:pointer;text-transform:uppercase}
+button[disabled]{opacity:.5;cursor:default}
+.msg{min-height:22px;margin-top:16px;font-size:13px;line-height:1.7;text-align:center}
+.msg.ok{color:var(--gold)}.msg.err{color:#ff8a8a}
+.foot{margin-top:40px;font-size:11px;line-height:1.9;color:rgba(255,255,255,.4)}
+.foot a{color:rgba(255,255,255,.7)}
+@media(max-width:480px){h1{font-size:27px}.wrap{padding-top:24px}}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="logo" href="/" aria-label="PAP Magazine">PAP</a>
+  <select class="lang" id="langSel" aria-label="Language">
+    <option value="ko">한국어</option><option value="en">English</option><option value="it">Italiano</option><option value="fr">Français</option><option value="es">Español</option><option value="ja">日本語</option><option value="zh">中文</option><option value="ru">Русский</option><option value="de">Deutsch</option>
+  </select>
+</div>
+<main class="wrap">
+  <span class="kicker">PAP NEWSLETTER</span>
+  <h1 data-i18n="title"></h1>
+  <p class="desc" data-i18n="desc"></p>
+  <ul><li data-i18n="w1"></li><li data-i18n="w2"></li><li data-i18n="w3"></li></ul>
+  <form id="nlForm" novalidate>
+    <input type="email" id="nlEmail" autocomplete="email" required data-i18n-ph="ph">
+    <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <label class="consent"><input type="checkbox" id="nlConsent"><span data-i18n="consent"></span></label>
+    <button type="submit" id="nlBtn" data-i18n="submit"></button>
+    <div class="msg" id="nlMsg" role="status" aria-live="polite"></div>
+  </form>
+  <div class="foot">
+    <span data-i18n="member"></span> <a href="/mypage#mp-preferences" data-i18n="memberLink"></a><br>
+    <a href="/privacy" data-i18n="privacy"></a>
+  </div>
+</main>
+<script>
+var L = {"ko": {"title": "매주 월요일, PAP를 메일로", "desc": "회원가입 없이 이메일만 있으면 돼요. 매주 월요일 아침에 도착해요.", "w1": "그 주의 PAP 화보·기사 5편", "w2": "패션·아트·뷰티 트렌드 브리핑 10개", "w3": "무료, 언제든 수신 거부", "ph": "이메일 주소", "submit": "구독하기", "sent": "확인 메일을 보냈어요. 메일의 [구독 확인] 버튼을 눌러야 구독이 끝나요.", "errEmail": "이메일 주소를 확인해 주세요.", "errConsent": "수신 동의에 체크해 주세요.", "errMail": "확인 메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요.", "errServer": "잠시 후 다시 시도해 주세요.", "member": "이미 PAP 회원이라면 마이페이지 알림 설정에서 켜면 돼요.", "memberLink": "마이페이지", "privacy": "개인정보처리방침", "consent": "매주 월요일 PAP 뉴스레터(화보·기사·트렌드, 광고성 정보 포함)를 이메일로 받는 데 동의합니다. 언제든 수신 거부할 수 있어요."}, "en": {"title": "PAP in your inbox, every Monday", "desc": "No account needed, just your email. It arrives every Monday morning.", "w1": "Five PAP editorials and articles from the week", "w2": "Ten fashion, art and beauty trend briefings", "w3": "Free, unsubscribe any time", "ph": "Email address", "submit": "Subscribe", "sent": "We sent you a confirmation email. Tap the [Confirm subscription] button in it to finish.", "errEmail": "Please check your email address.", "errConsent": "Please tick the consent box.", "errMail": "We could not send the confirmation email. Please try again shortly.", "errServer": "Please try again shortly.", "member": "Already a PAP member? Turn it on in My Page notification settings.", "memberLink": "My Page", "privacy": "Privacy Policy", "consent": "I agree to receive the PAP newsletter by email every Monday (editorials, articles and trends, including promotional content). I can unsubscribe at any time."}, "it": {"title": "PAP nella tua casella, ogni lunedì", "desc": "Nessun account, basta la tua email. Arriva ogni lunedì mattina.", "w1": "Cinque editoriali e articoli PAP della settimana", "w2": "Dieci brief sulle tendenze di moda, arte e beauty", "w3": "Gratis, puoi annullare in qualsiasi momento", "ph": "Indirizzo email", "submit": "Iscriviti", "sent": "Ti abbiamo inviato un'email di conferma. Tocca il pulsante [Conferma iscrizione] per completare.", "errEmail": "Controlla il tuo indirizzo email.", "errConsent": "Seleziona la casella del consenso.", "errMail": "Non siamo riusciti a inviare l'email di conferma. Riprova tra poco.", "errServer": "Riprova tra poco.", "member": "Sei già membro PAP? Attivala nelle impostazioni notifiche di My Page.", "memberLink": "My Page", "privacy": "Informativa sulla privacy", "consent": "Accetto di ricevere via email la newsletter PAP ogni lunedì (editoriali, articoli e tendenze, inclusi contenuti promozionali). Posso annullare l’iscrizione in qualsiasi momento."}, "fr": {"title": "PAP dans votre boîte mail, chaque lundi", "desc": "Pas besoin de compte, juste votre email. Elle arrive chaque lundi matin.", "w1": "Cinq éditoriaux et articles PAP de la semaine", "w2": "Dix briefs tendances mode, art et beauté", "w3": "Gratuit, désabonnement à tout moment", "ph": "Adresse email", "submit": "S'abonner", "sent": "Nous vous avons envoyé un email de confirmation. Touchez le bouton [Confirmer l'abonnement] pour terminer.", "errEmail": "Vérifiez votre adresse email.", "errConsent": "Cochez la case de consentement.", "errMail": "Impossible d'envoyer l'email de confirmation. Réessayez dans un instant.", "errServer": "Réessayez dans un instant.", "member": "Déjà membre PAP ? Activez-la dans les réglages de notifications de My Page.", "memberLink": "My Page", "privacy": "Politique de confidentialité", "consent": "J’accepte de recevoir la newsletter PAP par email chaque lundi (éditoriaux, articles et tendances, y compris des contenus promotionnels). Je peux me désabonner à tout moment."}, "es": {"title": "PAP en tu bandeja, cada lunes", "desc": "Sin cuenta, solo tu email. Llega cada lunes por la mañana.", "w1": "Cinco editoriales y artículos de PAP de la semana", "w2": "Diez briefs de tendencias de moda, arte y belleza", "w3": "Gratis, date de baja cuando quieras", "ph": "Correo electrónico", "submit": "Suscribirme", "sent": "Te enviamos un email de confirmación. Toca el botón [Confirmar suscripción] para terminar.", "errEmail": "Revisa tu correo electrónico.", "errConsent": "Marca la casilla de consentimiento.", "errMail": "No pudimos enviar el email de confirmación. Inténtalo de nuevo en un momento.", "errServer": "Inténtalo de nuevo en un momento.", "member": "¿Ya eres miembro de PAP? Actívala en los ajustes de notificaciones de My Page.", "memberLink": "My Page", "privacy": "Política de privacidad", "consent": "Acepto recibir por email la newsletter de PAP cada lunes (editoriales, artículos y tendencias, incluido contenido promocional). Puedo darme de baja en cualquier momento."}, "ja": {"title": "毎週月曜日、PAPをメールで", "desc": "会員登録は不要、メールアドレスだけ。毎週月曜日の朝に届きます。", "w1": "その週のPAPエディトリアル・記事5本", "w2": "ファッション・アート・ビューティーのトレンドブリーフィング10本", "w3": "無料、いつでも配信停止", "ph": "メールアドレス", "submit": "購読する", "sent": "確認メールを送りました。メールの［購読を確認］ボタンを押すと完了します。", "errEmail": "メールアドレスをご確認ください。", "errConsent": "受信の同意にチェックしてください。", "errMail": "確認メールを送信できませんでした。しばらくしてからもう一度お試しください。", "errServer": "しばらくしてからもう一度お試しください。", "member": "すでにPAP会員の方は、マイページの通知設定でオンにできます。", "memberLink": "マイページ", "privacy": "プライバシーポリシー", "consent": "毎週月曜日にPAPニュースレター（エディトリアル・記事・トレンド、広告を含む）をメールで受け取ることに同意します。いつでも配信停止できます。"}, "zh": {"title": "每周一，PAP 送到你的邮箱", "desc": "无需注册，只要邮箱。每周一早上送达。", "w1": "当周 PAP 大片与文章 5 篇", "w2": "时尚、艺术、美妆趋势简报 10 条", "w3": "免费，随时退订", "ph": "邮箱地址", "submit": "订阅", "sent": "确认邮件已发送。点击邮件中的［确认订阅］按钮即可完成。", "errEmail": "请检查邮箱地址。", "errConsent": "请勾选接收同意。", "errMail": "确认邮件发送失败，请稍后再试。", "errServer": "请稍后再试。", "member": "已是 PAP 会员？在“我的页面”通知设置中开启即可。", "memberLink": "我的页面", "privacy": "隐私政策", "consent": "我同意每周一通过邮件接收 PAP 新闻通讯（大片、文章与趋势，含推广信息）。我可以随时退订。"}, "ru": {"title": "PAP в вашей почте каждый понедельник", "desc": "Без регистрации, нужен только email. Приходит каждый понедельник утром.", "w1": "Пять эдиториалов и статей PAP за неделю", "w2": "Десять брифингов о трендах моды, искусства и бьюти", "w3": "Бесплатно, отписаться можно в любой момент", "ph": "Email", "submit": "Подписаться", "sent": "Мы отправили письмо для подтверждения. Нажмите в нём кнопку [Подтвердить подписку], чтобы завершить.", "errEmail": "Проверьте адрес email.", "errConsent": "Отметьте согласие на получение.", "errMail": "Не удалось отправить письмо для подтверждения. Попробуйте чуть позже.", "errServer": "Попробуйте чуть позже.", "member": "Уже участник PAP? Включите рассылку в настройках уведомлений My Page.", "memberLink": "My Page", "privacy": "Политика конфиденциальности", "consent": "Я согласен получать рассылку PAP по email каждый понедельник (эдиториалы, статьи и тренды, включая рекламные материалы). Я могу отписаться в любой момент."}, "de": {"title": "PAP in deinem Postfach, jeden Montag", "desc": "Kein Konto nötig, nur deine E-Mail. Kommt jeden Montagmorgen.", "w1": "Fünf PAP-Editorials und -Artikel der Woche", "w2": "Zehn Trend-Briefings zu Mode, Kunst und Beauty", "w3": "Kostenlos, jederzeit abbestellbar", "ph": "E-Mail-Adresse", "submit": "Abonnieren", "sent": "Wir haben dir eine Bestätigungs-E-Mail geschickt. Tippe darin auf [Abo bestätigen], um fertig zu werden.", "errEmail": "Bitte prüfe deine E-Mail-Adresse.", "errConsent": "Bitte setze das Häkchen bei der Einwilligung.", "errMail": "Die Bestätigungs-E-Mail konnte nicht gesendet werden. Bitte versuche es gleich noch einmal.", "errServer": "Bitte versuche es gleich noch einmal.", "member": "Schon PAP-Mitglied? Schalte ihn in den Benachrichtigungseinstellungen von My Page ein.", "memberLink": "My Page", "privacy": "Datenschutzerklärung", "consent": "Ich willige ein, jeden Montag den PAP-Newsletter per E-Mail zu erhalten (Editorials, Artikel und Trends, einschließlich Werbeinhalten). Ich kann mich jederzeit abmelden."}};
+var SUPPORTED = ['ko','en','it','fr','es','ja','zh','ru','de'];
+function pickLang(){
+  var s=''; try{ s=localStorage.getItem('pap-lang')||''; }catch(_){}
+  if(SUPPORTED.indexOf(s)>=0) return s;
+  var n=((navigator.language||'en')+'').toLowerCase().slice(0,2);
+  return SUPPORTED.indexOf(n)>=0 ? n : 'en';
+}
+var lang = pickLang();
+function t(k){ return (L[lang]&&L[lang][k]) || L.en[k] || ''; }
+function apply(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(function(e){ e.textContent = t(e.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(e){ e.setAttribute('placeholder', t(e.getAttribute('data-i18n-ph'))); });
+  document.getElementById('langSel').value = lang;
+}
+document.getElementById('langSel').addEventListener('change', function(){
+  lang = this.value; try{ localStorage.setItem('pap-lang', lang); }catch(_){} apply();
+});
+apply();
+(function(){
+  var f=document.getElementById('nlForm'), btn=document.getElementById('nlBtn'), msg=document.getElementById('nlMsg');
+  var src=(new URLSearchParams(location.search).get('utm_source')||'newsletter_page').toLowerCase().replace(/[^a-z0-9_:.-]/g,'').slice(0,60);
+  function show(k, ok){ msg.textContent=t(k); msg.className='msg '+(ok?'ok':'err'); }
+  f.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var email=(document.getElementById('nlEmail').value||'').trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ show('errEmail'); return; }
+    if(!document.getElementById('nlConsent').checked){ show('errConsent'); return; }
+    btn.disabled=true;
+    fetch('/api/newsletter/subscribe',{
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+      body:JSON.stringify({email:email, consent:true, lang:lang, source:src, website:f.website.value})
+    }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {s:r.status, j:j}; }); })
+      .then(function(o){
+        var c=o.j&&o.j.code;
+        if(o.s===200&&c==='sent'){ show('sent', true); f.querySelector('#nlEmail').value=''; return; }
+        btn.disabled=false;
+        if(c==='invalid_email') show('errEmail');
+        else if(c==='consent_required') show('errConsent');
+        else if(c==='mail_failed') show('errMail');
+        else show('errServer');
+      }).catch(function(){ btn.disabled=false; show('errServer'); });
+  });
+})();
+</script>
+</body>
+</html>
