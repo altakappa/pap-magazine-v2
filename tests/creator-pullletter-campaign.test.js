@@ -102,6 +102,9 @@ t('일시 오류(421류)는 1회 재시도한다 — 2026-08-26 발송에서 3/2
   assert.ok(/421/.test(CRON) && /setTimeout\(r, 5000\)/.test(CRON), '5초 대기 후 재시도가 없다');
   const retries = CRON.split('await sendEmail(user.email, built)').length - 1;
   assert.strictEqual(retries, 2, 'sendEmail 호출이 ' + retries + '회 — 정확히 2회(원발송+재시도 1회)여야 한다');
+  // 2026-09-25 — 두 번 다 일시 오류면 끝에서 30초 뒤 1회 더(늦은 재시도). 무한 재시도는 없다.
+  assert.strictEqual(CRON.split('await sendEmail(item.user.email, item.built)').length - 1, 1, '늦은 재시도는 정확히 1회');
+  assert.ok(/LATE_RETRY_WAIT_MS = 30000/.test(CRON), '늦은 재시도 대기 30초');
 });
 
 console.log(`  ${pass} passed, ${fail} failed`);

@@ -23,7 +23,11 @@ const { sendEmail, templates } = require('../_lib/email');
 const { resolveEmailLang } = require('../_lib/emailLocale');
 const { hasActivePlan } = require('../_lib/subscriptionAccess');
 
-const BATCH_SIZE = 50;          // recipients per fan-out wave
+/* 2026-09-25 — 50 → 5. 50통을 한꺼번에 던지던 것이 Gmail 차단(421·454)의 원인이었다
+ * (816통 중 191통 실패). 트랜스포터 풀(연결 2·초당 4통)이 실제 속도를 정하고,
+ * 여기서는 한 번에 대기열에 올리는 수만 줄인다. 168명 기준 약 1분. */
+const BATCH_SIZE = 5;           // recipients per fan-out wave
+const LATE_RETRY_WAIT_MS = 30000; // 일시 오류가 두 번 난 사람은 전체가 끝난 뒤 30초 쉬고 마지막 1회
 const MAX_CAMPAIGNS_PER_RUN = 5; // process at most N due campaigns per cron tick
 
 function chunk(arr, n) {
@@ -135,6 +139,7 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
       }
 
       let sent = 0, failed = 0;
+      const lateRetry = [];   // 일시 오류가 두 번 난 수신자 — 끝에서 한 번 더
 
       // Pick the template module-side from the campaign type.
       const templateFn = campaign.type === 'editorial-weekly'
@@ -192,6 +197,13 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
             }
             const ok = result && result.sent === true;
 
+            /* 2026-09-25 — 5초 재시도도 일시 오류면 기록하지 않고 뒤로 미룬다.
+             * 같은 순간에 다시 두드려 봐야 같은 답이다. 전체가 끝나고 30초 뒤 한 번 더. */
+            if (!ok && TRANSIENT_RE.test(String((result && result.error) || ''))) {
+              lateRetry.push({ user, built });
+              return;
+            }
+
             await supabaseAdmin.from('email_log').insert({
               campaign_id: campaign.id,
               user_id: user.id,
@@ -212,6 +224,27 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
             failed++;
           }
         }));
+      }
+
+      /* 4-b) 늦은 재시도 — 일시 오류(421·454 등)가 두 번 난 사람만, 30초 쉬고 한 명씩.
+       * 이번에도 안 되면 그때 실패로 적는다. */
+      if (lateRetry.length) {
+        await new Promise((r) => setTimeout(r, LATE_RETRY_WAIT_MS));
+        for (const item of lateRetry) {
+          let lr;
+          try { lr = await sendEmail(item.user.email, item.built); }
+          catch (e) { lr = { sent: false, error: (e && e.message) || String(e) }; }
+          const lok = lr && lr.sent === true;
+          await supabaseAdmin.from('email_log').insert({
+            campaign_id: campaign.id,
+            user_id: item.user.id,
+            email: item.user.email,
+            status: lok ? 'sent' : 'failed',
+            error: lok ? null : (lr && lr.error) || 'unknown',
+            sent_at: lok ? new Date().toISOString() : null,
+          });
+          if (lok) sent++; else failed++;
+        }
       }
 
       /* 5) 결과 표시.

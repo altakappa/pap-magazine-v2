@@ -22,7 +22,18 @@ let transporter = null;
 function getTransporter() {
   if (!transporter) {
     const nodemailer = require('nodemailer');
+    /* 2026-09-25 — 연결 풀 + 속도 제한.
+     * 실측: 주간 뉴스레터 816통 중 191통(23%)이 실패. 오류는 두 가지뿐이었다 —
+     *   421 4.3.0 Temporary System Problem (158) · 454 4.7.0 Too many login attempts (33).
+     * 원인은 주소가 아니라 우리 쪽이었다. 풀 없는 트랜스포터에 50통을 동시에 던지면
+     * 메일마다 SMTP 연결을 새로 열고 로그인한다 → 몇 초 사이 50번 로그인 → Gmail 이 막는다.
+     * 연결 2개를 재사용하고 초당 4통으로 묶으면 로그인은 2번이다. */
     transporter = nodemailer.createTransport({
+      pool: true,
+      maxConnections: 2,
+      maxMessages: 100,
+      rateDelta: 1000,
+      rateLimit: 4,
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: false,

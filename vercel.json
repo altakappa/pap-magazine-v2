@@ -1667,6 +1667,10 @@
       "maxDuration": 300,
       "memory": 1024
     },
+    "api/cron/send-due-campaigns.js": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
     "api/**/*.js": {
       "maxDuration": 120,
       "memory": 1024
