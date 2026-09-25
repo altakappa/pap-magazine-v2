@@ -127,7 +127,9 @@ console.log('\n=== 3. 뉴스레터 — IG 가 주 버튼, 웹이 보조 ===');
   t('에디토리얼 캠페인: 웹이 큰 흰 버튼이 아니다',
     !/withMailUtm\(FRONTEND_URL \+ '\/'\)\}" style="display:inline-block;background:#fff/.test(em));
   t('에디토리얼 캠페인: 웹 링크는 남아 있다',
-    /withMailUtm\(FRONTEND_URL \+ '\/'\)\}"[^>]*VIEW MORE ON PAP|VIEW MORE ON PAP/.test(em));
+    // 2026-09-25 문구가 9개 언어(weeklyNewsCopy.js MAIL_CHROME.viewMore)로 옮겨감
+    /withMailUtm\(FRONTEND_URL \+ '\/'\)\}"[^>]*>\$\{escapeHtml\(mailChrome\(lang\)\.viewMore\)\}<\/a>/.test(em)
+    && require('../api/_lib/weeklyNewsCopy').MAIL_CHROME.en.viewMore === 'VIEW MORE ON PAP');
   t('공통 껍데기의 IG 버튼은 그대로다',
     /IG_FOLLOW_MAIL\}" style="display:inline-block;background:#fff/.test(em));
 

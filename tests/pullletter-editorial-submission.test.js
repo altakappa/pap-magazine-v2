@@ -60,7 +60,10 @@ function db(row, cap) {
   ok('연결된 풀레터는 "제출 완료 · 심사 중" + 제출 현황 링크', /if\(r\.submission_id\)\{[\s\S]{0,300}#mp-submissions/.test(mp));
   ok('마이페이지 사전 v9 + 8개 언어 키', (function(){ const m = mp.match(/content="mypage" data-v="(\d+)"/); return m && Number(m[1]) >= 9; })() && ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const d = JSON.parse(read('frontend/i18n/ui/mypage.' + l + '.json')); return d['완성된 에디토리얼 제출하기'] && d['완성 에디토리얼 제출 완료 · 심사 중입니다.']; }));
   const em = require(path.join(ROOT, 'api', '_lib', 'email'));
-  ok('발급 메일 9개 언어에 후속 절차 한 줄', ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => /PULL-LETTERS/.test(em.templates.pullletterIssued({ name: 'A' }, '', l).html)));
+  // 2026-09-25 메뉴 이름은 사이트 화면 글자와 같게 (ko 풀레터, en PULL-LETTERS, 나머지 PULL-LETTER — weeklyNewsCopy MAIL_CHROME.plTab)
+  const PLTAB = { ko: '풀레터', en: 'PULL-LETTERS' };
+  const plTab = (l) => PLTAB[l] || 'PULL-LETTER';
+  ok('발급 메일 9개 언어에 후속 절차 한 줄', ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => em.templates.pullletterIssued({ name: 'A' }, '', l).html.includes(plTab(l))));
   ok('관리자: 풀레터 목록 배지 + 검토 모달 Pull-Letter 줄', /발급 완료 · 에디토리얼 제출됨/.test(read('frontend/pap-admin.js')) && /id="reviewModalPullLetter"/.test(read('frontend/admin.html')) && /pap-admin\.js\?v=(15[7-9]|1[6-9]\d)/.test(read('frontend/admin.html')));
 
   console.log('\n=== 4주 독촉 크론 + 미제출 시 새 요청 불가 (도메니코 2026-09-13) ===');
@@ -86,7 +89,7 @@ function db(row, cap) {
   const vj = JSON.parse(read('vercel.json'));
   ok('vercel.json 에 매일 1회 예약', (vj.crons || []).some((c) => c.path === '/api/cron/pullletter-editorial-reminder' && /^\d+ \d+ \* \* \*$/.test(c.schedule)));
   ok('마이그레이션 153: editorial_reminder_sent_at', /editorial_reminder_sent_at timestamptz/.test(read('supabase_migrations/153_pullletter_editorial_reminder.sql')));
-  ok('독촉 메일 템플릿 9개 언어에 PULL-LETTERS 경로 + "새 요청 불가" 안내', ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const h = em.templates.pullletterEditorialReminder({ name: 'A' }, l).html; return /PULL-LETTERS/.test(h) && /(새 Pull-Letter|new Pull-Letter|nuova Pull-Letter|nouvelle Pull-Letter|nueva Pull-Letter|新しい Pull-Letter|新的 Pull-Letter|Новый Pull-Letter|neue Pull-Letter)/.test(h); }));
+  ok('독촉 메일 템플릿 9개 언어에 PULL-LETTERS 경로 + "새 요청 불가" 안내', ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const h = em.templates.pullletterEditorialReminder({ name: 'A' }, l).html; return h.includes(plTab(l)) && /(새 풀레터|new Pull-Letter|nuova Pull-Letter|nouvelle Pull-Letter|nueva Pull-Letter|新しい Pull-Letter|新的 Pull-Letter|Новый Pull-Letter|neue Pull-Letter)/.test(h); }));
   const plIdx = read('api/pullletters/index.js');
   ok('POST /api/pullletters: 미제출 발급 건이 있으면 409 pending_editorial (월 상한 검사보다 앞)', /code: 'pending_editorial'/.test(plIdx) && plIdx.indexOf("code: 'pending_editorial'") < plIdx.indexOf('── 월 1건 상한') && /\.is\('submission_id', null\)[\s\S]{0,80}\.not\('pull_letter_url', 'is', null\)/.test(plIdx));
   const plHtml = read('frontend/pullletter.html');

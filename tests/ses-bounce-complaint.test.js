@@ -260,7 +260,7 @@ function mkRes() {
       /getSuppressionMap\(\)/.test(c) && /blockReason\(supMap\.get\([\s\S]{0,80}?\),\s*false\)/.test(c)
       && c.indexOf('getSuppressionMap()') < c.indexOf('for (const batch of chunk(recipientList'));
     t('발송 결과에 제외 수를 남긴다', /suppressed: suppressedCount/.test(c));
-    t('인증번호 메일은 transactional', /buildVerificationEmail\(code\), \{ transactional: true \}/.test(R('api/auth/send-code.js')));
+    t('인증번호 메일은 transactional', /buildVerificationEmail\(code, codeLang\), \{ transactional: true \}/.test(R('api/auth/send-code.js')));
     t('결제 확인 메일(Paddle·PortOne)은 transactional',
       /subscriptionConfirmed\([^;]*\{ transactional: true \}\)/.test(R('api/paddle-webhook.js'))
       && /resolveEmailLang\(profile\)\s*\), \{ transactional: true \}\)/.test(R('api/portone-webhook.js')));

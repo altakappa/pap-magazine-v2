@@ -5,7 +5,7 @@
 
 const { SUPPORTED_LANGS, LANG_LABELS, emailUiStrings } = require('./emailLocale');
 const { nlCopy } = require('./newsletterCopy');   // 비회원 뉴스레터 (2026-09-25)
-const { weeklyCopy, localDate } = require('./weeklyNewsCopy');   // 주간 뉴스 틀 문구 9개 언어 (2026-09-25)
+const { weeklyCopy, localDate, mailChrome } = require('./weeklyNewsCopy');   // 메일 틀 문구 9개 언어 (2026-09-25)
 
 /* nodemailer 는 실제로 메일을 보낼 때만 불러온다 (2026-07-30 CI 실패 후 수정).
  *
@@ -109,6 +109,8 @@ const DEFAULT_REJECTION_NOTE = [
 function wrapHtml(content, lang) {
   const _ui = emailUiStrings(lang || 'en');
   const _igTag = _ui.igFollowTagline || "New editorials and fashion news, every day —<br>see them first on Instagram.";
+  const _M = mailChrome(lang || 'en');          // 2026-09-25 틀도 받는 사람 언어로
+  const _W = weeklyCopy(lang || 'en');
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
@@ -127,13 +129,13 @@ function wrapHtml(content, lang) {
   <!-- IG 팔로우 CTA (2026-07 성장 깔때기) — 모든 발신 메일 공통.
        회원 메일은 열람률이 높은 접점이라 팔로워 전환 효율이 좋다. -->
   <tr><td align="center" style="padding:26px 40px;border-top:1px solid #222;">
-    <div style="color:#888;font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">PAP Magazine — Instagram</div>
+    <div style="color:#888;font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">${escapeHtml(_M.igLabel)}</div>
     <div style="color:#ccc;font-size:13px;line-height:1.7;margin-bottom:16px;">${_igTag}</div>
-    <a href="${IG_FOLLOW_MAIL}" style="display:inline-block;background:#fff;color:#000;padding:11px 28px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">FOLLOW @PAP_MAGAZINE</a>
+    <a href="${IG_FOLLOW_MAIL}" style="display:inline-block;background:#fff;color:#000;padding:11px 28px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">${escapeHtml(_W.follow)}</a>
   </td></tr>
   <!-- Footer -->
   <tr><td style="padding:24px 40px;border-top:1px solid #222;color:#666;font-size:11px;line-height:1.5;">
-    &copy; ${new Date().getFullYear()} PAP Magazine. All rights reserved.<br>
+    &copy; ${new Date().getFullYear()} PAP Magazine. ${escapeHtml(_M.rights)}<br>
     <a href="${withMailUtm(FRONTEND_URL)}" style="color:#888;text-decoration:none;">www.pap-magazine.com</a>
   </td></tr>
 </table>
@@ -156,11 +158,11 @@ const SUBMISSION_REVIEW_I18N = {
     greet: '{name}님, 안녕하세요.',
     greetingFallback: '회원',
     body1: 'PAP 매거진에 제출하신 {title}의 심사가 완료되었습니다.',
-    body2: '결과 및 편집팀의 코멘트는 PAP 플랫폼의 <strong style="color:#fff;">MY SUBMISSIONS</strong>에서 확인하실 수 있습니다.',
+    body2: '결과 및 편집팀의 코멘트는 PAP 플랫폼의 <strong style="color:#fff;">내 서브미션</strong>에서 확인하실 수 있습니다.',
     cta: '결과 확인',
     footer: '문의 사항이 있다면 이 메일에 회신해주세요. 편집팀이 도와드립니다.',
     payTitle: '게재료 결제 요청',
-    payBody: '이 에디토리얼은 유료 게재 대상으로, 게재를 확정하려면 게재료 {amt} 결제가 필요합니다. 위 MY SUBMISSIONS에서 결제를 진행해 주세요.',
+    payBody: '이 에디토리얼은 유료 게재 대상으로, 게재를 확정하려면 게재료 {amt} 결제가 필요합니다. 위 내 서브미션에서 결제를 진행해 주세요.',
     apSubject: '축하드립니다 — "{title}" 게재가 승인되었습니다',
     apHeading: '게재가 승인되었습니다',
     apCongrats: '축하드립니다! 보내주신 작품 {title}의 게재가 승인되었습니다.',
@@ -175,9 +177,9 @@ const SUBMISSION_REVIEW_I18N = {
     upB4: '심사 대기 중 제출 수정 · 게재 후 크레딧 수정 (에디토리얼당 3회)', upB5:'연간 프리미엄 전용: 유료 서브미션(€380) 구독 연도당 1회 면제 · 인스타그램 공동작업자 최대 5명 직접 지정 (PAP 회원이면 무료 회원도 가능)',
     upCta: '프리미엄 혜택 보기',
     nextTitle: '다음 촬영을 준비하고 계신가요?',
-    nextBody: '다음 화보도 PAP로 보내 주세요. 촬영에 브랜드 의상이 필요하면 PAP 명의의 공식 Pull-Letter로 쇼룸에 대여를 요청할 수 있습니다(프리미엄 회원, 월 1건).',
+    nextBody: '다음 화보도 PAP로 보내 주세요. 촬영에 브랜드 의상이 필요하면 PAP 명의의 공식 풀레터로 쇼룸에 대여를 요청할 수 있습니다(프리미엄 회원, 월 1건).',
     nextCtaSubmit: '다음 화보 보내기',
-    nextCtaPl: 'Pull-Letter 알아보기 →',
+    nextCtaPl: '풀레터 알아보기 →',
   },
   en: {
     subject: 'Your submission review is complete — "{title}"',
@@ -214,11 +216,11 @@ const SUBMISSION_REVIEW_I18N = {
     greet: 'Ciao {name},',
     greetingFallback: 'lettore',
     body1: 'La revisione del tuo invio a PAP Magazine, {title}, è stata completata.',
-    body2: 'Accedi alla piattaforma PAP per leggere il risultato e i commenti del team editoriale in <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
+    body2: 'Accedi alla piattaforma PAP per leggere il risultato e i commenti del team editoriale in <strong style="color:#fff;">LE MIE SUBMISSION</strong>.',
     cta: 'VEDI ESITO',
     footer: 'Per qualsiasi domanda, rispondi a questa email — il nostro team editoriale ti risponderà.',
     payTitle: 'Tariffa di pubblicazione — Pagamento richiesto',
-    payBody: 'Questo editoriale richiede una tariffa di pubblicazione di {amt} per confermare la pubblicazione. Completa il pagamento in MY SUBMISSIONS qui sopra.',
+    payBody: 'Questo editoriale richiede una tariffa di pubblicazione di {amt} per confermare la pubblicazione. Completa il pagamento in LE MIE SUBMISSION qui sopra.',
     apSubject: 'Congratulazioni — il tuo invio "{title}" è stato approvato',
     apHeading: 'Il tuo invio è approvato',
     apCongrats: 'Congratulazioni! Il tuo invio {title} è stato approvato per la pubblicazione.',
@@ -243,11 +245,11 @@ const SUBMISSION_REVIEW_I18N = {
     greet: 'Bonjour {name},',
     greetingFallback: 'lecteur',
     body1: 'L’examen de votre soumission à PAP Magazine, {title}, est terminé.',
-    body2: 'Connectez-vous à la plateforme PAP pour consulter le résultat et les notes de l’équipe éditoriale dans <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
+    body2: 'Connectez-vous à la plateforme PAP pour consulter le résultat et les notes de l’équipe éditoriale dans <strong style="color:#fff;">MES SOUMISSIONS</strong>.',
     cta: 'VOIR LE RÉSULTAT',
     footer: 'Une question ? Répondez à cet email — notre équipe vous recontactera.',
     payTitle: 'Frais de publication — Paiement demandé',
-    payBody: 'Cet éditorial nécessite des frais de publication de {amt} pour confirmer la publication. Veuillez effectuer le paiement dans MY SUBMISSIONS ci-dessus.',
+    payBody: 'Cet éditorial nécessite des frais de publication de {amt} pour confirmer la publication. Veuillez effectuer le paiement dans MES SOUMISSIONS ci-dessus.',
     apSubject: 'Félicitations — votre soumission "{title}" a été approuvée',
     apHeading: 'Votre soumission est approuvée',
     apCongrats: 'Félicitations ! Votre soumission {title} a été approuvée pour publication.',
@@ -272,11 +274,11 @@ const SUBMISSION_REVIEW_I18N = {
     greet: 'Hola {name},',
     greetingFallback: 'lector',
     body1: 'La revisión de tu envío a PAP Magazine, {title}, ha sido completada.',
-    body2: 'Inicia sesión en la plataforma PAP para ver el resultado y los comentarios del equipo editorial en <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
+    body2: 'Inicia sesión en la plataforma PAP para ver el resultado y los comentarios del equipo editorial en <strong style="color:#fff;">MIS ENVÍOS</strong>.',
     cta: 'VER RESULTADO',
     footer: '¿Preguntas? Responde a este email y nuestro equipo editorial te responderá.',
     payTitle: 'Tarifa de publicación — Pago solicitado',
-    payBody: 'Este editorial requiere una tarifa de publicación de {amt} para confirmar la publicación. Completa el pago en MY SUBMISSIONS más arriba.',
+    payBody: 'Este editorial requiere una tarifa de publicación de {amt} para confirmar la publicación. Completa el pago en MIS ENVÍOS más arriba.',
     apSubject: 'Enhorabuena — tu envío "{title}" ha sido aprobado',
     apHeading: 'Tu envío ha sido aprobado',
     apCongrats: '¡Enhorabuena! Tu envío {title} ha sido aprobado para su publicación.',
@@ -301,11 +303,11 @@ const SUBMISSION_REVIEW_I18N = {
     greet: '{name} 様',
     greetingFallback: 'クリエイター',
     body1: 'PAP Magazine に提出いただいた {title} の審査が完了しました。',
-    body2: '結果と編集部からのコメントは、PAP プラットフォームの <strong style="color:#fff;">MY SUBMISSIONS</strong> でご確認いただけます。',
+    body2: '結果と編集部からのコメントは、PAP プラットフォームの <strong style="color:#fff;">マイサブミッション</strong> でご確認いただけます。',
     cta: '結果を見る',
     footer: 'ご不明な点があれば、このメールにご返信ください。編集部より回答いたします。',
     payTitle: '掲載料のお支払いのお願い',
-    payBody: 'この作品は有料掲載の対象です。掲載を確定するには掲載料 {amt} のお支払いが必要です。上の MY SUBMISSIONS からお支払いください。',
+    payBody: 'この作品は有料掲載の対象です。掲載を確定するには掲載料 {amt} のお支払いが必要です。上の マイサブミッション からお支払いください。',
     apSubject: 'おめでとうございます — "{title}" の掲載が承認されました',
     apHeading: '掲載が承認されました',
     apCongrats: 'おめでとうございます！ご投稿いただいた作品 {title} の掲載が承認されました。',
@@ -330,11 +332,11 @@ const SUBMISSION_REVIEW_I18N = {
     greet: '{name},您好,',
     greetingFallback: '创作者',
     body1: '您提交至 PAP Magazine 的作品 {title} 审核已完成。',
-    body2: '请登录 PAP 平台,在 <strong style="color:#fff;">MY SUBMISSIONS</strong> 中查看审核结果与编辑部留言。',
+    body2: '请登录 PAP 平台,在 <strong style="color:#fff;">我的投稿</strong> 中查看审核结果与编辑部留言。',
     cta: '查看结果',
     footer: '如有任何疑问,请直接回复本邮件,编辑部将与您联系。',
     payTitle: '刊登费 — 需要付款',
-    payBody: '本作品需支付刊登费 {amt} 以确认刊登。请在上方 MY SUBMISSIONS 中完成付款。',
+    payBody: '本作品需支付刊登费 {amt} 以确认刊登。请在上方 我的投稿 中完成付款。',
     apSubject: '恭喜 — 您的投稿 "{title}" 已通过审核',
     apHeading: '投稿已通过审核',
     apCongrats: '恭喜！您提交的作品 {title} 已通过审核并将刊登。',
@@ -359,11 +361,11 @@ const SUBMISSION_REVIEW_I18N = {
     greet: 'Здравствуйте, {name}!',
     greetingFallback: 'участник',
     body1: 'Рассмотрение вашей работы {title}, отправленной в PAP Magazine, завершено.',
-    body2: 'Войдите в платформу PAP, чтобы увидеть результат и комментарии редакции в разделе <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
+    body2: 'Войдите в платформу PAP, чтобы увидеть результат и комментарии редакции в разделе <strong style="color:#fff;">МОИ ПОДАЧИ</strong>.',
     cta: 'СМОТРЕТЬ РЕЗУЛЬТАТ',
     footer: 'Вопросы? Ответьте на это письмо — редакция свяжется с вами.',
     payTitle: 'Плата за публикацию — требуется оплата',
-    payBody: 'Для подтверждения публикации этого материала требуется плата за публикацию в размере {amt}. Пожалуйста, завершите оплату в разделе MY SUBMISSIONS выше.',
+    payBody: 'Для подтверждения публикации этого материала требуется плата за публикацию в размере {amt}. Пожалуйста, завершите оплату в разделе МОИ ПОДАЧИ выше.',
     apSubject: 'Поздравляем — ваша работа "{title}" одобрена',
     apHeading: 'Ваша работа одобрена',
     apCongrats: 'Поздравляем! Ваша работа {title} одобрена к публикации.',
@@ -388,11 +390,11 @@ const SUBMISSION_REVIEW_I18N = {
     greet: 'Hallo {name},',
     greetingFallback: 'Leser',
     body1: 'Die Prüfung deiner Einreichung an PAP Magazine, {title}, ist abgeschlossen.',
-    body2: 'Melde dich auf der PAP-Plattform an, um Ergebnis und Kommentare der Redaktion in <strong style="color:#fff;">MY SUBMISSIONS</strong> einzusehen.',
+    body2: 'Melde dich auf der PAP-Plattform an, um Ergebnis und Kommentare der Redaktion in <strong style="color:#fff;">MEINE EINREICHUNGEN</strong> einzusehen.',
     cta: 'ERGEBNIS ANSEHEN',
     footer: 'Fragen? Antworte auf diese E-Mail — unsere Redaktion meldet sich.',
     payTitle: 'Veröffentlichungsgebühr — Zahlung erforderlich',
-    payBody: 'Für die Bestätigung der Veröffentlichung ist eine Gebühr von {amt} erforderlich. Bitte schließe die Zahlung oben in MY SUBMISSIONS ab.',
+    payBody: 'Für die Bestätigung der Veröffentlichung ist eine Gebühr von {amt} erforderlich. Bitte schließe die Zahlung oben in MEINE EINREICHUNGEN ab.',
     apSubject: 'Herzlichen Glückwunsch — deine Einreichung "{title}" wurde angenommen',
     apHeading: 'Deine Einreichung ist angenommen',
     apCongrats: 'Herzlichen Glückwunsch! Deine Einreichung {title} wurde zur Veröffentlichung angenommen.',
@@ -419,25 +421,25 @@ const SUBMISSION_REVIEW_I18N = {
 const PULLLETTER_I18N = {
   "ko": {
     "received": {
-      "subject": "Pull-Letter 요청이 접수되었습니다",
-      "heading": "Pull-Letter 요청 접수",
-      "body1": "Pull-Letter 요청이 접수되었습니다. PAP 에디터가 포트폴리오, 무드보드, 촬영 방향성을 검토합니다.",
+      "subject": "풀레터 요청이 접수되었습니다",
+      "heading": "풀레터 요청 접수",
+      "body1": "풀레터 요청이 접수되었습니다. PAP 에디터가 포트폴리오, 무드보드, 촬영 방향성을 검토합니다.",
       "statusLabel": "상태",
       "statusValue": "처리 중",
       "eta": "검토 결과는 영업일 기준 7일 이내에 이메일로 안내드립니다.",
-      "body2": "승인되면 PAP 명의의 공식 Pull-Letter(PDF)를 발급해 드립니다. 이 레터를 활용해 촬영을 더 원활하게 진행하실 수 있습니다."
+      "body2": "승인되면 PAP 명의의 공식 풀레터(PDF)를 발급해 드립니다. 이 레터를 활용해 촬영을 더 원활하게 진행하실 수 있습니다."
     },
     "accepted": {
-      "subject": "Pull-Letter가 승인되었습니다",
-      "heading": "Pull-Letter 승인",
-      "body1": "Pull-Letter 요청이 승인되었습니다. 공식 Pull-Letter(PDF)가 발급되면 이메일로 다시 알려드립니다. 이 레터가 이번 촬영을 원활하게 진행하는 데 힘이 되길 바랍니다.",
+      "subject": "풀레터가 승인되었습니다",
+      "heading": "풀레터 승인",
+      "body1": "풀레터 요청이 승인되었습니다. 공식 풀레터(PDF)가 발급되면 이메일로 다시 알려드립니다. 이 레터가 이번 촬영을 원활하게 진행하는 데 힘이 되길 바랍니다.",
       "detailsLabel": "상세",
       "cta": "요청 보기"
     },
     "rejected": {
-      "subject": "Pull-Letter 요청 안내",
-      "heading": "Pull-Letter 안내",
-      "body1": "검토 결과 이번 요청에는 Pull-Letter를 발급하기 어렵습니다. 포트폴리오와 촬영 방향성이 현재 PAP의 에디토리얼 방향과 맞는지를 기준으로 판단했습니다.",
+      "subject": "풀레터 요청 안내",
+      "heading": "풀레터 안내",
+      "body1": "검토 결과 이번 요청에는 풀레터를 발급하기 어렵습니다. 포트폴리오와 촬영 방향성이 현재 PAP의 에디토리얼 방향과 맞는지를 기준으로 판단했습니다.",
       "reasonLabel": "사유",
       "body2": "준비가 되시면 언제든 새로운 요청을 제출해 주세요."
     }
@@ -718,7 +720,7 @@ const TRIAL_ENDING_I18N = {
     "heading": "무료체험 종료 안내",
     "body1": "{plan} 무료체험이 <strong style=\"color:#fff;\">{date}</strong>에 종료되며, 같은 날 첫 결제가 진행됩니다.",
     "body2": "계속 이용하시려면 아무 조치도 필요하지 않습니다. 원하지 않으시면 종료일 전까지 구독 관리 페이지에서 언제든 해지하실 수 있습니다.",
-    "note": "Pull-Letter는 첫 결제가 확인된 뒤 발급되며, 신청은 월 1건까지 가능합니다.",
+    "note": "풀레터는 첫 결제가 확인된 뒤 발급되며, 신청은 월 1건까지 가능합니다.",
     "cta": "구독 관리"
   },
   "en": {
@@ -804,30 +806,30 @@ const CONTRIBUTOR_CONTACT_I18N = {
 };
 
 const PULLLETTER_EDITORIAL_REMINDER_I18N = {
-  ko: { subject: 'Pull-Letter 후속 에디토리얼 제출 안내', heading: '완성 에디토리얼을 제출해 주세요', body: 'Pull-Letter를 발급받은 지 4주가 지났습니다. 촬영을 마치셨다면 마이페이지 → PULL-LETTERS의 "완성된 에디토리얼 제출하기"로 완성 에디토리얼을 제출해 주세요. 이 제출이 완료되기 전에는 새 Pull-Letter를 요청할 수 없습니다.', cta: '에디토리얼 제출하기' },
+  ko: { subject: '풀레터 후속 에디토리얼 제출 안내', heading: '완성 에디토리얼을 제출해 주세요', body: '풀레터를 발급받은 지 4주가 지났습니다. 촬영을 마치셨다면 마이페이지 → 풀레터의 "완성된 에디토리얼 제출하기"로 완성 에디토리얼을 제출해 주세요. 이 제출이 완료되기 전에는 새 풀레터를 요청할 수 없습니다.', cta: '에디토리얼 제출하기' },
   en: { subject: 'Your Pull-Letter editorial is due', heading: 'Please submit the finished editorial', body: 'It has been 4 weeks since your Pull-Letter was issued. If the shoot is done, submit the finished editorial via My Page → PULL-LETTERS → "Submit finished editorial". A new Pull-Letter cannot be requested until this submission is in.', cta: 'SUBMIT EDITORIAL' },
-  it: { subject: 'L\'editoriale della tua Pull-Letter è atteso', heading: 'Invia l\'editoriale finito', body: 'Sono passate 4 settimane dall\'emissione della tua Pull-Letter. A shooting concluso, invia l\'editoriale finito da My Page → PULL-LETTERS → "Invia l\'editoriale finito". Non è possibile richiedere una nuova Pull-Letter finché questo invio non è completato.', cta: 'INVIA EDITORIALE' },
-  fr: { subject: 'L\'éditorial de votre Pull-Letter est attendu', heading: 'Soumettez l\'éditorial final', body: 'Cela fait 4 semaines que votre Pull-Letter a été émise. Si le shooting est terminé, soumettez l\'éditorial final via My Page → PULL-LETTERS → « Soumettre l\'éditorial final ». Aucune nouvelle Pull-Letter ne peut être demandée tant que cette soumission n\'est pas faite.', cta: 'SOUMETTRE L\'ÉDITORIAL' },
-  es: { subject: 'El editorial de tu Pull-Letter está pendiente', heading: 'Envía el editorial terminado', body: 'Han pasado 4 semanas desde que se emitió tu Pull-Letter. Si la sesión ha terminado, envía el editorial terminado desde My Page → PULL-LETTERS → "Enviar el editorial terminado". No se puede solicitar una nueva Pull-Letter hasta completar este envío.', cta: 'ENVIAR EDITORIAL' },
-  ja: { subject: 'Pull-Letter の後続エディトリアル提出のご案内', heading: '完成エディトリアルを提出してください', body: 'Pull-Letter の発行から4週間が経ちました。撮影が終わっていれば、マイページ → PULL-LETTERS の「完成エディトリアルを提出」から提出してください。この提出が完了するまで新しい Pull-Letter は申請できません。', cta: 'エディトリアルを提出' },
-  zh: { subject: '您的 Pull-Letter 后续作品待提交', heading: '请提交完整作品', body: '您的 Pull-Letter 已签发 4 周。若拍摄已完成，请通过“我的页面 → PULL-LETTERS → 提交完整作品”提交。在完成此提交之前无法申请新的 Pull-Letter。', cta: '提交作品' },
-  ru: { subject: 'Ожидается эдиториал по вашему Pull-Letter', heading: 'Отправьте готовый эдиториал', body: 'С момента выписки вашего Pull-Letter прошло 4 недели. Если съёмка завершена, отправьте готовый эдиториал через My Page → PULL-LETTERS → «Отправить готовый эдиториал». Новый Pull-Letter нельзя запросить, пока эта заявка не отправлена.', cta: 'ОТПРАВИТЬ ЭДИТОРИАЛ' },
-  de: { subject: 'Das Editorial zu Ihrer Pull-Letter steht aus', heading: 'Bitte reichen Sie das fertige Editorial ein', body: 'Seit der Ausstellung Ihrer Pull-Letter sind 4 Wochen vergangen. Wenn das Shooting abgeschlossen ist, reichen Sie das fertige Editorial über My Page → PULL-LETTERS → „Fertiges Editorial einreichen“ ein. Eine neue Pull-Letter kann erst nach dieser Einreichung angefordert werden.', cta: 'EDITORIAL EINREICHEN' },
+  it: { subject: 'L\'editoriale della tua Pull-Letter è atteso', heading: 'Invia l\'editoriale finito', body: 'Sono passate 4 settimane dall\'emissione della tua Pull-Letter. A shooting concluso, invia l\'editoriale finito da La mia pagina → PULL-LETTER → "Invia l\'editoriale finito". Non è possibile richiedere una nuova Pull-Letter finché questo invio non è completato.', cta: 'INVIA EDITORIALE' },
+  fr: { subject: 'L\'éditorial de votre Pull-Letter est attendu', heading: 'Soumettez l\'éditorial final', body: 'Cela fait 4 semaines que votre Pull-Letter a été émise. Si le shooting est terminé, soumettez l\'éditorial final via Mon compte → PULL-LETTER → « Soumettre l\'éditorial final ». Aucune nouvelle Pull-Letter ne peut être demandée tant que cette soumission n\'est pas faite.', cta: 'SOUMETTRE L\'ÉDITORIAL' },
+  es: { subject: 'El editorial de tu Pull-Letter está pendiente', heading: 'Envía el editorial terminado', body: 'Han pasado 4 semanas desde que se emitió tu Pull-Letter. Si la sesión ha terminado, envía el editorial terminado desde Mi página → PULL-LETTER → "Enviar el editorial terminado". No se puede solicitar una nueva Pull-Letter hasta completar este envío.', cta: 'ENVIAR EDITORIAL' },
+  ja: { subject: 'Pull-Letter の後続エディトリアル提出のご案内', heading: '完成エディトリアルを提出してください', body: 'Pull-Letter の発行から4週間が経ちました。撮影が終わっていれば、マイページ → PULL-LETTER の「完成エディトリアルを提出」から提出してください。この提出が完了するまで新しい Pull-Letter は申請できません。', cta: 'エディトリアルを提出' },
+  zh: { subject: '您的 Pull-Letter 后续作品待提交', heading: '请提交完整作品', body: '您的 Pull-Letter 已签发 4 周。若拍摄已完成，请通过“我的页面 → PULL-LETTER → 提交完整作品”提交。在完成此提交之前无法申请新的 Pull-Letter。', cta: '提交作品' },
+  ru: { subject: 'Ожидается эдиториал по вашему Pull-Letter', heading: 'Отправьте готовый эдиториал', body: 'С момента выписки вашего Pull-Letter прошло 4 недели. Если съёмка завершена, отправьте готовый эдиториал через Моя страница → PULL-LETTER → «Отправить готовый эдиториал». Новый Pull-Letter нельзя запросить, пока эта заявка не отправлена.', cta: 'ОТПРАВИТЬ ЭДИТОРИАЛ' },
+  de: { subject: 'Das Editorial zu Ihrer Pull-Letter steht aus', heading: 'Bitte reichen Sie das fertige Editorial ein', body: 'Seit der Ausstellung Ihrer Pull-Letter sind 4 Wochen vergangen. Wenn das Shooting abgeschlossen ist, reichen Sie das fertige Editorial über Meine Seite → PULL-LETTER → „Fertiges Editorial einreichen“ ein. Eine neue Pull-Letter kann erst nach dieser Einreichung angefordert werden.', cta: 'EDITORIAL EINREICHEN' },
 };
 
 /* 2026-09-25 도메니코 확정 — 승인·발급이 한 버튼이 되어 신청자가 받는 "승인 메일"은 이것 1통.
    톤: 사용법을 구체적으로 설명하지 않고 "이 레터로 촬영이 원활하도록" 만 말한다.
    PAP 가 의상 전달을 조율한다는 약속은 절대 넣지 않는다. PDF 는 버튼(마이페이지)으로만 전달. */
 const PULLLETTER_ISSUED_I18N = {
-  ko: {"subject": "[PAP Magazine] Pull-Letter가 승인되었습니다", "heading": "축하합니다. Pull-Letter가 승인되었습니다", "body1": "\"{title}\" 촬영을 위한 PAP Magazine 공식 Pull-Letter가 발급되었습니다.", "body1NoTitle": "요청하신 촬영을 위한 PAP Magazine 공식 Pull-Letter가 발급되었습니다.", "body2": "이 레터가 이번 촬영을 원활하게 진행하는 데 도움이 되길 바랍니다.", "cta": "풀레터 PDF 받기", "body3": "촬영을 마치면 완성된 에디토리얼을 PAP에 보내주세요. 마이페이지 PULL-LETTERS에서 바로 제출할 수 있습니다.", "signoff": "멋진 촬영이 되길 바랍니다.", "team": "PAP Magazine 에디토리얼 팀"},
+  ko: {"subject": "[PAP Magazine] 풀레터가 승인되었습니다", "heading": "축하합니다. 풀레터가 승인되었습니다", "body1": "\"{title}\" 촬영을 위한 PAP Magazine 공식 풀레터가 발급되었습니다.", "body1NoTitle": "요청하신 촬영을 위한 PAP Magazine 공식 풀레터가 발급되었습니다.", "body2": "이 레터가 이번 촬영을 원활하게 진행하는 데 도움이 되길 바랍니다.", "cta": "풀레터 PDF 받기", "body3": "촬영을 마치면 완성된 에디토리얼을 PAP에 보내주세요. 마이페이지 풀레터에서 바로 제출할 수 있습니다.", "signoff": "멋진 촬영이 되길 바랍니다.", "team": "PAP Magazine 에디토리얼 팀"},
   en: {"subject": "[PAP Magazine] Your Pull-Letter Has Been Approved", "heading": "Congratulations. Your Pull-Letter has been approved", "body1": "Your official PAP Magazine Pull-Letter for \"{title}\" has been issued.", "body1NoTitle": "Your official PAP Magazine Pull-Letter for your shoot has been issued.", "body2": "We hope it helps your shoot run smoothly.", "cta": "GET YOUR PULL-LETTER PDF", "body3": "Once the shoot is done, send us the finished editorial. You can submit it directly from My Page, under PULL-LETTERS.", "signoff": "Wishing you a wonderful shoot.", "team": "PAP Magazine Editorial Team"},
-  it: {"subject": "[PAP Magazine] La tua Pull-Letter è stata approvata", "heading": "Congratulazioni. La tua Pull-Letter è stata approvata", "body1": "La Pull-Letter ufficiale di PAP Magazine per \"{title}\" è stata emessa.", "body1NoTitle": "La Pull-Letter ufficiale di PAP Magazine per il tuo shooting è stata emessa.", "body2": "Speriamo che ti aiuti a realizzare lo shooting senza intoppi.", "cta": "SCARICA LA PULL-LETTER", "body3": "A shooting concluso, inviaci l’editoriale finito. Puoi farlo direttamente dalla tua My Page, nella sezione PULL-LETTERS.", "signoff": "Ti auguriamo un ottimo shooting.", "team": "Il team editoriale di PAP Magazine"},
-  fr: {"subject": "[PAP Magazine] Votre Pull-Letter a été approuvée", "heading": "Félicitations. Votre Pull-Letter a été approuvée", "body1": "La Pull-Letter officielle de PAP Magazine pour « {title} » a été émise.", "body1NoTitle": "La Pull-Letter officielle de PAP Magazine pour votre shooting a été émise.", "body2": "Nous espérons qu’elle facilitera le bon déroulement de votre shooting.", "cta": "TÉLÉCHARGER LA PULL-LETTER", "body3": "Une fois le shooting terminé, envoyez-nous l’éditorial final. Vous pouvez le soumettre directement depuis votre My Page, rubrique PULL-LETTERS.", "signoff": "Nous vous souhaitons un très beau shooting.", "team": "L’équipe éditoriale de PAP Magazine"},
-  es: {"subject": "[PAP Magazine] Tu Pull-Letter ha sido aprobada", "heading": "Enhorabuena. Tu Pull-Letter ha sido aprobada", "body1": "La Pull-Letter oficial de PAP Magazine para \"{title}\" ha sido emitida.", "body1NoTitle": "La Pull-Letter oficial de PAP Magazine para tu sesión ha sido emitida.", "body2": "Esperamos que te ayude a que la sesión salga sin contratiempos.", "cta": "DESCARGAR LA PULL-LETTER", "body3": "Cuando termines la sesión, envíanos el editorial terminado. Puedes enviarlo directamente desde tu My Page, en PULL-LETTERS.", "signoff": "Te deseamos una sesión estupenda.", "team": "Equipo editorial de PAP Magazine"},
-  ja: {"subject": "[PAP Magazine] Pull-Letterが承認されました", "heading": "おめでとうございます。Pull-Letterが承認されました", "body1": "「{title}」の撮影のためのPAP Magazine公式Pull-Letterを発行しました。", "body1NoTitle": "ご依頼の撮影のためのPAP Magazine公式Pull-Letterを発行しました。", "body2": "このレターが、撮影をスムーズに進めるお役に立てば幸いです。", "cta": "Pull-Letter PDFを受け取る", "body3": "撮影が終わりましたら、完成したエディトリアルをPAPにお送りください。マイページのPULL-LETTERSから直接提出できます。", "signoff": "素敵な撮影になりますように。", "team": "PAP Magazine エディトリアルチーム"},
-  zh: {"subject": "[PAP Magazine] 您的 Pull-Letter 已获批准", "heading": "恭喜，您的 Pull-Letter 已获批准", "body1": "为“{title}”拍摄签发的 PAP Magazine 官方 Pull-Letter 已发出。", "body1NoTitle": "为您的拍摄签发的 PAP Magazine 官方 Pull-Letter 已发出。", "body2": "希望它能帮助您的拍摄顺利进行。", "cta": "获取 Pull-Letter PDF", "body3": "拍摄完成后，请将完整的作品发给 PAP。您可以在“我的页面”的 PULL-LETTERS 中直接提交。", "signoff": "祝拍摄顺利精彩。", "team": "PAP Magazine 编辑团队"},
-  ru: {"subject": "[PAP Magazine] Ваш Pull-Letter одобрен", "heading": "Поздравляем. Ваш Pull-Letter одобрен", "body1": "Официальный Pull-Letter от PAP Magazine для «{title}» выписан.", "body1NoTitle": "Официальный Pull-Letter от PAP Magazine для вашей съёмки выписан.", "body2": "Надеемся, он поможет вашей съёмке пройти гладко.", "cta": "ПОЛУЧИТЬ PULL-LETTER", "body3": "Когда съёмка завершится, пришлите нам готовый эдиториал. Отправить его можно прямо в My Page, в разделе PULL-LETTERS.", "signoff": "Желаем прекрасной съёмки.", "team": "Редакция PAP Magazine"},
-  de: {"subject": "[PAP Magazine] Ihre Pull-Letter wurde genehmigt", "heading": "Herzlichen Glückwunsch. Ihre Pull-Letter wurde genehmigt", "body1": "Die offizielle Pull-Letter von PAP Magazine für „{title}“ wurde ausgestellt.", "body1NoTitle": "Die offizielle Pull-Letter von PAP Magazine für Ihr Shooting wurde ausgestellt.", "body2": "Wir hoffen, sie hilft Ihnen, Ihr Shooting reibungslos umzusetzen.", "cta": "PULL-LETTER HERUNTERLADEN", "body3": "Wenn das Shooting abgeschlossen ist, senden Sie uns das fertige Editorial. Sie können es direkt in Ihrer My Page unter PULL-LETTERS einreichen.", "signoff": "Wir wünschen Ihnen ein wunderbares Shooting.", "team": "Die Redaktion von PAP Magazine"},
+  it: {"subject": "[PAP Magazine] La tua Pull-Letter è stata approvata", "heading": "Congratulazioni. La tua Pull-Letter è stata approvata", "body1": "La Pull-Letter ufficiale di PAP Magazine per \"{title}\" è stata emessa.", "body1NoTitle": "La Pull-Letter ufficiale di PAP Magazine per il tuo shooting è stata emessa.", "body2": "Speriamo che ti aiuti a realizzare lo shooting senza intoppi.", "cta": "SCARICA LA PULL-LETTER", "body3": "A shooting concluso, inviaci l’editoriale finito. Puoi farlo direttamente dalla tua La mia pagina, nella sezione PULL-LETTER.", "signoff": "Ti auguriamo un ottimo shooting.", "team": "Il team editoriale di PAP Magazine"},
+  fr: {"subject": "[PAP Magazine] Votre Pull-Letter a été approuvée", "heading": "Félicitations. Votre Pull-Letter a été approuvée", "body1": "La Pull-Letter officielle de PAP Magazine pour « {title} » a été émise.", "body1NoTitle": "La Pull-Letter officielle de PAP Magazine pour votre shooting a été émise.", "body2": "Nous espérons qu’elle facilitera le bon déroulement de votre shooting.", "cta": "TÉLÉCHARGER LA PULL-LETTER", "body3": "Une fois le shooting terminé, envoyez-nous l’éditorial final. Vous pouvez le soumettre directement depuis votre Mon compte, rubrique PULL-LETTER.", "signoff": "Nous vous souhaitons un très beau shooting.", "team": "L’équipe éditoriale de PAP Magazine"},
+  es: {"subject": "[PAP Magazine] Tu Pull-Letter ha sido aprobada", "heading": "Enhorabuena. Tu Pull-Letter ha sido aprobada", "body1": "La Pull-Letter oficial de PAP Magazine para \"{title}\" ha sido emitida.", "body1NoTitle": "La Pull-Letter oficial de PAP Magazine para tu sesión ha sido emitida.", "body2": "Esperamos que te ayude a que la sesión salga sin contratiempos.", "cta": "DESCARGAR LA PULL-LETTER", "body3": "Cuando termines la sesión, envíanos el editorial terminado. Puedes enviarlo directamente desde tu Mi página, en PULL-LETTER.", "signoff": "Te deseamos una sesión estupenda.", "team": "Equipo editorial de PAP Magazine"},
+  ja: {"subject": "[PAP Magazine] Pull-Letterが承認されました", "heading": "おめでとうございます。Pull-Letterが承認されました", "body1": "「{title}」の撮影のためのPAP Magazine公式Pull-Letterを発行しました。", "body1NoTitle": "ご依頼の撮影のためのPAP Magazine公式Pull-Letterを発行しました。", "body2": "このレターが、撮影をスムーズに進めるお役に立てば幸いです。", "cta": "Pull-Letter PDFを受け取る", "body3": "撮影が終わりましたら、完成したエディトリアルをPAPにお送りください。マイページのPULL-LETTERから直接提出できます。", "signoff": "素敵な撮影になりますように。", "team": "PAP Magazine エディトリアルチーム"},
+  zh: {"subject": "[PAP Magazine] 您的 Pull-Letter 已获批准", "heading": "恭喜，您的 Pull-Letter 已获批准", "body1": "为“{title}”拍摄签发的 PAP Magazine 官方 Pull-Letter 已发出。", "body1NoTitle": "为您的拍摄签发的 PAP Magazine 官方 Pull-Letter 已发出。", "body2": "希望它能帮助您的拍摄顺利进行。", "cta": "获取 Pull-Letter PDF", "body3": "拍摄完成后，请将完整的作品发给 PAP。您可以在“我的页面”的 PULL-LETTER 中直接提交。", "signoff": "祝拍摄顺利精彩。", "team": "PAP Magazine 编辑团队"},
+  ru: {"subject": "[PAP Magazine] Ваш Pull-Letter одобрен", "heading": "Поздравляем. Ваш Pull-Letter одобрен", "body1": "Официальный Pull-Letter от PAP Magazine для «{title}» выписан.", "body1NoTitle": "Официальный Pull-Letter от PAP Magazine для вашей съёмки выписан.", "body2": "Надеемся, он поможет вашей съёмке пройти гладко.", "cta": "ПОЛУЧИТЬ PULL-LETTER", "body3": "Когда съёмка завершится, пришлите нам готовый эдиториал. Отправить его можно прямо в Моя страница, в разделе PULL-LETTER.", "signoff": "Желаем прекрасной съёмки.", "team": "Редакция PAP Magazine"},
+  de: {"subject": "[PAP Magazine] Ihre Pull-Letter wurde genehmigt", "heading": "Herzlichen Glückwunsch. Ihre Pull-Letter wurde genehmigt", "body1": "Die offizielle Pull-Letter von PAP Magazine für „{title}“ wurde ausgestellt.", "body1NoTitle": "Die offizielle Pull-Letter von PAP Magazine für Ihr Shooting wurde ausgestellt.", "body2": "Wir hoffen, sie hilft Ihnen, Ihr Shooting reibungslos umzusetzen.", "cta": "PULL-LETTER HERUNTERLADEN", "body3": "Wenn das Shooting abgeschlossen ist, senden Sie uns das fertige Editorial. Sie können es direkt in Ihrer Meine Seite unter PULL-LETTER einreichen.", "signoff": "Wir wünschen Ihnen ein wunderbares Shooting.", "team": "Die Redaktion von PAP Magazine"},
 };
 
 /* ── 접수 확인·환영 메일 i18n (2026-08-26) ─────────────────────────
@@ -836,7 +838,7 @@ const PULLLETTER_ISSUED_I18N = {
    않았다), welcome 도 영어 고정에 fire-and-forget 이라 서버리스 프리즈로
    실제 발송이 보장되지 않았다. 둘 다 9개 언어 + 호출부 await 로 고친다. */
 const SUBMISSION_RECEIVED_I18N = {
-  ko: { subject: '서브미션 접수: {title}', heading: '서브미션 접수 완료', body1: '보내주신 에디토리얼 서브미션 {title}이(가) 접수되었습니다.', statusLabel: '상태', statusValue: '심사 중', etaLabel: '예상 회신', etaValue: '최대 7영업일', etaValuePremium: '2영업일 이내 — 프리미엄 우선 심사', body2: '에디토리얼 팀이 꼼꼼히 검토한 뒤 결과를 이메일로 알려드립니다.', cta: '내 서브미션 보기', premKicker: '크리에이티브 팀을 위해', premBody: '다음 촬영에 브랜드 의상 대여가 필요하신가요? 프리미엄 멤버는 PAP 명의의 공식 Pull-Letter를 월 1건 요청할 수 있고, 전체 에디토리얼 아카이브를 열람할 수 있습니다.', premCta: '프리미엄 알아보기 →' },
+  ko: { subject: '서브미션 접수: {title}', heading: '서브미션 접수 완료', body1: '보내주신 에디토리얼 서브미션 {title}이(가) 접수되었습니다.', statusLabel: '상태', statusValue: '심사 중', etaLabel: '예상 회신', etaValue: '최대 7영업일', etaValuePremium: '2영업일 이내 — 프리미엄 우선 심사', body2: '에디토리얼 팀이 꼼꼼히 검토한 뒤 결과를 이메일로 알려드립니다.', cta: '내 서브미션 보기', premKicker: '크리에이티브 팀을 위해', premBody: '다음 촬영에 브랜드 의상 대여가 필요하신가요? 프리미엄 멤버는 PAP 명의의 공식 풀레터를 월 1건 요청할 수 있고, 전체 에디토리얼 아카이브를 열람할 수 있습니다.', premCta: '프리미엄 알아보기 →' },
   en: { subject: 'Submission Received: {title}', heading: 'Submission Received', body1: 'We’ve received your editorial submission {title}.', statusLabel: 'Status', statusValue: 'Under Review', etaLabel: 'Expected Response', etaValue: 'Up to 7 business days', etaValuePremium: 'Within 2 business days — Premium priority review', body2: 'Our editorial team will review your work carefully. You’ll receive an email once a decision has been made.', cta: 'VIEW MY SUBMISSIONS', premKicker: 'For creative teams', premBody: 'Need garment loans for your next shoot? Premium members can request one official PAP Pull-Letter per month and browse the full editorial archive.', premCta: 'EXPLORE PREMIUM →' },
   it: { subject: 'Candidatura ricevuta: {title}', heading: 'Candidatura ricevuta', body1: 'Abbiamo ricevuto il tuo editoriale {title}.', statusLabel: 'Stato', statusValue: 'In revisione', etaLabel: 'Risposta prevista', etaValue: 'Fino a 7 giorni lavorativi', etaValuePremium: 'Entro 2 giorni lavorativi — revisione prioritaria Premium', body2: 'Il team editoriale esaminerà il tuo lavoro con attenzione. Riceverai un’email con l’esito.', cta: 'LE MIE CANDIDATURE', premKicker: 'Per i team creativi', premBody: 'Ti servono capi in prestito per il prossimo shooting? I membri Premium possono richiedere una Pull-Letter ufficiale PAP al mese e consultare l’intero archivio editoriale.', premCta: 'SCOPRI PREMIUM →' },
   fr: { subject: 'Soumission reçue : {title}', heading: 'Soumission reçue', body1: 'Nous avons bien reçu votre éditorial {title}.', statusLabel: 'Statut', statusValue: 'En cours d’examen', etaLabel: 'Réponse prévue', etaValue: 'Jusqu’à 7 jours ouvrés', etaValuePremium: 'Sous 2 jours ouvrés — examen prioritaire Premium', body2: 'Notre équipe éditoriale examinera votre travail avec soin. Vous recevrez un e-mail dès qu’une décision sera prise.', cta: 'MES SOUMISSIONS', premKicker: 'Pour les équipes créatives', premBody: 'Besoin d’emprunter des vêtements pour votre prochain shooting ? Les membres Premium peuvent demander une Pull-Letter officielle PAP par mois et consulter toutes les archives éditoriales.', premCta: 'DÉCOUVRIR PREMIUM →' },
@@ -848,7 +850,7 @@ const SUBMISSION_RECEIVED_I18N = {
 };
 
 const WELCOME_I18N = {
-  ko: { subject: 'PAP Magazine에 오신 것을 환영합니다', heading: '환영합니다, {name}님.', intro: '떠오르는 패션 크리에이티브를 위한 플랫폼, PAP Magazine에 가입해 주셔서 감사합니다.', introList: '지금 바로 할 수 있는 것들:', b1t: '작업 제출하기', b1d: '에디토리얼을 큐레이션 팀에 보내 보세요', b2t: 'Pull-Letter 요청', b2d: '디자이너 쇼룸에서 의상을 대여하세요', b3t: '커뮤니티 참여', b3d: '포토그래퍼·스타일리스트·모델과 연결되세요', cta: '서브미션 시작하기' },
+  ko: { subject: 'PAP Magazine에 오신 것을 환영합니다', heading: '환영합니다, {name}님.', intro: '떠오르는 패션 크리에이티브를 위한 플랫폼, PAP Magazine에 가입해 주셔서 감사합니다.', introList: '지금 바로 할 수 있는 것들:', b1t: '작업 제출하기', b1d: '에디토리얼을 큐레이션 팀에 보내 보세요', b2t: '풀레터 요청', b2d: '디자이너 쇼룸에서 의상을 대여하세요', b3t: '커뮤니티 참여', b3d: '포토그래퍼·스타일리스트·모델과 연결되세요', cta: '서브미션 시작하기' },
   en: { subject: 'Welcome to PAP Magazine', heading: 'Welcome, {name}.', intro: 'Thank you for joining PAP Magazine — a platform for emerging fashion creatives.', introList: 'Here’s what you can do now:', b1t: 'Submit Your Work', b1d: 'Share your editorial with our curation team', b2t: 'Request a Pull-Letter', b2d: 'Borrow garments from designer showrooms', b3t: 'Join the Community', b3d: 'Connect with photographers, stylists, and models', cta: 'START SUBMITTING' },
   it: { subject: 'Benvenuto su PAP Magazine', heading: 'Benvenuto, {name}.', intro: 'Grazie per esserti unito a PAP Magazine, la piattaforma per creativi emergenti della moda.', introList: 'Ecco cosa puoi fare subito:', b1t: 'Invia il tuo lavoro', b1d: 'Condividi il tuo editoriale con il nostro team', b2t: 'Richiedi una Pull-Letter', b2d: 'Prendi in prestito capi dagli showroom', b3t: 'Unisciti alla community', b3d: 'Entra in contatto con fotografi, stylist e modelli', cta: 'INIZIA A INVIARE' },
   fr: { subject: 'Bienvenue sur PAP Magazine', heading: 'Bienvenue, {name}.', intro: 'Merci d’avoir rejoint PAP Magazine, la plateforme des créatifs émergents de la mode.', introList: 'Voici ce que vous pouvez faire dès maintenant :', b1t: 'Soumettre votre travail', b1d: 'Partagez votre éditorial avec notre équipe', b2t: 'Demander une Pull-Letter', b2d: 'Empruntez des vêtements auprès des showrooms', b3t: 'Rejoindre la communauté', b3d: 'Connectez-vous avec photographes, stylistes et modèles', cta: 'COMMENCER' },
@@ -862,13 +864,13 @@ const WELCOME_I18N = {
 const PULLLETTER_REVISION_I18N = {
   ko: { subject: '[PAP Magazine] 풀레터 무드보드 수정 요청', heading: '무드보드 수정 요청', body1: '보내주신 풀레터 신청을 검토했습니다. 발급 전에 무드보드에 아래 수정이 필요합니다.', noteLabel: '에디터 피드백', body2: '마이페이지에서 수정한 무드보드를 다시 올려주시면 재검토 후 발급해 드립니다.', cta: '수정본 올리기' },
   en: { subject: '[PAP Magazine] Pull-Letter: revision requested', heading: 'Revision requested', body1: 'We have reviewed your Pull-Letter request. Before we can issue the letter, the mood board needs the following revisions.', noteLabel: 'Editor feedback', body2: 'Please upload your revised mood board from My Page — we will review it again and issue the letter once it is ready.', cta: 'Upload revision' },
-  it: { subject: '[PAP Magazine] Pull-Letter: revisione richiesta', heading: 'Revisione richiesta', body1: 'Abbiamo esaminato la tua richiesta di Pull-Letter. Prima dell’emissione, la moodboard richiede le seguenti modifiche.', noteLabel: 'Feedback editoriale', body2: 'Carica la moodboard aggiornata dalla tua My Page: la riesamineremo ed emetteremo la lettera.', cta: 'Carica revisione' },
-  fr: { subject: '[PAP Magazine] Pull-Letter : révision demandée', heading: 'Révision demandée', body1: 'Nous avons examiné votre demande de Pull-Letter. Avant émission, le moodboard nécessite les révisions suivantes.', noteLabel: 'Retour de l’éditeur', body2: 'Téléversez votre moodboard révisé depuis My Page : nous le réexaminerons et émettrons la lettre.', cta: 'Envoyer la révision' },
-  es: { subject: '[PAP Magazine] Pull-Letter: revisión solicitada', heading: 'Revisión solicitada', body1: 'Hemos revisado tu solicitud de Pull-Letter. Antes de emitirla, el moodboard necesita los siguientes cambios.', noteLabel: 'Comentarios del editor', body2: 'Sube el moodboard revisado desde My Page: lo revisaremos de nuevo y emitiremos la carta.', cta: 'Subir revisión' },
+  it: { subject: '[PAP Magazine] Pull-Letter: revisione richiesta', heading: 'Revisione richiesta', body1: 'Abbiamo esaminato la tua richiesta di Pull-Letter. Prima dell’emissione, la moodboard richiede le seguenti modifiche.', noteLabel: 'Feedback editoriale', body2: 'Carica la moodboard aggiornata dalla tua La mia pagina: la riesamineremo ed emetteremo la lettera.', cta: 'Carica revisione' },
+  fr: { subject: '[PAP Magazine] Pull-Letter : révision demandée', heading: 'Révision demandée', body1: 'Nous avons examiné votre demande de Pull-Letter. Avant émission, le moodboard nécessite les révisions suivantes.', noteLabel: 'Retour de l’éditeur', body2: 'Téléversez votre moodboard révisé depuis Mon compte : nous le réexaminerons et émettrons la lettre.', cta: 'Envoyer la révision' },
+  es: { subject: '[PAP Magazine] Pull-Letter: revisión solicitada', heading: 'Revisión solicitada', body1: 'Hemos revisado tu solicitud de Pull-Letter. Antes de emitirla, el moodboard necesita los siguientes cambios.', noteLabel: 'Comentarios del editor', body2: 'Sube el moodboard revisado desde Mi página: lo revisaremos de nuevo y emitiremos la carta.', cta: 'Subir revisión' },
   ja: { subject: '[PAP Magazine] Pull-Letter：ムードボードの修正依頼', heading: '修正のお願い', body1: 'Pull-Letterのリクエストを拝見しました。発行前に、ムードボードに以下の修正が必要です。', noteLabel: 'エディターフィードバック', body2: 'マイページから修正版を再アップロードしてください。再審査のうえ発行します。', cta: '修正版を送る' },
   zh: { subject: '[PAP Magazine] Pull-Letter：需修改情绪板', heading: '需要修改', body1: '我们已审阅您的 Pull-Letter 申请。签发前，情绪板需作以下修改。', noteLabel: '编辑反馈', body2: '请在“我的页面”重新上传修改后的情绪板，复审后即可签发。', cta: '上传修改稿' },
-  ru: { subject: '[PAP Magazine] Pull-Letter: нужна доработка', heading: 'Нужна доработка', body1: 'Мы рассмотрели ваш запрос Pull-Letter. Перед выдачей мудборд нужно доработать.', noteLabel: 'Комментарий редактора', body2: 'Загрузите обновлённый мудборд в My Page — мы проверим его и выдадим письмо.', cta: 'Загрузить' },
-  de: { subject: '[PAP Magazine] Pull-Letter: Überarbeitung erbeten', heading: 'Überarbeitung erbeten', body1: 'Wir haben Ihre Pull-Letter-Anfrage geprüft. Vor der Ausstellung benötigt das Moodboard folgende Überarbeitungen.', noteLabel: 'Feedback der Redaktion', body2: 'Laden Sie das überarbeitete Moodboard in Ihrer My Page hoch — wir prüfen erneut und stellen die Letter aus.', cta: 'Überarbeitung hochladen' },
+  ru: { subject: '[PAP Magazine] Pull-Letter: нужна доработка', heading: 'Нужна доработка', body1: 'Мы рассмотрели ваш запрос Pull-Letter. Перед выдачей мудборд нужно доработать.', noteLabel: 'Комментарий редактора', body2: 'Загрузите обновлённый мудборд в Моя страница — мы проверим его и выдадим письмо.', cta: 'Загрузить' },
+  de: { subject: '[PAP Magazine] Pull-Letter: Überarbeitung erbeten', heading: 'Überarbeitung erbeten', body1: 'Wir haben Ihre Pull-Letter-Anfrage geprüft. Vor der Ausstellung benötigt das Moodboard folgende Überarbeitungen.', noteLabel: 'Feedback der Redaktion', body2: 'Laden Sie das überarbeitete Moodboard in Ihrer Meine Seite hoch — wir prüfen erneut und stellen die Letter aus.', cta: 'Überarbeitung hochladen' },
 };
 
 const templates = {
@@ -1285,7 +1287,7 @@ const templates = {
       html: wrapMarketing({
         preheader: campaign.preheader || L.editorialPreheader,
         body: `
-          <div style="font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">THIS WEEK&apos;S EDITORIALS</div>
+          <div style="font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">${escapeHtml(mailChrome(lang).weekEditorials)}</div>
           <h1 style="font-size:26px;color:#fff;margin:0 0 8px;letter-spacing:.5px;line-height:1.25;">${escapeHtml(campaign.hero_headline || L.editorialTitle)}</h1>
           <p style="color:#999;font-size:13px;line-height:1.7;margin:0 0 24px;">${escapeHtml(campaign.hero_body || '')}</p>
           <div style="font-size:12px;color:#aaa;margin-bottom:24px;">${L.greeting.replace('{name}', `<strong style="color:#fff;">${escapeHtml(greeting)}</strong>`)}</div>
@@ -1297,7 +1299,7 @@ const templates = {
                본문 바로 아래 붙는다. 본문에도 같은 크기의 흰 버튼이 있으면
                둘이 맞먹어 우선순위가 안 보인다. **버튼은 IG 하나만** 남기고
                웹은 링크로 둔다 — 지우지는 않는다(유료 사다리·헌법 8항). -->
-          <a href="${withMailUtm(FRONTEND_URL + '/')}" style="display:inline-block;color:#aaa;font-size:11px;font-weight:600;letter-spacing:2px;text-decoration:underline;margin-top:8px;">VIEW MORE ON PAP</a>
+          <a href="${withMailUtm(FRONTEND_URL + '/')}" style="display:inline-block;color:#aaa;font-size:11px;font-weight:600;letter-spacing:2px;text-decoration:underline;margin-top:8px;">${escapeHtml(mailChrome(lang).viewMore)}</a>
         `,
         unsubUrl: `${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}`,
         lang,
@@ -1476,7 +1478,7 @@ const templates = {
         <div style="font-size:22px;font-weight:700;color:#1a1a1a;line-height:1.35;margin:0 0 12px;">${escapeHtml(C.welcomeHeadline)}</div>
         <div style="font-size:14px;color:#444;line-height:1.8;margin:0 0 26px;">${escapeHtml(C.welcomeBody)}</div>
         <a href="${edUrl}" style="display:inline-block;background:#6b1a1a;color:#ffffff;padding:14px 34px;font-size:12px;font-weight:700;letter-spacing:2px;text-decoration:none;">${escapeHtml(C.welcomeCta)}</a>
-        <div style="margin-top:22px;"><a href="${IG_FOLLOW_MAIL}" style="color:#6b1a1a;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:underline;">FOLLOW @PAP_MAGAZINE</a></div>
+        <div style="margin-top:22px;"><a href="${IG_FOLLOW_MAIL}" style="color:#6b1a1a;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:underline;">${escapeHtml(weeklyCopy(lang).follow)}</a></div>
       `, `<a href="${unsubUrl}" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(C.unsubscribe)}</a>`),
     };
   },
@@ -1588,7 +1590,7 @@ const templates = {
     ).join(' &nbsp;·&nbsp; ');
     const html = `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PAP Creator News</title>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(subject)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet"></head>
 <body style="margin:0;padding:0;background:#f5f5f5;">
   <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader)}</div>
@@ -1646,15 +1648,18 @@ const templates = {
       : `<a href="${FRONTEND_URL}/api/email/language?token=${unsubToken}&amp;lang=${l}" style="color:#999;text-decoration:none;white-space:nowrap;">${LANG_LABELS[l]}</a>`
     ).join(' &nbsp;·&nbsp; ');
 
+    /* 2026-09-25 — 9개 언어 (도메니코 "각자의 언어로"). 전에는 ko·en 뿐이라 나머지 7개 언어 수신자가
+     * 메일 전체를 영어로 받았다. 한국어는 사이트 표기대로 "풀레터", 소제목도 한국어. 제품 이름 Pull Letter 는
+     * 사이트 메뉴(PULL-LETTER)처럼 다른 언어에서는 라틴 글자 그대로 둔다. */
     const COPY = {
       ko: {
         subject: 'PAP 공식 풀레터, 크리에이터를 위한 샘플 대여 공문',
         preheader: '제출해 주신 작업 잘 봤습니다. PAP 공식 풀레터 제도를 소개합니다.',
-        kicker: 'FOR CREATIVE TEAMS',
-        headline: 'PAP 공식 Pull Letter를 소개합니다',
-        p1: 'PAP Magazine에 작업을 제출해 주신 크리에이터분께 안내드립니다. 풀레터(Pull Letter)는 매거진 명의의 공식 공문으로, 브랜드·쇼룸 샘플 대여는 물론 로케이션 섭외 등 촬영과 관련한 협조를 요청하는 자리에서 PAP와 촬영을 진행한다는 사실을 공식적으로 증명하는 문서입니다.',
+        kicker: '크리에이티브 팀을 위해',
+        headline: 'PAP 공식 풀레터를 소개합니다',
+        p1: 'PAP 매거진에 작업을 제출해 주신 크리에이터분께 안내드립니다. 풀레터는 매거진 명의의 공식 공문으로, 브랜드·쇼룸 샘플 대여는 물론 로케이션 섭외 등 촬영과 관련한 협조를 요청하는 자리에서 PAP와 촬영을 진행한다는 사실을 공식적으로 증명하는 문서입니다.',
         p2: '발급은 심사제입니다. 제출하신 무드보드의 방향과 포토그래퍼의 포트폴리오가 PAP의 에디토리얼 미감과 맞는지 에디토리얼 팀이 검토하며, 승인된 요청에 한해 포토그래퍼·스타일리스트 이름과 발급일이 명시된 PDF 공문이 발급됩니다.',
-        stepsTitle: 'HOW IT WORKS',
+        stepsTitle: '진행 방식',
         steps: ['마이페이지에서 무드보드와 팀 정보 제출', '에디토리얼 팀 심사 · 피드백 (무드보드와 포트폴리오가 PAP의 방향과 맞아야 승인됩니다)', '승인 시 PDF 공문 발급 (발급일로부터 2개월 유효)'],
         cta: '풀레터 요청하기',
         footnote: '풀레터 요청은 프리미엄 멤버십에 포함되어 있으며 월 1건 요청할 수 있습니다.',
@@ -1664,7 +1669,7 @@ const templates = {
         subject: 'The Official PAP Pull Letter for Creative Teams',
         preheader: 'You have submitted work to PAP. Introducing the official PAP Pull Letter.',
         kicker: 'FOR CREATIVE TEAMS',
-        headline: 'The Official PAP Pull Letter',
+        headline: 'The Official PAP Pull Letter',
         p1: 'You are receiving this because you have submitted work to PAP Magazine. A Pull Letter is an official letter issued in the magazine’s name: formal proof that you are shooting with PAP, used when pulling samples from brands and showrooms, negotiating locations, and requesting production support of any kind.',
         p2: 'Issuance is selective. The editorial team reviews whether your moodboard and the photographer’s portfolio align with PAP’s editorial aesthetic; only approved requests receive a PDF letter carrying the photographer and stylist names and the date of issue.',
         stepsTitle: 'HOW IT WORKS',
@@ -1672,6 +1677,97 @@ const templates = {
         cta: 'Request a Pull Letter',
         footnote: 'Pull Letter requests are part of the Premium membership, with one request per month.',
         footnoteLink: 'About membership',
+      },
+      it: {
+        subject: 'La Pull Letter ufficiale di PAP per i team creativi',
+        preheader: 'Hai inviato un lavoro a PAP. Ti presentiamo la Pull Letter ufficiale di PAP.',
+        kicker: 'PER I TEAM CREATIVI',
+        headline: 'La Pull Letter ufficiale di PAP',
+        p1: 'Ricevi questa email perché hai inviato un lavoro a PAP Magazine. La Pull Letter è una lettera ufficiale emessa a nome della rivista: la prova formale che stai scattando con PAP, da presentare quando chiedi campioni a brand e showroom, cerchi location e richiedi qualsiasi supporto alla produzione.',
+        p2: 'Il rilascio è selettivo. Il team editoriale valuta se il tuo moodboard e il portfolio del fotografo sono in linea con l’estetica editoriale di PAP; solo le richieste approvate ricevono una lettera in PDF con i nomi di fotografo e stylist e la data di emissione.',
+        stepsTitle: 'COME FUNZIONA',
+        steps: ['Invia moodboard e dati del team da La mia pagina', 'Revisione e feedback del team editoriale (moodboard e portfolio devono essere in linea con la direzione di PAP)', 'Se approvata, ricevi la lettera in PDF, valida due mesi dalla data di emissione'],
+        cta: 'Richiedi una Pull Letter',
+        footnote: 'Le richieste di Pull Letter sono incluse nella membership Premium, una al mese.',
+        footnoteLink: 'Scopri la membership',
+      },
+      fr: {
+        subject: 'La Pull Letter officielle de PAP pour les équipes créatives',
+        preheader: 'Vous avez soumis un travail à PAP. Découvrez la Pull Letter officielle de PAP.',
+        kicker: 'POUR LES ÉQUIPES CRÉATIVES',
+        headline: 'La Pull Letter officielle de PAP',
+        p1: 'Vous recevez cet e-mail parce que vous avez soumis un travail à PAP Magazine. La Pull Letter est une lettre officielle émise au nom du magazine : la preuve formelle que vous shootez avec PAP, à présenter pour emprunter des pièces auprès des marques et des showrooms, obtenir des lieux de prise de vue et demander tout soutien à la production.',
+        p2: 'La délivrance est sélective. L’équipe éditoriale vérifie que votre moodboard et le portfolio du photographe correspondent à l’esthétique éditoriale de PAP ; seules les demandes approuvées reçoivent une lettre PDF mentionnant les noms du photographe et du styliste ainsi que la date d’émission.',
+        stepsTitle: 'COMMENT ÇA MARCHE',
+        steps: ['Envoyez votre moodboard et les informations de l’équipe depuis Mon compte', 'Examen et retour de l’équipe éditoriale (le moodboard et le portfolio doivent correspondre à la direction de PAP)', 'Si la demande est approuvée, une lettre PDF est émise, valable deux mois à compter de sa date d’émission'],
+        cta: 'Demander une Pull Letter',
+        footnote: 'Les demandes de Pull Letter sont incluses dans l’abonnement Premium, à raison d’une par mois.',
+        footnoteLink: 'Découvrir l’abonnement',
+      },
+      es: {
+        subject: 'La Pull Letter oficial de PAP para equipos creativos',
+        preheader: 'Has enviado tu trabajo a PAP. Te presentamos la Pull Letter oficial de PAP.',
+        kicker: 'PARA EQUIPOS CREATIVOS',
+        headline: 'La Pull Letter oficial de PAP',
+        p1: 'Recibes este correo porque has enviado tu trabajo a PAP Magazine. La Pull Letter es una carta oficial emitida en nombre de la revista: la prueba formal de que estás haciendo una sesión con PAP, útil para pedir muestras a marcas y showrooms, conseguir localizaciones y solicitar cualquier apoyo a la producción.',
+        p2: 'La emisión es selectiva. El equipo editorial revisa si tu moodboard y el portafolio del fotógrafo encajan con la estética editorial de PAP; solo las solicitudes aprobadas reciben una carta en PDF con los nombres del fotógrafo y del estilista y la fecha de emisión.',
+        stepsTitle: 'CÓMO FUNCIONA',
+        steps: ['Envía tu moodboard y los datos del equipo desde Mi página', 'Revisión y comentarios del equipo editorial (el moodboard y el portafolio deben encajar con la dirección de PAP)', 'Si se aprueba, se emite una carta en PDF, válida durante dos meses desde la fecha de emisión'],
+        cta: 'Solicitar una Pull Letter',
+        footnote: 'Las solicitudes de Pull Letter están incluidas en la membresía Premium, con una solicitud al mes.',
+        footnoteLink: 'Ver la membresía',
+      },
+      ja: {
+        subject: 'クリエイティブチームのための PAP 公式 Pull Letter',
+        preheader: 'PAP に作品をご提出いただいた方へ。PAP 公式 Pull Letter のご案内です。',
+        kicker: 'クリエイティブチームへ',
+        headline: 'PAP 公式 Pull Letter のご案内',
+        p1: 'PAPマガジンに作品をご提出いただいたクリエイターの皆さまへお送りしています。Pull Letter は誌名で発行する公式レターで、ブランドやショールームからのサンプル貸し出し、ロケーションの交渉など、撮影に関わる協力を依頼する場面で、PAP との撮影であることを正式に証明する書類です。',
+        p2: '発行は審査制です。ご提出のムードボードとフォトグラファーのポートフォリオが PAP のエディトリアルの美意識に合うかを編集部が確認し、承認されたリクエストにのみ、フォトグラファーとスタイリストの名前、発行日を記載した PDF レターを発行します。',
+        stepsTitle: 'ご利用の流れ',
+        steps: ['マイページからムードボードとチーム情報を提出', '編集部による審査とフィードバック(ムードボードとポートフォリオが PAP の方向性に合うことが承認の条件です)', '承認されると PDF レターを発行(発行日から2か月間有効)'],
+        cta: 'Pull Letter を申請する',
+        footnote: 'Pull Letter の申請はプレミアムメンバーシップに含まれ、月1件まで申請できます。',
+        footnoteLink: 'メンバーシップについて',
+      },
+      zh: {
+        subject: 'PAP 官方 Pull Letter:为创意团队准备的借样公函',
+        preheader: '感谢你向 PAP 投稿。向你介绍 PAP 官方 Pull Letter。',
+        kicker: '致创意团队',
+        headline: 'PAP 官方 Pull Letter 介绍',
+        p1: '你收到这封邮件,是因为你曾向 PAP 杂志投稿。Pull Letter 是以杂志名义出具的官方公函,在向品牌和陈列室借样、洽谈拍摄场地以及申请各类制作协助时,可正式证明你正在与 PAP 合作拍摄。',
+        p2: '公函实行审核制。编辑团队会评估你的情绪板与摄影师作品集是否契合 PAP 的编辑美学,只有通过审核的申请才会获得注明摄影师、造型师姓名及签发日期的 PDF 公函。',
+        stepsTitle: '申请流程',
+        steps: ['在“我的页面”提交情绪板和团队信息', '编辑团队审核并反馈(情绪板与作品集需契合 PAP 的方向才能通过)', '通过后签发 PDF 公函(自签发之日起两个月内有效)'],
+        cta: '申请 Pull Letter',
+        footnote: 'Pull Letter 申请包含在高级会员权益中,每月可申请 1 次。',
+        footnoteLink: '了解会员',
+      },
+      ru: {
+        subject: 'Официальный Pull Letter от PAP для креативных команд',
+        preheader: 'Вы отправляли работу в PAP. Рассказываем об официальном Pull Letter от PAP.',
+        kicker: 'ДЛЯ КРЕАТИВНЫХ КОМАНД',
+        headline: 'Официальный Pull Letter от PAP',
+        p1: 'Вы получили это письмо, потому что отправляли свою работу в PAP Magazine. Pull Letter является официальным письмом от имени журнала и формально подтверждает, что вы снимаете для PAP. Оно помогает брать образцы у брендов и шоурумов, договариваться о локациях и запрашивать любую помощь в продакшене.',
+        p2: 'Выдача проходит через отбор. Редакция оценивает, соответствуют ли ваш мудборд и портфолио фотографа эстетике PAP; только одобренные запросы получают письмо в PDF с именами фотографа и стилиста и датой выдачи.',
+        stepsTitle: 'КАК ЭТО РАБОТАЕТ',
+        steps: ['Отправьте мудборд и данные команды в разделе «Моя страница»', 'Проверка и отзыв редакции (мудборд и портфолио должны соответствовать направлению PAP)', 'После одобрения выдаётся письмо в PDF, действительное два месяца с даты выдачи'],
+        cta: 'Запросить Pull Letter',
+        footnote: 'Запросы Pull Letter входят в премиум-подписку: один запрос в месяц.',
+        footnoteLink: 'О подписке',
+      },
+      de: {
+        subject: 'Der offizielle PAP Pull Letter für Kreativteams',
+        preheader: 'Du hast eine Arbeit bei PAP eingereicht. Wir stellen dir den offiziellen PAP Pull Letter vor.',
+        kicker: 'FÜR KREATIVTEAMS',
+        headline: 'Der offizielle PAP Pull Letter',
+        p1: 'Du erhältst diese E-Mail, weil du eine Arbeit bei PAP Magazine eingereicht hast. Der Pull Letter ist ein offizielles Schreiben im Namen des Magazins und belegt formell, dass du mit PAP shootest. Du nutzt ihn, um Samples bei Marken und Showrooms anzufragen, Locations zu verhandeln und jede Art von Produktionsunterstützung zu erbitten.',
+        p2: 'Die Ausstellung ist selektiv. Die Redaktion prüft, ob dein Moodboard und das Portfolio des Fotografen zur redaktionellen Ästhetik von PAP passen; nur genehmigte Anfragen erhalten ein PDF-Schreiben mit den Namen von Fotograf und Stylist sowie dem Ausstellungsdatum.',
+        stepsTitle: 'SO FUNKTIONIERT ES',
+        steps: ['Moodboard und Teamangaben unter „Meine Seite“ einreichen', 'Prüfung und Feedback der Redaktion (Moodboard und Portfolio müssen zur Richtung von PAP passen)', 'Nach Genehmigung wird ein PDF-Schreiben ausgestellt, zwei Monate ab Ausstellungsdatum gültig'],
+        cta: 'Pull Letter anfragen',
+        footnote: 'Pull-Letter-Anfragen sind in der Premium-Mitgliedschaft enthalten, eine Anfrage pro Monat.',
+        footnoteLink: 'Zur Mitgliedschaft',
       },
     };
     const C = COPY[lang] || COPY.en;
@@ -1693,7 +1789,7 @@ const templates = {
 
     const html = `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PAP Pull Letter</title>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(C.headline)}</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet"></head>
 <body style="margin:0;padding:0;background:#f5f5f5;">
   <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader)}</div>
@@ -1730,7 +1826,7 @@ const templates = {
     </td></tr>
     <tr><td align="center" style="background-color:#000000;padding:30px 20px;">
       <div style="font-family:${MONT};font-size:11px;font-weight:800;color:#ffffff;letter-spacing:5px;">P A P &nbsp; M A G A Z I N E</div>
-      <div style="font-size:10px;color:#999;margin-top:8px;letter-spacing:1px;">ART &middot; FASHION &middot; BEAUTY &middot; CULTURE</div>
+      <div style="font-size:10px;color:#999;margin-top:8px;letter-spacing:1px;">${escapeHtml(weeklyCopy(lang).tagline)}</div>
       <div style="font-size:11px;color:#777;margin-top:8px;">pap-magazine.com | @pap_magazine</div>
     </td></tr>
   </table>
@@ -1838,7 +1934,7 @@ function wrapMarketing({ preheader, body, unsubUrl, lang }) {
           </p>
           <p style="margin:0;color:#555;font-size:10px;line-height:1.5;">
             PAP Magazine · contact@pap-magazine.com · ${FRONTEND_URL}<br>
-            &copy; ${new Date().getFullYear()} PAP Magazine. All rights reserved.
+            &copy; ${new Date().getFullYear()} PAP Magazine. ${escapeHtml(mailChrome(lang || 'en').rights)}
           </p>
         </td></tr>
       </table>

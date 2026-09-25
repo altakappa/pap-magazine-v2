@@ -834,7 +834,7 @@ async function goToStep2() {
     var resp = await fetch((window._PAP_API_BASE || '') + '/api/auth/send-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email })
+      body: JSON.stringify({ email: email, lang: lang })   // 2026-09-25 인증 메일도 화면 언어 하나로
     });
     var data = await resp.json().catch(function(){ return {}; });
     if (!resp.ok) throw new Error(data.message || 'Failed');
@@ -887,7 +887,7 @@ async function resendCode() {
     var resp = await fetch((window._PAP_API_BASE || '') + '/api/auth/send-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email })
+      body: JSON.stringify({ email: email, lang: lang })   // 2026-09-25 인증 메일도 화면 언어 하나로
     });
     var data = await resp.json().catch(function(){ return {}; });
     if (!resp.ok) throw new Error(data.message || 'Failed');

@@ -90,11 +90,14 @@ t('심사제가 명시된다 — 신청=발급으로 읽히면 거절당한 크�
   assert.ok(/locations?/i.test(en.html), 'en: 로케이션 언급이 없다');
 });
 
-t('템플릿(en + 비지원 언어 폴백): en 카피로 렌더된다', () => {
+// 2026-09-25 — 9개 언어가 생겼다 (도메니코 "각자의 언어로"). ja 는 이제 자기 언어, 모르는 언어만 en 폴백.
+t('템플릿(en · ja 자기 언어 · 비지원 언어 폴백)', () => {
   const en = templates.creatorPullletter({}, { language: 'en' }, 'T1');
   assert.ok(/one request per month/.test(en.html), 'en 각주(월 1건) 문구가 없다');
   const ja = templates.creatorPullletter({}, { language: 'ja' }, 'T2');
-  assert.ok(/one request per month/.test(ja.html), 'ja → en 폴백이 안 된다');
+  assert.ok(/月1件まで/.test(ja.html) && !/one request per month/.test(ja.html), 'ja 가 일본어로 안 나온다');
+  const xx = templates.creatorPullletter({}, { language: 'xx' }, 'T3');
+  assert.ok(/one request per month/.test(xx.html), '모르는 언어 → en 폴백이 안 된다');
 });
 
 t('일시 오류(421류)는 1회 재시도한다 — 2026-08-26 발송에서 3/28 누수 재발 방지', () => {

@@ -61,7 +61,8 @@ console.log('\n[3] 이메일 — 유령 채널 2호 탈출');
   t('주간 다이제스트에 PAP CTA 가 있다',
     /href="\$\{withMailUtm\(FRONTEND_URL \+ '\/'\)\}"[^>]*>\$\{escapeHtml\(W\.viewSite\)\}<\/a>/.test(em)
     && require('../api/_lib/weeklyNewsCopy').WEEKLY_COPY.en.viewSite === 'VIEW PAP MAGAZINE');
-  t('다이제스트 IG 팔로우도 계측 경유', /FOLLOW @PAP_MAGAZINE<\/a>/.test(em));
+  // 2026-09-25 버튼 글자가 받는 사람 언어(weeklyNewsCopy.js follow)로 — 링크는 그대로 IG_FOLLOW_MAIL(ig-out 경유)
+  t('다이제스트 IG 팔로우도 계측 경유', /href="\$\{IG_FOLLOW_MAIL\}"[^>]*>\$\{escapeHtml\(W\.follow\)\}<\/a>/.test(em));
   t('ig-out 화이트리스트에 newsletter 가 있다', /'submission_done', 'newsletter'/.test(igOut));
 }
 

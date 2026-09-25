@@ -31,11 +31,36 @@ function hashCode(code, email) {
     .digest('hex');
 }
 
-function buildVerificationEmail(code) {
+/* 2026-09-25 — 받는 사람 언어 하나로 (도메니코 "각자의 언어로 전달되야 하는건 알고있찌?").
+ * 전에는 한국어·영어를 한 메일에 같이 적었다. 가입 화면이 보낸 lang(화면 언어)으로 한 언어만.
+ * lang 이 없으면(옛 화면 캐시) Accept-Language 첫 언어, 그것도 모르면 영어. */
+const CODE_COPY = {
+  ko: { subject: 'PAP 매거진 인증 코드', heading: '이메일 인증', body: '아래 인증 코드를 입력해 주세요.', expiry: '이 코드는 10분간 유효합니다. 본인이 요청하지 않았다면 이 메일을 무시해 주세요.', rights: '모든 권리 보유.' },
+  en: { subject: 'PAP Magazine verification code', heading: 'Email verification', body: 'Please enter the verification code below.', expiry: 'This code expires in 10 minutes. If you didn’t request it, please ignore this email.', rights: 'All rights reserved.' },
+  it: { subject: 'Codice di verifica PAP Magazine', heading: 'Verifica email', body: 'Inserisci il codice di verifica qui sotto.', expiry: 'Il codice scade tra 10 minuti. Se non lo hai richiesto, ignora questa email.', rights: 'Tutti i diritti riservati.' },
+  fr: { subject: 'Code de vérification PAP Magazine', heading: 'Vérification de l’e-mail', body: 'Saisissez le code de vérification ci-dessous.', expiry: 'Ce code expire dans 10 minutes. Si vous ne l’avez pas demandé, ignorez cet e-mail.', rights: 'Tous droits réservés.' },
+  es: { subject: 'Código de verificación de PAP Magazine', heading: 'Verificación de correo', body: 'Introduce el código de verificación que aparece abajo.', expiry: 'Este código caduca en 10 minutos. Si no lo has solicitado, ignora este correo.', rights: 'Todos los derechos reservados.' },
+  ja: { subject: 'PAPマガジン 認証コード', heading: 'メール認証', body: '以下の認証コードを入力してください。', expiry: 'このコードの有効期限は10分です。お心当たりがない場合は、このメールを破棄してください。', rights: '無断転載を禁じます。' },
+  zh: { subject: 'PAP 杂志验证码', heading: '邮箱验证', body: '请输入以下验证码。', expiry: '验证码 10 分钟内有效。如非本人操作,请忽略此邮件。', rights: '版权所有。' },
+  ru: { subject: 'Код подтверждения PAP Magazine', heading: 'Подтверждение почты', body: 'Введите код подтверждения ниже.', expiry: 'Код действителен 10 минут. Если вы его не запрашивали, просто проигнорируйте это письмо.', rights: 'Все права защищены.' },
+  de: { subject: 'PAP Magazine Bestätigungscode', heading: 'E-Mail-Bestätigung', body: 'Bitte gib den folgenden Bestätigungscode ein.', expiry: 'Der Code ist 10 Minuten gültig. Wenn du ihn nicht angefordert hast, ignoriere diese E-Mail.', rights: 'Alle Rechte vorbehalten.' },
+};
+
+function pickCodeLang(bodyLang, acceptLanguage) {
+  const norm = (v) => String(v || '').trim().toLowerCase().slice(0, 2);
+  const a = norm(bodyLang);
+  if (CODE_COPY[a]) return a;
+  const first = String(acceptLanguage || '').split(',').map((x) => norm(x)).find((x) => CODE_COPY[x]);
+  return first || 'en';
+}
+
+function buildVerificationEmail(code, lang) {
+  const C = CODE_COPY[lang] || CODE_COPY.en;
+  const safeCode = String(code).replace(/[^0-9A-Za-z]/g, '');
   return {
-    subject: 'PAP Magazine - 이메일 인증 코드 / Verification Code',
+    subject: C.subject,
     html: `<!DOCTYPE html>
-<html>
+<html lang="${lang in CODE_COPY ? lang : 'en'}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
 <body style="margin:0;padding:0;background:#000;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#000;padding:40px 20px;">
@@ -45,16 +70,15 @@ function buildVerificationEmail(code) {
     <a href="${FRONTEND_URL}" style="color:#fff;font-size:28px;font-weight:700;letter-spacing:8px;text-decoration:none;">PAP</a>
   </td></tr>
   <tr><td style="padding:32px 40px;color:#ccc;font-size:14px;line-height:1.7;">
-    <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">이메일 인증 / Email Verification</h2>
-    <p>아래 인증 코드를 입력해주세요.<br>Please enter the verification code below.</p>
+    <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${C.heading}</h2>
+    <p>${C.body}</p>
     <div style="margin:24px 0;padding:20px;background:#000;border:1px solid #333;text-align:center;">
-      <span style="color:#fff;font-size:36px;font-weight:800;letter-spacing:12px;font-family:monospace;">${code}</span>
+      <span style="color:#fff;font-size:36px;font-weight:800;letter-spacing:12px;font-family:monospace;">${safeCode}</span>
     </div>
-    <p style="color:#888;font-size:12px;">이 코드는 10분간 유효합니다. 본인이 요청하지 않았다면 이 이메일을 무시해주세요.<br>
-    This code expires in 10 minutes. If you didn't request this, please ignore this email.</p>
+    <p style="color:#888;font-size:12px;">${C.expiry}</p>
   </td></tr>
   <tr><td style="padding:24px 40px;border-top:1px solid #222;color:#666;font-size:11px;">
-    &copy; ${new Date().getFullYear()} PAP Magazine. All rights reserved.
+    &copy; ${new Date().getFullYear()} PAP Magazine. ${C.rights}
   </td></tr>
 </table>
 </td></tr>
@@ -75,6 +99,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const { email } = req.body;
+    const codeLang = pickCodeLang(req.body && req.body.lang, req.headers && req.headers['accept-language']);
 
     if (!email || !isValidEmail(email)) {
       return res.status(400).json({ message: 'Valid email is required' });
@@ -95,7 +120,7 @@ module.exports = async function handler(req, res) {
     );
 
     // Send the code via email
-    const result = await sendEmail(email.trim(), buildVerificationEmail(code), { transactional: true });
+    const result = await sendEmail(email.trim(), buildVerificationEmail(code, codeLang), { transactional: true });
 
     if (result.skipped) {
       // SMTP not configured — log warning but do NOT expose code in response
@@ -119,3 +144,8 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ message: 'Failed to send verification code.' });
   }
 };
+
+// 테스트용 (tests/email-one-language.test.js)
+module.exports.buildVerificationEmail = buildVerificationEmail;
+module.exports.pickCodeLang = pickCodeLang;
+module.exports.CODE_COPY = CODE_COPY;

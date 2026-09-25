@@ -39,6 +39,41 @@ const WEEKLY_COPY = {
         follow: '@PAP_MAGAZINE FOLGEN', viewSite: 'PAP MAGAZINE ANSEHEN' },
 };
 
+/* 2026-09-25 — 모든 회원 메일 공통 틀 (같은 요청의 전수 점검). 전에는 9개 언어 메일 전부
+ * 바닥에 "FOLLOW @PAP_MAGAZINE" · "All rights reserved." 가 영어로 붙었다.
+ * site: 사이트 메뉴 이름 (메일에서 "어디서 확인하세요" 라고 가리킬 때 사이트 화면 글자와 같아야 찾는다).
+ *   mySubs = submission.html mySubsTitle, subsTab = mypage navSubmissions, plTab = navPullletters, myPage = mypage 제목. */
+const MAIL_CHROME = {
+  ko: { igLabel: 'PAP 매거진 인스타그램', rights: '모든 권리 보유.', weekEditorials: '이주의 에디토리얼', viewMore: 'PAP에서 더 보기',
+        creativeKicker: '크리에이티브 팀을 위해', howItWorks: '진행 방식',
+        mySubs: '내 서브미션', subsTab: '업로드', plTab: '풀레터', myPage: '마이페이지' },
+  en: { igLabel: 'PAP Magazine — Instagram', rights: 'All rights reserved.', weekEditorials: 'THIS WEEK\'S EDITORIALS', viewMore: 'VIEW MORE ON PAP',
+        creativeKicker: 'FOR CREATIVE TEAMS', howItWorks: 'HOW IT WORKS',
+        mySubs: 'MY SUBMISSIONS', subsTab: 'SUBMISSIONS', plTab: 'PULL-LETTER', myPage: 'My Page' },
+  it: { igLabel: 'PAP Magazine su Instagram', rights: 'Tutti i diritti riservati.', weekEditorials: 'GLI EDITORIALI DELLA SETTIMANA', viewMore: 'SCOPRI DI PIÙ SU PAP',
+        creativeKicker: 'PER I TEAM CREATIVI', howItWorks: 'COME FUNZIONA',
+        mySubs: 'LE MIE SUBMISSION', subsTab: 'INVII', plTab: 'PULL-LETTER', myPage: 'La mia pagina' },
+  fr: { igLabel: 'PAP Magazine sur Instagram', rights: 'Tous droits réservés.', weekEditorials: 'LES ÉDITORIAUX DE LA SEMAINE', viewMore: 'VOIR PLUS SUR PAP',
+        creativeKicker: 'POUR LES ÉQUIPES CRÉATIVES', howItWorks: 'COMMENT ÇA MARCHE',
+        mySubs: 'MES SOUMISSIONS', subsTab: 'SOUMISSIONS', plTab: 'PULL-LETTER', myPage: 'Mon compte' },
+  es: { igLabel: 'PAP Magazine en Instagram', rights: 'Todos los derechos reservados.', weekEditorials: 'LOS EDITORIALES DE LA SEMANA', viewMore: 'VER MÁS EN PAP',
+        creativeKicker: 'PARA EQUIPOS CREATIVOS', howItWorks: 'CÓMO FUNCIONA',
+        mySubs: 'MIS ENVÍOS', subsTab: 'ENVÍOS', plTab: 'PULL-LETTER', myPage: 'Mi página' },
+  ja: { igLabel: 'PAPマガジン 公式インスタグラム', rights: '無断転載を禁じます。', weekEditorials: '今週のエディトリアル', viewMore: 'PAPでもっと見る',
+        creativeKicker: 'クリエイティブチームへ', howItWorks: 'ご利用の流れ',
+        mySubs: 'マイサブミッション', subsTab: '投稿', plTab: 'PULL-LETTER', myPage: 'マイページ' },
+  zh: { igLabel: 'PAP 杂志官方 Instagram', rights: '版权所有。', weekEditorials: '本周大片', viewMore: '在 PAP 查看更多',
+        creativeKicker: '致创意团队', howItWorks: '申请流程',
+        mySubs: '我的投稿', subsTab: '投稿', plTab: 'PULL-LETTER', myPage: '我的页面' },
+  ru: { igLabel: 'PAP Magazine в Instagram', rights: 'Все права защищены.', weekEditorials: 'СЪЁМКИ НЕДЕЛИ', viewMore: 'БОЛЬШЕ НА PAP',
+        creativeKicker: 'ДЛЯ КРЕАТИВНЫХ КОМАНД', howItWorks: 'КАК ЭТО РАБОТАЕТ',
+        mySubs: 'МОИ ПОДАЧИ', subsTab: 'ПУБЛИКАЦИИ', plTab: 'PULL-LETTER', myPage: 'Моя страница' },
+  de: { igLabel: 'PAP Magazine auf Instagram', rights: 'Alle Rechte vorbehalten.', weekEditorials: 'DIE EDITORIALS DER WOCHE', viewMore: 'MEHR AUF PAP',
+        creativeKicker: 'FÜR KREATIVTEAMS', howItWorks: 'SO FUNKTIONIERT ES',
+        mySubs: 'MEINE EINREICHUNGEN', subsTab: 'EINREICHUNGEN', plTab: 'PULL-LETTER', myPage: 'Meine Seite' },
+};
+function mailChrome(lang) { return MAIL_CHROME[lang] || MAIL_CHROME.en; }
+
 function weeklyCopy(lang) {
   return WEEKLY_COPY[lang] || WEEKLY_COPY.en;
 }
@@ -53,4 +88,4 @@ function localDate(input, lang, opts) {
   } catch (_) { return String(input); }
 }
 
-module.exports = { WEEKLY_COPY, weeklyCopy, localDate };
+module.exports = { WEEKLY_COPY, weeklyCopy, localDate, MAIL_CHROME, mailChrome };
