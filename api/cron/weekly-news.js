@@ -168,6 +168,58 @@ function note(res, msg) {
  *   ② 그래도 예산을 둔다 — 상한을 올려도 '넘으면 통째로 죽는' 성질은 그대로다.
  *      남은 시간에 맞춰 각 호출의 타임아웃을 깎고, 모자라면 죽는 대신
  *      이유를 남기고 끝낸다. 다음 주 실행이 다시 시도한다. */
+/* ─── PAP 콘텐츠 5개 (2026-09-25 신설) ─────────────────────────────────
+ *
+ * 도메니코: "화보·기사 5개 + 외부 트렌드 뉴스 10개".
+ * 실측: 뉴스 카드는 출처도 링크도 없는 글이라, 뉴스레터에서 PAP 로 오는 클릭이
+ * 주 1~4회였다(social_inclicks src=newsletter). PAP 가 매주 내는 화보가 한 편도 없었다.
+ * 지난 7일 게재분에서 조회수 순으로 화보 3 + 기사 2 (한쪽이 모자라면 다른 쪽으로 채움).
+ * 실패해도 뉴스레터는 나간다 — 이 블록만 빠진다. */
+const PAP_PICKS = { editorials: 3, articles: 2, total: 5 };
+const PAP_SITE = 'https://www.pap-magazine.com';
+async function papPicks() {
+  try {
+    const since = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const [edR, arR] = await Promise.all([
+      supabaseAdmin.from('editorials').select('id, title, slug, cover_image, thumbnail, view_count')
+        .eq('status', 'published').gte('published_date', since)
+        .order('view_count', { ascending: false, nullsFirst: false }).limit(PAP_PICKS.total),
+      supabaseAdmin.from('articles').select('id, title, title_en, slug, thumbnail_url, hero_image_url, view_count')
+        .eq('status', 'published').gte('published_date', since)
+        .order('view_count', { ascending: false, nullsFirst: false }).limit(PAP_PICKS.total),
+    ]);
+    const eds = ((edR && edR.data) || []).filter((e) => e.slug && e.title && (e.cover_image || e.thumbnail));
+    const ars = ((arR && arR.data) || []).filter((a) => a.slug && a.title && (a.thumbnail_url || a.hero_image_url));
+    let nE = Math.min(PAP_PICKS.editorials, eds.length);
+    let nA = Math.min(PAP_PICKS.articles, ars.length);
+    while (nE + nA < PAP_PICKS.total && (nE < eds.length || nA < ars.length)) {
+      if (nE < eds.length) nE++; else nA++;
+    }
+    const pickA = ars.slice(0, nA);
+    // 기사 언어판 제목 (seo_translations: de es fr it ja ru zh). 화보 제목은 작품명이라 번역하지 않는다.
+    const trTitles = {};
+    if (pickA.length) {
+      const { data: tr } = await supabaseAdmin.from('seo_translations')
+        .select('content_id, lang, title').eq('kind', 'article').in('content_id', pickA.map((a) => a.id));
+      (tr || []).forEach((r) => { if (r.title) (trTitles[r.content_id] = trTitles[r.content_id] || {})[r.lang] = r.title; });
+    }
+    const out = [];
+    eds.slice(0, nE).forEach((e) => out.push({
+      kind: 'editorial', url: PAP_SITE + '/editorial/' + e.slug,
+      image: e.cover_image || e.thumbnail, titles: { _: e.title },
+    }));
+    pickA.forEach((a) => out.push({
+      kind: 'article', url: PAP_SITE + '/article/' + a.slug,
+      image: a.thumbnail_url || a.hero_image_url,
+      titles: Object.assign({}, trTitles[a.id] || {}, { ko: a.title, en: a.title_en || a.title, _: a.title_en || a.title }),
+    }));
+    return out;
+  } catch (e) {
+    console.warn('[weekly-news] PAP 콘텐츠 조회 실패 — 이 블록 없이 보낸다:', (e && e.message) || e);
+    return [];
+  }
+}
+
 const BUDGET_MS = Number(process.env.WEEKLY_NEWS_BUDGET_MS || 260000);
 const SLACK_MS = 20000;   // 응답·DB 쓰기·cronGuard 기록 몫
 
@@ -270,6 +322,7 @@ module.exports = withCronGuard('weekly-news', async function handler(req, res) {
     const sched = new Date();
     sched.setUTCHours(23, 0, 0, 0);
     if (sched.getTime() <= Date.now()) sched.setTime(sched.getTime() + 86400000);
+    const papItems = await papPicks();
     const headerDate = new Date(Date.now() + 9 * 3600 * 1000).toLocaleDateString('en-US', {
       month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
     });
@@ -285,6 +338,7 @@ module.exports = withCronGuard('weekly-news', async function handler(req, res) {
         issueLabel: 'Weekly Briefing',
         headerDate,
         newsItems: master.newsItems,
+        papItems,                    // 2026-09-25 PAP 화보·기사 (맨 위, 링크 있음)
         i18n,
       },
       status: 'scheduled',          // 대표 지시(2026-07): 검토 없이 자동 발송
@@ -302,6 +356,7 @@ module.exports = withCronGuard('weekly-news', async function handler(req, res) {
         + (lastRepair !== 'none' ? ' · ⚠️ JSON 복구함(' + lastRepair + ')' : '')),
       locales: Object.keys(i18n), failedLocales: failed,
       headlines: master.newsItems.map((n) => n.title),
+      papItems: papItems.length,
     });
   } catch (err) {
     console.error('[cron/weekly-news]', err.message || err);
@@ -309,3 +364,7 @@ module.exports = withCronGuard('weekly-news', async function handler(req, res) {
     return res.status(500).json({ error: m, note: note(res, '주간 뉴스레터 생성 실패: ' + m) });
   }
 });
+
+// 테스트용 (tests/newsletter-pap-picks.test.js)
+module.exports.papPicks = papPicks;
+module.exports.PAP_PICKS = PAP_PICKS;

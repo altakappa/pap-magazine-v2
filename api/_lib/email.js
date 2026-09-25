@@ -1338,6 +1338,37 @@ const templates = {
       </td></tr>
     `).join('');
 
+    /* 2026-09-25 — THIS WEEK ON PAP (도메니코 "화보·기사 5개 + 외부 트렌드 뉴스 10개").
+     * 뉴스 카드는 출처·링크가 없어 누를 곳이 없었다(PAP 클릭 주 1~4). PAP 화보·기사를 맨 위에:
+     * 첫 장은 크게, 나머지는 두 칸씩. 링크는 전부 PAP + utm_campaign=회차명(회차별 성과 측정).
+     * 이미지는 /api/img 프록시(1080px JPEG)로 — 원본이 수 MB 라 메일이 무거워진다. */
+    const papItems = Array.isArray(campaign.payload && campaign.payload.papItems) ? campaign.payload.papItems.slice(0, 5) : [];
+    const papHref = (u) => withMailUtm(u) + '&utm_campaign=' + encodeURIComponent(campaign.name || 'news-weekly');
+    const papTitle = (p) => (p && p.titles && (p.titles[lang] || p.titles.en || p.titles._)) || '';
+    const papImg = (u) => FRONTEND_URL + '/api/img?u=' + encodeURIComponent(u || '');
+    const papKind = (p) => (p.kind === 'editorial' ? 'EDITORIAL' : 'ARTICLE');
+    const papCell = (p, w) => `
+        <a href="${papHref(p.url)}" style="text-decoration:none;color:#1a1a1a;display:block;">
+          <img src="${papImg(p.image)}" width="${w}" style="display:block;width:100%;max-width:${w}px;height:auto;border:0;" alt="${escapeHtml(papTitle(p))}">
+          <div style="font-size:9px;font-weight:700;color:#999;letter-spacing:2px;margin-top:10px;">${papKind(p)}</div>
+          <div style="font-size:${w > 300 ? 19 : 14}px;font-weight:700;line-height:1.35;margin-top:4px;color:#1a1a1a;">${escapeHtml(papTitle(p))}</div>
+        </a>`;
+    const papRest = papItems.slice(1);
+    const papRows = [];
+    for (let i = 0; i < papRest.length; i += 2) {
+      const a = papRest[i], b = papRest[i + 1];
+      papRows.push(`<tr><td style="padding:18px 28px 0;"><table width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td width="50%" valign="top" style="padding-right:8px;">${papCell(a, 264)}</td>
+        <td width="50%" valign="top" style="padding-left:8px;">${b ? papCell(b, 264) : ''}</td>
+      </tr></table></td></tr>`);
+    }
+    const papBlock = papItems.length ? `
+    <tr><td style="padding:6px 28px 0;font-size:10px;font-weight:700;color:#6b1a1a;letter-spacing:3px;">THIS WEEK ON PAP</td></tr>
+    <tr><td style="padding:12px 28px 0;">${papCell(papItems[0], 544)}</td></tr>
+    ${papRows.join('')}
+    <tr><td style="padding:26px 28px 0;"><hr style="border:none;border-top:1px solid #eee;"></td></tr>
+    <tr><td style="padding:18px 28px 0;font-size:10px;font-weight:700;color:#6b1a1a;letter-spacing:3px;">TREND BRIEFING</td></tr>` : '';
+
     // PAP Daily Briefing HTML — preserved byte-for-byte except for:
     //   1) date string says <issueLabel> — <headerDate>
     //   2) per-item SOURCE — DATE line removed
@@ -1351,6 +1382,7 @@ const templates = {
     <tr><td align="center" style="background-color:#6b1a1a;padding:28px 20px"><img src="https://lh3.googleusercontent.com/d/1IAVkzs1uAj10kM0P3h64ItZvB924WkET" width="50" style="display:block;" alt="PAP"></td></tr>
     <tr><td align="center" style="background-color:#f5f0eb;padding:14px 20px;font-size:10px;font-weight:600;color:#6b1a1a;letter-spacing:4px;">ART &middot; FASHION &middot; BEAUTY &middot; CULTURE</td></tr>
     <tr><td align="center" style="background-color:#f5f0eb;padding:0 20px 18px;font-size:13px;color:#999;">${escapeHtml(issueLabel)} &mdash; ${escapeHtml(headerDate)}</td></tr>
+    ${papBlock}
     ${cards}
     <!-- 2026-08-08 — 도달점 CTA. 이 다이제스트에는 그동안 PAP 로 가는 링크가
          하나도 없었다(뉴스 카드는 텍스트, 링크는 수신거부·언어선택뿐).
