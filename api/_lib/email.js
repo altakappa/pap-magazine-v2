@@ -5,6 +5,7 @@
 
 const { SUPPORTED_LANGS, LANG_LABELS, emailUiStrings } = require('./emailLocale');
 const { nlCopy } = require('./newsletterCopy');   // 비회원 뉴스레터 (2026-09-25)
+const { weeklyCopy, localDate } = require('./weeklyNewsCopy');   // 주간 뉴스 틀 문구 9개 언어 (2026-09-25)
 
 /* nodemailer 는 실제로 메일을 보낼 때만 불러온다 (2026-07-30 CI 실패 후 수정).
  *
@@ -1340,14 +1341,21 @@ const templates = {
     ).join(' &nbsp;·&nbsp; ');
     const view = pickI18nForWeekly(campaign, lang);
     const items = view.newsItems;
-    const headerDate = (campaign.payload && campaign.payload.headerDate) || (() => {
-      const d = new Date();
-      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-      return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    /* 2026-09-25 — 언어 하나로 (도메니코 "언어는 하나로 통일되어야해").
+     * 틀 문구·날짜·제목을 받는 사람 언어로. 날짜는 발송일(KST) 기준으로 코드가 만든다
+     * (전에는 Claude 가 제목에 영문 날짜를 짐작해 넣었다: 9/21 발송분 제목이 "SEP 17"). */
+    const W = weeklyCopy(lang);
+    const issueDay = (() => {
+      const at = campaign.scheduled_at ? Date.parse(campaign.scheduled_at) : NaN;
+      if (Number.isFinite(at)) return new Date(at + 9 * 3600 * 1000);   // KST 달력 날짜
+      const hd = campaign.payload && campaign.payload.headerDate;
+      const p = hd ? Date.parse(hd + ' UTC') : NaN;
+      return Number.isFinite(p) ? new Date(p) : new Date(Date.now() + 9 * 3600 * 1000);
     })();
-    const issueLabel = (campaign.payload && campaign.payload.issueLabel) || 'Weekly Briefing';
-    const subject = view.subject || campaign.subject;
-    const preheader = view.preheader || campaign.preheader || 'PAP Weekly News';
+    const headerDate = localDate(issueDay, lang);
+    const issueLabel = W.issueLabel;
+    const subject = W.subjectPrefix + ' — ' + localDate(issueDay, lang, { month: 'long', day: 'numeric' });
+    const preheader = view.preheader || campaign.preheader || W.subjectPrefix;
 
     const cards = items.map((n, i) => `
       <tr><td style="padding:24px 28px 0;">
@@ -1365,7 +1373,7 @@ const templates = {
     const papHref = (u) => withMailUtm(u) + '&utm_campaign=' + encodeURIComponent(campaign.name || 'news-weekly');
     const papTitle = (p) => (p && p.titles && (p.titles[lang] || p.titles.en || p.titles._)) || '';
     const papImg = (u) => FRONTEND_URL + '/api/img?u=' + encodeURIComponent(u || '');
-    const papKind = (p) => (p.kind === 'editorial' ? 'EDITORIAL' : 'ARTICLE');
+    const papKind = (p) => (p.kind === 'editorial' ? W.editorial : W.article);
     const papCell = (p, w) => `
         <a href="${papHref(p.url)}" style="text-decoration:none;color:#1a1a1a;display:block;">
           <img src="${papImg(p.image)}" width="${w}" style="display:block;width:100%;max-width:${w}px;height:auto;border:0;" alt="${escapeHtml(papTitle(p))}">
@@ -1382,11 +1390,11 @@ const templates = {
       </tr></table></td></tr>`);
     }
     const papBlock = papItems.length ? `
-    <tr><td style="padding:6px 28px 0;font-size:10px;font-weight:700;color:#6b1a1a;letter-spacing:3px;">THIS WEEK ON PAP</td></tr>
+    <tr><td style="padding:6px 28px 0;font-size:10px;font-weight:700;color:#6b1a1a;letter-spacing:3px;">${escapeHtml(W.thisWeek)}</td></tr>
     <tr><td style="padding:12px 28px 0;">${papCell(papItems[0], 544)}</td></tr>
     ${papRows.join('')}
     <tr><td style="padding:26px 28px 0;"><hr style="border:none;border-top:1px solid #eee;"></td></tr>
-    <tr><td style="padding:18px 28px 0;font-size:10px;font-weight:700;color:#6b1a1a;letter-spacing:3px;">TREND BRIEFING</td></tr>` : '';
+    <tr><td style="padding:18px 28px 0;font-size:10px;font-weight:700;color:#6b1a1a;letter-spacing:3px;">${escapeHtml(W.trend)}</td></tr>` : '';
 
     // PAP Daily Briefing HTML — preserved byte-for-byte except for:
     //   1) date string says <issueLabel> — <headerDate>
@@ -1394,12 +1402,12 @@ const templates = {
     //   3) added an unsubscribe row above the dark footer (legal requirement)
     const html = `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PAP Weekly News</title></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(W.subjectPrefix)}</title></head>
 <body style="margin:0;padding:0;background:#f5f0eb;">
   <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader)}</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;font-family:'Inter',Helvetica,Arial,sans-serif;background:#ffffff;">
     <tr><td align="center" style="background-color:#6b1a1a;padding:28px 20px"><img src="https://lh3.googleusercontent.com/d/1IAVkzs1uAj10kM0P3h64ItZvB924WkET" width="50" style="display:block;" alt="PAP"></td></tr>
-    <tr><td align="center" style="background-color:#f5f0eb;padding:14px 20px;font-size:10px;font-weight:600;color:#6b1a1a;letter-spacing:4px;">ART &middot; FASHION &middot; BEAUTY &middot; CULTURE</td></tr>
+    <tr><td align="center" style="background-color:#f5f0eb;padding:14px 20px;font-size:10px;font-weight:600;color:#6b1a1a;letter-spacing:4px;">${escapeHtml(W.tagline)}</td></tr>
     <tr><td align="center" style="background-color:#f5f0eb;padding:0 20px 18px;font-size:13px;color:#999;">${escapeHtml(issueLabel)} &mdash; ${escapeHtml(headerDate)}</td></tr>
     ${papBlock}
     ${cards}
@@ -1415,10 +1423,10 @@ const templates = {
          있고 성장 헌법 8항이 한쪽 방향 제거를 금한다. 스레드·X·유튜브와 같은
          원칙이다: "우선시"는 "독점"이 아니다. -->
     <tr><td align="center" style="padding:28px 28px 4px;">
-      <a href="${IG_FOLLOW_MAIL}" style="display:inline-block;background:#6b1a1a;color:#ffffff;padding:13px 32px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">FOLLOW @PAP_MAGAZINE</a>
+      <a href="${IG_FOLLOW_MAIL}" style="display:inline-block;background:#6b1a1a;color:#ffffff;padding:13px 32px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">${escapeHtml(W.follow)}</a>
     </td></tr>
     <tr><td align="center" style="padding:6px 28px 2px;font-size:11px;">
-      <a href="${withMailUtm(FRONTEND_URL + '/')}" style="color:#6b1a1a;text-decoration:underline;font-weight:600;letter-spacing:1px;">VIEW PAP MAGAZINE</a>
+      <a href="${withMailUtm(FRONTEND_URL + '/')}" style="color:#6b1a1a;text-decoration:underline;font-weight:600;letter-spacing:1px;">${escapeHtml(W.viewSite)}</a>
     </td></tr>
     <tr><td style="padding:18px 28px 0;"><hr style="border:none;border-top:1px solid #eee;"></td></tr>
     <!-- Language selector: lets the recipient re-pick their newsletter

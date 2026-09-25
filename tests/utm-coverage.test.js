@@ -57,7 +57,10 @@ console.log('\n[3] 이메일 — 유령 채널 2호 탈출');
   t('공통 셸에 인스타 직링크가 안 남았다',
     !/href="https:\/\/www\.instagram\.com\/pap_magazine\/" style="display:inline-block;background:#fff/.test(em));
   /* 주간 다이제스트: PAP 링크 0개였던 구멍 */
-  t('주간 다이제스트에 PAP CTA 가 있다', /VIEW PAP MAGAZINE/.test(em));
+  // 2026-09-25 문구가 9개 언어(weeklyNewsCopy.js viewSite)로 옮겨감 — 링크(utm)는 email.js 에 그대로
+  t('주간 다이제스트에 PAP CTA 가 있다',
+    /href="\$\{withMailUtm\(FRONTEND_URL \+ '\/'\)\}"[^>]*>\$\{escapeHtml\(W\.viewSite\)\}<\/a>/.test(em)
+    && require('../api/_lib/weeklyNewsCopy').WEEKLY_COPY.en.viewSite === 'VIEW PAP MAGAZINE');
   t('다이제스트 IG 팔로우도 계측 경유', /FOLLOW @PAP_MAGAZINE<\/a>/.test(em));
   t('ig-out 화이트리스트에 newsletter 가 있다', /'submission_done', 'newsletter'/.test(igOut));
 }

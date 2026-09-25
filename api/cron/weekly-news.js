@@ -116,7 +116,7 @@ const MASTER_SYSTEM = [
   '',
   papVoice.KO_MICRO,
   '',
-  '캠페인 필드: subject("PAP 이주의 뉴스 — <영문 월 일>"), preheader(받은편지함 미리보기 1줄), hero_headline("PAP WEEKLY BRIEFING"), hero_body(1-2문장 에디터 코멘트).',
+  '캠페인 필드: subject("PAP 이주의 뉴스" 그대로. 날짜는 코드가 언어별로 붙인다), preheader(받은편지함 미리보기 1줄), hero_headline("PAP WEEKLY BRIEFING"), hero_body(1-2문장 에디터 코멘트).',
   'JSON만 출력 (다른 텍스트 절대 금지):',
   '{"subject":"...","preheader":"...","hero_headline":"...","hero_body":"...","newsItems":[{"title":"한국어 12-30자","summary":"한국어 3-4문장","category":"ART|FASHION|BEAUTY|CELEB|CULTURE","url":"원문 링크","image":""}, ...10개]}',
 ].join('\n');
@@ -177,6 +177,42 @@ function note(res, msg) {
  * 실패해도 뉴스레터는 나간다 — 이 블록만 빠진다. */
 const PAP_PICKS = { editorials: 3, articles: 2, total: 5 };
 const PAP_SITE = 'https://www.pap-magazine.com';
+/* 2026-09-25 — PAP 화보·기사 제목도 받는 사람 언어로 (도메니코 "언어는 하나로 통일되어야해").
+ * 실측: 에디토리얼 제목은 한국어판이 없고(seo_translations 에 ko 0건), 다른 언어도 반쯤은 영어 원제 그대로다
+ * ("Milan, After Dark" 가 fr·ja·zh·it 에서 영어). 그래서 한국어 메일에 영어 제목이 섞였다.
+ * 뉴스 번역과 같은 시간에 한 번 더 불러 9개 언어 제목을 받는다. 실패하면 원제로 보낸다(발송은 막지 않음). */
+const PAP_TITLE_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja', 'zh', 'ru', 'de'];
+const PAP_TITLE_SYSTEM = [
+  'You are the localization editor of PAP Magazine (art-driven fashion/beauty/culture).',
+  'You get a JSON array of titles of PAP editorials (fashion photo stories) and articles.',
+  'Translate every title into each language: ko (Korean), en (English), it, fr, es, ja, zh (Simplified Chinese), ru, de.',
+  'Editorial titles are creative cover lines: translate the meaning naturally and elegantly, never word-by-word.',
+  'Keep person, brand and designer names in their canonical Latin spelling. Do not add quotes or explanations.',
+  'Output ONLY JSON: {"ko":[...],"en":[...],"it":[...],"fr":[...],"es":[...],"ja":[...],"zh":[...],"ru":[...],"de":[...]}',
+  'Every array has exactly the same length and order as the input.',
+].join('\n');
+
+const hasHangul = (v) => /[가-힣]/.test(String(v || ''));
+/** 원제·DB 번역을 지키고, 비어 있거나 번역 안 된(원제와 같은) 칸만 Claude 번역으로 채운다. */
+function mergePapTitles(items, tr) {
+  return (items || []).map((p, i) => {
+    const t = Object.assign({}, p.titles || {});
+    const orig = String(t._ || t.en || t.ko || '');
+    if (hasHangul(orig)) { if (!t.ko) t.ko = orig; } else if (!t.en) t.en = orig;
+    const enRef = hasHangul(t.en) ? '' : String(t.en || '');
+    PAP_TITLE_LANGS.forEach((l) => {
+      const v = t[l];
+      const keep = l === 'ko' ? hasHangul(v)
+        : l === 'en' ? (v && !hasHangul(v))
+          : (v && !hasHangul(v) && v !== enRef && v !== orig);
+      if (keep) return;
+      const got = tr && Array.isArray(tr[l]) && typeof tr[l][i] === 'string' ? tr[l][i].trim() : '';
+      if (got && (l !== 'ko' || hasHangul(got))) t[l] = got.slice(0, 200);
+    });
+    return Object.assign({}, p, { titles: t });
+  });
+}
+
 async function papPicks() {
   try {
     const since = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
@@ -295,10 +331,16 @@ module.exports = withCronGuard('weekly-news', async function handler(req, res) {
 
     // 3) 8개 로케일 병렬 번역 — 실패 로케일은 건너뜀 (템플릿이 en 폴백)
     const masterJson = JSON.stringify(master);
+    const papRaw = await papPicks();
     const transMs = Math.max(20000, Math.min(90000, msLeft() - SLACK_MS));
-    const translations = await Promise.allSettled(
-      LOCALES.map((loc) => claude(translateSystem(loc), masterJson, 6000, transMs))
-    );
+    const [translations, papTr] = await Promise.all([
+      Promise.allSettled(LOCALES.map((loc) => claude(translateSystem(loc), masterJson, 6000, transMs))),
+      papRaw.length
+        ? claude(PAP_TITLE_SYSTEM, JSON.stringify(papRaw.map((p) => (p.titles && (p.titles._ || p.titles.en || p.titles.ko)) || '')), 3000, transMs)
+            .catch((e) => { console.warn('[weekly-news] PAP 제목 번역 실패 — 원제로 보낸다:', (e && e.message) || e); return null; })
+        : Promise.resolve(null),
+    ]);
+    const papItems = mergePapTitles(papRaw, papTr);
     const i18n = { ko: master };
     const failed = [];
     LOCALES.forEach((loc, i) => {
@@ -322,7 +364,6 @@ module.exports = withCronGuard('weekly-news', async function handler(req, res) {
     const sched = new Date();
     sched.setUTCHours(23, 0, 0, 0);
     if (sched.getTime() <= Date.now()) sched.setTime(sched.getTime() + 86400000);
-    const papItems = await papPicks();
     const headerDate = new Date(Date.now() + 9 * 3600 * 1000).toLocaleDateString('en-US', {
       month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
     });
@@ -368,3 +409,5 @@ module.exports = withCronGuard('weekly-news', async function handler(req, res) {
 // 테스트용 (tests/newsletter-pap-picks.test.js)
 module.exports.papPicks = papPicks;
 module.exports.PAP_PICKS = PAP_PICKS;
+module.exports.mergePapTitles = mergePapTitles;
+module.exports.PAP_TITLE_SYSTEM = PAP_TITLE_SYSTEM;

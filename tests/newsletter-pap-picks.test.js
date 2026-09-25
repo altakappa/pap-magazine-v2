@@ -65,7 +65,7 @@ function loadCron(db) {
 
   {
     const src = require('fs').readFileSync(path.join(ROOT, 'api/cron/weekly-news.js'), 'utf8');
-    t('핸들러가 papPicks 를 불러 payload.papItems 에 싣는다', /const papItems = await papPicks\(\);/.test(src) && /\bpapItems,\s*\/\/ 2026-09-25/.test(src));
+    t('핸들러가 papPicks 를 불러 payload.papItems 에 싣는다', /const papRaw = await papPicks\(\);/.test(src) && /const papItems = mergePapTitles\(papRaw, papTr\);/.test(src) && /\bpapItems,\s*\/\/ 2026-09-25/.test(src));
   }
   console.log('\n=== 2. 조회 실패 ===');
   {
@@ -87,14 +87,15 @@ function loadCron(db) {
   const ko = templates.weeklyNews(mk({ papItems }), { language: 'ko' }, 'TOK').html;
   const ja = templates.weeklyNews(mk({ papItems }), { language: 'ja' }, 'TOK').html;
   const it = templates.weeklyNews(mk({ papItems }), { language: 'it' }, 'TOK').html;
-  t('THIS WEEK ON PAP 이 뉴스보다 위', ko.indexOf('THIS WEEK ON PAP') > 0 && ko.indexOf('THIS WEEK ON PAP') < ko.indexOf('TREND BRIEFING') && ko.indexOf('TREND BRIEFING') < ko.indexOf('>News<'));
+  // 2026-09-25 틀 문구가 받는 사람 언어로 바뀜 (newsletter-one-language.test.js): ko = 이번 주 PAP · 트렌드 브리핑
+  t('이번 주 PAP 이 뉴스보다 위', ko.indexOf('이번 주 PAP') > 0 && ko.indexOf('이번 주 PAP') < ko.indexOf('트렌드 브리핑') && ko.indexOf('트렌드 브리핑') < ko.indexOf('>News<'));
   t('PAP 링크 + utm_source=newsletter + utm_campaign=회차명', /href="https:\/\/www\.pap-magazine\.com\/editorial\/e1\?utm_source=newsletter&utm_medium=email&utm_campaign=news-weekly-2026-09-27"/.test(ko));
   t('이미지는 /api/img 프록시', /src="https:\/\/www\.pap-magazine\.com\/api\/img\?u=https%3A%2F%2Figcazquhkwxtqsaqpznx/.test(ko));
   t('제목 언어: ko 한국어 · ja 번역 · it 은 en 으로', />기사 한국어</.test(ko) && />記事</.test(ja) && />Article EN</.test(it));
-  t('화보 제목은 모든 언어에서 작품명', />Milan, After Dark</.test(ko) && />Milan, After Dark</.test(ja));
+  t('번역이 없는 화보 제목은 원제로 떨어진다 (생성 크론이 9개 언어를 채우는 게 정상 경로)', />Milan, After Dark</.test(ko) && />Milan, After Dark</.test(ja));
   t('외부 매체 링크는 없다 (뉴스 카드는 여전히 텍스트)', !/href="https:\/\/www\.vogue\.com/.test(ko));
   const old = templates.weeklyNews(mk({}), { language: 'ko' }, 'TOK').html;
-  t('papItems 없는 옛 캠페인: 블록 없음', !/THIS WEEK ON PAP/.test(old) && !/TREND BRIEFING/.test(old) && />News</.test(old));
+  t('papItems 없는 옛 캠페인: 블록 없음', !/이번 주 PAP|THIS WEEK ON PAP/.test(old) && !/트렌드 브리핑|TREND BRIEFING/.test(old) && />News</.test(old));
 
   console.log('\npassed: ' + pass + '   failed: ' + fail);
   if (fail) { console.log('❌ newsletter-pap-picks FAILED'); process.exit(1); }
