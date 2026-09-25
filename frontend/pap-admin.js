@@ -6779,7 +6779,7 @@ function _buildIgCaptionFromEditorial(ed){
   var _fsSlug = String(ed.slug||'').trim();
   if(_fsSlug){
     lines.push('Full Story link🔎 <Screenshot and copy-paste>');
-    lines.push('https://www.pap-magazine.com/editorial/' + _fsSlug);
+    lines.push('https://www.pap-magazine.com/editorial/' + _fsSlug + '?utm_source=ig&utm_campaign=caption');   // 2026-09-25 서버 빌더와 같게
     lines.push('');
   }
 

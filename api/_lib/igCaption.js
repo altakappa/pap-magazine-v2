@@ -99,7 +99,8 @@ function buildPapIgCaption(p) {
   const slug = String(p.slug || '').trim();
   if (slug) {
     lines.push('Full Story link🔎 <Screenshot and copy-paste>');
-    lines.push('https://www.pap-magazine.com/editorial/' + slug);
+    // 2026-09-25 — 캡션에서 복사해 들어온 사람을 센다(utm_source=ig · campaign=caption). 어드민 미러와 같게.
+    lines.push('https://www.pap-magazine.com/editorial/' + slug + '?utm_source=ig&utm_campaign=caption');
     lines.push('');
   }
 

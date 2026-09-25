@@ -554,6 +554,7 @@ function buildComments(opts) {
 }
 
 const FOR_MORE = 'FOR MORE ARTICLES | @pap_magazine';
+const DM_CTA = "💬 댓글에 '링크' 남기면 전체 기사를 DM으로 보내드려요 · Comment 'LINK' and we’ll DM you the full story";
 
 function buildBriefCaption(brief) {
   const b = brief || {};
@@ -575,6 +576,8 @@ function buildBriefCaption(brief) {
   if (lines.length) parts.push(lines.join('\n'));
   if (ko) parts.push(ko);
   parts.push(FOR_MORE);
+  // 2026-09-25 — 댓글→DM 링크가 켜졌을 때만 안내한다(꺼져 있는데 약속하면 거짓말이 된다). 이 캡션은 원래 한·영 병기.
+  if (process.env.IG_DM_ENABLED === '1') parts.push(DM_CTA);
   if (en) parts.push(en);
 
   const credit = uniq.length

@@ -36,6 +36,9 @@
 const { safeEqual } = require('../_lib/secretCompare');
 const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
+const { sendEditorialLiveMail } = require('../_lib/editorialLive');   // 2026-09-25
+const { sendEmail, templates } = require('../_lib/email');
+const { resolveEmailLang } = require('../_lib/emailLocale');
 const { handleCors } = require('../_lib/cors');
 const { recordContentChange } = require('../_lib/audit');
 
@@ -77,7 +80,8 @@ async function _releaseTarget({ type, table }, nowIso){
   // publish column (QA #61 + #127 + #224).
   const { data: due, error } = await supabaseAdmin
     .from(table)
-    .select('id, title, scheduled_publish_at')
+    // editorials 만 공개 알림 메일에 필요한 칸을 더 읽는다(다른 표엔 source_submission_id 가 없다).
+    .select(type === 'editorial' ? 'id, title, slug, status, scheduled_publish_at, source_submission_id' : 'id, title, scheduled_publish_at')
     .eq('status', 'published')
     .not('scheduled_publish_at', 'is', null)
     .lte('scheduled_publish_at', nowIso)
@@ -114,8 +118,18 @@ async function _releaseTarget({ type, table }, nowIso){
     }
   }
 
+  // 2026-09-25 — 예약 공개된 화보: 공개된 이 순간 크리에이터에게 공유용 링크 (한 번만, 실패해도 계속)
+  let liveMails = 0;
+  if (type === 'editorial') {
+    for (const row of fresh) {
+      const r = await sendEditorialLiveMail(row, { db: supabaseAdmin, sendEmail, templates, resolveEmailLang });
+      if (r && r.sent) liveMails++;
+    }
+  }
+
   return {
     type,
+    liveMails,
     count: due.length,           // total due rows seen
     audited,                     // freshly logged this tick
     skipped: due.length - fresh.length, // already-audited skips

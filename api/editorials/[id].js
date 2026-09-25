@@ -20,6 +20,7 @@ const { hasActivePlan } = require('../_lib/subscriptionAccess');   // 2026-09-13
 const { sanitizeInstaLogoSettings } = require('../_lib/instaLogoSettings');  // 2026-07-28
 // 2026-08-07 — 유니크 제약 위반을 사람이 읽는 안내로 (발행 8연속 실패 사고)
 const { describePgError } = require('../_lib/pgError');
+const { sendEditorialLiveMail } = require('../_lib/editorialLive');   // 2026-09-25 공개 순간 크리에이터 공유 링크
 
 /* ── 발행 텔레그램 전송을 전용 워커로 넘긴다 (2026-09-20) ───────────────────────────────
  * api/editorials/telegram-send.js 를 CRON_SECRET 으로 깨운다(api/telegram/webhook.js 의 wakeProcessor 와 같은 방식).
@@ -486,6 +487,8 @@ module.exports = async function handler(req, res) {
          * DB 는 published 인데 화면은 "발행 실패", 캡션(크레딧)·승인 메일은 유실. 전용 워커(300초)를 깨우고
          * 이 요청은 바로 끝낸다. 워커 깨우기가 실패하면 종전처럼 여기서 직접 보낸다(안전망). */
         await dispatchTelegramEditorial(data);
+        // 2026-09-25 — 지금 보이게 됐으면(예약 시각 없음·지남) 크리에이터에게 공유용 링크. 예약이면 cron 이 공개 때 보낸다.
+        await sendEditorialLiveMail(data, { db: supabaseAdmin, sendEmail, templates, resolveEmailLang });
         // (2026-09-15 도메니코) 프리미엄 '피드 + 스토리 보장' 알림 폐지 — 승인된 에디토리얼은 회원 등급과 무관하게
         // 웹사이트 + PAP 의 모든 소셜 미디어에 게재된다. 텔레그램 전송이 그 출발점이다.
       }

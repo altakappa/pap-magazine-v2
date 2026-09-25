@@ -25,6 +25,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { pushAlert } = require('../_lib/pushAlert');
 const ig = require('../_lib/igComments');
 const spam = require('../_lib/igCommentSpam');
+const { runCommentDms } = require('../_lib/igCommentDm');   // 2026-09-25 댓글 키워드 → DM 웹 링크 (기본 꺼짐)
 
 const SITE = process.env.SITE_URL || 'https://www.pap-magazine.com';
 const THRESHOLD = Number(process.env.IG_SPAM_THRESHOLD || 60);
@@ -132,6 +133,14 @@ module.exports = withCronGuard('ig-comment-scan', async function handler(req, re
   }
 
   const candidates = rows.filter((r) => r.score >= THRESHOLD);
+
+  /* 2026-09-25 — 댓글 → DM 링크 (IG→웹). 스팸 후보는 빼고, 한 댓글 한 번. 꺼져 있으면 아무 것도 안 한다.
+   * 실패해도 스팸 수집은 계속한다. dry 실행에선 보내지 않는다. */
+  let dmResult = null;
+  if (!dry) {
+    try { dmResult = await runCommentDms({ db: supabaseAdmin, rows, media: targets, threshold: THRESHOLD }); }
+    catch (e) { dmResult = { error: String((e && e.message) || e).slice(0, 200) }; }
+  }
 
   if (dry) {
     return res.status(200).json({
@@ -311,10 +320,12 @@ module.exports = withCronGuard('ig-comment-scan', async function handler(req, re
       + (autoFailed.length ? ` · ⛔자동실패 ${autoFailed.length}건(${autoFailed[0].why})` : '')
       + ` · ${Math.round((Date.now() - startedAt) / 1000)}초`
       + (alerted ? ' · 알림발송' : '')
+      + (dmResult && dmResult.enabled ? ` · DM ${dmResult.sent || 0}건` + (dmResult.stopped ? ' ⛔' + String(dmResult.stopped).slice(0, 80) : '') : '')
       + (errors.length ? ' · ⚠️ ' + errors.join(' / ') : '')),
     게시물: targets.length, 댓글: scanned, 스팸: candidates.length,
     신규: newCount, 자동숨김: autoHidden.length, 자동실패: autoFailed, 자동남음: autoLeft,
     소요초: Math.round((Date.now() - startedAt) / 1000),
     대기: pendingCount || 0, 알림: alerted, 오류: errors,
+    DM: dmResult,
   });
 });

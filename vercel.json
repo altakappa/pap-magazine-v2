@@ -673,6 +673,7 @@
       "source": "/subscribe",
       "destination": "/subscribe.html"
     },
+    { "source": "/ig", "destination": "/api/ig-landing" },
     {
       "source": "/newsletter",
       "destination": "/newsletter.html"
