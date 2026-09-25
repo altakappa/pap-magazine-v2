@@ -18,8 +18,9 @@ function ok(cond, msg) { if (cond) { pass++; } else { fail++; console.error('  F
 
 const { templates } = require(path.join(ROOT, 'api/_lib/email.js'));
 const LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja', 'zh', 'ru', 'de'];
-// 언어별 "직접" 표지어
-const DIRECT = { ko: '직접', en: 'directly', it: 'direttamente', fr: 'directement', es: 'directamente', ja: '直接', zh: '直接', ru: 'напрямую', de: 'direkt' };
+// 언어별 "촬영이 원활하도록 돕는다" 표지어 (2026-09-25 도메니코: 구체적 사용법 대신
+// "이 레터로 촬영이 원활히 진행되도록 도움을 받을 수 있다" 는 톤)
+const DIRECT = { ko: '원활', en: 'smoothly', it: 'senza intoppi', fr: 'bon déroulement', es: 'sin contratiempos', ja: 'スムーズ', zh: '顺利', ru: 'гладко', de: 'reibungslos' };
 
 // 1) 소스에 PAP 가 전달·재고를 조율한다는 옛 약속이 남아 있지 않다
 const src = fs.readFileSync(path.join(ROOT, 'api/_lib/email.js'), 'utf8');
@@ -28,6 +29,8 @@ const BANNED = [
   '쇼룸과 의상 전달 일정을 조율', '관련 쇼룸과 조율', '제품 대여 가능 여부',
   'Coordineremo la consegna', 'Nous coordonnerons la livraison', 'Coordinaremos la entrega',
   'ショールームと衣装のお届けを調整', '与 showroom 协调服装的交付', 'согласуем доставку', 'Wir koordinieren die Lieferung',
+  // 구체적 사용법 안내도 넣지 않는다 (도메니코 2026-09-25)
+  'Loans and delivery are arranged', '대여와 전달은', '의상 대여를 요청',
 ];
 BANNED.forEach(function (b) { ok(src.indexOf(b) === -1, 'banned phrase still present: ' + b); });
 
@@ -37,9 +40,9 @@ LANGS.forEach(function (lang) {
   const acc = templates.pullletterAccepted(u, '', lang).html;
   const iss = templates.pullletterIssued(u, '', lang).html;
   const rec = templates.pullletterReceived(u, lang).html;
-  ok(acc.indexOf(DIRECT[lang]) !== -1, lang + ' accepted mail lacks direct-approach line');
-  ok(iss.indexOf(DIRECT[lang]) !== -1, lang + ' issued mail lacks direct-approach line');
-  ok(rec.indexOf(DIRECT[lang]) !== -1, lang + ' received mail lacks direct-approach line');
+  ok(acc.indexOf(DIRECT[lang]) !== -1, lang + ' accepted mail lacks smooth-shoot line');
+  ok(iss.indexOf(DIRECT[lang]) !== -1, lang + ' issued mail lacks smooth-shoot line');
+  ok(rec.indexOf(DIRECT[lang]) !== -1, lang + ' received mail lacks smooth-shoot line');
   ok(/PDF/.test(acc) && /PDF/.test(rec), lang + ' accepted/received should mention the PDF letter');
 });
 

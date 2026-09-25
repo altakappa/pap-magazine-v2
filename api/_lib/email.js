@@ -400,12 +400,12 @@ const PULLLETTER_I18N = {
       "statusLabel": "상태",
       "statusValue": "처리 중",
       "eta": "검토 결과는 영업일 기준 7일 이내에 이메일로 안내드립니다.",
-      "body2": "승인되면 PAP 명의의 공식 Pull-Letter(PDF)를 발급해 드립니다. 이 레터를 가지고 원하시는 브랜드, 쇼룸, PR 에이전시에 직접 의상 대여를 요청하시면 됩니다."
+      "body2": "승인되면 PAP 명의의 공식 Pull-Letter(PDF)를 발급해 드립니다. 이 레터를 활용해 촬영을 더 원활하게 진행하실 수 있습니다."
     },
     "accepted": {
       "subject": "Pull-Letter가 승인되었습니다",
       "heading": "Pull-Letter 승인",
-      "body1": "Pull-Letter 요청이 승인되었습니다. 공식 Pull-Letter(PDF)가 발급되면 이메일로 다시 알려드립니다. 발급된 레터를 원하시는 브랜드, 쇼룸, PR 에이전시에 직접 제시하고 의상 대여를 요청해 주세요. 대여와 전달은 신청자와 해당 업체가 직접 진행합니다.",
+      "body1": "Pull-Letter 요청이 승인되었습니다. 공식 Pull-Letter(PDF)가 발급되면 이메일로 다시 알려드립니다. 이 레터가 이번 촬영을 원활하게 진행하는 데 힘이 되길 바랍니다.",
       "detailsLabel": "상세",
       "cta": "요청 보기"
     },
@@ -425,12 +425,12 @@ const PULLLETTER_I18N = {
       "statusLabel": "Status",
       "statusValue": "Processing",
       "eta": "You will hear back from us within 7 business days.",
-      "body2": "If approved, we will issue an official PAP Pull-Letter (PDF). You then take it directly to the brands, showrooms or PR agencies you want to work with to request the looks."
+      "body2": "If approved, we will issue an official PAP Pull-Letter (PDF) to help your shoot run smoothly."
     },
     "accepted": {
       "subject": "Pull-Letter Approved",
       "heading": "Pull-Letter Approved",
-      "body1": "Your Pull-Letter request has been approved. We will email you again as soon as your official Pull-Letter (PDF) is issued. Present the letter directly to the brands, showrooms or PR agencies of your choice to request the looks. Loans and delivery are arranged between you and them.",
+      "body1": "Your Pull-Letter request has been approved. We will email you again as soon as your official Pull-Letter (PDF) is issued. We hope it helps your shoot run smoothly.",
       "detailsLabel": "Details",
       "cta": "VIEW REQUESTS"
     },
@@ -450,12 +450,12 @@ const PULLLETTER_I18N = {
       "statusLabel": "Stato",
       "statusValue": "In elaborazione",
       "eta": "Riceverai una risposta entro 7 giorni lavorativi.",
-      "body2": "Se approvata, emetteremo una Pull-Letter ufficiale PAP (PDF), che presenterai direttamente ai brand, showroom o agenzie PR con cui vuoi lavorare per richiedere i capi."
+      "body2": "Se approvata, emetteremo una Pull-Letter ufficiale PAP (PDF) per aiutarti a realizzare lo shooting senza intoppi."
     },
     "accepted": {
       "subject": "Pull-Letter approvata",
       "heading": "Pull-Letter approvata",
-      "body1": "La tua richiesta di Pull-Letter è stata approvata. Ti scriveremo di nuovo appena la Pull-Letter ufficiale (PDF) sarà emessa. Presentala direttamente ai brand, showroom o agenzie PR che preferisci per richiedere i capi. Prestito e consegna si concordano direttamente tra te e loro.",
+      "body1": "La tua richiesta di Pull-Letter è stata approvata. Ti scriveremo di nuovo appena la Pull-Letter ufficiale (PDF) sarà emessa. Speriamo che ti aiuti a realizzare lo shooting senza intoppi.",
       "detailsLabel": "Dettagli",
       "cta": "VEDI RICHIESTE"
     },
@@ -475,12 +475,12 @@ const PULLLETTER_I18N = {
       "statusLabel": "Statut",
       "statusValue": "En cours",
       "eta": "Vous recevrez une réponse sous 7 jours ouvrés.",
-      "body2": "En cas d’approbation, nous émettrons une Pull-Letter officielle PAP (PDF), que vous présenterez directement aux marques, showrooms ou agences RP avec lesquels vous souhaitez travailler pour demander les pièces."
+      "body2": "En cas d’approbation, nous émettrons une Pull-Letter officielle PAP (PDF) pour faciliter le bon déroulement de votre shooting."
     },
     "accepted": {
       "subject": "Pull-Letter approuvée",
       "heading": "Pull-Letter approuvée",
-      "body1": "Votre demande de Pull-Letter a été approuvée. Nous vous écrirons dès que votre Pull-Letter officielle (PDF) sera émise. Présentez-la directement aux marques, showrooms ou agences RP de votre choix pour demander les pièces. Le prêt et la livraison se règlent directement entre vous et eux.",
+      "body1": "Votre demande de Pull-Letter a été approuvée. Nous vous écrirons dès que votre Pull-Letter officielle (PDF) sera émise. Nous espérons qu’elle facilitera le bon déroulement de votre shooting.",
       "detailsLabel": "Détails",
       "cta": "VOIR LES DEMANDES"
     },
@@ -500,12 +500,12 @@ const PULLLETTER_I18N = {
       "statusLabel": "Estado",
       "statusValue": "En proceso",
       "eta": "Recibirás una respuesta en un plazo de 7 días hábiles.",
-      "body2": "Si se aprueba, emitiremos una Pull-Letter oficial de PAP (PDF) que presentarás directamente a las marcas, showrooms o agencias de PR con las que quieras trabajar para solicitar las prendas."
+      "body2": "Si se aprueba, emitiremos una Pull-Letter oficial de PAP (PDF) para ayudarte a que la sesión salga sin contratiempos."
     },
     "accepted": {
       "subject": "Pull-Letter aprobada",
       "heading": "Pull-Letter aprobada",
-      "body1": "Tu solicitud de Pull-Letter ha sido aprobada. Te escribiremos de nuevo en cuanto se emita tu Pull-Letter oficial (PDF). Preséntala directamente a las marcas, showrooms o agencias de PR que elijas para solicitar las prendas. El préstamo y la entrega se acuerdan directamente entre tú y ellos.",
+      "body1": "Tu solicitud de Pull-Letter ha sido aprobada. Te escribiremos de nuevo en cuanto se emita tu Pull-Letter oficial (PDF). Esperamos que te ayude a que la sesión salga sin contratiempos.",
       "detailsLabel": "Detalles",
       "cta": "VER SOLICITUDES"
     },
@@ -525,12 +525,12 @@ const PULLLETTER_I18N = {
       "statusLabel": "ステータス",
       "statusValue": "処理中",
       "eta": "審査結果は7営業日以内にメールでご連絡いたします。",
-      "body2": "承認されると、PAP名義の公式Pull-Letter（PDF）を発行します。このレターを持って、ご希望のブランド、ショールーム、PRエージェンシーへ直接衣装の貸出をご依頼ください。"
+      "body2": "承認されると、PAP名義の公式Pull-Letter（PDF）を発行します。撮影をスムーズに進めるためにお役立てください。"
     },
     "accepted": {
       "subject": "Pull-Letterが承認されました",
       "heading": "Pull-Letter 承認",
-      "body1": "Pull-Letterのリクエストが承認されました。公式Pull-Letter（PDF）が発行され次第、改めてメールでお知らせします。発行されたレターを、ご希望のブランド、ショールーム、PRエージェンシーへ直接ご提示のうえ、衣装の貸出をご依頼ください。貸出とお届けは、ご本人と各社の間で直接ご調整いただきます。",
+      "body1": "Pull-Letterのリクエストが承認されました。公式Pull-Letter（PDF）が発行され次第、改めてメールでお知らせします。撮影をスムーズに進めるためにお役立てください。",
       "detailsLabel": "詳細",
       "cta": "リクエストを見る"
     },
@@ -550,12 +550,12 @@ const PULLLETTER_I18N = {
       "statusLabel": "状态",
       "statusValue": "处理中",
       "eta": "我们将在7个工作日内通过邮件告知审核结果。",
-      "body2": "审核通过后，我们将签发 PAP 官方 Pull-Letter（PDF）。您可凭此信函直接联系您希望合作的品牌、showroom 或公关公司，申请借用服装。"
+      "body2": "审核通过后，我们将签发 PAP 官方 Pull-Letter（PDF），帮助您的拍摄顺利进行。"
     },
     "accepted": {
       "subject": "Pull-Letter 已批准",
       "heading": "Pull-Letter 已批准",
-      "body1": "您的 Pull-Letter 申请已获批准。正式 Pull-Letter（PDF）签发后，我们会再次发邮件通知您。请凭此信函直接联系您选择的品牌、showroom 或公关公司申请借用服装。借用与交付由您与对方直接协商。",
+      "body1": "您的 Pull-Letter 申请已获批准。正式 Pull-Letter（PDF）签发后，我们会再次发邮件通知您。希望它能帮助您的拍摄顺利进行。",
       "detailsLabel": "详情",
       "cta": "查看申请"
     },
@@ -575,12 +575,12 @@ const PULLLETTER_I18N = {
       "statusLabel": "Статус",
       "statusValue": "В обработке",
       "eta": "Мы сообщим вам о решении в течение 7 рабочих дней.",
-      "body2": "Если запрос одобрят, мы выпишем официальный Pull-Letter от PAP (PDF). С ним вы напрямую обращаетесь в бренды, шоурумы или PR-агентства, с которыми хотите работать, чтобы запросить вещи."
+      "body2": "Если запрос одобрят, мы выпишем официальный Pull-Letter от PAP (PDF), который поможет вашей съёмке пройти гладко."
     },
     "accepted": {
       "subject": "Pull-Letter одобрен",
       "heading": "Pull-Letter одобрен",
-      "body1": "Ваш запрос Pull-Letter одобрен. Мы сообщим вам по email, как только официальный Pull-Letter (PDF) будет выписан. Предъявите его напрямую брендам, шоурумам или PR-агентствам на ваш выбор, чтобы запросить вещи. Аренда и доставка согласуются напрямую между вами и ними.",
+      "body1": "Ваш запрос Pull-Letter одобрен. Мы сообщим вам по email, как только официальный Pull-Letter (PDF) будет выписан. Надеемся, он поможет вашей съёмке пройти гладко.",
       "detailsLabel": "Детали",
       "cta": "СМОТРЕТЬ ЗАПРОСЫ"
     },
@@ -600,12 +600,12 @@ const PULLLETTER_I18N = {
       "statusLabel": "Status",
       "statusValue": "In Bearbeitung",
       "eta": "Sie erhalten innerhalb von 7 Werktagen eine Rückmeldung.",
-      "body2": "Nach einer Genehmigung stellen wir dir eine offizielle PAP Pull-Letter (PDF) aus. Damit wendest du dich direkt an die Marken, Showrooms oder PR-Agenturen, mit denen du arbeiten möchtest, um die Looks anzufragen."
+      "body2": "Nach einer Genehmigung stellen wir dir eine offizielle PAP Pull-Letter (PDF) aus, die dir helfen soll, dein Shooting reibungslos umzusetzen."
     },
     "accepted": {
       "subject": "Pull-Letter genehmigt",
       "heading": "Pull-Letter genehmigt",
-      "body1": "Deine Pull-Letter-Anfrage wurde genehmigt. Sobald deine offizielle Pull-Letter (PDF) ausgestellt ist, schreiben wir dir erneut. Lege sie direkt den Marken, Showrooms oder PR-Agenturen deiner Wahl vor, um die Looks anzufragen. Leihe und Lieferung vereinbarst du direkt mit ihnen.",
+      "body1": "Deine Pull-Letter-Anfrage wurde genehmigt. Sobald deine offizielle Pull-Letter (PDF) ausgestellt ist, schreiben wir dir erneut. Wir hoffen, sie hilft dir, dein Shooting reibungslos umzusetzen.",
       "detailsLabel": "Details",
       "cta": "ANFRAGEN ANSEHEN"
     },
@@ -791,15 +791,15 @@ const PULLLETTER_EDITORIAL_REMINDER_I18N = {
 };
 
 const PULLLETTER_ISSUED_I18N = {
-  ko: { subject: 'Pull-Letter가 발급되었습니다', heading: 'Pull-Letter 발급 완료', body: '요청하신 Pull-Letter가 발급되었습니다. 마이페이지에서 PDF를 다운로드하실 수 있습니다. 이 레터를 원하시는 브랜드, 쇼룸, PR 에이전시에 직접 제시하고 의상 대여를 요청하세요. 대여와 전달은 신청자와 해당 업체가 직접 진행합니다. 촬영을 마치면 마이페이지 → PULL-LETTERS 의 "완성된 에디토리얼 제출하기"로 완성 에디토리얼을 제출해 주세요. 일반 서브미션과 같은 절차로 심사됩니다.', cta: 'PDF 다운로드' },
-  en: { subject: 'Your Pull-Letter Has Been Issued', heading: 'Pull-Letter Issued', body: 'Your pull-letter has been issued. You can download the PDF from your My Page. Present this letter directly to the brands, showrooms or PR agencies you want to borrow from. Loans and delivery are arranged between you and them. Once the shoot is done, submit the finished editorial via My Page → PULL-LETTERS → "Submit finished editorial". It goes through the same review as a regular submission.', cta: 'DOWNLOAD PDF' },
-  it: { subject: 'La tua Pull-Letter è stata emessa', heading: 'Pull-Letter emessa', body: 'La tua pull-letter è stata emessa. Puoi scaricare il PDF dalla tua My Page. Presenta questa lettera direttamente ai brand, showroom o agenzie PR da cui vuoi ottenere i capi. Prestito e consegna si concordano direttamente tra te e loro. A shooting concluso, invia l\'editoriale finito da My Page → PULL-LETTERS → "Invia l\'editoriale finito". Segue la stessa revisione di una submission normale.', cta: 'SCARICA PDF' },
-  fr: { subject: 'Votre Pull-Letter a été émise', heading: 'Pull-Letter émise', body: 'Votre pull-letter a été émise. Vous pouvez télécharger le PDF depuis votre My Page. Présentez cette lettre directement aux marques, showrooms ou agences RP auprès desquels vous souhaitez emprunter des pièces. Le prêt et la livraison se règlent directement entre vous et eux. Une fois le shooting terminé, soumettez l\'éditorial final via My Page → PULL-LETTERS → « Soumettre l\'éditorial final ». Il suit la même révision qu\'une soumission classique.', cta: 'TÉLÉCHARGER LE PDF' },
-  es: { subject: 'Tu Pull-Letter ha sido emitida', heading: 'Pull-Letter emitida', body: 'Tu pull-letter ha sido emitida. Puedes descargar el PDF desde tu My Page. Presenta esta carta directamente a las marcas, showrooms o agencias de PR a las que quieras pedir prendas. El préstamo y la entrega se acuerdan directamente entre tú y ellos. Cuando termine la sesión, envía el editorial terminado desde My Page → PULL-LETTERS → "Enviar el editorial terminado". Pasa por la misma revisión que un envío normal.', cta: 'DESCARGAR PDF' },
-  ja: { subject: 'Pull-Letterが発行されました', heading: 'Pull-Letter 発行完了', body: 'Pull-Letterが発行されました。マイページからPDFをダウンロードできます。このレターを、ご希望のブランド、ショールーム、PRエージェンシーへ直接ご提示のうえ、衣装の貸出をご依頼ください。貸出とお届けは、ご本人と各社の間で直接ご調整いただきます。 撮影が終わったら、マイページ → PULL-LETTERS の「完成エディトリアルを提出」から完成エディトリアルを提出してください。通常のサブミッションと同じ審査を受けます。', cta: 'PDFをダウンロード' },
-  zh: { subject: '您的 Pull-Letter 已签发', heading: 'Pull-Letter 已签发', body: '您的 pull-letter 已签发。您可以在“我的页面”下载 PDF。请凭此信函直接联系您希望借用服装的品牌、showroom 或公关公司。借用与交付由您与对方直接协商。 拍摄完成后，请通过“我的页面 → PULL-LETTERS → 提交完整作品”提交完整作品。将按与普通投稿相同的流程审核。', cta: '下载 PDF' },
-  ru: { subject: 'Ваш Pull-Letter выписан', heading: 'Pull-Letter выписан', body: 'Ваш pull-letter выписан. Вы можете скачать PDF в личном кабинете (My Page). Предъявите это письмо напрямую брендам, шоурумам или PR-агентствам, у которых хотите взять вещи. Аренда и доставка согласуются напрямую между вами и ними. Когда съёмка завершена, отправьте готовый эдиториал через My Page → PULL-LETTERS → «Отправить готовый эдиториал». Он проходит ту же проверку, что и обычная заявка.', cta: 'СКАЧАТЬ PDF' },
-  de: { subject: 'Ihre Pull-Letter wurde ausgestellt', heading: 'Pull-Letter ausgestellt', body: 'Ihre Pull-Letter wurde ausgestellt. Sie können das PDF in Ihrer My Page herunterladen. Legen Sie diese Letter direkt den Marken, Showrooms oder PR-Agenturen vor, bei denen Sie Teile leihen möchten. Leihe und Lieferung vereinbaren Sie direkt mit ihnen. Wenn das Shooting abgeschlossen ist, reichen Sie das fertige Editorial über My Page → PULL-LETTERS → „Fertiges Editorial einreichen“ ein. Es durchläuft dieselbe Prüfung wie eine normale Einreichung.', cta: 'PDF HERUNTERLADEN' },
+  ko: { subject: 'Pull-Letter가 발급되었습니다', heading: 'Pull-Letter 발급 완료', body: '요청하신 Pull-Letter가 발급되었습니다. 마이페이지에서 PDF를 다운로드하실 수 있습니다. 이 레터를 활용해 이번 촬영을 더 원활하게 진행하시길 바랍니다. 촬영을 마치면 마이페이지 → PULL-LETTERS 의 "완성된 에디토리얼 제출하기"로 완성 에디토리얼을 제출해 주세요. 일반 서브미션과 같은 절차로 심사됩니다.', cta: 'PDF 다운로드' },
+  en: { subject: 'Your Pull-Letter Has Been Issued', heading: 'Pull-Letter Issued', body: 'Your pull-letter has been issued. You can download the PDF from your My Page. Use this letter to help your shoot run smoothly. Once the shoot is done, submit the finished editorial via My Page → PULL-LETTERS → "Submit finished editorial". It goes through the same review as a regular submission.', cta: 'DOWNLOAD PDF' },
+  it: { subject: 'La tua Pull-Letter è stata emessa', heading: 'Pull-Letter emessa', body: 'La tua pull-letter è stata emessa. Puoi scaricare il PDF dalla tua My Page. Usa questa lettera per far procedere lo shooting senza intoppi. A shooting concluso, invia l\'editoriale finito da My Page → PULL-LETTERS → "Invia l\'editoriale finito". Segue la stessa revisione di una submission normale.', cta: 'SCARICA PDF' },
+  fr: { subject: 'Votre Pull-Letter a été émise', heading: 'Pull-Letter émise', body: 'Votre pull-letter a été émise. Vous pouvez télécharger le PDF depuis votre My Page. Servez-vous de cette lettre pour faciliter le bon déroulement de votre shooting. Une fois le shooting terminé, soumettez l\'éditorial final via My Page → PULL-LETTERS → « Soumettre l\'éditorial final ». Il suit la même révision qu\'une soumission classique.', cta: 'TÉLÉCHARGER LE PDF' },
+  es: { subject: 'Tu Pull-Letter ha sido emitida', heading: 'Pull-Letter emitida', body: 'Tu pull-letter ha sido emitida. Puedes descargar el PDF desde tu My Page. Usa esta carta para que tu sesión salga sin contratiempos. Cuando termine la sesión, envía el editorial terminado desde My Page → PULL-LETTERS → "Enviar el editorial terminado". Pasa por la misma revisión que un envío normal.', cta: 'DESCARGAR PDF' },
+  ja: { subject: 'Pull-Letterが発行されました', heading: 'Pull-Letter 発行完了', body: 'Pull-Letterが発行されました。マイページからPDFをダウンロードできます。このレターを、撮影をスムーズに進めるためにお役立てください。 撮影が終わったら、マイページ → PULL-LETTERS の「完成エディトリアルを提出」から完成エディトリアルを提出してください。通常のサブミッションと同じ審査を受けます。', cta: 'PDFをダウンロード' },
+  zh: { subject: '您的 Pull-Letter 已签发', heading: 'Pull-Letter 已签发', body: '您的 pull-letter 已签发。您可以在“我的页面”下载 PDF。希望这封信函能帮助您的拍摄顺利进行。 拍摄完成后，请通过“我的页面 → PULL-LETTERS → 提交完整作品”提交完整作品。将按与普通投稿相同的流程审核。', cta: '下载 PDF' },
+  ru: { subject: 'Ваш Pull-Letter выписан', heading: 'Pull-Letter выписан', body: 'Ваш pull-letter выписан. Вы можете скачать PDF в личном кабинете (My Page). Пусть это письмо поможет вашей съёмке пройти гладко. Когда съёмка завершена, отправьте готовый эдиториал через My Page → PULL-LETTERS → «Отправить готовый эдиториал». Он проходит ту же проверку, что и обычная заявка.', cta: 'СКАЧАТЬ PDF' },
+  de: { subject: 'Ihre Pull-Letter wurde ausgestellt', heading: 'Pull-Letter ausgestellt', body: 'Ihre Pull-Letter wurde ausgestellt. Sie können das PDF in Ihrer My Page herunterladen. Nutzen Sie diese Letter, damit Ihr Shooting reibungslos verläuft. Wenn das Shooting abgeschlossen ist, reichen Sie das fertige Editorial über My Page → PULL-LETTERS → „Fertiges Editorial einreichen“ ein. Es durchläuft dieselbe Prüfung wie eine normale Einreichung.', cta: 'PDF HERUNTERLADEN' },
 };
 
 /* ── 접수 확인·환영 메일 i18n (2026-08-26) ─────────────────────────
