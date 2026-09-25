@@ -2610,6 +2610,8 @@ async function loadPullLetters(statusFilter){
         revision: { cls:'b-onhold',   label:'수정 요청 중' },
       };
       var s = statusMap[pl.status] || statusMap.pending;
+      // 2026-09-25 — 옛 '승인' 버튼으로 승인만 되고 PDF 가 없는 건은 신청자가 아무것도 못 받은 상태다. 눈에 띄게 경고.
+      if((pl.status === 'approved' || pl.status === 'accepted') && !pl.pull_letter_url) s = { cls:'b-declined', label:'⚠ 승인만 됨 · PDF 미발급' };
       // 2026-09-13 — 풀레터 후속 제출이 들어오면 배지에 표시(pullletters.submission_id).
       if(pl.submission_id) s = { cls:'b-approved', label:'발급 완료 · 에디토리얼 제출됨' };
       // Title: moodboard title (community flow) or first line of request_text (legacy)
@@ -2782,9 +2784,12 @@ function _createPullLetterReviewModal(){
     + '<h3 style="font-size:14px;font-weight:700;letter-spacing:.05em;margin-bottom:18px">풀레터 검토</h3>'
     + '<div class="plr-body"></div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">'
-      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'approved\',null)">승인</button>'
+      /* 2026-09-25 도메니코: "발급 승인을 눌렀는데 신청자가 풀레터를 못 받았다".
+         실측: '승인'(approved) 버튼은 상태만 바꾸고 PDF 를 만들지 않았다. 발급은
+         옆의 '발급' 버튼에서만 일어났다. 300ba572(Echo Form)가 9/22 승인만 되고
+         PDF 없이 멈춰 있었다. 승인과 발급을 한 버튼으로 합친다. */
+      + '<button class="btn btn-sm" style="background:#111;color:#fff" onclick="doPullLetterReview(\'issued\',null)">승인 · 발급 (PDF 자동 생성)</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'revision\',null)">무드보드 수정 요청</button>'
-      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'issued\',null)">발급 (미첨부 시 자동 생성)</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'on_hold\',null)">보류(결제 확인 전)</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'pending\',null)">보류 해제 → 대기 중</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'rejected\',null)">거절</button>'
