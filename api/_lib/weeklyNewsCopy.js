@@ -46,7 +46,7 @@ const WEEKLY_COPY = {
 const MAIL_CHROME = {
   ko: { igLabel: 'PAP 매거진 인스타그램', rights: '모든 권리 보유.', weekEditorials: '이주의 에디토리얼', viewMore: 'PAP에서 더 보기',
         creativeKicker: '크리에이티브 팀을 위해', howItWorks: '진행 방식',
-        mySubs: '내 서브미션', subsTab: '업로드', plTab: '풀레터', myPage: '마이페이지' },
+        mySubs: '내 서브미션', subsTab: '내 서브미션', plTab: '풀레터', myPage: '마이페이지' },
   en: { igLabel: 'PAP Magazine — Instagram', rights: 'All rights reserved.', weekEditorials: 'THIS WEEK\'S EDITORIALS', viewMore: 'VIEW MORE ON PAP',
         creativeKicker: 'FOR CREATIVE TEAMS', howItWorks: 'HOW IT WORKS',
         mySubs: 'MY SUBMISSIONS', subsTab: 'SUBMISSIONS', plTab: 'PULL-LETTER', myPage: 'My Page' },
@@ -67,7 +67,7 @@ const MAIL_CHROME = {
         mySubs: '我的投稿', subsTab: '投稿', plTab: 'PULL-LETTER', myPage: '我的页面' },
   ru: { igLabel: 'PAP Magazine в Instagram', rights: 'Все права защищены.', weekEditorials: 'СЪЁМКИ НЕДЕЛИ', viewMore: 'БОЛЬШЕ НА PAP',
         creativeKicker: 'ДЛЯ КРЕАТИВНЫХ КОМАНД', howItWorks: 'КАК ЭТО РАБОТАЕТ',
-        mySubs: 'МОИ ПОДАЧИ', subsTab: 'ПУБЛИКАЦИИ', plTab: 'PULL-LETTER', myPage: 'Моя страница' },
+        mySubs: 'МОИ ПОДАЧИ', subsTab: 'ПОДАЧИ', plTab: 'PULL-LETTER', myPage: 'Моя страница' },
   de: { igLabel: 'PAP Magazine auf Instagram', rights: 'Alle Rechte vorbehalten.', weekEditorials: 'DIE EDITORIALS DER WOCHE', viewMore: 'MEHR AUF PAP',
         creativeKicker: 'FÜR KREATIVTEAMS', howItWorks: 'SO FUNKTIONIERT ES',
         mySubs: 'MEINE EINREICHUNGEN', subsTab: 'EINREICHUNGEN', plTab: 'PULL-LETTER', myPage: 'Meine Seite' },
