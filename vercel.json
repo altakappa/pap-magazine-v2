@@ -759,6 +759,10 @@
       "destination": "/pinterest-diagnose.html"
     },
     {
+      "source": "/pinterest-demo",
+      "destination": "/pinterest-demo.html"
+    },
+    {
       "source": "/ops-dashboard",
       "destination": "/ops-dashboard.html"
     },

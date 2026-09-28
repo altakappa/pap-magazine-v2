@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>PAP MAGAZINE Editorial Sync, Pinterest integration</title>
+<!-- 2026-09-28 핀터레스트 Standard 승급 재심사 녹화용. 설명은 api/_lib/pinterestDemo.js 머리말. -->
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f6f6f6; color: #111; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; }
+  header { background: #000; color: #fff; padding: 18px 28px; display: flex; align-items: baseline; gap: 16px; }
+  header h1 { margin: 0; font-size: 16px; letter-spacing: 2px; }
+  header span { font-size: 12px; opacity: .7; letter-spacing: 1px; }
+  main { max-width: 920px; margin: 0 auto; padding: 28px 20px 80px; }
+  .intro { font-size: 14px; line-height: 1.7; color: #444; margin: 0 0 22px; }
+  .step { background: #fff; border: 1px solid #e3e3e3; border-radius: 12px; padding: 20px 24px; margin-bottom: 18px; }
+  .step h2 { margin: 0 0 6px; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+  .num { width: 26px; height: 26px; border-radius: 50%; background: #e60023; color: #fff; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
+  .step p { margin: 0 0 14px; font-size: 13px; color: #555; line-height: 1.6; }
+  button, .btn { display: inline-block; background: #e60023; color: #fff; border: 0; border-radius: 22px; padding: 11px 22px; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; font-family: inherit; }
+  button:disabled { background: #ccc; cursor: default; }
+  .btn.ghost { background: #fff; color: #e60023; border: 2px solid #e60023; }
+  .ok { color: #047857; font-weight: 700; font-size: 14px; margin-top: 12px; }
+  .err { color: #b91c1c; font-weight: 700; font-size: 13px; margin-top: 12px; white-space: pre-wrap; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 14px; font-size: 13px; margin-top: 12px; }
+  .kv div:nth-child(odd) { color: #888; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 8px; font-size: 12px; line-height: 1.55; overflow-x: auto; margin: 10px 0 0; }
+  .label { font-size: 11px; letter-spacing: 1px; color: #888; text-transform: uppercase; margin-top: 14px; }
+  .preview { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+  .preview img { width: 84px; height: 105px; object-fit: cover; border-radius: 6px; background: #eee; }
+  .preview b { display: block; font-size: 14px; }
+  .preview small { color: #888; }
+  .setup { background: #fff7ed; border: 1px solid #fed7aa; color: #7c2d12; border-radius: 10px; padding: 12px 16px; font-size: 13px; line-height: 1.7; margin-bottom: 18px; display: none; }
+  .setup code { background: #fff; padding: 1px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<header><h1>PAP MAGAZINE</h1><span>EDITORIAL SYNC · PINTEREST INTEGRATION</span></header>
+<main>
+  <p class="intro">PAP Magazine publishes original fashion editorials on pap-magazine.com. Editorial Sync posts each new editorial's cover image to our own Pinterest board, linking back to the full story. This page runs the full flow: OAuth authorization, creating a Pin through the Pinterest API, and viewing the new Pin on Pinterest.</p>
+  <div class="setup" id="setup"></div>
+
+  <section class="step">
+    <h2><span class="num">1</span>Connect Pinterest (OAuth)</h2>
+    <p>Sign in to Pinterest and grant access: boards:read, boards:write, pins:read, pins:write, user_accounts:read.</p>
+    <button id="btnConnect">Connect Pinterest</button>
+    <div id="connectOut"></div>
+  </section>
+
+  <section class="step">
+    <h2><span class="num">2</span>Create a Pin via the Pinterest API</h2>
+    <p>Takes our latest published editorial and sends <b>POST /v5/pins</b> (sandbox environment).</p>
+    <div class="preview" id="preview"></div>
+    <button id="btnPin" disabled>Create Pin</button>
+    <div id="pinOut"></div>
+  </section>
+
+  <section class="step">
+    <h2><span class="num">3</span>View the new Pin on Pinterest</h2>
+    <p>Opens the Pin that was just created, live on Pinterest.</p>
+    <a class="btn ghost" id="btnView" href="#" target="_blank" rel="noopener" style="pointer-events:none;opacity:.4">View Pin on Pinterest</a>
+    <div id="viewOut"></div>
+  </section>
+</main>
+<script>
+(function () {
+  var TOKEN = localStorage.getItem('pap-token');
+  var API = '/api/admin/pinterest-demo';
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function call(step, body) {
+    return fetch(API + '?step=' + step, {
+      method: body ? 'POST' : 'GET',
+      headers: Object.assign({ 'Authorization': 'Bearer ' + TOKEN }, body ? { 'Content-Type': 'application/json' } : {}),
+      body: body ? JSON.stringify(body) : undefined,
+    }).then(function (r) { return r.json().then(function (j) { j._status = r.status; return j; }); });
+  }
+  function showErr(box, msg) { box.textContent = ''; box.appendChild(el('div', 'err', msg)); }
+
+  if (!TOKEN) { document.querySelector('main').textContent = 'Admin login required. Log in at /admin and reopen this page.'; return; }
+
+  function showConnected(c) {
+    var box = $('connectOut'); box.textContent = '';
+    box.appendChild(el('div', 'ok', '✓ Connected to Pinterest' + (c.username ? ' as @' + c.username : '')));
+    var kv = el('div', 'kv');
+    [['Token type', c.token_type || 'bearer'], ['Granted scopes', c.scope || '(see consent screen)'], ['Expires in', c.expires_in ? Math.round(c.expires_in / 86400) + ' days' : 'n/a'], ['Access token', '•••••••• (kept on server, never displayed)']]
+      .forEach(function (p) { kv.appendChild(el('div', null, p[0])); kv.appendChild(el('div', null, p[1])); });
+    box.appendChild(kv);
+    $('btnConnect').textContent = 'Connected ✓';
+    $('btnPin').disabled = false;
+  }
+
+  /* 준비 상태: 비밀값이 빠졌으면 녹화 전에 화면 위에 알린다. */
+  call('status').then(function (s) {
+    var miss = [];
+    if (!s.has_app_secret) miss.push('PINTEREST_APP_SECRET');
+    if (!s.has_sandbox_token) miss.push('PINTEREST_SANDBOX_TOKEN');
+    if (miss.length) {
+      var b = $('setup'); b.style.display = 'block';
+      b.appendChild(el('div', null, 'Setup incomplete. Missing Vercel environment variables: ' + miss.join(', ')));
+      b.appendChild(el('div', null, 'This Redirect URI must be registered in the Pinterest app settings: ' + s.redirect_uri));
+    }
+  }).catch(function () {});
+
+  call('preview').then(function (p) {
+    if (!p.editorial) return;
+    var pv = $('preview'); var img = el('img'); img.src = p.editorial.image; img.alt = '';
+    var t = el('div'); t.appendChild(el('b', null, p.editorial.title)); t.appendChild(el('small', null, p.editorial.url));
+    pv.appendChild(img); pv.appendChild(t);
+  }).catch(function () {});
+
+  var qs = new URLSearchParams(location.search);
+  if (qs.get('code')) {
+    $('connectOut').appendChild(el('div', 'ok', 'Completing authorization…'));
+    call('exchange', { code: qs.get('code'), state: qs.get('state') }).then(function (c) {
+      history.replaceState(null, '', location.pathname);
+      if (!c.connected) return showErr($('connectOut'), c.error + (c.detail ? '\n' + c.detail : ''));
+      try { sessionStorage.setItem('pin-demo-conn', JSON.stringify(c)); } catch (_e) {}
+      showConnected(c);
+    });
+  } else if (qs.get('error')) {
+    showErr($('connectOut'), 'Authorization was cancelled: ' + qs.get('error'));
+  } else {
+    try { var saved = JSON.parse(sessionStorage.getItem('pin-demo-conn') || 'null'); if (saved) showConnected(saved); } catch (_e) {}
+  }
+
+  $('btnConnect').onclick = function () {
+    call('authorize').then(function (a) { if (a.url) location.href = a.url; else showErr($('connectOut'), a.error || 'Error'); });
+  };
+
+  $('btnPin').onclick = function () {
+    var box = $('pinOut'); box.textContent = ''; $('btnPin').disabled = true; $('btnPin').textContent = 'Creating…';
+    call('pin', {}).then(function (r) {
+      $('btnPin').textContent = 'Create Pin';
+      if (!r.request) { $('btnPin').disabled = false; return showErr(box, r.error || 'Error'); }
+      box.appendChild(el('div', 'label', 'Request'));
+      box.appendChild(el('pre', null, r.request.method + ' ' + r.request.url + '\n\n' + JSON.stringify(r.request.body, null, 2)));
+      box.appendChild(el('div', 'label', 'Response · HTTP ' + r.response.status));
+      box.appendChild(el('pre', null, JSON.stringify(r.response.body, null, 2)));
+      if (!r.pin_url) { $('btnPin').disabled = false; return showErr(box, 'Pin was not created.'); }
+      box.appendChild(el('div', 'ok', '✓ Pin created · id ' + r.response.body.id + ' · board "' + r.board.name + '"'));
+      var v = $('btnView'); v.href = r.pin_url; v.style.pointerEvents = ''; v.style.opacity = '';
+      $('viewOut').appendChild(el('div', 'kv')).appendChild(el('div', null, r.pin_url));
+    }).catch(function (e) { $('btnPin').disabled = false; $('btnPin').textContent = 'Create Pin'; showErr(box, String(e)); });
+  };
+})();
+</script>
+</body>
+</html>
