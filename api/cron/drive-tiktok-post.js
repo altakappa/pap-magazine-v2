@@ -147,59 +147,92 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
     let subs = [];
     try { subs = await loadSubPosts(supabaseAdmin); } catch (_e) { subs = []; }
 
+    const dryRun = !!(req.query && req.query.dry === '1');
+
+    /* ── 중복 영상이 줄 전체를 막지 않게 (2026-09-28 도메니코 "틱톡에 영상 업로드가 안되고있어") ──
+     * 실측: 9/23 00:06 ~ 9/28, 10분마다 780회 같은 파일("0922_윤호가 다시 찾은 디젤…")에서 멈췄다.
+     *   흐름: 그 파일에는 예전 'failed' 줄이 있었다(재시도용) → 후보로 다시 잡힘 →
+     *         기사가 이미 릴스로 나가 '중복 방지' → skipped 를 insert → drive_file_id
+     *         유니크 충돌로 조용히 실패 → return. 다음 회차도 똑같이 반복.
+     *   게다가 후보 첫 번째에서 return 하니 뒤에 있던 새 영상(0926_보테가 성찬)까지 막혔다.
+     * 그래서: ① 중복 판정은 후보 루프 안에서 하고, 중복이면 기록만 남기고 다음 후보로 간다.
+     *         ② 기록은 기존 줄이 있으면 update, 없으면 insert. 결과를 확인하고 실패하면 적는다. */
+    async function articleAlreadyPosted(art, fileId) {
+      if (!art || !art.id) return null;
+      try {
+        const { data: taken0 } = await supabaseAdmin.from('tiktok_posts')
+          .select('drive_file_id, status').eq('article_id', art.id).limit(1).maybeSingle();
+        if (taken0 && taken0.status !== 'failed' && taken0.drive_file_id !== fileId) return taken0;
+      } catch (_) { /* 확인 실패는 게시를 막지 않는다 — 아래 기록 단계가 다시 본다 */ }
+      return null;
+    }
+    async function recordDuplicateSkip(file, art) {
+      const d = 'drive:' + file.name + ' · 이미 기사 경로로 게시된 기사(' + art.id + ') — 중복 방지로 올리지 않음';
+      try {
+        const { data: ex } = await supabaseAdmin.from('tiktok_posts')
+          .select('id, status, detail').eq('drive_file_id', file.id).limit(1).maybeSingle();
+        if (ex) {
+          if (ex.status !== 'failed') return { ok: true, kept: ex.status };
+          const { error } = await supabaseAdmin.from('tiktok_posts')
+            .update({ status: 'skipped', detail: String((ex.detail ? ex.detail + ' → ' : '') + d).slice(0, 1000) })
+            .eq('id', ex.id);
+          return error ? { ok: false, error: error.message } : { ok: true };
+        }
+        const { error } = await supabaseAdmin.from('tiktok_posts').insert({
+          drive_file_id: file.id, status: 'skipped', detail: d,
+        });
+        return error ? { ok: false, error: error.message } : { ok: true };
+      } catch (e) {
+        return { ok: false, error: String((e && e.message) || e).slice(0, 200) };
+      }
+    }
+
     const unmatched = [];
+    const dupSkipped = [];
     let pick = null;
     for (const f of candidates) {
       const m = matchArticle(f.name, articles);
-      if (m.matched) { pick = { file: f, art: m.matched, match: m }; break; }
-      const sp = subs.length ? findSubPost(fileCore(f.name), subs) : null;
-      const sa = sp ? subPostAsArticle(sp) : null;
-      if (sa) { pick = { file: f, art: sa, match: { score: 1, reason: 'sub:@' + sa.account, runnerUp: null } }; break; }
-      unmatched.push({ name: f.name, reason: m.reason });
+      let cand = null;
+      if (m.matched) cand = { file: f, art: m.matched, match: m };
+      else {
+        const sp = subs.length ? findSubPost(fileCore(f.name), subs) : null;
+        const sa = sp ? subPostAsArticle(sp) : null;
+        if (sa) cand = { file: f, art: sa, match: { score: 1, reason: 'sub:@' + sa.account, runnerUp: null } };
+      }
+      if (!cand) { unmatched.push({ name: f.name, reason: m.reason }); continue; }
+      /* 올리기 전에 확인한다 (2026-09-07). 이미 나간 기사면 올리지 않고 다음 후보로. */
+      if (await articleAlreadyPosted(cand.art, f.id)) {
+        const w = dryRun ? { ok: true, dry: true } : await recordDuplicateSkip(f, cand.art);
+        dupSkipped.push({ name: f.name, article: cand.art.title, recorded: w.ok, error: w.error || null });
+        continue;
+      }
+      pick = cand; break;
     }
+    const dupNote = dupSkipped.length
+      ? ' · 중복 방지 ' + dupSkipped.length + '건(' + dupSkipped.map((d) => d.name + (d.recorded ? '' : ' 기록실패:' + d.error)).join(', ').slice(0, 300) + ')'
+      : '';
     if (!pick) {
+      if (dupSkipped.length && !unmatched.length) {
+        return res.status(200).json({
+          ok: true, skippedDuplicate: true, dupSkipped, skipped,
+          note: note(res, '중복 방지 — 이미 게시된 기사의 영상: ' + dupSkipped.map((d) => d.name).join(', ').slice(0, 400)),
+        });
+      }
       return res.status(200).json({
-        ok: true, matched: 0, unmatched, skipped,
-        /* 유튜브 크론과 같은 모양으로 (2026-09-02). 여기는 이름을 3개만 찍고 있어서
-           나머지가 뭔지 알 수 없었다 — 유튜브 쪽에서 이미 겪은 문제다. */
+        ok: true, matched: 0, unmatched, skipped, dupSkipped,
+        /* 유튜브 크론과 같은 모양으로 (2026-09-02). */
         note: note(res, '매칭 실패 ' + unmatched.length + '건 — '
           + groupUnmatched(unmatched).slice(0, 1500)
-          + ' · 목록에서 빼려면 파일명 앞에 _ 를 붙이거나 이름에 완료 를 넣으세요 (지우지 않아도 됩니다)'),
+          + ' · 목록에서 빼려면 파일명 앞에 _ 를 붙이거나 이름에 완료 를 넣으세요 (지우지 않아도 됩니다)' + dupNote),
       });
     }
 
     const { file, art, match } = pick;
 
-    /* ── 올리기 전에 확인한다 (2026-09-07) ──────────────────────
-     * 예전에는 이 확인이 **게시 뒤에** 있었다. 유니크 충돌만 피하려고
-     * article_id 를 비웠고, 영상은 이미 밖으로 나간 뒤였다.
-     * 그래서 같은 기사가 틱톡에 두 번 올라갔다 (실측 12쌍).
-     *
-     * 이제는 올리기 전에 보고, 이미 나간 기사면 올리지 않는다.
-     * 파일은 'skipped' 로 기록해 다음 회차에 또 집지 않게 한다
-     * (failed 로 두면 10분마다 영원히 다시 집는다).
-     *
-     * 도메니코 결정으로 드라이브가 우선이지만, 릴스가 먼저 나가버린 뒤라면
-     * 되돌릴 수 없다. 그때 할 수 있는 최선은 두 번 올리지 않는 것이다. */
-    try {
-      const { data: taken0 } = art.id ? await supabaseAdmin.from('tiktok_posts')
-        .select('drive_file_id, status').eq('article_id', art.id).limit(1).maybeSingle() : { data: null };
-      if (taken0 && taken0.status !== 'failed' && taken0.drive_file_id !== file.id) {
-        await supabaseAdmin.from('tiktok_posts').insert({
-          drive_file_id: file.id, status: 'skipped',
-          detail: 'drive:' + file.name + ' · 이미 기사 경로로 게시된 기사(' + art.id + ') — 중복 방지로 올리지 않음',
-        });
-        return res.status(200).json({
-          ok: true, skippedDuplicate: true, file: file.name, article: art.title,
-          note: note(res, '중복 방지 — 이미 게시된 기사의 영상: ' + file.name),
-        });
-      }
-    } catch (_) { /* 확인 실패는 게시를 막지 않는다 — 아래 기록 단계가 다시 본다 */ }
-
     const caption = buildCaption(art);
     const shortTitle = (String(art.title || '') + ' — PAP MAGAZINE').slice(0, 90);
 
-    if (req.query && req.query.dry === '1') {
+    if (dryRun) {
       return res.status(200).json({
         ok: true, dry: true,
         note: note(res, 'dry: ' + file.name + ' → ' + art.title),
@@ -294,7 +327,7 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
       ok: true, publish_id: post.id, file: file.name, article: art.title,
       score: match.score, video_url: publicUrl, unmatched, skipped,
       note: note(res, '틱톡 1건 게시: ' + file.name + ' → ' + art.title
-        + ' (일치 ' + match.score.toFixed(2) + ')' + (unmatched.length ? ' · 매칭보류 ' + unmatched.length + '건' : '')),
+        + ' (일치 ' + match.score.toFixed(2) + ')' + (unmatched.length ? ' · 매칭보류 ' + unmatched.length + '건' : '') + dupNote),
     });
   } catch (err) {
     console.error('[drive-tiktok-post] error:', err);

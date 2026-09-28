@@ -94,7 +94,7 @@ console.log('\n=== ③④ 배선 — 두 크론 · 순서 · 중복 검사 가�
   const ts = fs.readFileSync(path.join(ROOT, 'api', 'cron', 'drive-tiktok-post.js'), 'utf8');
   for (const [name, src] of [['youtube', ys], ['tiktok', ts]]) {
     t(name + ': 부계정 표를 한 번 읽는다', (src.match(/loadSubPosts\(supabaseAdmin\)/g) || []).length === 1);
-    t(name + ': 웹 기사 매칭이 먼저, 실패했을 때만 부계정', /if \(m\.matched\) \{ pick = [\s\S]{0,120}\n\s*const sp = subs\.length \? findSubPost\(fileCore\(f\.name\), subs\)/.test(src));
+    t(name + ': 웹 기사 매칭이 먼저, 실패했을 때만 부계정', /if \(m\.matched\) (?:\{ pick = |cand = )[\s\S]{0,120}\n\s*(?:else \{\n\s*)?const sp = subs\.length \? findSubPost\(fileCore\(f\.name\), subs\)/.test(src));
     t(name + ': 부계정 매치는 reason 에 계정을 남긴다', /reason: 'sub:@' \+ sa\.account/.test(src));
     t(name + ': 기사 기준 중복 검사는 art.id 가 있을 때만', /art\.id \? await supabaseAdmin/.test(src));
     t(name + ': 기록 detail 에 sub:@계정/shortcode', /sub:@' \+ art\.account \+ '\/' \+ \(art\.shortcode \|\| ''\)/.test(src));
