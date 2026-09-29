@@ -265,7 +265,7 @@ t('두 벽이 깔때기 단계로 기록된다', () => {
   assert.ok(/gallery_lock_view/.test(step) && /locked_popup_view/.test(step),
     '화이트리스트에 없으면 서버가 400 으로 버린다');
   assert.ok(/_papFunnelStep\('gallery_lock_view'\)/.test(read('frontend/pap-content-editorial.js')));
-  assert.ok(/_papFunnelStep\('locked_popup_view'\)/.test(SUB));
+  assert.ok(/_papFunnelStep\('locked_popup_view'(, '\?lp=' \+ v)?\)/.test(SUB));
 });
 t('계측 실패가 화면을 막지 않는다', () => {
   const fn = SUB.slice(SUB.indexOf('function _papFunnelStep'), SUB.indexOf('/* 못 여는 화보를 눌렀을 때'));

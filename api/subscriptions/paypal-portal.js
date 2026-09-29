@@ -28,6 +28,31 @@ const PAYPAL_API_BASE = String(process.env.PAYPAL_ENV || '').toLowerCase() === '
   ? 'https://api-m.sandbox.paypal.com'
   : 'https://api-m.paypal.com';
 
+/* ── 해지 사유 한 문항 (2026-09-29) ─────────────────────────────────────
+ * 9/24 분석: 떠난 유료 회원은 전원 크리에이터, 8월 가입 10명 중 둘째 달 갱신 2명.
+ * "화보 1편용 1회 구매" 는 추측이었다. 여기서 답을 받는다. 강제 아님(다크패턴 규제),
+ * 안 고르면 'skipped'. 기록 실패는 해지를 막지 않는다(fail-open). */
+const CANCEL_REASONS = new Set(['one_editorial', 'price', 'not_using', 'missing_feature', 'other']);
+function pickReason(v) {
+  const s = String(v || '').toLowerCase();
+  return CANCEL_REASONS.has(s) ? s : 'skipped';
+}
+function clipNote(v) {
+  if (typeof v !== 'string') return null;
+  const t = v.replace(/\s+/g, ' ').trim();
+  return t ? t.slice(0, 300) : null;
+}
+async function recordCancelReason(userId, row, reason, note) {
+  try {
+    const { error } = await supabaseAdmin.from('subscription_cancel_reasons').insert({
+      user_id: userId, provider: 'paypal', plan: (row && row.plan) || null, reason, note,
+    });
+    if (error) console.warn('[paypal-portal] cancel reason 기록 실패(무시):', error.message);
+  } catch (e) {
+    console.warn('[paypal-portal] cancel reason 예외(무시):', e && e.message);
+  }
+}
+
 async function getAccessToken() {
   const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
   const r = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
@@ -54,11 +79,13 @@ module.exports = async function handler(req, res) {
 
   const action = (req.body && req.body.action) || 'cancel';
   if (action !== 'cancel') return res.status(400).json({ message: 'Unsupported action' });
+  const reason = pickReason(req.body && req.body.reason);
+  const note = clipNote(req.body && req.body.note);
 
   try {
     const { data: row, error } = await supabaseAdmin
       .from('subscriptions')
-      .select('paypal_subscription_id, provider, status, current_period_end')
+      .select('paypal_subscription_id, provider, status, current_period_end, plan')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -68,6 +95,7 @@ module.exports = async function handler(req, res) {
       return res.status(409).json({ code: 'not_paypal', message: 'not_paypal — no PayPal subscription for this account.' });
     }
     if (String(row.status) === 'canceled') {
+      await recordCancelReason(user.id, row, reason, note);
       return res.status(200).json({ ok: true, alreadyCanceled: true, accessUntil: row.current_period_end });
     }
 
@@ -80,12 +108,14 @@ module.exports = async function handler(req, res) {
 
     // 204 = 성공(본문 없음). 422 로 "이미 해지됨"이 오는 경우도 성공으로 본다.
     if (r.status === 204) {
+      await recordCancelReason(user.id, row, reason, note);
       return res.status(200).json({ ok: true, accessUntil: row.current_period_end });
     }
     const j = await r.json().catch(() => ({}));
     const alreadyDone = r.status === 422
       && JSON.stringify(j).indexOf('SUBSCRIPTION_STATUS_INVALID') !== -1;
     if (alreadyDone) {
+      await recordCancelReason(user.id, row, reason, note);
       return res.status(200).json({ ok: true, alreadyCanceled: true, accessUntil: row.current_period_end });
     }
     console.error('[paypal-portal] cancel 실패', r.status, JSON.stringify(j).slice(0, 300));

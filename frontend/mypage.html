@@ -511,7 +511,7 @@ a{color:#fff;text-decoration:none}
        so users get one consistent navigation surface. -->
 </div>
 
-<script src="/pap-api.js?v=16" defer></script>
+<script src="/pap-api.js?v=17" defer></script>
 <script src="/pap-countries.js?v=1" defer></script>
 <!-- 2026-09-25 메일·비교 줄 링크(utm)가 이 페이지로 온다 → 유입 기록 (social_inclicks) -->
 <script src="/pap-inclick.js?v=4" defer></script>
@@ -741,6 +741,62 @@ function _mpCancT(k){
 }
 var _mpSubEndsAt = null;
 
+// ───── 해지 사유 한 문항 (2026-09-29, 도메니코 "세 개 진행해줘") ─────
+// 9/24 분석: 떠난 유료 회원은 전원 크리에이터, 8월 가입 10명 중 둘째 달 갱신 2명.
+// "화보 1편용 1회 구매" 는 추측이었다. 여기서 답을 받는다.
+// 규칙: 강제 아님(안 골라도 해지됨, 서버에 'skipped'), 해지 버튼은 그대로 1클릭 거리,
+// 문구는 '구독 해지' 그대로(§ 312k BGB · refund.html 약속). 다크패턴 금지.
+var _MP_CANCEL_REASON_I18N = {
+  ko:{q:'떠나시는 이유를 하나만 알려 주시겠어요? (선택)',r1:'내 화보 게재가 끝나서 더 필요 없어요',r2:'가격이 부담돼요',r3:'잘 안 쓰게 돼요',r4:'원하는 기능이나 콘텐츠가 없어요',r5:'기타',ph:'한 줄 남겨 주시면 큰 도움이 돼요',keep:'계속 이용하기'},
+  en:{q:'Would you tell us one reason? (optional)',r1:'My editorial is published; I no longer need it',r2:'It costs too much',r3:'I do not use it enough',r4:'It is missing something I wanted',r5:'Other',ph:'One line here helps us a lot',keep:'Keep my subscription'},
+  de:{q:'Möchten Sie uns einen Grund nennen? (optional)',r1:'Mein Editorial ist veröffentlicht; ich brauche es nicht mehr',r2:'Es ist zu teuer',r3:'Ich nutze es zu wenig',r4:'Es fehlt etwas, das ich wollte',r5:'Sonstiges',ph:'Eine Zeile hier hilft uns sehr',keep:'Abonnement behalten'},
+  it:{q:'Ci dici un motivo? (facoltativo)',r1:'Il mio editoriale è pubblicato; non mi serve più',r2:'Costa troppo',r3:'Lo uso poco',r4:'Manca qualcosa che volevo',r5:'Altro',ph:'Una riga qui ci aiuta molto',keep:'Mantieni l’abbonamento'},
+  fr:{q:'Voulez-vous nous donner une raison ? (facultatif)',r1:'Mon éditorial est publié ; je n’en ai plus besoin',r2:'C’est trop cher',r3:'Je ne l’utilise pas assez',r4:'Il manque quelque chose que je voulais',r5:'Autre',ph:'Une ligne ici nous aide beaucoup',keep:'Garder mon abonnement'},
+  es:{q:'¿Nos dices un motivo? (opcional)',r1:'Mi editorial ya está publicado; ya no lo necesito',r2:'Cuesta demasiado',r3:'No lo uso lo suficiente',r4:'Le falta algo que quería',r5:'Otro',ph:'Una línea aquí nos ayuda mucho',keep:'Mantener mi suscripción'},
+  ja:{q:'よろしければ理由をひとつ教えてください（任意）',r1:'エディトリアルが掲載されたので、もう必要ない',r2:'料金が高い',r3:'あまり使わない',r4:'欲しい機能やコンテンツがない',r5:'その他',ph:'ひとことでも大変助かります',keep:'購読を続ける'},
+  zh:{q:'能告诉我们一个原因吗？（可选）',r1:'我的作品已经发布，不再需要了',r2:'价格太高',r3:'用得不多',r4:'缺少我想要的功能或内容',r5:'其他',ph:'留一句话对我们帮助很大',keep:'继续订阅'},
+  ru:{q:'Назовёте одну причину? (по желанию)',r1:'Мой эдиториал опубликован, больше не нужно',r2:'Слишком дорого',r3:'Редко пользуюсь',r4:'Не хватает того, что я хотел(а)',r5:'Другое',ph:'Одна строка здесь очень поможет',keep:'Оставить подписку'}
+};
+function _mpReasonT(k){
+  var l; try{ l=localStorage.getItem('pap-lang')||'en'; }catch(_){ l='en'; }
+  var d=_MP_CANCEL_REASON_I18N[l]||_MP_CANCEL_REASON_I18N.en;
+  return d[k]||_MP_CANCEL_REASON_I18N.en[k]||k;
+}
+// 확인창 대신 작은 모달. 해지하면 {reason, note} 를, 그만두면 null 을 돌려준다.
+function _mpAskCancelReason(){
+  return new Promise(function(resolve){
+    var esc=function(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+    var old=document.getElementById('mpCancelModal'); if(old&&old.parentNode) old.parentNode.removeChild(old);
+    var ov=document.createElement('div'); ov.id='mpCancelModal';
+    ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:20px';
+    var reasons=[['one_editorial','r1'],['price','r2'],['not_using','r3'],['missing_feature','r4'],['other','r5']];
+    var opts=reasons.map(function(r){
+      return '<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;cursor:pointer;font-size:13px;color:rgba(255,255,255,.85);line-height:1.5"><input type="radio" name="mpCancelReason" value="'+r[0]+'" style="margin-top:3px;accent-color:#c9a86a">'+esc(_mpReasonT(r[1]))+'</label>';
+    }).join('');
+    ov.innerHTML='<div style="max-width:440px;width:100%;padding:28px 26px;border:1px solid rgba(255,255,255,.14);background:#0b0b0b;text-align:left">'
+      +'<div style="font-size:13px;line-height:1.75;color:rgba(255,255,255,.85);white-space:pre-line;margin-bottom:18px">'+esc(_mpCancT('confirm'))+'</div>'
+      +'<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:6px">'+esc(_mpReasonT('q'))+'</div>'
+      +opts
+      +'<textarea id="mpCancelNote" maxlength="300" rows="2" placeholder="'+esc(_mpReasonT('ph'))+'" style="width:100%;margin-top:8px;background:#000;border:1px solid rgba(255,255,255,.15);color:#fff;font-size:12px;padding:8px;box-sizing:border-box;display:none"></textarea>'
+      +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap">'
+      +'<button type="button" id="mpCancelKeep" style="background:#fff;color:#000;border:none;padding:11px 18px;font-size:11px;font-weight:700;letter-spacing:.08em;cursor:pointer">'+esc(_mpReasonT('keep'))+'</button>'
+      +'<button type="button" id="mpCancelGo" style="background:none;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.85);padding:11px 18px;font-size:11px;letter-spacing:.08em;cursor:pointer">'+esc(_mpCancT('btn'))+'</button>'
+      +'</div></div>';
+    document.body.appendChild(ov);
+    var done=function(v){ if(ov.parentNode) ov.parentNode.removeChild(ov); resolve(v); };
+    ov.addEventListener('change',function(e){
+      if(e.target&&e.target.name==='mpCancelReason'){ var ta=document.getElementById('mpCancelNote'); if(ta) ta.style.display=(e.target.value==='other'||e.target.value==='missing_feature')?'block':'none'; }
+    });
+    document.getElementById('mpCancelKeep').addEventListener('click',function(){ done(null); });
+    document.getElementById('mpCancelGo').addEventListener('click',function(){
+      var sel=ov.querySelector('input[name=mpCancelReason]:checked');
+      var ta=document.getElementById('mpCancelNote');
+      done({ reason: sel?sel.value:null, note: (ta&&ta.style.display!=='none')?ta.value.trim().slice(0,300):null });
+    });
+    ov.addEventListener('click',function(e){ if(e.target===ov) done(null); });
+  });
+}
+
 // 구독 레코드가 실제로 살아 있을 때만 해지 버튼을 붙인다.
 async function mpMaybeShowCancel(){
   try{
@@ -787,11 +843,12 @@ async function mpMaybeShowCancel(){
 }
 
 async function mpCancelSubscription(){
-  if(!confirm(_mpCancT('confirm'))) return;
+  var _cr = await _mpAskCancelReason();   // 2026-09-29 해지 사유 한 문항 (null = 그만두기)
+  if(!_cr) return;
   var btn = document.getElementById('mpCancelSubBtn');
   if(btn){ btn.disabled = true; btn.style.opacity = '.5'; }   // 이중 클릭 방지
   try{
-    await PAP.subscriptions.cancelIntlSubscription();
+    await PAP.subscriptions.cancelIntlSubscription(_cr);
     var msg = _mpCancT('done');
     if(_mpSubEndsAt){
       var d = new Date(_mpSubEndsAt);

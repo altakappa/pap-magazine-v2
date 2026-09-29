@@ -105,7 +105,7 @@ function _papViewState(d){
  * fire-and-forget. 실패해도 화면은 그대로 뜬다.
  * 다음 걸음(subscribe_view)은 이미 재고 있고 CTA 에 utm 이 붙어 있어
  * 어느 벽에서 넘어온 가입인지도 구분된다. */
-function _papFunnelStep(step){
+function _papFunnelStep(step, pathSuffix){
   try{
     var KNOWN = ['x','ig','naver','kakao','newsletter','threads','tiktok','youtube'];
     var utm = '';
@@ -118,11 +118,21 @@ function _papFunnelStep(step){
     fetch('/api/funnel/step', {
       method:'POST', credentials:'same-origin', keepalive:true,
       headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
-      body: JSON.stringify({ step: step, source: src, path: location.pathname })
+      body: JSON.stringify({ step: step, source: src, path: location.pathname + (pathSuffix || '') })
     }).catch(function(){});
   }catch(e){}
 }
 try { window._papFunnelStep = _papFunnelStep; } catch(_){}
+
+/* 잠금 팝업 A/B 변형 (2026-09-29). 브라우저마다 한 번 뽑아 고정한다. 값은 'a' | 'b'. */
+function _papLockedVariant(){
+  try{
+    var v = localStorage.getItem('pap-lp-variant');
+    if(v !== 'a' && v !== 'b'){ v = Math.random() < 0.5 ? 'a' : 'b'; localStorage.setItem('pap-lp-variant', v); }
+    return v;
+  }catch(_){ return 'a'; }
+}
+try { window._papLockedVariant = _papLockedVariant; } catch(_){}
 
 /* 못 여는 화보를 눌렀을 때 (도메니코 2026-08-27).
  * 상세를 열어 놓고 빈 화면을 보여주는 대신, 그 자리에서 다음 행동을 준다.
@@ -133,28 +143,40 @@ function _papShowLockedPopup(need, opts){
     var anon = (typeof isLoggedIn === 'function') && !isLoggedIn();
     var o = opts || {};
     var cut = _papCutLabel();   // 2026-09-21 — "STANDARD = 전부" 오해 방지: 등급별 범위를 기준일과 함께 나란히
+    /* 2026-09-29 A/B (도메니코 "세 개 진행해줘"). 실측 30일: 이 팝업 3,985회 → 구독 페이지 587회(15%).
+       A = 원래 문구(등급 이름 중심). B = 값과 가격 중심("월 €5.49면 이 화보와 … 열립니다").
+       브라우저마다 한 번 뽑아 고정(localStorage). 측정: locked_popup_view 와 locked_popup_cta 의
+       path 에 '?lp=a|b' 를 붙여 변형별 클릭률을 비교한다. B 의 가격(€5.49·€8.99)은 subscribe.html EUR_PRICES 와 같아야 한다(테스트로 고정). */
+    var v = _papLockedVariant();
+    var utmC = '&utm_content=lp_' + v;
     var T;
     if(anon){
       T = { tag: ko ? '회원 전용' : 'MEMBERS ONLY',
-            head: ko ? '회원 가입 후 멤버십에서 열리는 화보입니다' : 'Sign up first; this editorial then opens with a membership',
+            head: v === 'b'
+              ? (ko ? '무료 가입은 30초, 최신 화보 10편은 바로 열립니다' : 'Free sign-up takes 30 seconds; the latest 10 editorials open right away')
+              : (ko ? '회원 가입 후 멤버십에서 열리는 화보입니다' : 'Sign up first; this editorial then opens with a membership'),
             sub: ko ? ('무료 회원은 최신 10편, STANDARD는 ' + cut + ' 이후 화보, PREMIUM은 2019년부터 모든 아카이브')
                     : ('Free members: the latest 10 · STANDARD: editorials since ' + cut + ' · PREMIUM: the full archive since 2019'),
-            cta: ko ? '무료로 가입하고 보기' : 'Sign up free and view',
-            href: '/auth?utm_source=editorial_locked_popup&utm_medium=web' };
+            cta: v === 'b' ? (ko ? '30초 만에 무료 가입' : 'Sign up free in 30 seconds') : (ko ? '무료로 가입하고 보기' : 'Sign up free and view'),
+            href: '/auth?utm_source=editorial_locked_popup&utm_medium=web' + utmC };
     } else if(need === 'standard'){
       T = { tag: 'STANDARD',
-            head: ko ? '이 화보는 STANDARD 멤버십부터 열립니다' : 'This editorial opens with a STANDARD membership',
+            head: v === 'b'
+              ? (ko ? ('월 €5.49면 이 화보와 ' + cut + ' 이후 모든 화보가 열립니다') : ('For €5.49 a month, this editorial and every editorial since ' + cut + ' open'))
+              : (ko ? '이 화보는 STANDARD 멤버십부터 열립니다' : 'This editorial opens with a STANDARD membership'),
             sub: ko ? ('STANDARD · ' + cut + ' 이후 발행 화보와 이미지 다운로드 / PREMIUM · 2019년부터 모든 아카이브')
                     : ('STANDARD · editorials published since ' + cut + ', plus image downloads / PREMIUM · the full archive since 2019'),
-            cta: ko ? '멤버십 보기' : 'See membership',
-            href: '/subscribe?utm_source=editorial_locked_popup&utm_medium=web' };
+            cta: v === 'b' ? (ko ? '€5.49로 지금 열기' : 'Open it now for €5.49') : (ko ? '멤버십 보기' : 'See membership'),
+            href: '/subscribe?utm_source=editorial_locked_popup&utm_medium=web' + utmC };
     } else {
       T = { tag: 'PREMIUM',
-            head: ko ? '이 화보는 PREMIUM 멤버십부터 열립니다' : 'This editorial opens with a PREMIUM membership',
+            head: v === 'b'
+              ? (ko ? '월 €8.99면 이 화보와 2019년부터의 모든 아카이브가 열립니다' : 'For €8.99 a month, this editorial and the full archive since 2019 open')
+              : (ko ? '이 화보는 PREMIUM 멤버십부터 열립니다' : 'This editorial opens with a PREMIUM membership'),
             sub: ko ? ('지금 STANDARD는 ' + cut + ' 이후 화보까지 열립니다 / PREMIUM · 2019년부터 모든 아카이브')
                     : ('STANDARD currently covers editorials published since ' + cut + ' / PREMIUM · the full archive since 2019'),
-            cta: ko ? '멤버십 보기' : 'See membership',
-            href: '/subscribe?utm_source=editorial_locked_popup&utm_medium=web' };
+            cta: v === 'b' ? (ko ? '€8.99로 지금 열기' : 'Open it now for €8.99') : (ko ? '멤버십 보기' : 'See membership'),
+            href: '/subscribe?utm_source=editorial_locked_popup&utm_medium=web' + utmC };
     }
 
     var old = document.getElementById('papLockedPopup');
@@ -171,7 +193,7 @@ function _papShowLockedPopup(need, opts){
       + '<div style="font-size:10px;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.4);margin-bottom:20px">' + esc(T.tag) + '</div>'
       + '<div style="font-size:19px;font-weight:700;letter-spacing:.02em;color:#fff;margin-bottom:14px;line-height:1.5">' + esc(T.head) + '</div>'
       + '<div style="font-size:12.5px;color:rgba(255,255,255,.55);line-height:1.85;margin-bottom:28px">' + esc(T.sub) + '</div>'
-      + '<a href="' + esc(T.href) + '" style="display:inline-block;padding:13px 30px;background:#fff;color:#000;font-size:11px;font-weight:800;letter-spacing:.14em;text-decoration:none">' + esc(T.cta) + '</a>'
+      + '<a href="' + esc(T.href) + '" id="papLockedPopupCta" style="display:inline-block;padding:13px 30px;background:#fff;color:#000;font-size:11px;font-weight:800;letter-spacing:.14em;text-decoration:none">' + esc(T.cta) + '</a>'
       + '<div><button type="button" id="papLockedPopupClose" style="margin-top:18px;background:transparent;border:none;color:rgba(255,255,255,.4);font-size:11px;letter-spacing:.08em;cursor:pointer">'
       + (ko ? '닫기' : 'Close') + '</button></div>'
       + '</div>';
@@ -181,7 +203,9 @@ function _papShowLockedPopup(need, opts){
     ov.addEventListener('click', function(e){ if(e.target === ov) close(); });
     var btn = document.getElementById('papLockedPopupClose');
     if(btn) btn.addEventListener('click', close);
-    _papFunnelStep('locked_popup_view');
+    var cta = document.getElementById('papLockedPopupCta');
+    if(cta) cta.addEventListener('click', function(){ _papFunnelStep('locked_popup_cta', '?lp=' + v); });
+    _papFunnelStep('locked_popup_view', '?lp=' + v);
     return true;
   }catch(e){ return false; }
 }
