@@ -33,6 +33,7 @@ let RI = null; try { RI = vm.runInNewContext('(' + rm[1] + ')'); } catch (e) { R
 t('mypage: 사유 사전 9개 언어 × 8키', !!RI && LANGS.every((l) => RI[l] && ['q','r1','r2','r3','r4','r5','ph','keep'].every((k) => typeof RI[l][k] === 'string' && RI[l][k].trim())));
 t('mypage: 외국어 칸에 한국어 없음', !!RI && LANGS.filter((l) => l !== 'ko').every((l) => Object.values(RI[l]).every((v) => !HANGUL.test(v))));
 t('mypage: 강제 아님 (안 골라도 해지, 계속 이용하기 버튼이 기본 흰색)', /reason: sel\?sel\.value:null/.test(mp) && /id="mpCancelKeep" style="background:#fff/.test(mp));
+t('mypage: 해지 버튼은 계정 정보 카드 끝 (마이페이지 안, 1클릭, 문구·대비 그대로) — 여기가 마지막 선', /querySelector\('#mp-account \.mp-card'\)/.test(mp) && !/querySelector\('#mpSubCard \.mp-sub-card-v2'\)/.test(mp) && /font-size:13px[^']*color:rgba\(255,255,255,\.78\)[^']*text-decoration:underline/.test(mp) && /b\.textContent = _mpCancT\('btn'\)/.test(mp));
 t('mypage: 해지 버튼 문구 그대로 (§ 312k)', /id="mpCancelGo"[^>]*>'\+esc\(_mpCancT\('btn'\)\)/.test(mp));
 
 // ── 2. 잠금 팝업 A/B ───────────────────────────────────────────────────
