@@ -118,6 +118,48 @@ async function postWithTransientRetry(attempt, opts) {
   return { ok: false, retried: true, err: ('재시도 후에도 실패: ' + second.err).slice(0, 160) };
 }
 
+/* 링크 거절 시 직링크로 1회 대체 (2026-10-01) ──────────────────────
+   9/24 에 첫 시도 사유를 남기게 한 뒤 7일 실측: 스레드 부스트 8건 중 **5건 실패,
+   9/28~9/30 4연속**, 사유는 전부 한 종류였다:
+
+     {"error":{"message":"Fatal","type":"OAuthException","code":-1,
+      "error_subcode":4279047,"is_transient":false,
+      "error_user_title":"유효하지 않은 링크 첨부",...}}
+
+   메타가 **본문의 링크를 첨부로 못 받겠다**고 거절한 것이고, 일시 오류가
+   아니라서(is_transient:false) 9/17 재시도 규칙은 정확히 손을 뗀다. 같은 기간
+   스레드 기사 자동 게시(링크=우리 기사 주소, 리다이렉트 없음)는 하루 7/7 로
+   멀쩡하다. 다른 점은 부스트 링크 하나 — /api/ig-out 302 리다이렉트를 거쳐
+   instagram.com 으로 가는 주소다. X 는 같은 문구로 8/8 성공.
+
+   그래서: 이 거절이 오면 **리다이렉트 없는 인스타그램 게시물 주소**로 한 번만
+   다시 쏜다. 부스트의 목적은 그 IG 게시물의 초기 속도(도달점 ①)이므로 착지점은
+   같다. 잃는 것은 이 대체 건의 우리 쪽 클릭 집계(ig_outclicks src=boost) 하나 —
+   지금은 게시물 자체가 0건이라 잴 클릭도 없다. 대체가 일했는지는 note 의
+   'ok(직링크: …)' 로, 직링크마저 거절되면 '직링크도 실패' 로 남는다. 그 결과가
+   곧 진단이다: 직링크가 통하면 범인은 리다이렉트, 안 통하면 instagram.com 링크
+   자체다 — 추측으로 ig-out 을 뜯지 않는다. */
+const INVALID_LINK_SUBCODE = 4279047;
+
+/**
+ * 메타가 '유효하지 않은 링크 첨부'로 거절한 실패인가.
+ * 판단 근거는 subcode 숫자(언어 무관) 우선, 한국어 제목은 보조.
+ * @param {string} msg 실패 사유 원문
+ * @returns {boolean}
+ */
+function isInvalidLinkFailure(msg) {
+  const s = String(msg == null ? '' : msg);
+  if (!s) return false;
+  if (new RegExp('"error_subcode"\\s*:\\s*' + INVALID_LINK_SUBCODE + '(?!\\d)').test(s)) return true;
+  return /유효하지 않은 링크 첨부/.test(s);
+}
+
+/** 대체 문구 — 리다이렉트 없이 게시물 주소 그대로 (쿼리 제거) */
+function boostTextDirect(permalink) {
+  const clean = String(permalink).split('?')[0];
+  return '새 화보가 인스타그램에 공개됐습니다.\n지금 가장 먼저 보기 ↓\n\n' + clean;
+}
+
 /** 게시 시각이 골든아워(기본 90분) 안인가 */
 function withinGoldenWindow(timestamp, nowMs) {
   const t = Date.parse(timestamp || '');
@@ -190,6 +232,7 @@ async function maybeBoostPost(m, opts) {
        거의 안 죽지만, 죽는 날 규칙이 없으면 같은 구멍이 된다. */
     let threadsRetried = false, xRetried = false;
     let threadsFirstErr = '', xFirstErr = '';
+    let threadsLinkFallback = false;
 
     {
       const r = await postWithTransientRetry(async () => {
@@ -198,6 +241,20 @@ async function maybeBoostPost(m, opts) {
       }, { retryWaitMs: o.retryWaitMs });
       threadsOk = r.ok; threadsErr = r.ok ? '' : r.err; threadsRetried = r.retried;
       threadsFirstErr = r.firstErr || '';
+      /* 2026-10-01 — 링크 거절이면 직링크로 1회만 (위 주석). 첫 사유는
+         threadsFirstErr 로 넘겨 note 에 남긴다. */
+      if (!threadsOk && isInvalidLinkFailure(r.err)) {
+        const r2 = await postWithTransientRetry(async () => {
+          const threads = require('./threads');
+          return await threads.postText(boostTextDirect(m.permalink));
+        }, { retryWaitMs: o.retryWaitMs });
+        threadsLinkFallback = true;
+        if (r2.ok) {
+          threadsOk = true; threadsFirstErr = r.err; threadsErr = '';
+        } else {
+          threadsErr = ('직링크도 실패: ' + r2.err).slice(0, 160);
+        }
+      }
       if (!threadsOk) console.warn('[boost] threads 실패:', threadsErr);
     }
 
@@ -226,7 +283,7 @@ async function maybeBoostPost(m, opts) {
     } catch (_) {}
 
     return { boosted: true, threadsOk, xOk, pushSent, threadsErr, xErr, threadsRetried, xRetried,
-      threadsFirstErr, xFirstErr };
+      threadsFirstErr, xFirstErr, threadsLinkFallback };
   } catch (e) {
     return { boosted: false, reason: String((e && e.message) || e).slice(0, 120) };
   }
@@ -240,4 +297,6 @@ module.exports = {
   /* 재시도 판정은 테스트가 직접 돌려 본다 (2026-09-17) — 정규식으로 소스를
      훑는 검사는 규칙이 실제로 맞는지 못 본다. */
   isTransientFailure, postWithTransientRetry,
+  /* 링크 거절 대체 (2026-10-01) */
+  isInvalidLinkFailure, boostTextDirect,
 };

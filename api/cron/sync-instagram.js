@@ -59,12 +59,16 @@ function recordBoost(results, b){
      사라진다. 'ok(재시도)' 로 구분해 남긴다 (교훈 1: 돌았다 ≠ 했다). */
   /* 2026-09-24 — 재시도로 건진 건에 첫 시도 사유를 60자까지 붙인다
      ('ok(재시도: …)'). 첫 시도 실패율이 71%라 그 사유가 다음 수리 대상이다. */
-  const mark = (okFlag, err, retried, firstErr) => (okFlag
-    ? (retried
-        ? (firstErr ? 'ok(재시도: ' + scrubSecret(firstErr).slice(0, 60) + ')' : 'ok(재시도)')
-        : 'ok')
+  /* 2026-10-01 — 링크 거절 뒤 직링크로 건진 건은 'ok(직링크: 첫 사유)'.
+     재시도와 섞이면 어느 장치가 건졌는지 안 보인다. */
+  const mark = (okFlag, err, retried, firstErr, linkFallback) => (okFlag
+    ? (linkFallback
+        ? 'ok(직링크' + (firstErr ? ': ' + scrubSecret(firstErr).slice(0, 60) : '') + ')'
+        : retried
+          ? (firstErr ? 'ok(재시도: ' + scrubSecret(firstErr).slice(0, 60) + ')' : 'ok(재시도)')
+          : 'ok')
     : ('실패: ' + (scrubSecret(err) || '사유 없음')));
-  results.boost_threads.push(mark(b.threadsOk, b.threadsErr, b.threadsRetried, b.threadsFirstErr));
+  results.boost_threads.push(mark(b.threadsOk, b.threadsErr, b.threadsRetried, b.threadsFirstErr, b.threadsLinkFallback));
   results.boost_x.push(mark(b.xOk, b.xErr, b.xRetried, b.xFirstErr));
 }
 
