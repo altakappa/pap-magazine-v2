@@ -42,14 +42,60 @@ function clipNote(v) {
   const t = v.replace(/\s+/g, ' ').trim();
   return t ? t.slice(0, 300) : null;
 }
-async function recordCancelReason(userId, row, reason, note) {
+async function recordCancelReason(userId, row, reason, note, action) {
   try {
     const { error } = await supabaseAdmin.from('subscription_cancel_reasons').insert({
-      user_id: userId, provider: 'paypal', plan: (row && row.plan) || null, reason, note,
+      user_id: userId, provider: 'paypal', plan: (row && row.plan) || null, reason, note, action: action || 'cancel',
     });
     if (error) console.warn('[paypal-portal] cancel reason 기록 실패(무시):', error.message);
   } catch (e) {
     console.warn('[paypal-portal] cancel reason 예외(무시):', e && e.message);
+  }
+}
+
+/* ── 쉬어가기 / 다시 시작 (2026-10-01, 도메니코 "나머지는 추가할까?") ─────────────
+ * 해지 창의 세 번째 선택지. PayPal suspend = 다음 결제가 멈춘다. 이미 결제한 기간은
+ * BILLING.SUBSCRIPTION.SUSPENDED 웹훅의 handleTermination 규칙대로 유지되고, 기간이 끝나면
+ * 만료 스윕(subscription-expiry-sweep, 'paused' 포함)이 내린다. resume = PayPal activate.
+ * 등급은 여기서 직접 바꾸지 않는다. 판정은 웹훅 한 곳(2026-08-07 규칙). */
+async function handlePauseResume(req, res, user, action, reason, note) {
+  try {
+    const { data: row, error } = await supabaseAdmin
+      .from('subscriptions')
+      .select('paypal_subscription_id, provider, status, current_period_end, plan')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row || !row.paypal_subscription_id) {
+      return res.status(409).json({ code: 'not_paypal', message: 'not_paypal — no PayPal subscription for this account.' });
+    }
+    const st = String(row.status || '');
+    if (action === 'pause' && st === 'paused') return res.status(200).json({ ok: true, alreadyPaused: true, accessUntil: row.current_period_end });
+    if (action === 'resume' && st === 'active') return res.status(200).json({ ok: true, alreadyActive: true });
+    if (action === 'pause' && st !== 'active' && st !== 'past_due') return res.status(409).json({ code: 'not_active', message: 'Subscription is not active.' });
+    if (action === 'resume' && st !== 'paused') return res.status(409).json({ code: 'not_paused', message: 'Subscription is not paused.' });
+
+    const token = await getAccessToken();
+    const verb = action === 'pause' ? 'suspend' : 'activate';
+    const r = await fetch(`${PAYPAL_API_BASE}/v1/billing/subscriptions/${row.paypal_subscription_id}/${verb}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: action === 'pause' ? 'Paused by subscriber from PAP MAGAZINE' : 'Resumed by subscriber from PAP MAGAZINE' }),
+    });
+    if (r.status !== 204) {
+      const j = await r.json().catch(() => ({}));
+      console.error('[paypal-portal]', verb, '실패', r.status, JSON.stringify(j).slice(0, 300));
+      return res.status(502).json({ message: (action === 'pause' ? 'Pause' : 'Resume') + ' failed. Please contact support.' });
+    }
+    // 웹훅이 곧 같은 값을 쓰지만, 화면이 바로 맞게 보이도록 상태만 먼저 적는다(등급은 안 건드림).
+    await supabaseAdmin.from('subscriptions')
+      .update({ status: action === 'pause' ? 'paused' : 'active', updated_at: new Date().toISOString() })
+      .eq('user_id', user.id);
+    if (action === 'pause') await recordCancelReason(user.id, row, reason, note, 'pause');
+    return res.status(200).json({ ok: true, status: action === 'pause' ? 'paused' : 'active', accessUntil: row.current_period_end });
+  } catch (e) {
+    console.error('[paypal-portal] pause/resume 예외:', e.message);
+    return res.status(500).json({ message: 'Request failed. Please contact support.' });
   }
 }
 
@@ -78,9 +124,10 @@ module.exports = async function handler(req, res) {
   }
 
   const action = (req.body && req.body.action) || 'cancel';
-  if (action !== 'cancel') return res.status(400).json({ message: 'Unsupported action' });
+  if (action !== 'cancel' && action !== 'pause' && action !== 'resume') return res.status(400).json({ message: 'Unsupported action' });
   const reason = pickReason(req.body && req.body.reason);
   const note = clipNote(req.body && req.body.note);
+  if (action === 'pause' || action === 'resume') return handlePauseResume(req, res, user, action, reason, note);
 
   try {
     const { data: row, error } = await supabaseAdmin

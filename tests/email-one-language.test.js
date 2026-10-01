@@ -41,6 +41,7 @@ const CALLS = {
   pullletterRevision: (l) => templates.pullletterRevision(user, 'note', l),
   pullletterTeamNotice: (l) => templates.pullletterTeamNotice(user, { requester: 'Jin', title: 'Blue', role: 'stylist', id: 'x' }, l),
   editorialLive: (l) => templates.editorialLive(user, { title: 'Blue', url: 'https://www.pap-magazine.com/editorial/blue' }, l),
+  yearlyOffer: (l) => templates.yearlyOffer(user, { url: 'https://www.pap-magazine.com/subscribe?billing=yearly', date: '2026-11-01' }, l),
   subscriptionConfirmed: (l) => templates.subscriptionConfirmed(user, 'standard', l),
   trialEndingSoon: (l) => templates.trialEndingSoon(user, { lang: l, language: l, endsAt: '2026-10-01' }),
   weeklyEditorial: (l) => templates.weeklyEditorial(camp, U(l), 'tok'),

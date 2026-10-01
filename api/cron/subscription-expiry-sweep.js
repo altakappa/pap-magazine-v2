@@ -56,7 +56,8 @@ async function handler(req, res) {
     // 웹훅을 고쳤다(api/paypal-webhook.js handleTermination). 그러면 남은 기간이
     // 지난 뒤 내려주는 주체가 필요한데, 그게 이 스윕이다. 여기에 'canceled' 가
     // 빠져 있으면 해지자가 영원히 유료 등급으로 남는다.
-    .in('status', ['active', 'trialing', 'past_due', 'payment_failed', 'canceled'])
+    // 2026-10-01 'paused' 추가 — 쉬어가기(PayPal suspend)도 결제한 기간이 끝나면 내려야 한다.
+    .in('status', ['active', 'trialing', 'past_due', 'payment_failed', 'canceled', 'paused'])
     .order('current_period_end', { ascending: true })
     .limit(MAX_PER_RUN);
 

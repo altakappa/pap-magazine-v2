@@ -51,7 +51,7 @@ t('funnel/step: locked_popup_cta 허용', /'locked_popup_cta'/.test(step));
 const htmls = fs.readdirSync(path.join(ROOT, 'frontend')).filter((f) => f.endsWith('.html'));
 const refs = htmls.map((f) => R('frontend/' + f)).join('\n');
 t('캐시버스트: pap-subscription.js?v=7 로 통일', !/pap-subscription\.js\?v=6\b/.test(refs) && (refs.match(/pap-subscription\.js\?v=7\b/g) || []).length >= 10);
-t('캐시버스트: pap-api.js?v=17 로 통일', !/pap-api\.js\?v=16\b/.test(refs) && (refs.match(/pap-api\.js\?v=17\b/g) || []).length >= 9);
+t('캐시버스트: pap-api.js 버전이 한 가지로 통일 (≥17)', (function(){ const vs = new Set((refs.match(/pap-api\.js\?v=(\d+)\b/g) || []).map((m) => m.replace(/.*v=/, ''))); return vs.size === 1 && Number([...vs][0]) >= 17; })());
 const BKO = ['무료 가입은 30초, 최신 화보 10편은 바로 열립니다', '30초 만에 무료 가입', '월 €5.49면 이 화보와 {0} 이후 모든 화보가 열립니다', '€5.49로 지금 열기', '월 €8.99면 이 화보와 2019년부터의 모든 아카이브가 열립니다', '€8.99로 지금 열기'];
 t('_shared 사전 7개 언어에 B 문구 6개', ['de','it','fr','es','ja','zh','ru'].every((l) => { const d = JSON.parse(R('frontend/i18n/ui/_shared.' + l + '.json')); return BKO.every((k) => d[k] && !HANGUL.test(d[k])) && /\{0\}/.test(d[BKO[2]]); }));
 t('index.html 사전 버전 올림 (≥9)', Number((R('frontend/index.html').match(/content="index" data-v="(\d+)"/) || [])[1]) >= 9);

@@ -129,6 +129,28 @@ async function verifySignature(headers, eventObj) {
   return j.verification_status === 'SUCCESS';
 }
 
+/* 2026-10-01 — 회원이 새 PayPal 구독을 시작하면(예: 월간→연간, 또는 실수로 두 번) 이전 구독을 PayPal 에서 해지한다.
+ * 2026-08-07 lia.line 사고(2분 간격 2건, €8.99 두 번)가 이걸로 막힌다. subscriptions 는 회원당 1행이라
+ * upsert 가 이전 id 를 덮어쓰면 PayPal 쪽 이전 구독은 아무도 모르게 계속 청구된다. 해지는 멱등(422 = 이미 해지). */
+async function cancelOtherPaypalSub(oldId, newId, userId) {
+  if (!oldId || !newId || oldId === newId) return { skipped: 'same' };
+  try {
+    const token = await getAccessToken();
+    const r = await fetch(`${PAYPAL_API_BASE}/v1/billing/subscriptions/${oldId}/cancel`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: 'Replaced by a new PAP MAGAZINE subscription ' + newId }),
+    });
+    const ok = r.status === 204 || r.status === 422;
+    await sendTextToTelegramSafe((ok ? 'ℹ️' : '🚨') + ' PayPal 이전 구독 자동 해지 ' + (ok ? '완료' : '실패 ' + r.status) + ' old=' + oldId + ' new=' + newId + ' user=' + userId);
+    return { canceled: ok, status: r.status };
+  } catch (e) {
+    console.error('[paypal-webhook] 이전 구독 해지 실패:', e.message);
+    await sendTextToTelegramSafe('🚨 PayPal 이전 구독 자동 해지 예외 old=' + oldId + ' new=' + newId + ' — ' + String(e.message).slice(0, 120));
+    return { canceled: false, error: e.message };
+  }
+}
+
 async function paypalGet(path) {
   const token = await getAccessToken();
   const r = await fetch(`${PAYPAL_API_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -203,6 +225,16 @@ async function upsertSubscription(sub, userId) {
   const plan = planKey || 'unknown';
   const status = mapStatus(sub.status);
   const bi = sub.billing_info || {};
+
+  // 2026-10-01 — 같은 회원의 다른 PayPal 구독이 살아 있으면 그쪽을 해지한다(이중 청구 방지).
+  if (status === 'active') {
+    const { data: prev } = await supabaseAdmin.from('subscriptions')
+      .select('paypal_subscription_id, status').eq('user_id', userId).maybeSingle();
+    if (prev && prev.paypal_subscription_id && prev.paypal_subscription_id !== sub.id
+        && ['active', 'past_due', 'paused', 'pending'].includes(String(prev.status || ''))) {
+      await cancelOtherPaypalSub(prev.paypal_subscription_id, sub.id, userId);
+    }
+  }
 
   const { error } = await supabaseAdmin.from('subscriptions').upsert({
     user_id: userId,
@@ -381,6 +413,15 @@ module.exports = async function handler(req, res) {
           if (String(sub.status || '').toUpperCase() === 'ACTIVE') patch.status = 'active';
           await supabaseAdmin.from('subscriptions').update(patch)
             .eq('paypal_subscription_id', subId);
+          // 2026-10-01 — 월간 2번째 결제면 연간 제안 메일 한 번 (yearlyOffer.js). 실패해도 갱신 처리는 그대로.
+          try {
+            const { data: row } = await supabaseAdmin.from('subscriptions')
+              .select('user_id, plan, paypal_subscription_id, current_period_end, yearly_offer_sent_at')
+              .eq('paypal_subscription_id', subId).maybeSingle();
+            const em = require('./_lib/email');
+            const { resolveEmailLang } = require('./_lib/emailLocale');
+            await require('./_lib/yearlyOffer').maybeSendYearlyOffer(sub, row, { db: supabaseAdmin, sendEmail: em.sendEmail, templates: em.templates, resolveEmailLang });
+          } catch (e2) { console.warn('[paypal-webhook] 연간 제안 건너뜀:', e2.message); }
         } catch (e) {
           console.warn('[paypal-webhook] 갱신 기간 반영 실패:', e.message);
         }

@@ -819,6 +819,15 @@ const PAP = (function() {
     /** 해외 구독 해지 — 이미 결제한 기간까지는 접근권을 유지한다.
      *  PayPal 을 먼저 시도하고, PayPal 구독이 아니면(409 not_paypal) Paddle 로 폴백한다.
      *  8/14 폐쇄 전까지 기존 Paddle 구독자도 해지할 수 있어야 하기 때문이다. */
+    // 쉬어가기 / 다시 시작 (2026-10-01). PayPal 구독만. 등급은 웹훅이 정한다.
+    async pauseIntlSubscription(opts) {
+      var o = opts || {};
+      return await request('POST', '/subscriptions/paypal-portal', { action: 'pause', reason: o.reason || null, note: o.note || null });
+    },
+    async resumeIntlSubscription() {
+      return await request('POST', '/subscriptions/paypal-portal', { action: 'resume' });
+    },
+
     // opts.reason / opts.note — 해지 사유 한 문항 (2026-09-29, 선택). PayPal 경로만 기록한다.
     async cancelIntlSubscription(opts) {
       var o = opts || {};

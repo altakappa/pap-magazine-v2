@@ -511,7 +511,7 @@ a{color:#fff;text-decoration:none}
        so users get one consistent navigation surface. -->
 </div>
 
-<script src="/pap-api.js?v=17" defer></script>
+<script src="/pap-api.js?v=18" defer></script>
 <script src="/pap-countries.js?v=1" defer></script>
 <!-- 2026-09-25 메일·비교 줄 링크(utm)가 이 페이지로 온다 → 유입 기록 (social_inclicks) -->
 <script src="/pap-inclick.js?v=4" defer></script>
@@ -757,6 +757,38 @@ var _MP_CANCEL_REASON_I18N = {
   zh:{q:'能告诉我们一个原因吗？（可选）',r1:'我的作品已经发布，不再需要了',r2:'价格太高',r3:'用得不多',r4:'缺少我想要的功能或内容',r5:'其他',ph:'留一句话对我们帮助很大',keep:'继续订阅'},
   ru:{q:'Назовёте одну причину? (по желанию)',r1:'Мой эдиториал опубликован, больше не нужно',r2:'Слишком дорого',r3:'Редко пользуюсь',r4:'Не хватает того, что я хотел(а)',r5:'Другое',ph:'Одна строка здесь очень поможет',keep:'Оставить подписку'}
 };
+// ───── 쉬어가기 / 다시 시작 (2026-10-01) ─────
+// 해지 창의 세 번째 선택지. PayPal 일시정지(suspend): 다음 결제가 멈추고, 결제한 기간은 그대로, 뒤에는 무료.
+// 멈춘 사람은 마이페이지에서 한 번에 다시 시작(activate). 떠나는 사람 일부를 "멈춘 사람"으로 남긴다.
+var _MP_PAUSE_I18N = {
+  ko:{pause:'한 달 쉬어가기',pauseHint:'쉬어가기를 고르면 다음 결제가 멈춥니다. 이미 결제한 기간은 그대로 쓰고, 그 뒤에는 무료 등급이 됩니다. 마이페이지에서 언제든 다시 시작할 수 있습니다.',paused:'구독이 쉬는 중입니다. 다음 결제는 진행되지 않습니다.',resume:'구독 다시 시작',pauseDone:'구독을 잠시 멈췄습니다. 다음 결제는 진행되지 않습니다.',resumeDone:'구독을 다시 시작했습니다.'},
+  en:{pause:'Pause for a while',pauseHint:'Pausing stops the next payment. You keep access for the period you have already paid, then move to the free plan. You can resume any time from My Page.',paused:'Your subscription is paused. The next payment will not be taken.',resume:'Resume subscription',pauseDone:'Your subscription is paused. The next payment will not be taken.',resumeDone:'Your subscription is active again.'},
+  de:{pause:'Eine Weile pausieren',pauseHint:'Pausieren stoppt die nächste Zahlung. Der bereits bezahlte Zeitraum bleibt nutzbar, danach gilt der kostenlose Tarif. Sie können jederzeit auf Meine Seite fortsetzen.',paused:'Ihr Abonnement pausiert. Die nächste Zahlung wird nicht eingezogen.',resume:'Abonnement fortsetzen',pauseDone:'Ihr Abonnement pausiert. Die nächste Zahlung wird nicht eingezogen.',resumeDone:'Ihr Abonnement ist wieder aktiv.'},
+  it:{pause:'Metti in pausa per un po’',pauseHint:'La pausa ferma il prossimo pagamento. Mantieni l’accesso per il periodo già pagato, poi passi al piano gratuito. Puoi riprendere quando vuoi da La mia pagina.',paused:'L’abbonamento è in pausa. Il prossimo pagamento non verrà addebitato.',resume:'Riprendi l’abbonamento',pauseDone:'Abbonamento in pausa. Il prossimo pagamento non verrà addebitato.',resumeDone:'L’abbonamento è di nuovo attivo.'},
+  fr:{pause:'Faire une pause',pauseHint:'La pause arrête le prochain paiement. Vous gardez l’accès pour la période déjà payée, puis passez au plan gratuit. Vous pouvez reprendre à tout moment depuis Mon compte.',paused:'Votre abonnement est en pause. Le prochain paiement ne sera pas prélevé.',resume:'Reprendre l’abonnement',pauseDone:'Abonnement en pause. Le prochain paiement ne sera pas prélevé.',resumeDone:'Votre abonnement est de nouveau actif.'},
+  es:{pause:'Pausar un tiempo',pauseHint:'Pausar detiene el próximo pago. Conservas el acceso del periodo ya pagado y luego pasas al plan gratuito. Puedes reanudar cuando quieras desde Mi página.',paused:'Tu suscripción está en pausa. No se cobrará el próximo pago.',resume:'Reanudar suscripción',pauseDone:'Suscripción en pausa. No se cobrará el próximo pago.',resumeDone:'Tu suscripción vuelve a estar activa.'},
+  ja:{pause:'しばらく休む',pauseHint:'休むを選ぶと次回の支払いが止まります。お支払い済みの期間はそのまま利用でき、その後は無料プランになります。マイページからいつでも再開できます。',paused:'購読は休止中です。次回の支払いは行われません。',resume:'購読を再開',pauseDone:'購読を休止しました。次回の支払いは行われません。',resumeDone:'購読を再開しました。'},
+  zh:{pause:'暂停一段时间',pauseHint:'暂停后下一次付款不会扣除。已付费周期仍可使用，之后转为免费会员。随时可在我的页面恢复。',paused:'订阅已暂停，下一次付款不会扣除。',resume:'恢复订阅',pauseDone:'订阅已暂停，下一次付款不会扣除。',resumeDone:'订阅已恢复。'},
+  ru:{pause:'Сделать паузу',pauseHint:'Пауза останавливает следующий платёж. Оплаченный период остаётся доступным, затем действует бесплатный тариф. Возобновить можно в любой момент на «Моя страница».',paused:'Подписка на паузе. Следующий платёж не спишется.',resume:'Возобновить подписку',pauseDone:'Подписка на паузе. Следующий платёж не спишется.',resumeDone:'Подписка снова активна.'}
+};
+function _mpPauseT(k){
+  var l; try{ l=localStorage.getItem('pap-lang')||'en'; }catch(_){ l='en'; }
+  var d=_MP_PAUSE_I18N[l]||_MP_PAUSE_I18N.en;
+  return d[k]||_MP_PAUSE_I18N.en[k]||k;
+}
+async function mpResumeSubscription(){
+  var btn=document.getElementById('mpResumeSubBtn');
+  if(btn){ btn.disabled=true; btn.style.opacity='.5'; }
+  try{
+    await PAP.subscriptions.resumeIntlSubscription();
+    alert(_mpPauseT('resumeDone'));
+    window.location.reload();
+  }catch(e){
+    try{ console.error('resume failed:', e); }catch(_){ }
+    alert(_mpCancT('fail'));
+    if(btn){ btn.disabled=false; btn.style.opacity=''; }
+  }
+}
 function _mpReasonT(k){
   var l; try{ l=localStorage.getItem('pap-lang')||'en'; }catch(_){ l='en'; }
   var d=_MP_CANCEL_REASON_I18N[l]||_MP_CANCEL_REASON_I18N.en;
@@ -778,8 +810,10 @@ function _mpAskCancelReason(){
       +'<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:6px">'+esc(_mpReasonT('q'))+'</div>'
       +opts
       +'<textarea id="mpCancelNote" maxlength="300" rows="2" placeholder="'+esc(_mpReasonT('ph'))+'" style="width:100%;margin-top:8px;background:#000;border:1px solid rgba(255,255,255,.15);color:#fff;font-size:12px;padding:8px;box-sizing:border-box;display:none"></textarea>'
+      +'<div style="margin-top:16px;padding:12px 14px;border:1px solid rgba(201,169,110,.35);font-size:12px;line-height:1.7;color:rgba(255,255,255,.75)">'+esc(_mpPauseT('pauseHint'))+'</div>'
       +'<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap">'
       +'<button type="button" id="mpCancelKeep" style="background:#fff;color:#000;border:none;padding:11px 18px;font-size:11px;font-weight:700;letter-spacing:.08em;cursor:pointer">'+esc(_mpReasonT('keep'))+'</button>'
+      +'<button type="button" id="mpCancelPause" style="background:none;border:1px solid #c9a86a;color:#c9a86a;padding:11px 18px;font-size:11px;font-weight:700;letter-spacing:.08em;cursor:pointer">'+esc(_mpPauseT('pause'))+'</button>'
       +'<button type="button" id="mpCancelGo" style="background:none;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.85);padding:11px 18px;font-size:11px;letter-spacing:.08em;cursor:pointer">'+esc(_mpCancT('btn'))+'</button>'
       +'</div></div>';
     document.body.appendChild(ov);
@@ -788,11 +822,13 @@ function _mpAskCancelReason(){
       if(e.target&&e.target.name==='mpCancelReason'){ var ta=document.getElementById('mpCancelNote'); if(ta) ta.style.display=(e.target.value==='other'||e.target.value==='missing_feature')?'block':'none'; }
     });
     document.getElementById('mpCancelKeep').addEventListener('click',function(){ done(null); });
-    document.getElementById('mpCancelGo').addEventListener('click',function(){
+    var pick=function(action){
       var sel=ov.querySelector('input[name=mpCancelReason]:checked');
       var ta=document.getElementById('mpCancelNote');
-      done({ reason: sel?sel.value:null, note: (ta&&ta.style.display!=='none')?ta.value.trim().slice(0,300):null });
-    });
+      done({ action: action, reason: sel?sel.value:null, note: (ta&&ta.style.display!=='none')?ta.value.trim().slice(0,300):null });
+    };
+    document.getElementById('mpCancelPause').addEventListener('click',function(){ pick('pause'); });
+    document.getElementById('mpCancelGo').addEventListener('click',function(){ pick('cancel'); });
     ov.addEventListener('click',function(e){ if(e.target===ov) done(null); });
   });
 }
@@ -810,8 +846,23 @@ async function mpMaybeShowCancel(){
     var s = await r.json();
     if(!s) return;
     var st = String(s.status||'').toLowerCase();
-    if(['active','past_due','trialing'].indexOf(st) < 0) return;   // 이미 해지됨
     _mpSubEndsAt = s.current_period_end || null;
+    if(st === 'paused'){   // 2026-10-01 쉬는 중 → 다시 시작 버튼 (같은 자리)
+      var pcard = document.querySelector('#mp-account .mp-card');
+      if(!pcard || document.getElementById('mpResumeSubBtn')) return;
+      var pw = document.createElement('div');
+      pw.style.cssText = 'margin-top:18px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);text-align:right;font-size:12px;color:rgba(255,255,255,.6)';
+      pw.appendChild(document.createTextNode(_mpPauseT('paused') + ' '));
+      var rb = document.createElement('button');
+      rb.id = 'mpResumeSubBtn'; rb.type = 'button';
+      rb.style.cssText = 'margin-left:10px;background:#c9a86a;color:#000;border:none;padding:8px 14px;font-size:11px;font-weight:700;letter-spacing:.06em;cursor:pointer';
+      rb.textContent = _mpPauseT('resume');
+      rb.addEventListener('click', mpResumeSubscription);
+      pw.appendChild(rb);
+      pcard.appendChild(pw);
+      return;
+    }
+    if(['active','past_due','trialing'].indexOf(st) < 0) return;   // 이미 해지됨
 
     // 2026-08-10 도메니코 지시 — 눈에 덜 띄게. 다만 넘지 않는 선이 있다:
     //   ① 마이페이지에서 1클릭 ② 문구는 '구독 해지'로 명확 ③ 항상 표시.
@@ -849,8 +900,22 @@ async function mpMaybeShowCancel(){
 }
 
 async function mpCancelSubscription(){
-  var _cr = await _mpAskCancelReason();   // 2026-09-29 해지 사유 한 문항 (null = 그만두기)
+  var _cr = await _mpAskCancelReason();   // 2026-09-29 해지 사유 한 문항 (null = 그만두기) · 2026-10-01 action: 'cancel' | 'pause'
   if(!_cr) return;
+  if(_cr.action === 'pause'){
+    var pb = document.getElementById('mpCancelSubBtn');
+    if(pb){ pb.disabled = true; pb.style.opacity = '.5'; }
+    try{
+      await PAP.subscriptions.pauseIntlSubscription(_cr);
+      alert(_mpPauseT('pauseDone'));
+      window.location.reload();
+    }catch(e){
+      try{ console.error('pause failed:', e); }catch(_){ }
+      alert(_mpCancT('fail'));
+      if(pb){ pb.disabled = false; pb.style.opacity = ''; }
+    }
+    return;
+  }
   var btn = document.getElementById('mpCancelSubBtn');
   if(btn){ btn.disabled = true; btn.style.opacity = '.5'; }   // 이중 클릭 방지
   try{

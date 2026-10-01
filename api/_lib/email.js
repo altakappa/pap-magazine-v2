@@ -1218,6 +1218,22 @@ const templates = {
     return { subject: L.subject.replace('{title}', title), html: wrapHtml(html, lang) };
   },
 
+  // 7d-4. 월간 2개월째 → 연간 제안 (2026-10-01, yearlyOffer.js). 한 번만.
+  yearlyOffer(user, info, lang) {
+    var L = (require('./yearlyOfferCopy').OFFER[lang]) || require('./yearlyOfferCopy').OFFER.en;
+    var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+    var i = info || {};
+    var url = String(i.url || (FRONTEND_URL + '/subscribe?billing=yearly'));
+    var date = String(i.date || '');
+    var greet = emailUiStrings(lang).greeting.replace('{name}', esc((user && user.name) || '')).replace(/\s+,/, ',');
+    var html = '<h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">' + esc(L.heading) + '</h2>'
+      + ((user && user.name) ? '<p>' + greet + '</p>' : '')
+      + '<p>' + esc(L.body1) + '</p>'
+      + '<p>' + esc(L.body2.replace('{date}', date)) + '</p>'
+      + '<a href="' + esc(url) + '" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin:8px 0 20px;">' + esc(L.cta) + '</a>';
+    return { subject: L.subject, html: wrapHtml(html, lang) };
+  },
+
   // 7e. 기여자 프로필 연락 버튼 → 크리에이터에게 전달 (2026-09-13)
   contributorContact(creator, sender, handle, message, lang) {
     var L = CONTRIBUTOR_CONTACT_I18N[lang] || CONTRIBUTOR_CONTACT_I18N.en;
