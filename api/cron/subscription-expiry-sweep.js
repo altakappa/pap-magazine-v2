@@ -91,9 +91,13 @@ async function handler(req, res) {
       if (dErr) {
         stats.errors.push({ user_id: row.user_id, message: dErr.message });
       } else {
-        await supabaseAdmin.from('subscriptions')
-          .update({ status: 'expired', updated_at: new Date().toISOString() })
-          .eq('user_id', row.user_id);
+        // 2026-10-01 쉬어가기(paused)는 status 를 그대로 둔다 — 등급만 free 로 내리고,
+        // 마이페이지 '구독 다시 시작' 버튼이 계속 보이게(PayPal 쪽 구독은 SUSPENDED 로 살아 있다).
+        if (String(row.status) !== 'paused') {
+          await supabaseAdmin.from('subscriptions')
+            .update({ status: 'expired', updated_at: new Date().toISOString() })
+            .eq('user_id', row.user_id);
+        }
         stats.downgraded += 1;
       }
     } else {

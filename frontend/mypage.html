@@ -709,6 +709,8 @@ function renderSubscriptionCard(user){
   }
   // 유료 등급이면 실제 구독이 있는지 물어보고, 있으면 해지 버튼을 붙인다.
   if (plan === 'standard' || plan === 'premium') { try{ mpMaybeShowCancel(); }catch(_){ } }
+  // 2026-10-01 쉬어가기 뒤 기간이 끝나 free 로 내려간 사람도 '구독 다시 시작' 은 보여야 한다(해지 버튼은 아님).
+  else { try{ mpMaybeShowCancel({ onlyPaused: true }); }catch(_){ } }
   // 탈퇴는 등급과 무관 — 무료 회원도 탈퇴한다.
   try{ mpMountWithdrawLink(); }catch(_){ }
 }
@@ -834,7 +836,8 @@ function _mpAskCancelReason(){
 }
 
 // 구독 레코드가 실제로 살아 있을 때만 해지 버튼을 붙인다.
-async function mpMaybeShowCancel(){
+async function mpMaybeShowCancel(opts){
+  opts = opts || {};
   try{
     var token = localStorage.getItem('pap-token');
     var r = await fetch('/api/subscriptions/portal', {
@@ -862,6 +865,7 @@ async function mpMaybeShowCancel(){
       pcard.appendChild(pw);
       return;
     }
+    if(opts.onlyPaused) return;             // free 등급: 재개 버튼 외에는 아무것도 안 붙인다
     if(['active','past_due','trialing'].indexOf(st) < 0) return;   // 이미 해지됨
 
     // 2026-08-10 도메니코 지시 — 눈에 덜 띄게. 다만 넘지 않는 선이 있다:

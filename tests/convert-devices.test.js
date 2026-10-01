@@ -34,6 +34,7 @@ t('5. 포털: pause/resume action 허용, 다른 건 400', /action !== 'cancel' 
 t('5. 포털: PayPal suspend/activate 호출, 등급(profiles)은 안 건드림', /const verb = action === 'pause' \? 'suspend' : 'activate'/.test(portal) && !/from\('profiles'\)\.update/.test(portal.slice(portal.indexOf('async function handlePauseResume'), portal.indexOf('async function getAccessToken'))));
 t('5. 포털: 쉬어가기도 사유 표에 action=pause 로 기록', /recordCancelReason\(user\.id, row, reason, note, 'pause'\)/.test(portal) && /action: action \|\| 'cancel'/.test(portal));
 t('5. 마이그레이션 173 (action 열) · 174 (yearly_offer_sent_at)', fs.existsSync(path.join(ROOT, 'supabase_migrations/173_cancel_reasons_action.sql')) && fs.existsSync(path.join(ROOT, 'supabase_migrations/174_yearly_offer_sent.sql')));
+t('5. 만료 스윕: paused 는 등급만 내리고 status 는 그대로(재개 가능)', /if \(String\(row\.status\) !== 'paused'\) \{/.test(R('api/cron/subscription-expiry-sweep.js')));
 t('5. 만료 스윕이 paused 도 본다', /\['active', 'trialing', 'past_due', 'payment_failed', 'canceled', 'paused'\]/.test(R('api/cron/subscription-expiry-sweep.js')));
 const api = R('frontend/pap-api.js');
 t('5. pap-api: pauseIntlSubscription / resumeIntlSubscription', /async pauseIntlSubscription\(opts\)/.test(api) && /action: 'pause', reason: o\.reason \|\| null/.test(api) && /async resumeIntlSubscription\(\)/.test(api) && /action: 'resume'/.test(api));
@@ -43,6 +44,7 @@ let PI = null; try { PI = require('vm').runInNewContext('(' + pm[1] + ')'); } ca
 t('5. 마이페이지: 쉬어가기 사전 9개 언어 × 6키, 외국어에 한국어 없음', !!PI && LANGS.every((l) => PI[l] && ['pause','pauseHint','paused','resume','pauseDone','resumeDone'].every((k) => PI[l][k])) && LANGS.filter((l) => l !== 'ko').every((l) => Object.values(PI[l]).every((v) => !HANGUL.test(v))));
 t('5. 마이페이지: 해지 창에 쉬어가기 버튼 + 안내, 해지 버튼은 그대로', /id="mpCancelPause"/.test(mp) && /_mpPauseT\('pauseHint'\)/.test(mp) && /id="mpCancelGo"/.test(mp) && /pick\('pause'\)/.test(mp) && /pick\('cancel'\)/.test(mp));
 t('5. 마이페이지: 쉬는 중이면 같은 자리에 다시 시작 버튼', /if\(st === 'paused'\)/.test(mp) && /id = 'mpResumeSubBtn'/.test(mp) && /resumeIntlSubscription\(\)/.test(mp));
+t('5. 마이페이지: free 로 내려간 뒤에도 쉬는 중이면 다시 시작 버튼만', /mpMaybeShowCancel\(\{ onlyPaused: true \}\)/.test(mp) && /if\(opts\.onlyPaused\) return;/.test(mp));
 t('5. 마이페이지: pause 선택 시 pauseIntlSubscription 호출', /if\(_cr\.action === 'pause'\)/.test(mp) && /pauseIntlSubscription\(_cr\)/.test(mp));
 
 // 6
