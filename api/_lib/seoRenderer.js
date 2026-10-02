@@ -1498,16 +1498,17 @@ function renderSeoHtml(kind, record, opts) {
      self-canonical 을 무시하고 ko 로 접는다(사용자 선언 /it vs Google 선택 /
      — sacre-chaos URL 검사 실측). 언어판의 한국어 UI 를 현지화해 중복 신호를
      줄인다. ko 는 종전 문구 그대로다. */
+  /* 2026-10-02 두 번째 문장 교체: 8/10 개정(본인 작품도 스탠다드부터) 뒤에도 '무료'라고 쓰여 있었다. 사실대로. */
   const DL_T = {
-    ko: { note: '커버 및 로고 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.<br>참여 크리에이터는 본인 작품을 무료로 다운로드할 수 있어요.', sub: '멤버십 구독하기 →', login: '로그인', use: '개인 사용 및 비상업적 용도에 한해 사용 가능' },
-    en: { note: 'Cover and logo image downloads are for <strong style="color:#fff">Standard members</strong>.<br>Contributing creators can download their own work for free.', sub: 'Subscribe →', login: 'Log in', use: 'Personal, non-commercial use only' },
-    it: { note: 'Il download di cover e immagini con logo è riservato ai <strong style="color:#fff">membri Standard</strong>.<br>I creativi che hanno partecipato possono scaricare gratuitamente il proprio lavoro.', sub: 'Abbonati →', login: 'Accedi', use: 'Solo per uso personale e non commerciale' },
-    fr: { note: 'Le téléchargement des couvertures et images avec logo est réservé aux <strong style="color:#fff">membres Standard</strong>.<br>Les créatifs ayant participé peuvent télécharger gratuitement leur propre travail.', sub: "S'abonner →", login: 'Se connecter', use: 'Usage personnel et non commercial uniquement' },
-    es: { note: 'La descarga de portadas e imágenes con logo es exclusiva para <strong style="color:#fff">miembros Standard</strong>.<br>Los creativos participantes pueden descargar su propio trabajo gratis.', sub: 'Suscribirse →', login: 'Iniciar sesión', use: 'Solo uso personal y no comercial' },
-    ja: { note: 'カバーおよびロゴ入り画像のダウンロードは<strong style="color:#fff">スタンダード会員</strong>限定です。<br>参加クリエイターはご自身の作品を無料でダウンロードできます。', sub: '会員登録 →', login: 'ログイン', use: '個人・非商用利用に限ります' },
-    de: { note: 'Der Download von Covern und Logo-Bildern ist <strong style="color:#fff">Standard-Mitgliedern</strong> vorbehalten.<br>Beteiligte Kreative können ihre eigene Arbeit kostenlos herunterladen.', sub: 'Abonnieren →', login: 'Anmelden', use: 'Nur für private, nicht-kommerzielle Nutzung' },
-    zh: { note: '封面及带 Logo 图片下载仅限<strong style="color:#fff">标准会员</strong>。<br>参与创作者可免费下载自己的作品。', sub: '订阅会员 →', login: '登录', use: '仅限个人及非商业用途' },
-    ru: { note: 'Скачивание обложек и изображений с логотипом доступно только <strong style="color:#fff">участникам Standard</strong>.<br>Участвовавшие авторы могут бесплатно скачать свои работы.', sub: 'Подписаться →', login: 'Войти', use: 'Только для личного некоммерческого использования' },
+    ko: { note: '커버 및 로고 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.<br>참여 크리에이터 본인 화보의 티어시트·고해상도 이미지도 스탠다드(월 €5.49)부터 받을 수 있습니다.', sub: '멤버십 구독하기 →', login: '로그인', use: '개인 사용 및 비상업적 용도에 한해 사용 가능' },
+    en: { note: 'Cover and logo image downloads are for <strong style="color:#fff">Standard members</strong>.<br>Contributing creators: the tearsheet and hi-res images of your own editorial are included from Standard (€5.49/mo).', sub: 'Subscribe →', login: 'Log in', use: 'Personal, non-commercial use only' },
+    it: { note: 'Il download di cover e immagini con logo è riservato ai <strong style="color:#fff">membri Standard</strong>.<br>Creativi partecipanti: tearsheet e immagini in alta risoluzione del vostro editoriale sono inclusi da Standard (€5,49/mese).', sub: 'Abbonati →', login: 'Accedi', use: 'Solo per uso personale e non commerciale' },
+    fr: { note: 'Le téléchargement des couvertures et images avec logo est réservé aux <strong style="color:#fff">membres Standard</strong>.<br>Créatifs participants : le tearsheet et les images HD de votre éditorial sont inclus dès Standard (€5,49/mois).', sub: "S'abonner →", login: 'Se connecter', use: 'Usage personnel et non commercial uniquement' },
+    es: { note: 'La descarga de portadas e imágenes con logo es exclusiva para <strong style="color:#fff">miembros Standard</strong>.<br>Creativos participantes: el tearsheet y las imágenes en alta resolución de tu editorial están incluidos desde Standard (€5,49/mes).', sub: 'Suscribirse →', login: 'Iniciar sesión', use: 'Solo uso personal y no comercial' },
+    ja: { note: 'カバーおよびロゴ入り画像のダウンロードは<strong style="color:#fff">スタンダード会員</strong>限定です。<br>参加クリエイターご自身のエディトリアルのティアシート・高解像度画像もスタンダード（月€5.49）から受け取れます。', sub: '会員登録 →', login: 'ログイン', use: '個人・非商用利用に限ります' },
+    de: { note: 'Der Download von Covern und Logo-Bildern ist <strong style="color:#fff">Standard-Mitgliedern</strong> vorbehalten.<br>Beteiligte Kreative: Tearsheet und hochauflösende Bilder eures eigenen Editorials sind ab Standard (€5,49/Monat) enthalten.', sub: 'Abonnieren →', login: 'Anmelden', use: 'Nur für private, nicht-kommerzielle Nutzung' },
+    zh: { note: '封面及带 Logo 图片下载仅限<strong style="color:#fff">标准会员</strong>。<br>参与创作者：自己作品的刊登页（tearsheet）与高清图片自标准会员（€5.49/月）起即可下载。', sub: '订阅会员 →', login: '登录', use: '仅限个人及非商业用途' },
+    ru: { note: 'Скачивание обложек и изображений с логотипом доступно только <strong style="color:#fff">участникам Standard</strong>.<br>Участвовавшим авторам: tearsheet и изображения в высоком разрешении вашего эдиториала включены начиная со Standard (€5,49/мес).', sub: 'Подписаться →', login: 'Войти', use: 'Только для личного некоммерческого использования' },
   };
   const DL = DL_T[lang] || DL_T.en;
   const downloadsHtml =
@@ -1520,7 +1521,7 @@ function renderSeoHtml(kind, record, opts) {
         '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
         '<div style="font-size:13px;color:#ccc">' + DL.note + '</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
-          '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">' + DL.sub + '</a>' +
+          '<a href="/subscribe?utm_source=editorial_downloads&utm_medium=web" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">' + DL.sub + '</a>' +
           '<a href="/auth.html" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">' + DL.login + '</a>' +
         '</div>' +
         '<div style="font-size:11px;color:#666;margin-top:4px">' + DL.use + '</div>' +

@@ -62,6 +62,14 @@ t('구독 사전 버전 올림 (≥7)', (() => { const m = sb.match(/content="su
   const noU = templates.editorialLive({ name: 'A' }, { title: 'T', url: 'https://x' }, 'en');
   t('월간1. 템플릿: upsellUrl 있을 때만 티어시트 블록', withU.html.includes('utm_source=live_mail') && withU.html.includes('Tearsheet') && !noU.html.includes('Tearsheet'));
 }
+// ── 월간 지렛대 2: 화보 페이지 다운로드 안내가 사실이어야 한다 (8/10 개정: 본인 작품도 스탠다드부터) ──
+{
+  const seo = R('api/_lib/seoRenderer.js');
+  const i = seo.indexOf('const DL_T = {'); const blk = seo.slice(i, seo.indexOf('  };', i));
+  t('월간2. "무료로 다운로드" 거짓 문구가 9개 언어 어디에도 없다', !/무료로 다운로드|for free|gratuitamente|gratuitement|gratis\b|無料|免费|бесплатно|kostenlos/i.test(blk));
+  t('월간2. 9개 언어 모두 크리에이터 본인 화보도 스탠다드(€5.49) 안내', ['ko','en','it','fr','es','ja','de','zh','ru'].every((l) => { const m = blk.match(new RegExp(l + ": \\{ note: '([^']*)'")); return m && /€5[.,]49/.test(m[1]) && /Standard|스탠다드|スタンダード|标准/.test(m[1]); }));
+  t('월간2. 구독 버튼에 출처 utm (editorial_downloads)', /href="\/subscribe\?utm_source=editorial_downloads&utm_medium=web"/.test(seo));
+}
 t('테스트 스크립트 등록', /yearly-perks-two\.test\.js/.test(R('package.json')));
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
