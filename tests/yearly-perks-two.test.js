@@ -48,6 +48,20 @@ t('구독: 연간 상자 4칸(€380·5·7·PDF) + 사전 9개 언어', /class="
 t('구독: 프리미엄 표 연간 줄(y:true) 9개 언어 × 4', (sb.match(/y:true, text:'/g) || []).length === 36);
 t('구독: ru 사전 블록이 하나(죽은 중복 제거) + 10/1 키가 살아있는 블록에', (sb.match(/ypTag:'/g) || []).length === 9 && /\nru:\{ ctaSwitchYearly:[^\n]*\n  business:'БИЗНЕС'/.test(sb));
 t('구독 사전 버전 올림 (≥7)', (() => { const m = sb.match(/content="subscribe" data-v="(\d+)"/); return m && Number(m[1]) >= 7; })());
+// ── 월간 지렛대 1: 화보 공개 메일에 티어시트 한 줄 (무료 회원만) ──
+{
+  const live = R('api/_lib/editorialLive.js');
+  t('월간1. 무료 회원에게만 upsellUrl (유료는 안 판다) · utm live_mail/tearsheet', /isFree \? upsellUrl\(lang, row\.slug\) : null/.test(live) && /utm_source=live_mail&utm_medium=email&utm_campaign=tearsheet/.test(live) && /subscription_plan'\)\.eq\('id', sub\.user_id\)/.test(live));
+  const { LIVE } = require('../api/_lib/editorialLiveCopy');
+  t('월간1. 문구 9개 언어 dlHeading·dlBody·dlCta, 외국어에 한국어 없음', LANGS.every((l) => LIVE[l] && LIVE[l].dlHeading && LIVE[l].dlBody && LIVE[l].dlCta) && FOREIGN.every((l) => !HANGUL.test(LIVE[l].dlHeading + LIVE[l].dlBody + LIVE[l].dlCta)));
+  const sbp = R('frontend/subscribe.html').match(/std_m:\s*([\d.]+)/);
+  const price = sbp ? sbp[1] : '';
+  t('월간1. 메일 가격이 EUR_PRICES std_m (' + price + ') 과 같다 (9개 언어)', !!price && LANGS.every((l) => (LIVE[l].dlBody + LIVE[l].dlCta).includes('€' + price) || (LIVE[l].dlBody + LIVE[l].dlCta).includes('€' + price.replace('.', ','))));
+  const { templates } = require('../api/_lib/email');
+  const withU = templates.editorialLive({ name: 'A' }, { title: 'T', url: 'https://x', upsellUrl: 'https://www.pap-magazine.com/subscribe?utm_source=live_mail' }, 'en');
+  const noU = templates.editorialLive({ name: 'A' }, { title: 'T', url: 'https://x' }, 'en');
+  t('월간1. 템플릿: upsellUrl 있을 때만 티어시트 블록', withU.html.includes('utm_source=live_mail') && withU.html.includes('Tearsheet') && !noU.html.includes('Tearsheet'));
+}
 t('테스트 스크립트 등록', /yearly-perks-two\.test\.js/.test(R('package.json')));
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

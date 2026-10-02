@@ -1215,6 +1215,14 @@ const templates = {
       + '<a href="' + esc(url) + '" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin:8px 0 16px;">' + esc(L.cta) + '</a>'
       + '<div style="margin:8px 0 0;padding:14px 16px;background:#1a1a1a;"><span style="color:#999;font-size:11px;letter-spacing:1px;">' + esc(L.linkLabel) + '</span><br>'
       + '<span style="color:#fff;font-size:12px;word-break:break-all;">' + esc(url) + '</span></div>';
+    // 2026-10-02 무료 회원에게만: 티어시트·고해상도는 스탠다드부터 (가장 자랑스러운 순간에 한 줄). 가격은 EUR_PRICES 와 같아야 한다(테스트).
+    if (i.upsellUrl && L.dlHeading) {
+      html += '<div style="margin:20px 0 0;padding:16px 18px;border:1px solid rgba(255,255,255,.14);">'
+        + '<div style="color:#fff;font-size:14px;font-weight:700;margin:0 0 6px;">' + esc(L.dlHeading) + '</div>'
+        + '<p style="margin:0 0 12px;color:#bbb;font-size:12px;line-height:1.7;">' + esc(L.dlBody) + '</p>'
+        + '<a href="' + esc(String(i.upsellUrl)) + '" style="display:inline-block;background:#fff;color:#000;padding:10px 24px;font-size:11px;font-weight:700;letter-spacing:1px;text-decoration:none;">' + esc(L.dlCta) + '</a>'
+        + '</div>';
+    }
     return { subject: L.subject.replace('{title}', title), html: wrapHtml(html, lang) };
   },
 

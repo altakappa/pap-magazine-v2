@@ -19,6 +19,12 @@ function shareUrl(slug, lang) {
     + '?utm_source=creator_share&utm_medium=social&utm_campaign=' + encodeURIComponent('ed-' + String(slug).slice(0, 40));
 }
 
+/** 무료 회원 공개 메일의 티어시트 줄 → 구독 페이지 (출처 utm 으로 전환을 센다) */
+function upsellUrl(lang, slug) {
+  const pre = !lang || lang === 'ko' ? '' : '/' + lang;
+  return SITE + pre + '/subscribe?utm_source=live_mail&utm_medium=email&utm_campaign=tearsheet&utm_content=' + encodeURIComponent(String(slug || '').slice(0, 40));
+}
+
 function isLiveNow(row, nowMs) {
   if (!row || row.status !== 'published') return false;
   if (!row.scheduled_publish_at) return true;
@@ -40,10 +46,13 @@ async function sendEditorialLiveMail(row, deps) {
     const { data: sub } = await db.from('submissions').select('user_id').eq('id', row.source_submission_id).maybeSingle();
     if (!sub || !sub.user_id) return { skipped: 'no_user' };
     const { data: p } = await db.from('profiles')
-      .select('email, display_name, name, language, email_language, country').eq('id', sub.user_id).maybeSingle();
+      .select('email, display_name, name, language, email_language, country, subscription_plan').eq('id', sub.user_id).maybeSingle();
     if (!p || !p.email) return { skipped: 'no_email' };
     const lang = resolveEmailLang(p);
-    const tpl = templates.editorialLive({ name: p.display_name || p.name || '' }, { title: row.title || '', url: shareUrl(row.slug, lang) }, lang);
+    // 2026-10-02 도메니코 "진행해줘" — 무료 회원에게만 티어시트·고해상도(스탠다드) 한 줄. 유료는 이미 받을 수 있으니 안 판다.
+    const isFree = String(p.subscription_plan || 'free').toLowerCase() === 'free';
+    const tpl = templates.editorialLive({ name: p.display_name || p.name || '' },
+      { title: row.title || '', url: shareUrl(row.slug, lang), upsellUrl: isFree ? upsellUrl(lang, row.slug) : null }, lang);
     const r = await sendEmail(p.email, tpl);
     if (!(r && r.sent)) {
       // 못 보냈으면 도장을 되돌려 다음 기회(재저장·다음 cron)에 다시 시도하게 한다.
@@ -57,4 +66,4 @@ async function sendEditorialLiveMail(row, deps) {
   }
 }
 
-module.exports = { sendEditorialLiveMail, shareUrl, isLiveNow };
+module.exports = { sendEditorialLiveMail, shareUrl, isLiveNow, upsellUrl };
