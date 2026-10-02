@@ -1232,6 +1232,456 @@
       "permanent": true
     },
     {
+      "source": "/category/:name/435/:rest*",
+      "destination": "/editorial/no-time-to-shower",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/435/:rest*",
+      "destination": "/editorial/no-time-to-shower",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/435/:rest*",
+      "destination": "/en/editorial/no-time-to-shower",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/205/:rest*",
+      "destination": "/editorial/shapes-and-forms",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/205/:rest*",
+      "destination": "/editorial/shapes-and-forms",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/205/:rest*",
+      "destination": "/en/editorial/shapes-and-forms",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/348/:rest*",
+      "destination": "/editorial/perfect-duo",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/348/:rest*",
+      "destination": "/editorial/perfect-duo",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/348/:rest*",
+      "destination": "/en/editorial/perfect-duo",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/702/:rest*",
+      "destination": "/editorial/belladonna",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/702/:rest*",
+      "destination": "/editorial/belladonna",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/702/:rest*",
+      "destination": "/en/editorial/belladonna",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/187/:rest*",
+      "destination": "/editorial/olaolaboni",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/187/:rest*",
+      "destination": "/editorial/olaolaboni",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/187/:rest*",
+      "destination": "/en/editorial/olaolaboni",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/424/:rest*",
+      "destination": "/editorial/spectrum",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/424/:rest*",
+      "destination": "/editorial/spectrum",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/424/:rest*",
+      "destination": "/en/editorial/spectrum",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/204/:rest*",
+      "destination": "/editorial/2000-s-love",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/204/:rest*",
+      "destination": "/editorial/2000-s-love",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/204/:rest*",
+      "destination": "/en/editorial/2000-s-love",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/508/:rest*",
+      "destination": "/editorial/stages-of-adjustments",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/508/:rest*",
+      "destination": "/editorial/stages-of-adjustments",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/508/:rest*",
+      "destination": "/en/editorial/stages-of-adjustments",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/312/:rest*",
+      "destination": "/editorial/heimweh",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/312/:rest*",
+      "destination": "/editorial/heimweh",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/312/:rest*",
+      "destination": "/en/editorial/heimweh",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/244/:rest*",
+      "destination": "/editorial/as-dusk-falls",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/244/:rest*",
+      "destination": "/editorial/as-dusk-falls",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/244/:rest*",
+      "destination": "/en/editorial/as-dusk-falls",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/180/:rest*",
+      "destination": "/editorial/saponem",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/180/:rest*",
+      "destination": "/editorial/saponem",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/180/:rest*",
+      "destination": "/en/editorial/saponem",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/277/:rest*",
+      "destination": "/editorial/sophia-s-world",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/277/:rest*",
+      "destination": "/editorial/sophia-s-world",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/277/:rest*",
+      "destination": "/en/editorial/sophia-s-world",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/810/:rest*",
+      "destination": "/editorial/sheepie",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/810/:rest*",
+      "destination": "/editorial/sheepie",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/810/:rest*",
+      "destination": "/en/editorial/sheepie",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/275/:rest*",
+      "destination": "/editorial/olympia",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/275/:rest*",
+      "destination": "/editorial/olympia",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/275/:rest*",
+      "destination": "/en/editorial/olympia",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/363/:rest*",
+      "destination": "/editorial/a-company-in-a-dream",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/363/:rest*",
+      "destination": "/editorial/a-company-in-a-dream",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/363/:rest*",
+      "destination": "/en/editorial/a-company-in-a-dream",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/344/:rest*",
+      "destination": "/editorial/in-vitro-hysteria",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/344/:rest*",
+      "destination": "/editorial/in-vitro-hysteria",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/344/:rest*",
+      "destination": "/en/editorial/in-vitro-hysteria",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/720/:rest*",
+      "destination": "/editorial/le-metro",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/720/:rest*",
+      "destination": "/editorial/le-metro",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/720/:rest*",
+      "destination": "/en/editorial/le-metro",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/665/:rest*",
+      "destination": "/editorial/saddest-smile",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/665/:rest*",
+      "destination": "/editorial/saddest-smile",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/665/:rest*",
+      "destination": "/en/editorial/saddest-smile",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/594/:rest*",
+      "destination": "/editorial/toystory",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/594/:rest*",
+      "destination": "/editorial/toystory",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/594/:rest*",
+      "destination": "/en/editorial/toystory",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/585/:rest*",
+      "destination": "/editorial/duty",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/585/:rest*",
+      "destination": "/editorial/duty",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/585/:rest*",
+      "destination": "/en/editorial/duty",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/249/:rest*",
+      "destination": "/editorial/cosmos",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/249/:rest*",
+      "destination": "/editorial/cosmos",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/249/:rest*",
+      "destination": "/en/editorial/cosmos",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/184/:rest*",
+      "destination": "/editorial/aqin",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/184/:rest*",
+      "destination": "/editorial/aqin",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/184/:rest*",
+      "destination": "/en/editorial/aqin",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/217/:rest*",
+      "destination": "/editorial/dreamcore",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/217/:rest*",
+      "destination": "/editorial/dreamcore",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/217/:rest*",
+      "destination": "/en/editorial/dreamcore",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/436/:rest*",
+      "destination": "/editorial/juliette-doesn-t-have-a-gum",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/436/:rest*",
+      "destination": "/editorial/juliette-doesn-t-have-a-gum",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/436/:rest*",
+      "destination": "/en/editorial/juliette-doesn-t-have-a-gum",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/556/:rest*",
+      "destination": "/editorial/married-to-myself",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/556/:rest*",
+      "destination": "/editorial/married-to-myself",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/556/:rest*",
+      "destination": "/en/editorial/married-to-myself",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/356/:rest*",
+      "destination": "/editorial/atlantis",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/356/:rest*",
+      "destination": "/editorial/atlantis",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/356/:rest*",
+      "destination": "/en/editorial/atlantis",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/349/:rest*",
+      "destination": "/editorial/elysium",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/349/:rest*",
+      "destination": "/editorial/elysium",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/349/:rest*",
+      "destination": "/en/editorial/elysium",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/587/:rest*",
+      "destination": "/editorial/gentility",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/587/:rest*",
+      "destination": "/editorial/gentility",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/587/:rest*",
+      "destination": "/en/editorial/gentility",
+      "permanent": true
+    },
+    {
+      "source": "/category/:name/222/:rest*",
+      "destination": "/editorial/salar",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:name/222/:rest*",
+      "destination": "/editorial/salar",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/:name/222/:rest*",
+      "destination": "/en/editorial/salar",
+      "permanent": true
+    },
+    {
+      "source": "/category/Editorial/:id/:rest*",
+      "destination": "/editorial",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/Editorial/:id/:rest*",
+      "destination": "/editorial",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(en|ja|fr|it|es|de|ru|zh)/category/Editorial/:id/:rest*",
+      "destination": "/editorial",
+      "permanent": true
+    },
+    {
       "source": "/en/category/:cat*",
       "destination": "/articles",
       "permanent": true
