@@ -37,6 +37,7 @@ const { buildIgContentMix, renderContentMixMd } = require('../_lib/igContentMix'
    프로브는 32콜(웹검색 포함)이라 브리핑 함수 안에서 돌리면 브리핑이 인질이 된다. */
 const { buildSovReport, renderSovMd } = require('../_lib/aiVisibility');
 const { buildPublishLedger, renderPublishLedgerMd } = require('../_lib/publishLedger');
+const { buildSubscribeFunnel, renderSubscribeFunnelMd } = require('../_lib/subscribeFunnelLedger'); // 2026-10-02 구독 출처별 전환
 
 const SYSTEM = [
   '너는 PAP 매거진(아트 기반 패션·뷰티·컬쳐 디지털 매거진, IG @pap_magazine 38만, 웹 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만 — 두 매체 지표는 절대 합산 금지)의 주간 경영 브리핑을 쓰는 전략 컨설턴트다.',
@@ -129,6 +130,11 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     try { pubLedger = await buildPublishLedger(); }
     catch (e) { console.warn('[weekly-briefing] publishLedger failed:', e && e.message); }
 
+    // 구독 출처별 전환 — best-effort (2026-10-02). 10/1~10/2 에 만든 문들이 실제로 결제를 만드는지.
+    let subFunnel = null;
+    try { subFunnel = await buildSubscribeFunnel({ days: 28 }); }
+    catch (e) { console.warn('[weekly-briefing] subscribeFunnel failed:', e && e.message); }
+
     // AI 답변 점유율 — best-effort. DB 읽기뿐이라 싸다. 기록이 없으면 null.
     let sov = null;
     try { sov = await buildSovReport({ days: 60 }); }
@@ -157,6 +163,8 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       // SoV 도 서사의 근거로 넘긴다 (표 자체는 아래에서 결정론으로 붙는다).
       'AI 답변 점유율(학습 레이어=웹검색 끔 / 답변 레이어=웹검색 켬 — 절대 합산 금지):',
       JSON.stringify(sov || {}),
+      '구독 출처별 전환(28일 — 조회 utm → 14일 안 결제 귀속. 표본 작음, 순위만):',
+      JSON.stringify(subFunnel || {}),
     ].join('\n');
 
     const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
@@ -197,6 +205,10 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     if (contentMix) {
       const cmMd = renderContentMixMd(contentMix);
       if (cmMd) briefing = briefing ? (briefing + '\n\n---\n\n' + cmMd) : cmMd;
+    }
+    if (subFunnel) {
+      const sfMd = renderSubscribeFunnelMd(subFunnel);
+      if (sfMd) briefing = briefing ? (briefing + '\n\n---\n\n' + sfMd) : sfMd;
     }
     if (sov) {
       const sovMd = renderSovMd(sov);
