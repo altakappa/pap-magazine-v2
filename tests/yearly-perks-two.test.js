@@ -70,6 +70,17 @@ t('구독 사전 버전 올림 (≥7)', (() => { const m = sb.match(/content="su
   t('월간2. 9개 언어 모두 크리에이터 본인 화보도 스탠다드(€5.49) 안내', ['ko','en','it','fr','es','ja','de','zh','ru'].every((l) => { const m = blk.match(new RegExp(l + ": \\{ note: '([^']*)'")); return m && /€5[.,]49/.test(m[1]) && /Standard|스탠다드|スタンダード|标准/.test(m[1]); }));
   t('월간2. 구독 버튼에 출처 utm (editorial_downloads)', /href="\/subscribe\?utm_source=editorial_downloads&utm_medium=web"/.test(seo));
 }
+// ── 월간 지렛대 3: 크레딧 팀원 끌어오기 (90일 크레딧 370명 중 비회원 352명) ──
+{
+  const cs = R('frontend/pap-content-creator-shorts.js');
+  t('월간3. 프로필 팝업에 Claim 상자: 브랜드·잘못된 핸들 제외, 로그인이면 마이페이지, 아니면 가입(return) + utm credit_claim', /function _renderCreditClaim\(igHandle, isBrand\)/.test(cs) && /_renderCreditClaim\(igHandle, isBrand\)/.test(cs) && /isBrand\|\|!\/\^\[a-z0-9\._\]\{2,30\}\$\/\.test\(h\)/.test(cs) && /\/auth\?mode=signup&return=/.test(cs) && /utm_source=credit_claim/.test(cs) && /\/mypage\?claim=/.test(cs));
+  const sh = JSON.parse(R('frontend/i18n/ui/_shared.en.json'));
+  t('월간3. Claim 문구 3개가 공용 사전 8개 언어에', ['en','de','it','fr','es','ja','zh','ru'].every((l) => { const d = JSON.parse(R('frontend/i18n/ui/_shared.' + l + '.json')); return d['이 크레딧이 당신 것인가요?'] && d['내 크레딧 가져가기']; }) && /Claim my credit/.test(sh['내 크레딧 가져가기']));
+  t('월간3. 마이페이지가 ?claim= 으로 인스타 칸을 미리 채운다 (이미 등록된 아이디는 안 덮음)', /get\('claim'\)/.test(R('frontend/mypage.html')) && /if\(u\.instagram\) inp\.value=/.test(R('frontend/mypage.html')));
+  t('월간3. creator-shorts 캐시버스트 ≥15 (모든 HTML)', !/pap-content-creator-shorts\.js\?v=(1[0-4]|[0-9])"/.test(fs.readdirSync(path.join(ROOT, 'frontend')).filter((f) => f.endsWith('.html')).map((f) => R('frontend/' + f)).join('\n')));
+  const { LIVE } = require('../api/_lib/editorialLiveCopy');
+  t('월간3. 공개 메일 "팀에게 보내기" 9개 언어 + 템플릿에 항상', LANGS.every((l) => LIVE[l] && LIVE[l].teamLine) && FOREIGN.every((l) => !HANGUL.test(LIVE[l].teamLine)) && /if \(L\.teamLine\) html \+=/.test(R('api/_lib/email.js')));
+}
 t('테스트 스크립트 등록', /yearly-perks-two\.test\.js/.test(R('package.json')));
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

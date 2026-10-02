@@ -2090,6 +2090,8 @@ async function _mpLoadInstagram(){
     var r=await fetch('/api/auth/me',{headers:{'Authorization':'Bearer '+(localStorage.getItem('pap-token')||'')}});
     if(!r.ok) return; var j=await r.json(); var u=(j&&j.user)||{};
     if(u.instagram) inp.value='@'+String(u.instagram).replace(/^@/,'');
+    // 2026-10-02 크레딧 가져가기 — 화보 크레딧에서 ?claim=<handle> 로 왔고 아직 아이디가 없으면 미리 채우고 포커스.
+    else { try { var _cl=new URLSearchParams(location.search).get('claim'); if(_cl && /^[a-z0-9._]{2,30}$/i.test(_cl)){ inp.value='@'+_cl.toLowerCase(); inp.focus(); inp.scrollIntoView({block:'center'}); } } catch(_){ } }
     var ci=document.getElementById('mpCountryInput'), cy=document.getElementById('mpCityInput');
     // 국가는 드롭다운(ISO 코드 저장) — 표시 이름은 현재 언어(Intl.DisplayNames). pap-countries.js
     if(ci && typeof window.papCountryOptions==='function') window.papCountryOptions(ci, localStorage.getItem('pap-lang')||'ko', u.activityCountry||'');

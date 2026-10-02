@@ -186,6 +186,9 @@ function openCreatorPopup(cr, buyable){
     }
   }
   
+  // 2026-10-02 크레딧 가져가기(Claim) — 화보 크레딧에 적힌 비회원(90일 370명 중 352명)을 회원으로.
+  try { _renderCreditClaim(igHandle, isBrand); } catch(_){}
+
   // Stats
   document.getElementById('cpCount').textContent=editorials.length;
   document.getElementById('cpFirst').textContent=editorials.length>0?editorials[editorials.length-1].substring(0,15):'—';
@@ -320,6 +323,25 @@ function openProfileByHandle(handle, buyable){
     // Create minimal profile
     openCreatorPopup({name:handle.replace('@',''),handle:handle,role:'Contributor',editorials:[],imgs:[]}, buyable);
   }
+}
+
+// ── 크레딧 가져가기 (2026-10-02, 도메니코 "전부 적용하자") ─────────────────────────
+// 크레딧에 이름만 걸린 사람(비회원)에게 "이게 당신 크레딧이면 가져가라". 무료 가입 + 인스타 등록 →
+// 기여자 페이지에 묶이고, 티어시트는 스탠다드부터(정직하게 적는다). 로그인 상태면 마이페이지로 바로.
+function _renderCreditClaim(igHandle, isBrand){
+  var ig=document.getElementById('cpIgBtn'); if(!ig||!ig.parentNode) return;
+  var box=document.getElementById('cpClaim');
+  if(!box){ box=document.createElement('div'); box.id='cpClaim'; box.style.cssText='margin-top:12px;padding:12px 14px;border:1px solid rgba(255,212,59,.35);background:rgba(255,212,59,.05);font-size:12px;line-height:1.6;color:rgba(255,255,255,.8)'; ig.parentNode.parentNode.insertBefore(box, ig.parentNode.nextSibling); }
+  var h=String(igHandle||'').toLowerCase();
+  if(isBrand||!/^[a-z0-9._]{2,30}$/.test(h)){ box.style.display='none'; return; }
+  var logged=false; try{ logged=!!localStorage.getItem('pap-token'); }catch(_){}
+  var dest='/mypage?claim='+encodeURIComponent(h)+'&utm_source=credit_claim&utm_medium=web#mp-account';
+  var href=logged?dest:'/auth?mode=signup&return='+encodeURIComponent(dest)+'&utm_source=credit_claim&utm_medium=web';
+  var esc=function(v){ return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  box.innerHTML='<div style="font-weight:700;color:#fff;margin-bottom:4px">'+esc(_shL9('이 크레딧이 당신 것인가요?','Is this your credit?'))+'</div>'
+    +'<div>'+esc(_shL9('무료로 가입하고 인스타그램 아이디를 등록하면 이 화보가 내 기여자 페이지에 묶입니다. 티어시트·고해상도 이미지는 스탠다드부터.','Sign up free and register your Instagram handle: this editorial is linked to your contributor page. Tearsheet and hi-res images from Standard.'))+'</div>'
+    +'<a href="'+esc(href)+'" style="display:inline-block;margin-top:8px;background:#ffd43b;color:#000;padding:8px 14px;font-size:11px;font-weight:700;letter-spacing:.06em;text-decoration:none">'+esc(_shL9('내 크레딧 가져가기','Claim my credit'))+' @'+esc(h)+'</a>';
+  box.style.display='';
 }
 
 // ======== SHORTS CAROUSEL ========
@@ -473,5 +495,5 @@ if(shortsSec) shortsObserver.observe(shortsSec);
 /* 9-language UI strings (2026-07-26) — _shL9(ko,en) resolves
    it/fr/es/ja/zh/ru/de from _SH_TR9 (keyed by Korean source);
    ko/en literals at each call site remain exact fallbacks. */
-var _SH_TR9 = {"별점 불러오는 중...":{"it":"Caricamento valutazioni...","fr":"Chargement des notes...","es":"Cargando valoraciones...","ja":"評価を読み込み中...","zh":"正在加载评分...","ru":"Загрузка оценок...","de":"Bewertungen werden geladen..."},"명 평가 · ":{"it":" valutazioni · ","fr":" notes · ","es":" valoraciones · ","ja":"件の評価 · ","zh":" 条评价 · ","ru":" оценок · ","de":" Bewertungen · "}," 에디토리얼":{"it":" editoriali","fr":" éditoriaux","es":" editoriales","ja":" エディトリアル","zh":" 篇编辑内容","ru":" редакционных","de":" Editorials"},"아직 별점이 등록되지 않았습니다":{"it":"Ancora nessuna valutazione","fr":"Aucune note pour l'instant","es":"Aún no hay valoraciones","ja":"まだ評価がありません","zh":"暂无评分","ru":"Оценок пока нет","de":"Noch keine Bewertungen"}};
+var _SH_TR9 = {"별점 불러오는 중...": {"it": "Caricamento valutazioni...", "fr": "Chargement des notes...", "es": "Cargando valoraciones...", "ja": "評価を読み込み中...", "zh": "正在加载评分...", "ru": "Загрузка оценок...", "de": "Bewertungen werden geladen..."}, "명 평가 · ": {"it": " valutazioni · ", "fr": " notes · ", "es": " valoraciones · ", "ja": "件の評価 · ", "zh": " 条评价 · ", "ru": " оценок · ", "de": " Bewertungen · "}, " 에디토리얼": {"it": " editoriali", "fr": " éditoriaux", "es": " editoriales", "ja": " エディトリアル", "zh": " 篇编辑内容", "ru": " редакционных", "de": " Editorials"}, "아직 별점이 등록되지 않았습니다": {"it": "Ancora nessuna valutazione", "fr": "Aucune note pour l'instant", "es": "Aún no hay valoraciones", "ja": "まだ評価がありません", "zh": "暂无评分", "ru": "Оценок пока нет", "de": "Noch keine Bewertungen"}, "이 크레딧이 당신 것인가요?": {"it": "È il tuo credit?", "fr": "C’est votre crédit ?", "es": "¿Es tu crédito?", "ja": "これはあなたのクレジットですか？", "zh": "这是你的署名吗？", "ru": "Это ваш кредит?", "de": "Ist das dein Credit?"}, "무료로 가입하고 인스타그램 아이디를 등록하면 이 화보가 내 기여자 페이지에 묶입니다. 티어시트·고해상도 이미지는 스탠다드부터.": {"it": "Registrati gratis e aggiungi il tuo handle Instagram: questo editoriale sarà collegato alla tua pagina contributor. Tearsheet e immagini HD da Standard.", "fr": "Inscrivez-vous gratuitement et enregistrez votre identifiant Instagram : cet éditorial sera lié à votre page contributeur. Tearsheet et images HD dès Standard.", "es": "Regístrate gratis y añade tu usuario de Instagram: este editorial quedará vinculado a tu página de colaborador. Tearsheet e imágenes HD desde Standard.", "ja": "無料登録してInstagramのIDを登録すると、このエディトリアルがあなたの寄稿者ページに紐づきます。ティアシート・高解像度画像はスタンダードから。", "zh": "免费注册并登记 Instagram 账号，这篇作品就会关联到你的创作者主页。刊登页与高清图片自标准会员起。", "ru": "Зарегистрируйтесь бесплатно и укажите свой Instagram: этот эдиториал привяжется к вашей странице автора. Tearsheet и изображения в высоком разрешении — со Standard.", "de": "Kostenlos registrieren und Instagram-Handle eintragen: dieses Editorial wird mit deiner Mitwirkenden-Seite verknüpft. Tearsheet und hochauflösende Bilder ab Standard."}, "내 크레딧 가져가기": {"it": "Rivendica il mio credit", "fr": "Récupérer mon crédit", "es": "Reclamar mi crédito", "ja": "自分のクレジットを登録", "zh": "认领我的署名", "ru": "Забрать мой кредит", "de": "Meinen Credit beanspruchen"}};
 function _shL9(ko,en){ var l; try{l=localStorage.getItem('pap-lang')||'ko';}catch(e){l='ko';} if(l==='ko') return ko; var m=_SH_TR9[ko]; if(m&&m[l]) return m[l]; return en; }
