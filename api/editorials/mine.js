@@ -17,6 +17,7 @@ const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { hasActivePremium } = require('../_lib/subscriptionAccess');
+const { findYearlyPremiumSubscription } = require('../_lib/premiumFeeWaiver');
 const { MAX_CREDIT_EDITS, PAYMENT_EDITABLE } = require('../_lib/creditEdit');
 
 module.exports = async function handler(req, res) {
@@ -36,10 +37,13 @@ module.exports = async function handler(req, res) {
     ]);
 
     const isPremium = hasActivePremium(profile || {});
+    // 2026-10-02 게재 인증서는 연간 프리미엄만. 판정은 서버(premiumFeeWaiver)가 한다.
+    let canCertificate = false;
+    try { canCertificate = !!(await findYearlyPremiumSubscription(supabaseAdmin, user.id)); } catch (_) { canCertificate = false; }
     const subList = subs || [];
     if (!subList.length) {
       res.setHeader('Cache-Control', 'private, no-store');
-      return res.status(200).json({ editorials: [], isPremium, maxEdits: MAX_CREDIT_EDITS });
+      return res.status(200).json({ editorials: [], isPremium, canCertificate, maxEdits: MAX_CREDIT_EDITS });
     }
 
     const payById = {};
@@ -81,7 +85,7 @@ module.exports = async function handler(req, res) {
     });
 
     res.setHeader('Cache-Control', 'private, no-store');
-    return res.status(200).json({ editorials, isPremium, maxEdits: MAX_CREDIT_EDITS });
+    return res.status(200).json({ editorials, isPremium, canCertificate, maxEdits: MAX_CREDIT_EDITS });
   } catch (e) {
     console.error('[editorials/mine]', (e && e.message) || e);
     return res.status(500).json({ message: 'Failed to load editorials' });

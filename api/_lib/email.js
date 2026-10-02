@@ -1234,6 +1234,28 @@ const templates = {
     return { subject: L.subject, html: wrapHtml(html, lang) };
   },
 
+  // 7d-5. 캐스팅 콜 7일 선공개 — 연간 프리미엄만 (2026-10-02, castingCall.js). 캐스팅 콜 한 건당 한 번.
+  castingCall(user, info, lang) {
+    var L = (require('./castingCallCopy').CC[lang]) || require('./castingCallCopy').CC.en;
+    var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+    var i = info || {};
+    var title = String(i.title || '').trim();
+    var body = String(i.body || '').trim();
+    var url = String(i.url || (FRONTEND_URL + '/submission'));
+    var greet = emailUiStrings(lang).greeting.replace('{name}', esc((user && user.name) || '')).replace(/\s+,/, ',');
+    var html = '<h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">' + esc(L.heading) + '</h2>'
+      + ((user && user.name) ? '<p>' + greet + '</p>' : '')
+      + '<p>' + esc(L.intro.replace('{publicAt}', String(i.publicAt || ''))) + '</p>'
+      + '<div style="margin:16px 0;padding:16px 18px;background:#1a1a1a;border-left:3px solid #ffd43b;">'
+      + '<div style="color:#fff;font-size:16px;font-weight:700;margin:0 0 8px;">' + esc(title) + '</div>'
+      + '<div style="color:#ddd;font-size:13px;line-height:1.7;white-space:pre-line;">' + esc(body) + '</div>'
+      + (i.deadline ? '<div style="color:#ffd43b;font-size:12px;margin-top:10px;">' + esc(L.deadline.replace('{deadline}', String(i.deadline))) + '</div>' : '')
+      + '</div>'
+      + '<a href="' + esc(url) + '" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin:8px 0 20px;">' + esc(L.cta) + '</a>'
+      + '<p style="color:#888;font-size:11px;margin:0;">' + esc(L.why) + '</p>';
+    return { subject: L.subject.replace('{title}', title), html: wrapHtml(html, lang) };
+  },
+
   // 7e. 기여자 프로필 연락 버튼 → 크리에이터에게 전달 (2026-09-13)
   contributorContact(creator, sender, handle, message, lang) {
     var L = CONTRIBUTOR_CONTACT_I18N[lang] || CONTRIBUTOR_CONTACT_I18N.en;

@@ -878,6 +878,7 @@ function go(id,el,opts){
     editFilmIdx = -1;
   }
   if(id==='eom') loadEditorialOfMonth();
+  if(id==='casting') loadCastingCalls();
   if(id==='submissions') loadSubmissions();
   if(id==='pullletters') loadPullLetters();
   if(id==='newpost'){
@@ -16068,3 +16069,39 @@ async function longTransRun(){
     setInterval(paint, 2000);
   });
 })();
+
+/* ── 캐스팅 콜 (2026-10-02 연간 프리미엄 7일 선공개) ───────────────────── */
+async function loadCastingCalls(){
+  var el=document.getElementById('ccList'); if(!el) return;
+  el.innerHTML='<div style="color:var(--text3)">불러오는 중...</div>';
+  try{
+    var r=await apiGet('/admin/casting-calls');
+    var rows=(r&&r.calls)||[];
+    if(!rows.length){ el.innerHTML='<div style="color:var(--text3)">아직 보낸 캐스팅 콜이 없습니다.</div>'; return; }
+    var html='<h3 style="margin:0 0 10px">보낸 캐스팅 콜</h3><div class="tbl-wrap"><table><thead><tr><th>제목</th><th>선공개</th><th>전체 공개</th><th>마감</th><th>메일</th></tr></thead><tbody>';
+    rows.forEach(function(c){
+      html+='<tr><td>'+esc(c.title||'')+'<div style="color:var(--text3);font-size:11px;white-space:pre-line;max-width:420px">'+esc(String(c.body||'').slice(0,160))+'</div></td>'
+        +'<td>'+esc(String(c.early_at||'').slice(0,10))+'</td><td>'+esc(String(c.public_at||'').slice(0,10))+'</td>'
+        +'<td>'+esc(c.deadline||'-')+'</td><td>'+(c.sent_at?(c.sent_count||0)+'명':'미발송')+'</td></tr>';
+    });
+    el.innerHTML=html+'</tbody></table></div>';
+  }catch(e){ el.innerHTML='<div style="color:#f66">불러오기 실패</div>'; }
+}
+async function submitCastingCall(){
+  var t=(document.getElementById('ccTitle').value||'').trim();
+  var b=(document.getElementById('ccBody').value||'').trim();
+  var d=document.getElementById('ccDeadline').value||'';
+  var msg=document.getElementById('ccMsg'); var btn=document.getElementById('ccSendBtn');
+  if(!t||!b){ msg.textContent='제목과 본문을 적어 주세요.'; return; }
+  if(!confirm('연간 프리미엄 회원에게 지금 메일이 가고, 7일 뒤 모두에게 공개됩니다. 보낼까요?')) return;
+  btn.disabled=true; msg.textContent='보내는 중...';
+  try{
+    var r=await apiPost('/admin/casting-calls',{title:t,body:b,deadline:d||null});
+    if(r&&r.call){
+      msg.textContent='저장 완료 · 메일 '+((r.mail&&r.mail.sent)||0)+'명 발송 (수신 대상 '+((r.mail&&r.mail.recipients)||0)+'명) · 전체 공개 '+String(r.call.public_at||'').slice(0,10);
+      document.getElementById('ccTitle').value=''; document.getElementById('ccBody').value=''; document.getElementById('ccDeadline').value='';
+      loadCastingCalls();
+    } else { msg.textContent='실패: '+((r&&r.message)||'알 수 없음'); }
+  }catch(e){ msg.textContent='실패: '+e.message; }
+  btn.disabled=false;
+}

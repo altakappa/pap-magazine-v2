@@ -164,7 +164,7 @@ function fakeDb(tables, opts) {
 
   console.log('\n=== 4. 캡션 ===');
   t('서버 캡션 빌더 · 어드민 미러 모두 Full Story 링크에 utm', /editorial\/' \+ slug \+ '\?utm_source=ig&utm_campaign=caption'/.test(R('api/_lib/igCaption.js')) && /editorial\/' \+ _fsSlug \+ '\?utm_source=ig&utm_campaign=caption'/.test(R('frontend/pap-admin.js')));
-  t('어드민 스크립트 캐시 번호 올림 (v=163)', R('frontend/admin.html').includes('/pap-admin.js?v=163'));
+  t('어드민 스크립트 캐시 번호 올림 (v≥163)', (() => { const m = R('frontend/admin.html').match(/\/pap-admin\.js\?v=(\d+)/); return !!m && Number(m[1]) >= 163; })());
   const cb = require(path.join(ROOT, 'api/_lib/celebBrief.js'));
   delete process.env.IG_DM_ENABLED;
   const capOff = cb.buildBriefCaption({ hook: 'H', bodyKo: '한', bodyEn: 'E' });

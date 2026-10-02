@@ -491,6 +491,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <!-- 2026-08-13 — submission.html 이 크리에이터에게 약속한 "매월 최우수
          에디토리얼 1편을 한 달간 메인 노출" 을 챙기는 화면. -->
     <a href="#" onclick="go('eom',this)"><span>⭐</span> <span>이달의 에디토리얼</span></a>
+    <a href="#" onclick="go('casting',this)"><span>📣</span> <span>캐스팅 콜</span></a>
     <a href="#" onclick="go('categories',this)"><span>📁</span> <span>게시글 카테고리</span></a>
     <a href="#" onclick="go('loading',this)"><span>🖼️</span> <span>로딩 이미지 관리</span></a>
     <a href="#" onclick="go('magazine',this)"><span>📖</span> <span>매거진 발행호 관리</span></a>
@@ -1732,6 +1733,25 @@ tr:hover td{background:rgba(0,0,0,.02)}
       <div id="eomCurrent" style="margin-bottom:28px"></div>
       <div id="eomCandidates" style="margin-bottom:28px"></div>
       <div id="eomHistory"></div>
+    </div>
+  </div>
+
+  <!-- CASTING CALL (2026-10-02 연간 프리미엄 7일 선공개) -->
+  <div class="tab" id="t-casting">
+    <div class="mn-header"><div class="mn-title">캐스팅 콜</div></div>
+    <div class="mn-body">
+      <p style="color:var(--text3);margin-bottom:8px">
+        "다음 호에서 이런 작품을 찾습니다"를 한국어로 적고 보내면, <b>연간 프리미엄 회원</b>에게 각자 언어로 지금 메일이 가고,
+        <b>7일 뒤</b> 서브미션 페이지에서 모두에게 보입니다. 번역은 자동입니다.
+      </p>
+      <p style="color:var(--text3);margin-bottom:20px;font-size:12px">
+        <b>구독 페이지가 연간 프리미엄에게 약속한 항목</b>입니다. 한 달에 한 번은 올려 주세요. 보내기는 되돌릴 수 없습니다.
+      </p>
+      <div class="pe-row"><label class="pe-label">제목 (한국어)</label><input class="pe-input" id="ccTitle" maxlength="120" placeholder="예: 11월호 — 겨울 니트와 거친 질감"></div>
+      <div class="pe-row"><label class="pe-label">본문 (한국어)</label><textarea class="pe-input" id="ccBody" rows="6" maxlength="2000" placeholder="찾는 분위기, 피해야 할 것, 참고 레퍼런스. 2~6줄."></textarea></div>
+      <div class="pe-row"><label class="pe-label">제출 마감 (선택)</label><input class="pe-input" id="ccDeadline" type="date"></div>
+      <div style="margin:8px 0 24px"><button class="btn btn-primary" id="ccSendBtn" onclick="submitCastingCall()">저장하고 연간 프리미엄에게 보내기</button> <span id="ccMsg" style="margin-left:12px;color:var(--text3);font-size:12px"></span></div>
+      <div id="ccList"></div>
     </div>
   </div>
 
@@ -3657,7 +3677,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=163" defer></script>
+<script src="/pap-admin.js?v=164" defer></script>
 <script src="/pap-admin-campaigns.js?v=5" defer></script>
 </body>
 </html>

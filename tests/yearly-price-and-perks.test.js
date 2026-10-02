@@ -164,17 +164,17 @@ console.log('\n=== 10. 구독 페이지: 연간 프리미엄 혜택 상자 ===')
   const D = ctx.out;
   const langs = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   t('사전 키 9개 × 9개 언어', langs.every((l) => D[l] && KEYS.every((k) => typeof D[l][k] === 'string' && D[l][k].trim())), langs.filter((l) => !D[l] || KEYS.some((k) => !D[l][k])).join(','));
-  t('사전 블록 10개(ru 중복 포함) 전부에 키가 있다', (sub.match(/ypCollabSub:'/g) || []).length === 10);
+  t('사전 블록 9개(죽은 ru 중복은 2026-10-02 제거) 전부에 키가 있다', (sub.match(/ypCollabSub:'/g) || []).length === 9);
   t('가치 문구: {price}·{save} 자리표시자 (EUR_PRICES 한 곳), 2개월치 절약', langs.every((l) => D[l].ypValue.includes('{price}') && D[l].ypValue.includes('{save}') && /2/.test(D[l].ypValue) && !/89[.,]90|17[.,]98/.test(D[l].ypValue)));
   t('둘째 가치 줄: €380 추가 절약 9개 언어 + 마크업', langs.every((l) => /€380/.test(D[l].ypValue2 || '')) && box.includes('data-i18n="ypValue2"'));
   t('무료 회원도 "지정" 가능 (상자·카드)', /PAP 회원이면 무료 회원도 지정 가능 · 제출 후에도 수정/.test(D.ko.ypCollabSub) && /무료 회원도 지정 가능 · 제출 후 수정 가능/.test(D.ko.features.prem[1].text));
   t('€790 유형 제외를 밝힌다 (면제는 €380 유형만)', langs.every((l) => /€790/.test(D[l].ypWaiverSub)));
   t('공동작업자: 5명 · 제출 후 수정', langs.every((l) => /5/.test(D[l].ypCollabSub)));
-  t('프리미엄 카드 맨 위 두 줄 = €380 면제 · 공동작업자 (y:true), 10블록', (() => {
+  t('프리미엄 카드 맨 위 네 줄 = €380 면제 · 공동작업자 · 캐스팅 콜 7일 · 인증서 (y:true), 9블록', (() => {
     const lists = sub.match(/prem: \[\n[\s\S]*?\n    \]/g) || [];
-    return lists.length === 10 && lists.every((x) => {
+    return lists.length === 9 && lists.every((x) => {
       const it = x.split('\n').slice(1, -1);
-      return /y:true[^\n]*€380/.test(it[0]) && /y:true[^\n]*5/.test(it[1]) && it.slice(2).every((y) => !/y:true/.test(y));
+      return /y:true[^\n]*€380/.test(it[0]) && /y:true[^\n]*5/.test(it[1]) && /y:true[^\n]*7/.test(it[2]) && /y:true/.test(it[3]) && it.slice(4).every((y) => !/y:true/.test(y));
     });
   })());
   t('renderFeatures: y 줄은 li.yp (금색)', /if \(f\.on && f\.y\) \{\s*html \+= '<li class="yp">'/.test(sub) && /\.plan-features li\.yp\{color:#ffd43b/.test(sub));
@@ -219,7 +219,7 @@ console.log('\n=== 11. 구독 페이지: 언어 블록에 영어 복사본이 �
   const miss = [];
   ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].forEach((l) => need.forEach((k) => { if (!D[l][k]) miss.push(l + ':' + k); }));
   t('월간·연간·2개월 무료·기간 표시 라벨 9개 언어 (영어로 떨어지지 않게)', miss.length === 0, miss.join(', '));
-  t('독일어 카드·비교표가 독일어', D.de.features.prem[2].text.startsWith('Alle Editorials') && D.de.comparison.rows[0][0] === 'Registrierung nötig' && D.de.save2mo === '2 MONATE GRATIS');
+  t('독일어 카드·비교표가 독일어', D.de.features.prem[4].text.startsWith('Alle Editorials') && D.de.comparison.rows[0][0] === 'Registrierung nötig' && D.de.save2mo === '2 MONATE GRATIS');
 }
 
 console.log('\n=== 12. 국내 결제 수요 버튼 (8/10 결정의 실측 장치) ===');
@@ -229,7 +229,7 @@ console.log('\n=== 12. 국내 결제 수요 버튼 (8/10 결정의 실측 장치
   const D = ctx.out;
   const langs = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   t('버튼·감사 문구 9개 언어', langs.every((l) => D[l].krPayAsk && D[l].krPayThanks), langs.filter((l) => !D[l].krPayAsk).join(','));
-  t('사전 블록 10개 전부', (sub.match(/krPayThanks:'/g) || []).length === 10);
+  t('사전 블록 9개 전부', (sub.match(/krPayThanks:'/g) || []).length === 9);
   t('마크업: 결제 안내 아래, 기본 숨김, 한글 없음', /data-i18n="paymentNote">[\s\S]*?<\/p>\s*<!--[^>]*-->\s*<div class="kr-pay" id="krPay" hidden>/.test(sub) && /id="krPayBtn" data-i18n="krPayAsk"><\/button>/.test(sub));
   t('한국어 화면 또는 한국 시간대에서만 보인다', /if\(lang!=='ko' && tz!=='Asia\/Seoul'\) return;/.test(sub));
   t('누르면 kr_pay_interest 기록, 같은 브라우저 1회', /step:'kr_pay_interest'/.test(sub) && /pap-kr-pay-asked/.test(sub));

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="subscribe" data-v="6">
+<meta name="pap-ui-i18n" content="subscribe" data-v="7">
 <meta charset="UTF-8">
 <!-- CSP — 결제 이원화: PortOne(국내) + Paddle(해외) 도메인 허용.
      Paddle 은 script(cdn.paddle.com) + 체크아웃 오버레이 iframe(buy/
@@ -458,6 +458,17 @@ function navigateWithInterstitial(url){
         <div class="yp-text" data-i18n="ypCollab"></div>
         <div class="yp-sub" data-i18n="ypCollabSub"></div>
       </div>
+      <!-- 2026-10-02 도메니코 "그렇게해줘": 캐스팅 콜 7일 선공개 + 게재 인증서 -->
+      <div class="yp-item">
+        <div class="yp-big">7</div>
+        <div class="yp-text" data-i18n="ypCasting"></div>
+        <div class="yp-sub" data-i18n="ypCastingSub"></div>
+      </div>
+      <div class="yp-item">
+        <div class="yp-big">PDF</div>
+        <div class="yp-text" data-i18n="ypCert"></div>
+        <div class="yp-sub" data-i18n="ypCertSub"></div>
+      </div>
     </div>
     <div class="yp-value" id="ypValue"></div>
     <div class="yp-value2" data-i18n="ypValue2"></div>
@@ -565,7 +576,7 @@ var L = {
 ko: { ctaSwitchYearly:'연간으로 바꾸기', switchYearlyNote:'지금 연간을 시작하면 월간 구독은 자동으로 멈추고, 이번 달 남은 날은 사라집니다. 다음 결제일({date}) 직전에 바꾸면 손해가 없습니다.', ypWaiverAnchor:'면제 1회(€380)가 연간 구독료 4년치보다 큽니다', cancelAnytime:'언제든 마이페이지에서 해지할 수 있고, 이미 결제한 기간은 그대로 이용합니다.',
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'월간', yearly:'연간', save2mo:'2개월 무료', perYear:'/ 연',
-  ypTag:'연간 프리미엄 전용', ypTitle:'월간 프리미엄에는 없는 혜택', ypWaiver:'유료 서브미션 1회 면제', ypWaiverSub:'구독 1년마다 1회 · €790 유형은 제외', ypCollab:'인스타그램 공동작업자 직접 지정', ypCollabSub:'최대 5명 · PAP 회원이면 무료 회원도 지정 가능 · 제출 후에도 수정', ypValue:'연 {price} · 월간보다 2개월치({save}) 절약', ypValue2:'+ 유료 서브미션 한 번만 써도 €380 더 절약', ypHint:'연간 결제에만 적용 · 눌러서 연간 가격 보기', krPayAsk:'한국 카드·카카오페이·네이버페이로 결제하고 싶다면 눌러 주세요', krPayThanks:'알려주셔서 고마워요. 원하는 분이 모이면 국내 결제를 붙이겠습니다.',
+  ypCasting:'다음 호 캐스팅 콜 7일 선공개', ypCastingSub:'"다음 호에서 찾는 작품"을 모두보다 7일 먼저 메일로', ypCert:'게재 인증서', ypCertSub:'게재된 화보마다 검증 코드가 든 인증서 · 포트폴리오·에이전시·비자 서류용', ypTag:'연간 프리미엄 전용', ypTitle:'월간 프리미엄에는 없는 혜택', ypWaiver:'유료 서브미션 1회 면제', ypWaiverSub:'구독 1년마다 1회 · €790 유형은 제외', ypCollab:'인스타그램 공동작업자 직접 지정', ypCollabSub:'최대 5명 · PAP 회원이면 무료 회원도 지정 가능 · 제출 후에도 수정', ypValue:'연 {price} · 월간보다 2개월치({save}) 절약', ypValue2:'+ 유료 서브미션 한 번만 써도 €380 더 절약', ypHint:'연간 결제에만 적용 · 눌러서 연간 가격 보기', krPayAsk:'한국 카드·카카오페이·네이버페이로 결제하고 싶다면 눌러 주세요', krPayThanks:'알려주셔서 고마워요. 원하는 분이 모이면 국내 결제를 붙이겠습니다.',
   heroTitle:'SUBSCRIBE',
   heroDesc:'스탠다드 멤버는 최근 3개 분기(약 6~9개월) 에디토리얼 열람과 이미지·로고 이미지·티어시트 다운로드가 가능합니다. 전체 아카이브 열람과 Pull-Letter 요청 등 프리미엄 혜택이 필요하다면 프리미엄 멤버가 되어보세요.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -601,6 +612,8 @@ ko: { ctaSwitchYearly:'연간으로 바꾸기', switchYearlyNote:'지금 연간�
     prem: [
       {on:true, y:true, text:'연간 결제 시 유료 서브미션(€380) 1회 면제'},
       {on:true, y:true, text:'연간 프리미엄: 인스타그램 공동작업자 5명 직접 지정 (PAP 회원이면 무료 회원도 지정 가능 · 제출 후 수정 가능)'},
+      {on:true, y:true, text:'연간 프리미엄: 다음 호 캐스팅 콜을 7일 먼저 메일로'},
+      {on:true, y:true, text:'연간 프리미엄: 게재 인증서 발급 (검증 코드 포함)'},
       {on:true, text:'모든 에디토리얼 보기 (전체 아카이브)'},
       {on:true, text:'광고 없는 콘텐츠 이용'},
       {on:true, text:'서브미션 제출 가능'},
@@ -637,7 +650,7 @@ en: { ctaSwitchYearly:'Switch to yearly', switchYearlyNote:'If you start yearly 
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
   priceFree:'€0',
-  ypTag:'YEARLY PREMIUM ONLY', ypTitle:'Not included in monthly Premium', ypWaiver:'One paid submission waived', ypWaiverSub:'Once per subscription year · excludes the €790 type', ypCollab:'Instagram collaborators you choose', ypCollabSub:'Up to 5 · free PAP members can be tagged too · editable after submitting', ypValue:'{price} a year · 2 months free vs monthly (save {save})', ypValue2:'+ use one paid submission and save €380 more', ypHint:'Yearly billing only · tap to see yearly prices', krPayAsk:'Want to pay with a Korean card, KakaoPay or NaverPay? Tap here', krPayThanks:'Thanks for telling us. We will add Korean payments once enough members ask.',
+  ypCasting:'Casting calls 7 days early', ypCastingSub:'"What the next issue is looking for", by email, a week before everyone else', ypCert:'Publication certificate', ypCertSub:'One per published editorial, with a verification code · for portfolios, agencies, visa files', ypTag:'YEARLY PREMIUM ONLY', ypTitle:'Not included in monthly Premium', ypWaiver:'One paid submission waived', ypWaiverSub:'Once per subscription year · excludes the €790 type', ypCollab:'Instagram collaborators you choose', ypCollabSub:'Up to 5 · free PAP members can be tagged too · editable after submitting', ypValue:'{price} a year · 2 months free vs monthly (save {save})', ypValue2:'+ use one paid submission and save €380 more', ypHint:'Yearly billing only · tap to see yearly prices', krPayAsk:'Want to pay with a Korean card, KakaoPay or NaverPay? Tap here', krPayThanks:'Thanks for telling us. We will add Korean payments once enough members ask.',
   heroTitle:'SUBSCRIBE',
   heroDesc:'Standard members can browse the last three quarters of editorials (about 6 to 9 months) and download images, logo images and tearsheets. For full archive access, Pull-Letter requests and more, upgrade to Premium.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -672,6 +685,8 @@ en: { ctaSwitchYearly:'Switch to yearly', switchYearlyNote:'If you start yearly 
     prem: [
       {on:true, y:true, text:'Yearly plan: one paid submission (€380) waived'},
       {on:true, y:true, text:'Yearly Premium: choose 5 Instagram collaborators yourself (any PAP member, free members included · editable after submitting)'},
+      {on:true, y:true, text:'Yearly Premium: next casting call by email 7 days early'},
+      {on:true, y:true, text:'Yearly Premium: publication certificate with verification code'},
       {on:true, text:'View all editorials (full archive)'},
       {on:true, text:'Ad-free browsing'},
       {on:true, text:'Submit work'},
@@ -704,82 +719,11 @@ en: { ctaSwitchYearly:'Switch to yearly', switchYearlyNote:'If you start yearly 
   },
   ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
-ru:{ ctaSwitchYearly:'Перейти на год', switchYearlyNote:'Если начать годовую подписку сейчас, месячная остановится автоматически, а оставшиеся дни месяца пропадут. Переход прямо перед датой списания ({date}) этого избежит.', ypWaiverAnchor:'Одно освобождение (€380) стоит больше четырёх лет годовой подписки', cancelAnytime:'Отменить можно в любой момент на странице «Моя страница»; оплаченный период остаётся доступным.',
-  business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
-  monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
-  priceFree:'€0',
-  ypTag:'ТОЛЬКО ГОДОВОЙ PREMIUM', ypTitle:'Нет в месячном Premium', ypWaiver:'Одна платная заявка бесплатно', ypWaiverSub:'Раз в год подписки · кроме типа за €790', ypCollab:'Соавторы в Instagram на ваш выбор', ypCollabSub:'До 5 человек · любой участник PAP, даже бесплатный · можно изменить после отправки', ypValue:'{price} в год · 2 месяца бесплатно по сравнению с помесячной оплатой (экономия {save})', ypValue2:'+ одна платная заявка экономит ещё €380', ypHint:'Только при оплате за год · нажмите, чтобы увидеть цены', krPayAsk:'Хотите платить корейской картой, KakaoPay или NaverPay? Нажмите здесь', krPayThanks:'Спасибо, что сообщили. Добавим корейские способы оплаты, когда об этом попросит достаточно участников.',
-  heroTitle:'SUBSCRIBE',
-  heroDesc:'Участники Standard могут просматривать эдиториалы за последние три квартала (около 6–9 месяцев) и скачивать изображения, изображения с логотипом и тиршиты. Для полного доступа к архиву, запросов Pull-Letter и других возможностей перейдите на Premium.',
-  tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
-  planFreeName:'FREE', planStdName:'STANDARD', planPremName:'PREMIUM',
-  perMonth:'/ mo',
-  planFreeDesc:'Sign up free — latest 10 editorials',
-  planStdDesc:'Эдиториалы за последние три квартала (около 6–9 месяцев) + фидбэк по заявкам и загрузка изображений',
-  planPremDesc:'Все преимущества + запрос Pull-Letter + полный архив',
-  badge:'RECOMMENDED',
-  ctaFree:'Browse Now', ctaStd:'Sign Up & Subscribe', ctaPrem:'Sign Up & Subscribe', ctaStdLoggedIn:'Subscribe', ctaPremLoggedIn:'Subscribe', ctaStdTrial:'Start 7-day free trial', ctaPremTrial:'Start 7-day free trial', currentPlanBadge:'CURRENTLY ON', ctaCurrent:'CURRENTLY ON',
-  compareTitle:'COMPARE PLANS',
-  paymentTitle:'PAYMENT METHODS',
-  paymentNote:'Оплата проходит через PayPal в евро (EUR). Нужен аккаунт PayPal или карта для международных платежей (VISA, Mastercard, AMEX), которую принимает PayPal. Карты, выпущенные в Корее, KakaoPay и NaverPay сейчас не поддерживаются. Указанные цены окончательные и включают налоги; продавец: ALTAKAPPA Co., Ltd. Подписка продлевается автоматически, отменить можно в любой момент в My Page.',
-  features: {
-    free: [
-      {on:true, text:'Free membership'},
-      {on:true, text:'View latest 10 editorials for free'},
-      {on:true, text:'Submit work'},
-      {on:false, text:'Ads included'},
-      {on:false, text:'No submission feedback'},
-      {on:false, text:'No Pull-Letter request'},
-      {on:false, text:'No image, logo image or tearsheet downloads'}
-    ],
-    std: [
-      {on:true, text:'Editorials from the last three quarters'},
-      {on:true, text:'Ad-free browsing'},
-      {on:true, text:'Submit work'},
-      {on:true, text:'Feedback on rejected submissions'},
-      {on:true, text:'Download images, logo images & tearsheets'},
-      {on:false, text:'No Pull-Letter request'}
-    ],
-    prem: [
-      {on:true, y:true, text:'Годовой план: одна платная заявка (€380) без оплаты'},
-      {on:true, y:true, text:'Годовой Premium: сами выбираете 5 соавторов в Instagram (любые участники PAP, включая бесплатных · можно изменить после отправки)'},
-      {on:true, text:'View all editorials (full archive)'},
-      {on:true, text:'Ad-free browsing'},
-      {on:true, text:'Submit work'},
-      {on:true, text:'Feedback on rejected submissions'},
-      {on:true, text:'Pull-Letter request (1 per month)'},
-      {on:true, text:'Download images, logo images & tearsheets'},
-      {on:true, text:'Редактирование заявки во время ожидания проверки'},
-      {on:true, text:'Редактирование credits после публикации (3 раза на эдиториал)'},
-      {on:true, text:'Приоритетное рассмотрение: результат в течение 2 рабочих дней (у остальных до 7)'},
-      {on:true, text:'Верифицированный профиль автора PAP (бейдж · город · кнопка связи · с первой публикации)'}
-    ]
-  },
-  comparison: {
-    headers: ['Feature','FREE','STANDARD','PREMIUM'],
-    rows: [
-      ['Sign-up required','No','Yes','Yes'],
-      ['Editorial access','Latest 10','Last 3 quarters','Full archive'],
-      ['Ad-free browsing',false,true,true],
-      ['Submit work',true,true,true],
-      ['Submission feedback',false,true,true],
-      ['Pull-Letter request (1/month)',false,false,true],
-      ['Image, logo image & tearsheet download',false,true,true],
-      ['Редактирование заявки в ожидании проверки',false,false,true],
-      ['Редактирование credits после публикации (3×)',false,false,true],
-      ['Годовой Premium: 5 соавторов в Instagram на ваш выбор',false,false,true],
-      ['Результат рассмотрения','До 7 рабочих дней','До 7 рабочих дней','В течение 2 рабочих дней'],
-      ['Верифицированный профиль автора PAP',false,false,true],
-      ['Годовой план: одна платная заявка (€380) без оплаты',false,false,true]
-    ]
-  },
-  ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Рег. №: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Корея | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
-},
 de:{ ctaSwitchYearly:'Auf Jahr wechseln', switchYearlyNote:'Wenn Sie jetzt jährlich starten, stoppt das Monatsabo automatisch und die restlichen Tage dieses Monats verfallen. Ein Wechsel kurz vor dem nächsten Abrechnungsdatum ({date}) vermeidet das.', ypWaiverAnchor:'Ein Erlass (€380) ist mehr wert als vier Jahre Jahresgebühr', cancelAnytime:'Jederzeit auf Meine Seite kündbar; der bereits bezahlte Zeitraum bleibt nutzbar.',
   business:'BUSINESS', contact:'CONTACT', about:'ÜBER UNS', subscribe:'ABONNIEREN',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'MONATLICH', yearly:'JÄHRLICH', save2mo:'2 MONATE GRATIS', perYear:'/ Jahr',
   priceFree:'€0',
-  ypTag:'NUR JAHRES-PREMIUM', ypTitle:'Nicht im monatlichen Premium enthalten', ypWaiver:'Eine kostenpflichtige Einreichung erlassen', ypWaiverSub:'Einmal pro Abojahr · ohne den €790-Typ', ypCollab:'Instagram-Collaborators selbst wählen', ypCollabSub:'Bis zu 5 · jedes PAP-Mitglied, auch kostenlose · nach dem Einreichen änderbar', ypValue:'{price} im Jahr · 2 Monate gratis gegenüber monatlich ({save} gespart)', ypValue2:'+ schon eine Einreichung spart weitere €380', ypHint:'Nur bei jährlicher Zahlung · tippen für Jahrespreise', krPayAsk:'Mit koreanischer Karte, KakaoPay oder NaverPay zahlen? Hier tippen', krPayThanks:'Danke für den Hinweis. Wir fügen koreanische Zahlungen hinzu, sobald genug Mitglieder danach fragen.',
+  ypCasting:'Casting Calls 7 Tage früher', ypCastingSub:'„Was die nächste Ausgabe sucht“ per Mail, eine Woche vor allen anderen', ypCert:'Veröffentlichungszertifikat', ypCertSub:'Eines pro veröffentlichtem Editorial, mit Prüfcode · für Portfolio, Agenturen, Visa-Unterlagen', ypTag:'NUR JAHRES-PREMIUM', ypTitle:'Nicht im monatlichen Premium enthalten', ypWaiver:'Eine kostenpflichtige Einreichung erlassen', ypWaiverSub:'Einmal pro Abojahr · ohne den €790-Typ', ypCollab:'Instagram-Collaborators selbst wählen', ypCollabSub:'Bis zu 5 · jedes PAP-Mitglied, auch kostenlose · nach dem Einreichen änderbar', ypValue:'{price} im Jahr · 2 Monate gratis gegenüber monatlich ({save} gespart)', ypValue2:'+ schon eine Einreichung spart weitere €380', ypHint:'Nur bei jährlicher Zahlung · tippen für Jahrespreise', krPayAsk:'Mit koreanischer Karte, KakaoPay oder NaverPay zahlen? Hier tippen', krPayThanks:'Danke für den Hinweis. Wir fügen koreanische Zahlungen hinzu, sobald genug Mitglieder danach fragen.',
   heroTitle:'ABONNIEREN',
   heroDesc:'Standard-Mitglieder können die Editorials der letzten drei Quartale (etwa 6 bis 9 Monate) durchsehen und Bilder, Logo-Bilder sowie Tearsheets herunterladen. Für vollen Archivzugang, Pull-Letter-Anfragen und mehr wechseln Sie zu Premium.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -814,6 +758,8 @@ de:{ ctaSwitchYearly:'Auf Jahr wechseln', switchYearlyNote:'Wenn Sie jetzt jähr
     prem: [
       {on:true, y:true, text:'Jahresplan: eine kostenpflichtige Einreichung (€380) erlassen'},
       {on:true, y:true, text:'Jahres-Premium: 5 Instagram-Collaborators selbst auswählen (alle PAP-Mitglieder, auch kostenlose · nach dem Einreichen änderbar)'},
+      {on:true, y:true, text:'Jahres-Premium: nächster Casting Call per Mail 7 Tage früher'},
+      {on:true, y:true, text:'Jahres-Premium: Veröffentlichungszertifikat mit Prüfcode'},
       {on:true, text:'Alle Editorials ansehen (vollständiges Archiv)'},
       {on:true, text:'Werbefreies Lesen'},
       {on:true, text:'Arbeiten einreichen'},
@@ -849,7 +795,7 @@ de:{ ctaSwitchYearly:'Auf Jahr wechseln', switchYearlyNote:'Wenn Sie jetzt jähr
 it: { ctaSwitchYearly:'Passa all’annuale', switchYearlyNote:'Se avvii l’annuale adesso, l’abbonamento mensile si ferma da solo e i giorni rimasti del mese vanno persi. Cambiando poco prima della prossima data di addebito ({date}) non perdi nulla.', ypWaiverAnchor:'Un esonero (€380) vale più di quattro anni di quota annuale', cancelAnytime:'Annulli quando vuoi da La mia pagina; il periodo già pagato resta disponibile.',
   business:'BUSINESS', contact:'CONTATTI', about:'CHI SIAMO', subscribe:'ABBONATI',
   monthly:'MENSILE', yearly:'ANNUALE', save2mo:'2 MESI GRATIS', perYear:'/ anno',
-  ypTag:'SOLO PREMIUM ANNUALE', ypTitle:'Non incluso nel Premium mensile', ypWaiver:'Una candidatura a pagamento esonerata', ypWaiverSub:'Una volta per anno di abbonamento · escluso il tipo da €790', ypCollab:'Collaboratori Instagram scelti da te', ypCollabSub:'Fino a 5 · qualsiasi membro PAP, anche gratuito · modificabili dopo l\'invio', ypValue:'{price} all\'anno · 2 mesi gratis rispetto al mensile (risparmi {save})', ypValue2:'+ una sola candidatura ti fa risparmiare altri €380', ypHint:'Solo con pagamento annuale · tocca per vedere i prezzi annuali', krPayAsk:'Vuoi pagare con carta coreana, KakaoPay o NaverPay? Tocca qui', krPayThanks:'Grazie per avercelo detto. Aggiungeremo i pagamenti coreani quando lo chiederanno abbastanza membri.',
+  ypCasting:'Casting call 7 giorni prima', ypCastingSub:'"Cosa cerca il prossimo numero" via mail, una settimana prima di tutti', ypCert:'Certificato di pubblicazione', ypCertSub:'Uno per ogni editoriale pubblicato, con codice di verifica · per portfolio, agenzie, pratiche visto', ypTag:'SOLO PREMIUM ANNUALE', ypTitle:'Non incluso nel Premium mensile', ypWaiver:'Una candidatura a pagamento esonerata', ypWaiverSub:'Una volta per anno di abbonamento · escluso il tipo da €790', ypCollab:'Collaboratori Instagram scelti da te', ypCollabSub:'Fino a 5 · qualsiasi membro PAP, anche gratuito · modificabili dopo l\'invio', ypValue:'{price} all\'anno · 2 mesi gratis rispetto al mensile (risparmi {save})', ypValue2:'+ una sola candidatura ti fa risparmiare altri €380', ypHint:'Solo con pagamento annuale · tocca per vedere i prezzi annuali', krPayAsk:'Vuoi pagare con carta coreana, KakaoPay o NaverPay? Tocca qui', krPayThanks:'Grazie per avercelo detto. Aggiungeremo i pagamenti coreani quando lo chiederanno abbastanza membri.',
   heroTitle:'ABBONATI',
   heroDesc:'Con la registrazione gratuita vedi i 10 editoriali più recenti. I membri Standard accedono agli ultimi tre trimestri (circa 6-9 mesi), i membri Premium a tutto il catalogo. Quando sei pronto per vantaggi professionali come feedback sulle submission e richiesta Pull-Letter, diventa membro.',
   tierFree:'LIVELLO 1', tierStandard:'LIVELLO 2', tierPremium:'LIVELLO 3',
@@ -885,6 +831,8 @@ it: { ctaSwitchYearly:'Passa all’annuale', switchYearlyNote:'Se avvii l’annu
     prem: [
       {on:true, y:true, text:'Piano annuale: una candidatura a pagamento (€380) esonerata'},
       {on:true, y:true, text:'Premium annuale: scegli tu 5 collaboratori Instagram (qualsiasi membro PAP, anche gratuito · modificabili dopo l’invio)'},
+      {on:true, y:true, text:'Premium annuale: prossimo casting call via mail 7 giorni prima'},
+      {on:true, y:true, text:'Premium annuale: certificato di pubblicazione con codice di verifica'},
       {on:true, text:'Visualizza tutti gli editoriali (archivio completo)'},
       {on:true, text:'Navigazione senza pubblicità'},
       {on:true, text:'Invia lavori'},
@@ -920,7 +868,7 @@ it: { ctaSwitchYearly:'Passa all’annuale', switchYearlyNote:'Se avvii l’annu
 fr: { ctaSwitchYearly:'Passer à l’annuel', switchYearlyNote:'Si vous démarrez l’annuel maintenant, l’abonnement mensuel s’arrête automatiquement et les jours restants du mois sont perdus. Changer juste avant la prochaine date de prélèvement ({date}) évite cela.', ypWaiverAnchor:'Une exonération (€380) vaut plus de quatre ans d’abonnement annuel', cancelAnytime:'Résiliable à tout moment depuis Mon compte ; la période déjà payée reste accessible.',
   business:'BUSINESS', contact:'CONTACT', about:'À PROPOS', subscribe:'S\'ABONNER',
   monthly:'MENSUEL', yearly:'ANNUEL', save2mo:'2 MOIS OFFERTS', perYear:'/ an',
-  ypTag:'PREMIUM ANNUEL UNIQUEMENT', ypTitle:'Absent du Premium mensuel', ypWaiver:'Une soumission payante offerte', ypWaiverSub:'Une fois par année d\'abonnement · hors formule à €790', ypCollab:'Collaborateurs Instagram de votre choix', ypCollabSub:'Jusqu\'à 5 · tout membre PAP, même gratuit · modifiables après l\'envoi', ypValue:'{price} par an · 2 mois offerts par rapport au mensuel ({save} d\'économie)', ypValue2:'+ une seule soumission vous fait économiser €380 de plus', ypHint:'Paiement annuel uniquement · touchez pour voir les prix annuels', krPayAsk:'Payer avec une carte coréenne, KakaoPay ou NaverPay ? Touchez ici', krPayThanks:'Merci de nous l\'avoir dit. Nous ajouterons les paiements coréens dès que suffisamment de membres le demanderont.',
+  ypCasting:'Casting calls 7 jours en avance', ypCastingSub:'« Ce que cherche le prochain numéro » par mail, une semaine avant tout le monde', ypCert:'Certificat de publication', ypCertSub:'Un par éditorial publié, avec code de vérification · pour portfolio, agences, dossiers visa', ypTag:'PREMIUM ANNUEL UNIQUEMENT', ypTitle:'Absent du Premium mensuel', ypWaiver:'Une soumission payante offerte', ypWaiverSub:'Une fois par année d\'abonnement · hors formule à €790', ypCollab:'Collaborateurs Instagram de votre choix', ypCollabSub:'Jusqu\'à 5 · tout membre PAP, même gratuit · modifiables après l\'envoi', ypValue:'{price} par an · 2 mois offerts par rapport au mensuel ({save} d\'économie)', ypValue2:'+ une seule soumission vous fait économiser €380 de plus', ypHint:'Paiement annuel uniquement · touchez pour voir les prix annuels', krPayAsk:'Payer avec une carte coréenne, KakaoPay ou NaverPay ? Touchez ici', krPayThanks:'Merci de nous l\'avoir dit. Nous ajouterons les paiements coréens dès que suffisamment de membres le demanderont.',
   heroTitle:'S\'ABONNER',
   heroDesc:'Devenez membre de PAP Magazine et accédez à des éditoriaux exclusifs, des retours sur vos soumissions, des demande de Pull-Letter et bien plus.',
   tierFree:'NIVEAU 1', tierStandard:'NIVEAU 2', tierPremium:'NIVEAU 3',
@@ -956,6 +904,8 @@ fr: { ctaSwitchYearly:'Passer à l’annuel', switchYearlyNote:'Si vous démarre
     prem: [
       {on:true, y:true, text:'Formule annuelle : une soumission payante (€380) offerte'},
       {on:true, y:true, text:'Premium annuel : choisissez vous-même 5 collaborateurs Instagram (tout membre PAP, gratuits inclus · modifiables après l’envoi)'},
+      {on:true, y:true, text:'Premium annuel : prochain casting call par mail 7 jours en avance'},
+      {on:true, y:true, text:'Premium annuel : certificat de publication avec code de vérification'},
       {on:true, text:'Voir tous les éditoriaux (archives complètes)'},
       {on:true, text:'Navigation sans publicité'},
       {on:true, text:'Soumettre des travaux'},
@@ -991,7 +941,7 @@ fr: { ctaSwitchYearly:'Passer à l’annuel', switchYearlyNote:'Si vous démarre
 es: { ctaSwitchYearly:'Pasar a anual', switchYearlyNote:'Si empiezas el anual ahora, la suscripción mensual se detiene sola y se pierden los días que quedan del mes. Cambiar justo antes de la próxima fecha de cobro ({date}) lo evita.', ypWaiverAnchor:'Una exención (€380) vale más que cuatro años de cuota anual', cancelAnytime:'Cancela cuando quieras desde Mi página; conservas el acceso del periodo ya pagado.',
   business:'NEGOCIOS', contact:'CONTACTO', about:'ACERCA DE', subscribe:'SUSCRIBIRSE',
   monthly:'MENSUAL', yearly:'ANUAL', save2mo:'2 MESES GRATIS', perYear:'/ año',
-  ypTag:'SOLO PREMIUM ANUAL', ypTitle:'No incluido en Premium mensual', ypWaiver:'Una propuesta de pago exenta', ypWaiverSub:'Una vez por año de suscripción · excluye el tipo de €790', ypCollab:'Colaboradores de Instagram a tu elección', ypCollabSub:'Hasta 5 · cualquier miembro de PAP, incluso gratuito · editable tras el envío', ypValue:'{price} al año · 2 meses gratis frente al mensual (ahorras {save})', ypValue2:'+ una sola propuesta te ahorra €380 más', ypHint:'Solo con pago anual · toca para ver los precios anuales', krPayAsk:'¿Quieres pagar con tarjeta coreana, KakaoPay o NaverPay? Toca aquí', krPayThanks:'Gracias por avisarnos. Añadiremos pagos coreanos cuando lo pidan suficientes miembros.',
+  ypCasting:'Casting calls 7 días antes', ypCastingSub:'"Lo que busca el próximo número" por correo, una semana antes que el resto', ypCert:'Certificado de publicación', ypCertSub:'Uno por editorial publicado, con código de verificación · para portfolio, agencias, trámites de visado', ypTag:'SOLO PREMIUM ANUAL', ypTitle:'No incluido en Premium mensual', ypWaiver:'Una propuesta de pago exenta', ypWaiverSub:'Una vez por año de suscripción · excluye el tipo de €790', ypCollab:'Colaboradores de Instagram a tu elección', ypCollabSub:'Hasta 5 · cualquier miembro de PAP, incluso gratuito · editable tras el envío', ypValue:'{price} al año · 2 meses gratis frente al mensual (ahorras {save})', ypValue2:'+ una sola propuesta te ahorra €380 más', ypHint:'Solo con pago anual · toca para ver los precios anuales', krPayAsk:'¿Quieres pagar con tarjeta coreana, KakaoPay o NaverPay? Toca aquí', krPayThanks:'Gracias por avisarnos. Añadiremos pagos coreanos cuando lo pidan suficientes miembros.',
   heroTitle:'SUSCRIBIRSE',
   heroDesc:'Conviértase en miembro de PAP Magazine y desbloquee editoriales exclusivos, feedback de submissions, solicitud de Pull-Letter y más beneficios premium.',
   tierFree:'NIVEL 1', tierStandard:'NIVEL 2', tierPremium:'NIVEL 3',
@@ -1027,6 +977,8 @@ es: { ctaSwitchYearly:'Pasar a anual', switchYearlyNote:'Si empiezas el anual ah
     prem: [
       {on:true, y:true, text:'Plan anual: una propuesta de pago (€380) exenta'},
       {on:true, y:true, text:'Premium anual: elige tú mismo 5 colaboradores de Instagram (cualquier miembro de PAP, gratuitos incluidos · editables tras el envío)'},
+      {on:true, y:true, text:'Premium anual: próximo casting call por correo 7 días antes'},
+      {on:true, y:true, text:'Premium anual: certificado de publicación con código de verificación'},
       {on:true, text:'Ver todos los editoriales (archivo completo)'},
       {on:true, text:'Navegación sin anuncios'},
       {on:true, text:'Enviar trabajos'},
@@ -1062,7 +1014,7 @@ es: { ctaSwitchYearly:'Pasar a anual', switchYearlyNote:'Si empiezas el anual ah
 ja: { ctaSwitchYearly:'年額に切り替える', switchYearlyNote:'今すぐ年額を始めると月額購読は自動で止まり、今月の残り日数は失われます。次回の請求日（{date}）の直前に切り替えれば損はありません。', ypWaiverAnchor:'免除1回（€380）は年額4年分より大きい金額です', cancelAnytime:'マイページからいつでも解約でき、お支払い済みの期間はそのまま利用できます。',
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'購読',
   monthly:'月間', yearly:'年間', save2mo:'2ヶ月無料', perYear:'/ 年',
-  ypTag:'年間プレミアム限定', ypTitle:'月額プレミアムにはない特典', ypWaiver:'有料応募1回免除', ypWaiverSub:'購読1年ごとに1回・€790タイプは対象外', ypCollab:'Instagramコラボレーターを自分で指定', ypCollabSub:'最大5名・PAP会員なら無料会員も可・提出後も変更可', ypValue:'年{price}・月払いより2か月分お得（{save}節約）', ypValue2:'＋有料応募1回でさらに€380節約', ypHint:'年払いのみ・タップで年間価格を表示', krPayAsk:'韓国のカード・KakaoPay・NaverPayで支払いたい方はタップ', krPayThanks:'お知らせありがとうございます。希望が集まり次第、韓国の決済を追加します。',
+  ypCasting:'キャスティングコール7日先行', ypCastingSub:'「次号で探している作品」を全員より1週間早くメールで', ypCert:'掲載証明書', ypCertSub:'掲載エディトリアルごとに検証コード付き · ポートフォリオ・エージェンシー・ビザ書類に', ypTag:'年間プレミアム限定', ypTitle:'月額プレミアムにはない特典', ypWaiver:'有料応募1回免除', ypWaiverSub:'購読1年ごとに1回・€790タイプは対象外', ypCollab:'Instagramコラボレーターを自分で指定', ypCollabSub:'最大5名・PAP会員なら無料会員も可・提出後も変更可', ypValue:'年{price}・月払いより2か月分お得（{save}節約）', ypValue2:'＋有料応募1回でさらに€380節約', ypHint:'年払いのみ・タップで年間価格を表示', krPayAsk:'韓国のカード・KakaoPay・NaverPayで支払いたい方はタップ', krPayThanks:'お知らせありがとうございます。希望が集まり次第、韓国の決済を追加します。',
   heroTitle:'購読',
   heroDesc:'無料会員登録で最新10本のエディトリアルをご覧いただけます。Standard会員は直近3四半期（約6～9か月）、Premium会員は全アーカイブをご覧いただけます。サブミッションフィードバックやフルレターコンサルティングなどのプロフェッショナルな特典が必要な方は、ぜひメンバーになってください。',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -1098,6 +1050,8 @@ ja: { ctaSwitchYearly:'年額に切り替える', switchYearlyNote:'今すぐ年
     prem: [
       {on:true, y:true, text:'年間プラン：有料応募（€380）1回免除'},
       {on:true, y:true, text:'年間プレミアム: Instagramコラボレーター5名を自分で指定(PAP会員なら無料会員も可・提出後も変更可)'},
+      {on:true, y:true, text:'年間プレミアム: 次のキャスティングコールをメールで7日先行'},
+      {on:true, y:true, text:'年間プレミアム: 検証コード付き掲載証明書'},
       {on:true, text:'全エディトリアル閲覧（全アーカイブ）'},
       {on:true, text:'広告なしで閲覧'},
       {on:true, text:'作品提出可能'},
@@ -1133,7 +1087,7 @@ ja: { ctaSwitchYearly:'年額に切り替える', switchYearlyNote:'今すぐ年
 zh: { ctaSwitchYearly:'改为年付', switchYearlyNote:'现在开始年付，月付订阅会自动停止，本月剩余天数将失效。在下次扣款日（{date}）之前切换则不会有损失。', ypWaiverAnchor:'一次免除（€380）超过四年的年费', cancelAnytime:'可随时在我的页面取消，已付费周期仍可继续使用。',
   business:'商务', contact:'联系', about:'关于', subscribe:'订阅',
   monthly:'月付', yearly:'年付', save2mo:'免费2个月', perYear:'/ 年',
-  ypTag:'年度高级会员专享', ypTitle:'月付高级会员没有的权益', ypWaiver:'免除1次付费投稿', ypWaiverSub:'每个订阅年度1次 · 不含€790类型', ypCollab:'自行指定 Instagram 合作者', ypCollabSub:'最多5位 · 任何 PAP 会员（含免费会员）· 提交后可修改', ypValue:'每年 {price} · 比月付省下2个月（省 {save}）', ypValue2:'+ 只投稿一次再省 €380', ypHint:'仅限年付 · 点击查看年付价格', krPayAsk:'想用韩国银行卡、KakaoPay 或 NaverPay 付款？点这里', krPayThanks:'感谢告知。需求足够时我们会接入韩国支付。',
+  ypCasting:'征稿提前7天', ypCastingSub:'"下一期在找什么"提前一周邮件告知', ypCert:'刊登证书', ypCertSub:'每篇已刊登作品一份，含验证码 · 用于作品集、经纪公司、签证材料', ypTag:'年度高级会员专享', ypTitle:'月付高级会员没有的权益', ypWaiver:'免除1次付费投稿', ypWaiverSub:'每个订阅年度1次 · 不含€790类型', ypCollab:'自行指定 Instagram 合作者', ypCollabSub:'最多5位 · 任何 PAP 会员（含免费会员）· 提交后可修改', ypValue:'每年 {price} · 比月付省下2个月（省 {save}）', ypValue2:'+ 只投稿一次再省 €380', ypHint:'仅限年付 · 点击查看年付价格', krPayAsk:'想用韩国银行卡、KakaoPay 或 NaverPay 付款？点这里', krPayThanks:'感谢告知。需求足够时我们会接入韩国支付。',
   heroTitle:'订阅',
   heroDesc:'免费注册即可查看最新10篇专题。Standard会员可查看最近三个季度（约6～9个月），Premium会员可查看全部档案。当您需要投稿反馈、Pull-Letter咨询等专业权益时，欢迎成为订阅会员。',
   tierFree:'等级 1', tierStandard:'等级 2', tierPremium:'等级 3',
@@ -1169,6 +1123,8 @@ zh: { ctaSwitchYearly:'改为年付', switchYearlyNote:'现在开始年付，月
     prem: [
       {on:true, y:true, text:'年付方案：免除1次付费投稿（€380）'},
       {on:true, y:true, text:'年度高级会员：自行指定 5 位 Instagram 合作者(任何 PAP 会员，含免费会员 · 提交后可修改)'},
+      {on:true, y:true, text:'年度高级会员: 下一期征稿提前7天邮件告知'},
+      {on:true, y:true, text:'年度高级会员: 含验证码的刊登证书'},
       {on:true, text:'浏览所有编辑内容（完整存档）'},
       {on:true, text:'无广告浏览'},
       {on:true, text:'可提交作品'},
@@ -1201,10 +1157,10 @@ zh: { ctaSwitchYearly:'改为年付', switchYearlyNote:'现在开始年付，月
   },
   ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号 192-88-02644<br>首尔特别市江南区论岘路146街18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
-ru:{
+ru:{ ctaSwitchYearly:'Перейти на год', switchYearlyNote:'Если начать годовую подписку сейчас, месячная остановится автоматически, а оставшиеся дни месяца пропадут. Переход прямо перед датой списания ({date}) этого избежит.', ypWaiverAnchor:'Одно освобождение (€380) стоит больше четырёх лет годовой подписки', cancelAnytime:'Отменить можно в любой момент на странице «Моя страница»; оплаченный период остаётся доступным.',
   business:'БИЗНЕС', contact:'КОНТАКТ', about:'О НАС', subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',
   monthly:'МЕСЯЦ', yearly:'ГОД', save2mo:'2 МЕСЯЦА БЕСПЛАТНО', perYear:'/ год',
-  ypTag:'ТОЛЬКО ГОДОВОЙ PREMIUM', ypTitle:'Нет в месячном Premium', ypWaiver:'Одна платная заявка бесплатно', ypWaiverSub:'Раз в год подписки · кроме типа за €790', ypCollab:'Соавторы в Instagram на ваш выбор', ypCollabSub:'До 5 человек · любой участник PAP, даже бесплатный · можно изменить после отправки', ypValue:'{price} в год · 2 месяца бесплатно по сравнению с помесячной оплатой (экономия {save})', ypValue2:'+ одна платная заявка экономит ещё €380', ypHint:'Только при оплате за год · нажмите, чтобы увидеть цены', krPayAsk:'Хотите платить корейской картой, KakaoPay или NaverPay? Нажмите здесь', krPayThanks:'Спасибо, что сообщили. Добавим корейские способы оплаты, когда об этом попросит достаточно участников.',
+  ypCasting:'Кастинг-коллы на 7 дней раньше', ypCastingSub:'«Что ищет следующий выпуск» — письмом, за неделю до всех', ypCert:'Сертификат публикации', ypCertSub:'На каждый опубликованный эдиториал, с кодом проверки · для портфолио, агентств, визовых документов', ypTag:'ТОЛЬКО ГОДОВОЙ PREMIUM', ypTitle:'Нет в месячном Premium', ypWaiver:'Одна платная заявка бесплатно', ypWaiverSub:'Раз в год подписки · кроме типа за €790', ypCollab:'Соавторы в Instagram на ваш выбор', ypCollabSub:'До 5 человек · любой участник PAP, даже бесплатный · можно изменить после отправки', ypValue:'{price} в год · 2 месяца бесплатно по сравнению с помесячной оплатой (экономия {save})', ypValue2:'+ одна платная заявка экономит ещё €380', ypHint:'Только при оплате за год · нажмите, чтобы увидеть цены', krPayAsk:'Хотите платить корейской картой, KakaoPay или NaverPay? Нажмите здесь', krPayThanks:'Спасибо, что сообщили. Добавим корейские способы оплаты, когда об этом попросит достаточно участников.',
   heroTitle:'ПОДПИСКА',
   heroDesc:'Бесплатная регистрация открывает 10 последних материалов. Standard — последние три квартала (около 6–9 месяцев), Premium — весь архив. Когда будете готовы к профессиональным преимуществам, станьте участником.',
   tierFree:'УРОВЕНЬ 1', tierStandard:'УРОВЕНЬ 2', tierPremium:'УРОВЕНЬ 3',
@@ -1240,6 +1196,8 @@ ru:{
     prem: [
       {on:true, y:true, text:'Годовой план: одна платная заявка (€380) без оплаты'},
       {on:true, y:true, text:'Годовой Premium: сами выбираете 5 соавторов в Instagram (любые участники PAP, включая бесплатных · можно изменить после отправки)'},
+      {on:true, y:true, text:'Годовой Premium: следующий кастинг-колл письмом на 7 дней раньше'},
+      {on:true, y:true, text:'Годовой Premium: сертификат публикации с кодом проверки'},
       {on:true, text:'Просмотр всех редакционных материалов (полный архив)'},
       {on:true, text:'Просмотр без рекламы'},
       {on:true, text:'Возможность подачи работ'},

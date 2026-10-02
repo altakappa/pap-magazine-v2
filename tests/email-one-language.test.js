@@ -42,6 +42,7 @@ const CALLS = {
   pullletterTeamNotice: (l) => templates.pullletterTeamNotice(user, { requester: 'Jin', title: 'Blue', role: 'stylist', id: 'x' }, l),
   editorialLive: (l) => templates.editorialLive(user, { title: 'Blue', url: 'https://www.pap-magazine.com/editorial/blue' }, l),
   yearlyOffer: (l) => templates.yearlyOffer(user, { url: 'https://www.pap-magazine.com/subscribe?billing=yearly', date: '2026-11-01' }, l),
+  castingCall: (l) => templates.castingCall(user, { title: 'Winter knits', body: 'Rough textures, daylight.', deadline: '2026-11-15', publicAt: '2026-10-09', url: 'https://www.pap-magazine.com/submission' }, l),
   subscriptionConfirmed: (l) => templates.subscriptionConfirmed(user, 'standard', l),
   trialEndingSoon: (l) => templates.trialEndingSoon(user, { lang: l, language: l, endsAt: '2026-10-01' }),
   weeklyEditorial: (l) => templates.weeklyEditorial(camp, U(l), 'tok'),
