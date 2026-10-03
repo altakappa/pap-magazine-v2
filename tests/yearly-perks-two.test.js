@@ -81,6 +81,10 @@ t('구독 사전 버전 올림 (≥7)', (() => { const m = sb.match(/content="su
   const { LIVE } = require('../api/_lib/editorialLiveCopy');
   t('월간3. 공개 메일 "팀에게 보내기" 9개 언어 + 템플릿에 항상', LANGS.every((l) => LIVE[l] && LIVE[l].teamLine) && FOREIGN.every((l) => !HANGUL.test(LIVE[l].teamLine)) && /if \(L\.teamLine\) html \+=/.test(R('api/_lib/email.js')));
 }
+// 10/3 테마 후보 → 캐스팅 콜 (9/24 합의: 키워드 + 트렌드 후보 3개, 도메니코가 고른다)
+t('캐스팅 콜 관리자: 월간 소식 초안의 theme_candidates 를 후보로 내려준다', /eq\('type', 'creator-monthly'\)/.test(R('api/admin/casting-calls.js')) && /theme_candidates/.test(R('api/admin/casting-calls.js')) && /candidates, candidatesMonth/.test(R('api/admin/casting-calls.js')));
+t('캐스팅 콜 화면: 후보 카드 → 채우기, 후보 새로 만들기(creator-monthly ?month=)', /function useThemeCandidate\(i\)/.test(R('frontend/pap-admin.js')) && /\/cron\/creator-monthly\?month=/.test(R('frontend/pap-admin.js')) && /id="ccCandidates"/.test(R('frontend/admin.html')));
+t('마이그레이션 177: email_campaigns.type 에 creator-monthly (10/1 크론 500 의 원인)', /'creator-monthly'::text/.test(R('supabase_migrations/177_email_campaigns_creator_monthly_type.sql')));
 t('테스트 스크립트 등록', /yearly-perks-two\.test\.js/.test(R('package.json')));
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

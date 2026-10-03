@@ -16090,6 +16090,23 @@ async function longTransRun(){
   });
 })();
 
+/* 2026-10-03 테마 후보 → 캐스팅 콜 칸 채우기 / 후보 만들기(creator-monthly 크론을 관리자 토큰으로 지난달 기준 호출) */
+function useThemeCandidate(i){
+  var c=(window._ccCands||[])[i]; if(!c||!c.ko) return;
+  document.getElementById('ccTitle').value=c.ko.title||'';
+  document.getElementById('ccBody').value=c.ko.body||'';
+  document.getElementById('ccTitle').scrollIntoView({block:'center'});
+}
+async function makeThemeCandidates(){
+  var msg=document.getElementById('ccCandMsg'); msg.textContent='만드는 중... (트렌드 신호 수집 + 번역, 30초쯤)';
+  try{
+    var d=new Date(); d.setUTCMonth(d.getUTCMonth()-1); var ym=d.toISOString().slice(0,7);
+    var r=await apiGet('/cron/creator-monthly?month='+ym);
+    if(r&&r.ok){ msg.textContent=r.existing?'이미 있는 초안을 씁니다.':'만들었습니다.'; loadCastingCalls(); }
+    else msg.textContent='실패: '+((r&&(r.message||r.error))||'알 수 없음');
+  }catch(e){ msg.textContent='실패: '+e.message; }
+}
+
 /* ── 캐스팅 콜 (2026-10-02 연간 프리미엄 7일 선공개) ───────────────────── */
 async function loadCastingCalls(){
   var el=document.getElementById('ccList'); if(!el) return;
@@ -16097,6 +16114,26 @@ async function loadCastingCalls(){
   try{
     var r=await apiGet('/admin/casting-calls');
     var rows=(r&&r.calls)||[];
+    // 2026-10-03 테마 후보(브랜드 키워드 + 트렌드, creatorTheme.js) → 클릭하면 제목·본문에 채워진다. 고르는 건 도메니코.
+    var cb=document.getElementById('ccCandidates');
+    if(cb){
+      var cands=(r&&r.candidates)||[];
+      var h='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><h3 style="margin:0">이달 테마 후보'+(r&&r.candidatesMonth?' ('+esc(r.candidatesMonth)+' 소식 초안)':'')+'</h3>'
+        +'<button type="button" class="btn" style="padding:3px 10px;font-size:11px" onclick="makeThemeCandidates()">후보 새로 만들기</button><span id="ccCandMsg" style="font-size:11px;color:var(--text3)"></span></div>';
+      if(!cands.length){ h+='<div style="color:var(--text3);font-size:12px;margin-bottom:20px">아직 후보가 없습니다. "후보 새로 만들기"를 누르면 기본 키워드(DREAMY·SURREALISM·STORYTELLING·CREATIVITY) + 최근 트렌드 신호로 3개를 만듭니다.</div>'; }
+      else {
+        h+='<div style="display:grid;gap:8px;margin-bottom:20px">';
+        cands.forEach(function(c,i){
+          var ko=c.ko||{}, kws=(c.keywords||[]).join(' · ');
+          h+='<div style="padding:10px 12px;border:1px solid var(--line);border-radius:6px"><div style="font-weight:600">'+esc(ko.title||'')+'</div>'
+            +'<div style="font-size:12px;color:var(--text3);margin:4px 0">'+esc(ko.body||'')+'</div>'
+            +'<div style="font-size:11px;color:var(--text3)">'+esc(kws)+(c.trend?' · 트렌드: '+esc(c.trend):'')+'</div>'
+            +'<button type="button" class="btn btn-primary" style="margin-top:6px;padding:3px 10px;font-size:11px" onclick="useThemeCandidate('+i+')">이 후보로 채우기</button></div>';
+        });
+        h+='</div>';
+      }
+      cb.innerHTML=h; window._ccCands=cands;
+    }
     if(!rows.length){ el.innerHTML='<div style="color:var(--text3)">아직 보낸 캐스팅 콜이 없습니다.</div>'; return; }
     var html='<h3 style="margin:0 0 10px">보낸 캐스팅 콜</h3><div class="tbl-wrap"><table><thead><tr><th>제목</th><th>선공개</th><th>전체 공개</th><th>마감</th><th>메일</th></tr></thead><tbody>';
     rows.forEach(function(c){

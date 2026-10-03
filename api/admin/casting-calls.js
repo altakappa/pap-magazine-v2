@@ -25,7 +25,17 @@ module.exports = async function handler(req, res) {
       .select('id, title, body, deadline, early_at, public_at, sent_at, sent_count, created_at')
       .order('early_at', { ascending: false }).limit(20);
     if (error) return res.status(500).json({ message: error.message });
-    return res.status(200).json({ calls: data || [] });
+    // 2026-10-03 도메니코 "우리 키워드 + 트렌드로 후보를 주면 내가 고른다(9/24 합의)". 월간 소식 초안(creator-monthly)의
+    // 테마 후보 3개(creatorTheme.js, 기본 키워드 + 트렌드 신호, 9개 언어)를 같이 내려 캐스팅 콜 칸에 한 번에 채운다.
+    let candidates = [], candidatesMonth = null;
+    try {
+      const { data: camp } = await supabaseAdmin.from('email_campaigns').select('name, payload, created_at')
+        .eq('type', 'creator-monthly').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const list = camp && camp.payload && Array.isArray(camp.payload.theme_candidates) ? camp.payload.theme_candidates : [];
+      candidates = list.map((c) => ({ keywords: c.keywords || [], trend: c.trend || '', source: c.source || '', ko: (c.i18n && c.i18n.ko) || null, en: (c.i18n && c.i18n.en) || null }));
+      candidatesMonth = camp ? String(camp.name || '').replace('creator-monthly-', '') : null;
+    } catch (_) { /* 후보 없음 */ }
+    return res.status(200).json({ calls: data || [], candidates, candidatesMonth });
   }
 
   if (req.method === 'POST') {
