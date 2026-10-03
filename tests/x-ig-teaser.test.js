@@ -60,13 +60,17 @@ const xPost = require('../api/_lib/xPost');
 {
   const body = '지효가 크리스찬 루부탱 파리 쇼에 다녀왔어요\n\n본문.\n\n#PAPMAGAZINE';
   const v = xPost.withIgHandle(body, 'video');
-  t('영상이면 태그 줄 앞에 안내 줄', v === '지효가 크리스찬 루부탱 파리 쇼에 다녀왔어요\n\n본문.\n\n풀 영상은 인스타그램 pap_magazine\n\n#PAPMAGAZINE');
+  t('영상이면 태그 줄 앞에 안내 줄', v === '지효가 크리스찬 루부탱 파리 쇼에 다녀왔어요\n\n본문.\n\n풀 영상은 인스타 pap_magazine\n\n#PAPMAGAZINE');
   t('안내 줄에 @ 가 없다(X 멘션으로 엉뚱한 계정에 걸리지 않게)', !/@/.test(xPost.IG_HANDLE_LINE) && /pap_magazine/.test(xPost.IG_HANDLE_LINE));
   t('안내 줄에 링크가 없다(도달 억제 회피)', !/https?:\/\//.test(xPost.IG_HANDLE_LINE));
   t('이미지 트윗은 그대로', xPost.withIgHandle(body, 'image') === body);
   t('두 번 넣지 않는다', xPost.withIgHandle(v, 'video') === v);
-  const fat = '가'.repeat(135) + '\n\n#PAPMAGAZINE';
-  t('280 가중자를 넘기면 안 넣는다(트윗을 잃지 않는다)', xPost.withIgHandle(fat, 'video') === fat);
+  const near = '가'.repeat(124) + '\n\n#PAPMAGAZINE';            // 248+2+12 = 262: 끼우면 293(초과), 태그 자리에 넣으면 279(통과)
+  t('넘치면 태그 줄 자리에 안내 줄(브랜드는 pap_magazine 으로 남는다)', xPost.withIgHandle(near, 'video') === '가'.repeat(124) + '\n\n' + xPost.IG_HANDLE_LINE);
+  const fat = '가'.repeat(135) + '\n\n#PAPMAGAZINE';            // 270+14: 어느 쪽도 안 들어간다
+  t('그래도 넘치면 안 넣는다(트윗을 잃지 않는다)', xPost.withIgHandle(fat, 'video') === fat);
+  const hook = require('../api/_lib/socialHook');
+  t('X 글자수 상한 115 (가중 280 - 태그 - 안내 줄 역산)', hook._limitFor ? hook._limitFor('x') === 115 : /platform === 'x' \? 115 : 420/.test(fs.readFileSync(path.join(ROOT, 'api/_lib/socialHook.js'), 'utf8')));
 }
 
 // ── ③ 주제 가드 순수 로직 ────────────────────────────────────

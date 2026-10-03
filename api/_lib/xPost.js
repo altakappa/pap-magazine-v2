@@ -629,14 +629,23 @@ function _withLinkInBody(main, tagLine, url, art) {
  * @param {string} body  '본문\n\n#태그' 꼴 (buildThreadsParityTweet 의 body)
  * @param {'video'|'image'|'none'} kind
  */
-const IG_HANDLE_LINE = '풀 영상은 인스타그램 pap_magazine';
+const IG_HANDLE_LINE = '풀 영상은 인스타 pap_magazine';
 function withIgHandle(body, kind) {
   if (kind !== 'video') return body;
   const s = String(body || '');
   if (s.includes(IG_HANDLE_LINE)) return s;
   const i = s.lastIndexOf('\n\n');
   const out = i > 0 ? s.slice(0, i) + '\n\n' + IG_HANDLE_LINE + s.slice(i) : s + '\n\n' + IG_HANDLE_LINE;
-  return weightedLen(out) <= 280 ? out : s;
+  if (weightedLen(out) <= 280) return out;
+  /* 2026-10-03 실측: 영상 트윗 3건 전부 본문이 248~280 가중자라 안내 줄이 한 번도
+     못 붙었다. 넘치면 태그 줄(#PAPMAGAZINE) 자리에 안내 줄을 넣는다 — 안내 줄에
+     pap_magazine 이 있어 브랜드는 남고, 도메니코가 오늘 시킨 건 안내 줄이다. */
+  const tagLine = s.slice(i + 2);
+  if (i > 0 && /^#/.test(tagLine)) {
+    const swapped = s.slice(0, i) + '\n\n' + IG_HANDLE_LINE;
+    if (weightedLen(swapped) <= 280) return swapped;
+  }
+  return s;
 }
 
 module.exports = {

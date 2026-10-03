@@ -233,8 +233,14 @@ async function _ask(system, payload, limit, platform) {
 }
 
 function _limitFor(platform) {
-  // X 는 링크·태그를 뺀 본문 여유가 200자 남짓. 스레드는 넉넉하다(500).
-  return platform === 'x' ? 180 : 420;
+  /* X 는 **가중 280자**다 (한글 2, 라틴 1 — xPost.weightedLen). 한글 본문은
+     140자가 천장이고, 태그(#PAPMAGAZINE 14)와 안내 줄(약 31)을 빼면 115자다.
+     2026-10-03 실측: 종전 180 은 가중으로 360이라 모델이 성실히 채우면
+     xPost 의 280 판정에서 통째로 버려져 기계식 폴백(보도자료 문장)으로 나갔다.
+     최근 3일 폴백 비율 6/14 · 8/26 · 8/25 ≈ 30% 의 원인. 영상 트윗 3건 전부
+     본문이 248~280 이라 "풀 영상은 인스타" 안내 줄도 한 번도 못 붙었다.
+     스레드는 넉넉하다(500). */
+  return platform === 'x' ? 115 : 420;
 }
 
 function _payload(art, platform, limit, extra) {
