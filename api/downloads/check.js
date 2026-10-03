@@ -23,6 +23,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
+const { hasActivePremium } = require('../_lib/subscriptionAccess');   // 2026-10-03 팀 티어시트
 const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
@@ -64,7 +65,34 @@ async function checkDownloadPermission(user, contentType, contentId) {
     console.error('[downloads/check] plan lookup error:', err && err.message || err);
   }
 
+  // 4) (2026-10-03 도메니코 "팀 티어시트") 프리미엄 회원이 제출한 화보는 크레딧에 적힌 팀원도 받는다.
+  //    조건 셋 다: ① 요청자의 인스타 아이디에 관리자 확인 도장(instagram_verified_at) ② 그 아이디가 이 화보 크레딧에 있음
+  //    ③ 제출자(submissions.user_id)가 활성 프리미엄. 그 화보 한 편만 열린다(다른 화보는 아니다).
+  if (contentType === 'editorial' && contentId) {
+    try {
+      const team = await teamTearsheetAllowed(user.id, contentId);
+      if (team) return { allowed: true, role, reason: 'team-premium' };
+    } catch (err) {
+      console.error('[downloads/check] team check error:', err && err.message || err);
+    }
+  }
+
   return { allowed: false, role, reason: 'need-subscription' };
+}
+
+const normIg = (v) => String(v || '').trim().toLowerCase().replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/.*$/, '');
+async function teamTearsheetAllowed(userId, editorialId) {
+  const { data: me } = await supabaseAdmin.from('profiles').select('instagram, instagram_verified_at').eq('id', userId).maybeSingle();
+  const myHandle = me && me.instagram_verified_at ? normIg(me.instagram) : '';
+  if (!myHandle) return false;
+  const { data: ed } = await supabaseAdmin.from('editorials').select('id, credits, source_submission_id, status').eq('id', editorialId).maybeSingle();
+  if (!ed || ed.status !== 'published' || !ed.source_submission_id) return false;
+  const credits = Array.isArray(ed.credits) ? ed.credits : [];
+  if (!credits.some((c) => c && normIg(c.instagram) === myHandle)) return false;
+  const { data: sub } = await supabaseAdmin.from('submissions').select('user_id').eq('id', ed.source_submission_id).maybeSingle();
+  if (!sub || !sub.user_id) return false;
+  const { data: owner } = await supabaseAdmin.from('profiles').select('subscription_plan, subscription_status').eq('id', sub.user_id).maybeSingle();
+  return hasActivePremium(owner || {});
 }
 
 module.exports = async function handler(req, res) {
@@ -90,3 +118,4 @@ module.exports = async function handler(req, res) {
 
 // CommonJS 양방향 export: default handler + named helper.
 module.exports.checkDownloadPermission = checkDownloadPermission;
+module.exports.teamTearsheetAllowed = teamTearsheetAllowed;

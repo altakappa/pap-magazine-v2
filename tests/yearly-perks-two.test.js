@@ -37,7 +37,7 @@ t('1. 관리자 화면: 캐스팅 콜 탭 + 로더 + 캐시버스트', /go\('cas
 const cert = R('api/editorials/certificate.js');
 t('2. 인증서 API: HMAC 코드 · 소유 판정(submissions.user_id) · 연간 프리미엄 게이트 · 공개 검증', /createHmac\('sha256', secret\)/.test(cert) && /owned\.ownerId !== user\.id/.test(cert) && /findYearlyPremiumSubscription\(supabaseAdmin, user\.id\)/.test(cert) && /timingSafeEqual/.test(cert) && /req\.query\.verify !== undefined/.test(cert));
 t('2. 인증서 검증 페이지는 noindex HTML', /name="robots" content="noindex"/.test(cert) && /text\/html; charset=utf-8/.test(cert));
-t('2. mine.js 가 canCertificate 를 서버에서 계산', /canCertificate = !!\(await findYearlyPremiumSubscription/.test(R('api/editorials/mine.js')) && /editorials, isPremium, canCertificate/.test(R('api/editorials/mine.js')));
+t('2. mine.js 가 canCertificate 를 서버에서 계산 (10/3: 스탠다드부터 기본형, 연간은 검증 코드형)', /canCertificate = maxEdits > 0 \|\| !!\(await findYearlyPremiumSubscription/.test(R('api/editorials/mine.js')) && /editorials, isPremium, canCertificate/.test(R('api/editorials/mine.js')));
 const mp = R('frontend/mypage.html');
 t('2. 마이페이지: 인증서 버튼(연간) / 안내 링크(그 외) + 인쇄용 창', /_mpEdMeta\.canCertificate/.test(mp) && /mpOpenCertificate\(/.test(mp) && /utm_source=mypage_certificate/.test(mp) && /CERTIFICATE OF PUBLICATION/.test(mp) && /SAVE AS PDF/.test(mp));
 t('2. 마이페이지 사전 9개 언어 certBtn·certLocked·certFail', ['certBtn','certLocked','certFail'].every((k) => (mp.match(new RegExp(k + ":'", 'g')) || []).length === 9));

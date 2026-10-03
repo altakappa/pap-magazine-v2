@@ -18,6 +18,15 @@ const { toBrandCase } = require('./brandCase');   // 2026-09-14 브랜드명 표
 
 // 누적 수정 한도 (일일이 아니라 에디토리얼 1건당 누적). 도메니코 결정 0-3.
 const MAX_CREDIT_EDITS = 3;
+/* 2026-10-03 도메니코 "각 구독 혜택 전부 적용" — 등급별 횟수. 스탠다드 1회, 프리미엄 3회, 무료 0.
+   판정은 서버(subscriptionAccess.hasActivePlan)로만. */
+const CREDIT_EDITS_BY_TIER = { free: 0, standard: 1, premium: MAX_CREDIT_EDITS };
+function maxCreditEditsFor(profile) {
+  const { hasActivePlan } = require('./subscriptionAccess');
+  if (hasActivePlan(profile || {}, 'premium')) return CREDIT_EDITS_BY_TIER.premium;
+  if (hasActivePlan(profile || {}, 'standard')) return CREDIT_EDITS_BY_TIER.standard;
+  return CREDIT_EDITS_BY_TIER.free;
+}
 
 // 결제 게이트는 화이트리스트다. 블랙리스트로 짜면 payment_status 값이
 // 하나 늘어날 때 조용히 구멍이 생긴다. 도메니코 결정 0-2-c.
@@ -385,6 +394,8 @@ function remapImageCredits(imageCredits, before, after) {
 
 module.exports = {
   MAX_CREDIT_EDITS,
+  CREDIT_EDITS_BY_TIER,
+  maxCreditEditsFor,
   PAYMENT_EDITABLE,
   MAX_CREDIT_ROWS,
   MAX_BRAND_ROWS,

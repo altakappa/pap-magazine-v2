@@ -12,6 +12,8 @@
 const SITE = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
 const { isYearlyPremiumRow } = require('./premiumFeeWaiver');
 const EARLY_DAYS = 7;
+/* 2026-10-03 사다리: 연간 7일 먼저(메일+페이지) → 월간 유료(스탠다드·프리미엄) 3일 먼저(페이지) → 무료 공개 때. */
+const PAID_EARLY_DAYS = 3;
 
 function submitUrl(lang, id) {
   const pre = !lang || lang === 'ko' ? '' : '/' + lang;
@@ -43,18 +45,21 @@ async function yearlyPremiumUserIds(db) {
  * 지금 보여줄 캐스팅 콜. viewerYearly=true 면 early_at 기준, 아니면 public_at 기준.
  * 둘 다 없으면 null. 'teaser' 는 "연간은 벌써 보고 있다"를 알리기 위한 다음 공개 시각.
  */
-async function currentCastingCall(db, { lang, viewerYearly, translate }) {
+async function currentCastingCall(db, { lang, viewerYearly, viewerPaid, translate }) {
   const nowIso = new Date().toISOString();
+  // 월간 유료는 public_at 3일 전부터 본다 (연간은 early_at 부터).
+  const paidFrom = (r) => new Date(Date.parse(r.public_at) - PAID_EARLY_DAYS * 86400000).toISOString();
   const { data: rows } = await db.from('casting_calls')
     .select('id, title, body, deadline, early_at, public_at')
     .lte('early_at', nowIso)
     .order('early_at', { ascending: false })
     .limit(3);
   const list = rows || [];
-  const visible = list.find((r) => viewerYearly || String(r.public_at) <= nowIso);
+  const visible = list.find((r) => viewerYearly || String(r.public_at) <= nowIso || (viewerPaid && paidFrom(r) <= nowIso));
   if (visible) {
     const loc = await localize(visible, lang, translate);
-    loc.early = viewerYearly && String(visible.public_at) > nowIso;
+    loc.early = String(visible.public_at) > nowIso;   // 공개 전에 보고 있다(연간 또는 월간 유료)
+    loc.earlyTier = loc.early ? (viewerYearly ? 'yearly' : 'paid') : null;
     return loc;
   }
   const upcoming = list[0];
@@ -94,4 +99,18 @@ async function sendCastingCall(row, deps) {
   return { sent, recipients: (profiles || []).length, errors };
 }
 
-module.exports = { EARLY_DAYS, localize, yearlyPremiumUserIds, currentCastingCall, sendCastingCall, submitUrl };
+/** 2026-10-03 연간 혜택(PAP Picks 후보 우선 · 이달의 에디토리얼 후보 표시): 제출자가 활성 연간 프리미엄인 화보 id 집합 */
+async function yearlySubmitterEditorialIds(db, editorialRows) {
+  const out = new Set();
+  const subIds = (editorialRows || []).map((e) => e && e.source_submission_id).filter(Boolean);
+  if (!subIds.length) return out;
+  const ids = await yearlyPremiumUserIds(db);
+  if (!ids.length) return out;
+  const yearly = new Set(ids);
+  const { data: subs } = await db.from('submissions').select('id, user_id').in('id', subIds);
+  const subOwner = {}; for (const s of (subs || [])) subOwner[s.id] = s.user_id;
+  for (const e of editorialRows) if (e && e.source_submission_id && yearly.has(subOwner[e.source_submission_id])) out.add(e.id);
+  return out;
+}
+
+module.exports = { EARLY_DAYS, PAID_EARLY_DAYS, localize, yearlySubmitterEditorialIds, yearlyPremiumUserIds, currentCastingCall, sendCastingCall, submitUrl };

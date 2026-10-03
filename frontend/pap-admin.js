@@ -6514,6 +6514,7 @@ function _eomCard(e, opts){
     + '<div style="flex:1;min-width:0">'
     +   '<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.title || '') + '</div>'
     +   '<div style="font-size:11px;color:var(--text3);margin-top:2px">발행 ' + fmtDate(e.published_date)
+    +     (e._submitter_yearly ? ' · <b style="color:#ffd43b">연간 프리미엄 제출</b>' : '')
     +     (opts.monthNote ? ' · <b style="color:#c9a86a">' + esc(opts.monthNote) + ' 선정</b>' : '') + '</div>'
     + '</div>'
     + btn
@@ -6560,6 +6561,8 @@ async function loadEditorialOfMonth(){
     var cands = (candResp && (candResp.data || candResp.editorials || candResp)) || [];
     if(!Array.isArray(cands)) cands = [];
     cands.sort(function(a,b){ return String(b.published_date||'').localeCompare(String(a.published_date||'')); });
+    // 2026-10-03 연간 프리미엄 제출자 화보를 맨 앞에 (연간 혜택: 후보 우선). 지정은 여전히 도메니코가 고른다.
+    cands.sort(function(a,b){ return (b._submitter_yearly?1:0) - (a._submitter_yearly?1:0); });
     var curId = current ? current.id : null;
     var listHtml = cands.length
       ? cands.map(function(e){ return _eomCard(e, { on: e.id === curId }); }).join('')

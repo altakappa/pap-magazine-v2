@@ -217,14 +217,20 @@ async function papPicks() {
   try {
     const since = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
     const [edR, arR] = await Promise.all([
-      supabaseAdmin.from('editorials').select('id, title, slug, cover_image, thumbnail, view_count')
+      supabaseAdmin.from('editorials').select('id, title, slug, cover_image, thumbnail, view_count, source_submission_id')
         .eq('status', 'published').gte('published_date', since)
-        .order('view_count', { ascending: false, nullsFirst: false }).limit(PAP_PICKS.total),
+        .order('view_count', { ascending: false, nullsFirst: false }).limit(PAP_PICKS.total * 3),
       supabaseAdmin.from('articles').select('id, title, title_en, slug, thumbnail_url, hero_image_url, view_count')
         .eq('status', 'published').gte('published_date', since)
         .order('view_count', { ascending: false, nullsFirst: false }).limit(PAP_PICKS.total),
     ]);
-    const eds = ((edR && edR.data) || []).filter((e) => e.slug && e.title && (e.cover_image || e.thumbnail));
+    let eds = ((edR && edR.data) || []).filter((e) => e.slug && e.title && (e.cover_image || e.thumbnail));
+    // 2026-10-03 연간 프리미엄 제출자의 화보를 후보 맨 앞에 (같은 주 안에서). 그 다음은 조회수 순 그대로.
+    try {
+      const { yearlySubmitterEditorialIds } = require('../_lib/castingCall');
+      const yearlyIds = await yearlySubmitterEditorialIds(supabaseAdmin, eds);
+      if (yearlyIds.size) eds = eds.filter((e) => yearlyIds.has(e.id)).concat(eds.filter((e) => !yearlyIds.has(e.id)));
+    } catch (_) { /* 우선 정렬 실패는 원래 순서 */ }
     const ars = ((arR && arR.data) || []).filter((a) => a.slug && a.title && (a.thumbnail_url || a.hero_image_url));
     let nE = Math.min(PAP_PICKS.editorials, eds.length);
     let nA = Math.min(PAP_PICKS.articles, ars.length);

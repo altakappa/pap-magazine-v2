@@ -219,7 +219,7 @@ console.log('\n=== 11. 구독 페이지: 언어 블록에 영어 복사본이 �
   const miss = [];
   ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].forEach((l) => need.forEach((k) => { if (!D[l][k]) miss.push(l + ':' + k); }));
   t('월간·연간·2개월 무료·기간 표시 라벨 9개 언어 (영어로 떨어지지 않게)', miss.length === 0, miss.join(', '));
-  t('독일어 카드·비교표가 독일어', D.de.features.prem[4].text.startsWith('Alle Editorials') && D.de.comparison.rows[0][0] === 'Registrierung nötig' && D.de.save2mo === '2 MONATE GRATIS');
+  t('독일어 카드·비교표가 독일어', D.de.features.prem.some((x) => x.text.startsWith('Gesamtes Archiv')) && D.de.comparison.rows[0][0] === 'Registrierung nötig' && D.de.save2mo === '2 MONATE GRATIS');
 }
 
 console.log('\n=== 12. 국내 결제 수요 버튼 (8/10 결정의 실측 장치) ===');

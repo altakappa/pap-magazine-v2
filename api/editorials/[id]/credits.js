@@ -72,9 +72,11 @@ module.exports = async function handler(req, res) {
       .select('id, email, display_name, subscription_plan, subscription_status')
       .eq('id', user.id)
       .single();
-    if (!hasActivePremium(profile || {})) {
+    // 2026-10-03 등급별 횟수(스탠다드 1 · 프리미엄 3). 0이면 유료 안내.
+    const maxEdits = ce.maxCreditEditsFor(profile || {});
+    if (maxEdits <= 0) {
       return res.status(403).json({
-        message: '크레딧 수정은 프리미엄 멤버십에 포함된 기능입니다.',
+        message: '크레딧 수정은 스탠다드(1회)·프리미엄(3회) 멤버십에 포함된 기능입니다.',
         reason: 'not_premium',
       });
     }
@@ -102,12 +104,12 @@ module.exports = async function handler(req, res) {
 
     // 6. 횟수. 검증 실패는 차감하지 않으므로 여기서 본다(저장 직전에 증가).
     const used = Number(ed.credits_edit_count || 0);
-    if (used >= ce.MAX_CREDIT_EDITS) {
+    if (used >= maxEdits) {
       return res.status(403).json({
-        message: '수정 가능 횟수(' + ce.MAX_CREDIT_EDITS + '회)를 모두 사용했습니다. 추가 수정은 문의해 주세요.',
+        message: '수정 가능 횟수(' + maxEdits + '회)를 모두 사용했습니다. 추가 수정은 문의해 주세요.',
         reason: 'limit_reached',
         editsUsed: used,
-        maxEdits: ce.MAX_CREDIT_EDITS,
+        maxEdits: maxEdits,
       });
     }
 
@@ -226,7 +228,7 @@ module.exports = async function handler(req, res) {
       content_id: ed.id,
       action: 'update',
       actor: { id: user.id, email: (profile && profile.email) || null },
-      summary: '회원 크레딧 수정 ' + (used + 1) + '/' + ce.MAX_CREDIT_EDITS + '회차',
+      summary: '회원 크레딧 수정 ' + (used + 1) + '/' + maxEdits + '회차',
       diff: {
         credits: { before: prevCredits, after: nextCredits },
         brands: { before: prevBrands, after: nextBrands },
@@ -267,8 +269,8 @@ module.exports = async function handler(req, res) {
       brands: nextBrands,
       imageCreditsRemapped: remap.remapped,
       editsUsed: used + 1,
-      editsLeft: Math.max(0, ce.MAX_CREDIT_EDITS - (used + 1)),
-      maxEdits: ce.MAX_CREDIT_EDITS,
+      editsLeft: Math.max(0, maxEdits - (used + 1)),
+      maxEdits: maxEdits,
       brandCount: { before: beforeCount, after: afterCount },
       flagged: suspicion.flagged,
     });

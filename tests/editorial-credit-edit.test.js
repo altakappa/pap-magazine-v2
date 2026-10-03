@@ -158,10 +158,13 @@ async function patch(body) {
 
 (async function run() {
   console.log('=== ① 접근 가드 ===');
-  reset({ plan: 'standard' });
+  reset({ plan: 'free' });
   let r = await patch({ credits: TEAM, brands: FOUR });
-  ok('무료(비프리미엄) 회원은 403', r.code === 403 && r.body.reason === 'not_premium',
+  ok('무료 회원은 403 (2026-10-03: 스탠다드는 1회 허용으로 바뀜)', r.code === 403 && r.body.reason === 'not_premium',
     '프론트 게이트만으로는 API 직접 호출을 못 막는다. 받은 코드=' + r.code);
+  reset({ plan: 'standard' });
+  r = await patch({ credits: TEAM, brands: FOUR });
+  ok('스탠다드 회원은 1회 허용 (maxEdits 1)', r.code === 200 && r.body.maxEdits === 1 && r.body.editsLeft === 0, '코드=' + r.code + ' ' + JSON.stringify(r.body).slice(0, 200));
 
   reset({ actor: 'user-2' });
   r = await patch({ credits: TEAM, brands: FOUR });
@@ -334,7 +337,7 @@ async function patch(body) {
     '두 벌이 되면 화면의 남은 횟수와 서버 판정이 갈린다');
 
   console.log('\n=== ⑩ 목록 API ===');
-  reset({ plan: 'standard' });
+  reset({ plan: 'free' });
   {
     const res = mkRes();
     await mine({ method: 'GET', query: {}, headers: {} }, res);

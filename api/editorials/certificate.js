@@ -16,6 +16,7 @@ const { handleCors } = require('../_lib/cors');
 const { requireAuth } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { findYearlyPremiumSubscription } = require('../_lib/premiumFeeWaiver');
+const { hasActivePlan } = require('../_lib/subscriptionAccess');
 
 const SITE = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
 const UUID = /^[0-9a-f-]{32,36}$/i;
@@ -90,11 +91,13 @@ module.exports = async function handler(req, res) {
   try {
     const owned = await loadOwned(id);
     if (!owned || owned.ownerId !== user.id) return res.status(404).json({ message: 'Editorial not found' });
+    // 2026-10-03 사다리: 스탠다드·프리미엄(월간) = 기본형(검증 코드 없음), 연간 프리미엄 = 검증 코드형.
+    const { data: p } = await supabaseAdmin.from('profiles').select('display_name, name, instagram, subscription_plan, subscription_status').eq('id', user.id).maybeSingle();
     const yearly = await findYearlyPremiumSubscription(supabaseAdmin, user.id);
-    if (!yearly) return res.status(403).json({ code: 'not_yearly_premium', message: 'Publication certificates are a Yearly Premium benefit.' });
-    const code = certCode(owned.ed.id, user.id);
-    if (!code) return res.status(500).json({ message: 'certificate signing not configured' });
-    const { data: p } = await supabaseAdmin.from('profiles').select('display_name, name, instagram').eq('id', user.id).maybeSingle();
+    const paid = hasActivePlan(p || {}, 'standard');
+    if (!yearly && !paid) return res.status(403).json({ code: 'not_subscribed', message: 'Publication certificates are a Standard/Premium benefit (verification code with Yearly Premium).' });
+    const code = yearly ? certCode(owned.ed.id, user.id) : null;
+    if (yearly && !code) return res.status(500).json({ message: 'certificate signing not configured' });
     const ed = owned.ed;
     const credits = Array.isArray(ed.credits) ? ed.credits.slice(0, 40).map((c) => ({
       name: String((c && c.name) || '').slice(0, 80),
@@ -103,14 +106,15 @@ module.exports = async function handler(req, res) {
     })) : [];
     return res.status(200).json({
       certificate: {
-        code,
+        code,                       // null = 기본형(검증 코드 없음)
+        verified: !!code,
         editorialId: ed.id,
         title: ed.title_en || ed.title || '',
         titleOriginal: ed.title || '',
         issue: ed.issue || '',
         publishedDate: String(ed.published_date || '').slice(0, 10),
         url: SITE + '/editorial/' + encodeURIComponent(ed.slug),
-        verifyUrl: SITE + '/api/editorials/certificate?id=' + encodeURIComponent(ed.id) + '&verify=' + code,
+        verifyUrl: code ? (SITE + '/api/editorials/certificate?id=' + encodeURIComponent(ed.id) + '&verify=' + code) : null,
         creator: (p && (p.display_name || p.name)) || '',
         creatorInstagram: (p && p.instagram) || '',
         credits,

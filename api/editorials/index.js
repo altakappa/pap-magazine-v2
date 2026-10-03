@@ -235,6 +235,14 @@ module.exports = async function handler(req, res) {
         // QA #202 — batch-resolve created_by / updated_by into
         // _creator / _editor objects (one extra query, not N).
         await attachAuthorship(data);
+        // 2026-10-03 연간 혜택: 관리자 목록에 "제출자가 연간 프리미엄" 표시(_submitter_yearly). 이달의 에디토리얼 후보 정렬에 쓴다.
+        if (isAdminList) {
+          try {
+            const { yearlySubmitterEditorialIds } = require('../_lib/castingCall');
+            const ys = await yearlySubmitterEditorialIds(supabaseAdmin, data);
+            for (const row of data) row._submitter_yearly = ys.has(row.id);
+          } catch (_) { /* 표시 실패는 무시 */ }
+        }
       }
 
       /* ── 열람 게이트 (2026-08-21) ─────────────────────────────
