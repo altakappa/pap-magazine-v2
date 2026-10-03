@@ -34,6 +34,31 @@ module.exports = async function handler(req, res) {
       const list = camp && camp.payload && Array.isArray(camp.payload.theme_candidates) ? camp.payload.theme_candidates : [];
       candidates = list.map((c) => ({ keywords: c.keywords || [], trend: c.trend || '', source: c.source || '', ko: (c.i18n && c.i18n.ko) || null, en: (c.i18n && c.i18n.en) || null }));
       candidatesMonth = camp ? String(camp.name || '').replace('creator-monthly-', '') : null;
+      // 2026-10-03 도메니코 "무드보드도 같이": 후보마다 PAP 아카이브(최근 18개월 게재작) 6컷. 키워드별 정규식으로 제목·설명·태그를 훑는다.
+      // 바깥 이미지가 아니라 우리가 실은 화보만 쓴다 — 크리에이터가 보는 건 "PAP 에서 이 주제가 어떻게 보였나" 다.
+      if (candidates.length) {
+        const since = new Date(Date.now() - 540 * 86400000).toISOString().slice(0, 10);
+        const { data: eds } = await supabaseAdmin.from('editorials')
+          .select('id, slug, title, cover_image, thumbnail, description, description_en, tags, published_date')
+          .eq('status', 'published').not('cover_image', 'is', null).gte('published_date', since)
+          .order('published_date', { ascending: false }).limit(400);
+        const KW = {
+          DREAMY: /dream|ethereal|haze|soft|몽환|꿈/i, SURREALISM: /surreal|uncanny|strange|fantasy|familiar|초현실|낯/i,
+          STORYTELLING: /story|narrative|film|cinema|scene|memory|chapter|이야기|영화|기억/i, CREATIVITY: /colou?r|bold|art|experimental|vivid|saturat|채도|색|실험/i,
+        };
+        const used = new Set();
+        for (const c of candidates) {
+          const res = (c.keywords && c.keywords.length ? c.keywords : Object.keys(KW)).map((k) => KW[String(k).toUpperCase()]).filter(Boolean);
+          const pick = [];
+          for (const e of (eds || [])) {
+            if (used.has(e.id)) continue;
+            const txt = [e.title, e.description_en, e.description, (e.tags || []).join(' ')].join(' ');
+            if (res.some((r) => r.test(txt))) { pick.push({ slug: e.slug, title: e.title, image: e.thumbnail || e.cover_image }); used.add(e.id); }
+            if (pick.length === 6) break;
+          }
+          c.moodboard = pick;
+        }
+      }
     } catch (_) { /* 후보 없음 */ }
     return res.status(200).json({ calls: data || [], candidates, candidatesMonth });
   }

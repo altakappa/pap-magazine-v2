@@ -16128,6 +16128,8 @@ async function loadCastingCalls(){
           h+='<div style="padding:10px 12px;border:1px solid var(--line);border-radius:6px"><div style="font-weight:600">'+esc(ko.title||'')+'</div>'
             +'<div style="font-size:12px;color:var(--text3);margin:4px 0">'+esc(ko.body||'')+'</div>'
             +'<div style="font-size:11px;color:var(--text3)">'+esc(kws)+(c.trend?' · 트렌드: '+esc(c.trend):'')+'</div>'
+            // 2026-10-03 무드보드: PAP 아카이브 6컷 (클릭 → 화보). 외부 이미지 아님.
+            +((c.moodboard&&c.moodboard.length)?'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:8px 0 2px;max-width:560px">'+c.moodboard.map(function(m){ return '<a href="/editorial/'+encodeURIComponent(m.slug||'')+'" target="_blank" rel="noopener" title="'+esc(m.title||'')+'" style="display:block;aspect-ratio:4/5;overflow:hidden;background:var(--bg3)"><img loading="lazy" src="'+safeUrl(m.image||'')+'" alt="" style="width:100%;height:100%;object-fit:cover"></a>'; }).join('')+'</div>':'')
             +'<button type="button" class="btn btn-primary" style="margin-top:6px;padding:3px 10px;font-size:11px" onclick="useThemeCandidate('+i+')">이 후보로 채우기</button></div>';
         });
         h+='</div>';
