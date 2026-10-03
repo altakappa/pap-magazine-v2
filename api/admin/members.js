@@ -75,6 +75,7 @@ module.exports = async function handler(req, res) {
         subscriptionStatus: m.subscription_status || m.status || 'inactive',
         location: m.location || '',
         instagram: m.instagram || '',
+        instagramVerified: !!m.instagram_verified_at,   // 2026-10-03 확인 도장
         joinedAt: m.created_at,
         submissionCount: submissionMap[m.id] || 0,
         pullletterCount: pullletterMap[m.id] || 0,

@@ -585,6 +585,15 @@ function exportMembersCSV(){
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pap_members_'+new Date().toISOString().split('T')[0]+'.csv';a.click();
 }
 
+/* 2026-10-03 인스타 아이디 확인 도장 (PATCH /api/admin/member-update {instagramVerified}) */
+async function setMemberIgVerified(id, v){
+  try{
+    var resp=await fetch(_apiBase+'/admin/member-update',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},body:JSON.stringify({memberId:id,instagramVerified:!!v})});
+    var data=await resp.json(); if(!resp.ok) throw new Error(data.message||'Update failed');
+    var m=allMembers.find(function(x){return x.id===id;}); if(m){ m.instagramVerified=!!v; openMemberModal(id); }
+  }catch(e){ alert('실패: '+e.message); }
+}
+
 /* ── Member Edit Modal ── */
 function openMemberModal(memberId){
   var m=allMembers.find(function(x){return x.id===memberId;});
@@ -592,7 +601,15 @@ function openMemberModal(memberId){
   document.getElementById('memberEditId').value=m.id;
   document.getElementById('memberEditName').textContent=m.name||'(이름 없음)';
   document.getElementById('memberEditEmail').textContent=m.email||'—';
-  document.getElementById('memberEditInsta').textContent=m.instagram||'—';
+  // 2026-10-03 인스타 확인 도장 — 남의 아이디 등록 방지. 도장 없으면 연락 버튼·프리미엄 배지가 안 붙는다.
+  (function(){
+    var el=document.getElementById('memberEditInsta'); if(!el) return;
+    if(!m.instagram){ el.textContent='—'; return; }
+    var sid=String(m.id||'').replace(/[^a-zA-Z0-9-]/g,'');
+    el.innerHTML=esc(m.instagram)+(m.instagramVerified
+      ? ' <span style="color:#2ecc71;font-size:11px">✓ 확인됨</span> <button type="button" class="btn" style="margin-left:8px;padding:2px 8px;font-size:11px" onclick="setMemberIgVerified(\''+sid+'\',false)">도장 지우기</button>'
+      : ' <span style="color:#ffb347;font-size:11px">확인 대기</span> <a href="https://www.instagram.com/'+esc(String(m.instagram).replace(/^@/,''))+'/" target="_blank" rel="noopener" style="margin-left:6px;font-size:11px">인스타 보기</a> <button type="button" class="btn btn-primary" style="margin-left:8px;padding:2px 8px;font-size:11px" onclick="setMemberIgVerified(\''+sid+'\',true)">IG 확인 도장</button>');
+  })();
   document.getElementById('memberEditLocation').textContent=m.location||'—';
   // Member detail modal — full date + time down to the second.
   document.getElementById('memberEditJoined').textContent=_formatJoinedDateTime(m.joinedAt||m.created_at,'long');

@@ -10,6 +10,7 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { countryFromRequest } = require('../_lib/emailLocale');
 const { normalizeHandle } = require('../_lib/collaborators');
 const { normalizeCountryCode, normalizeCity } = require('../_lib/countries');   // 2026-09-12 자동 매치용 코드 저장
+const { alertInstagramClaim } = require('../_lib/instagramClaimAlert');       // 2026-10-03 가짜 아이디 걸러내기(알림)
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -43,6 +44,7 @@ module.exports = async function handler(req, res) {
       // 2026-09-12 — 인스타그램 아이디는 공동작업자 지정의 열쇠다(도메니코: 프리미엄 회원만 지정 가능).
       // 정규화(소문자·@ 제거·URL 벗김)해서 저장하고, 다른 계정이 이미 쓰는 아이디는 거부한다 —
       // 한 아이디가 두 계정에 걸리면 누가 프리미엄인지 판정할 수 없다.
+      let _igChanged = null;
       if (instagram !== undefined) {
         const raw = String(instagram == null ? '' : instagram).trim();
         if (raw === '') {
@@ -62,6 +64,10 @@ module.exports = async function handler(req, res) {
           }
           if (!_haveCountry || !_haveCity) return res.status(400).json({ code: 'ACTIVITY_LOCATION_REQUIRED', message: 'Please enter your main country and city of activity together with your Instagram handle' });
           updates.instagram = h;
+          // 2026-10-03 아이디가 바뀌면 확인 도장을 지운다(새 아이디는 다시 확인). 같은 아이디면 그대로.
+          const { data: prev } = await supabaseAdmin.from('profiles').select('instagram').eq('id', user.id).maybeSingle();
+          const prevHandle = (prev && prev.instagram) || null;
+          if (prevHandle !== h) { updates.instagram_verified_at = null; _igChanged = { previous: prevHandle, handle: h }; }
         }
       }
 
@@ -75,6 +81,8 @@ module.exports = async function handler(req, res) {
       if (error) {
         return res.status(500).json({ message: 'Failed to update profile' });
       }
+      // 2026-10-03 새 아이디·바뀐 아이디 → 도메니코에게 텔레그램(크레딧에 적힌 화보 수 포함). 응답은 안 기다린다.
+      if (_igChanged) alertInstagramClaim(supabaseAdmin, { email: profile.email, userId: user.id, handle: _igChanged.handle, previous: _igChanged.previous }).catch(() => {});
 
       return res.status(200).json({
         user: {
@@ -87,6 +95,7 @@ module.exports = async function handler(req, res) {
           website: profile.website,
           location: profile.location,
           instagram: profile.instagram,
+          instagramVerified: !!profile.instagram_verified_at,
           activityCountry: profile.activity_country || '',
           activityCity: profile.activity_city || '',
           avatarUrl: profile.avatar_url,
@@ -139,6 +148,7 @@ module.exports = async function handler(req, res) {
           website: profile.website,
           location: profile.location,
           instagram: profile.instagram,
+          instagramVerified: !!profile.instagram_verified_at,
           activityCountry: profile.activity_country || '',
           activityCity: profile.activity_city || '',
           avatarUrl: profile.avatar_url,

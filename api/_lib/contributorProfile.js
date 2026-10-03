@@ -98,10 +98,11 @@ async function findPremiumCreator(db, handle) {
   try {
     const { data } = await db
       .from('profiles')
-      .select('id, email, display_name, instagram, activity_country, activity_city, bio, subscription_plan, subscription_status, role')
+      .select('id, email, display_name, instagram, instagram_verified_at, activity_country, activity_city, bio, subscription_plan, subscription_status, role')
       .eq('instagram', h)
       .limit(2);
-    const rows = (data || []).filter(isPremiumProfile);
+    // 2026-10-03 확인 도장(instagram_verified_at) 없으면 프리미엄이어도 배지·연락 버튼을 안 붙인다(남의 아이디 방지).
+    const rows = (data || []).filter((p) => isPremiumProfile(p) && !!p.instagram_verified_at);
     return rows.length ? rows[0] : null;
   } catch (_) { return null; }
 }
@@ -113,8 +114,9 @@ async function premiumCreatorsByHandle(db) {
   try {
     const { data } = await db
       .from('profiles')
-      .select('id, display_name, instagram, activity_country, activity_city, subscription_plan, subscription_status')
+      .select('id, display_name, instagram, instagram_verified_at, activity_country, activity_city, subscription_plan, subscription_status')
       .not('instagram', 'is', null)
+      .not('instagram_verified_at', 'is', null)   // 2026-10-03 도장 있는 아이디만
       .like('subscription_plan', 'premium%')
       .in('subscription_status', ['active', 'trialing']);
     for (const p of (data || [])) {

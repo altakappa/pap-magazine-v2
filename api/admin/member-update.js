@@ -48,7 +48,7 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ message: 'Auth failed' });
   }
 
-  const { memberId, role, subscriptionPlan, subscriptionStatus } = req.body;
+  const { memberId, role, subscriptionPlan, subscriptionStatus, instagramVerified } = req.body;
 
   if (!memberId) {
     return res.status(400).json({ message: 'memberId is required' });
@@ -114,6 +114,11 @@ module.exports = async function handler(req, res) {
       // Try known column name variants
       if (cols.includes('subscription_plan')) updates.subscription_plan = subscriptionPlan;
       else if (cols.includes('plan')) updates.plan = subscriptionPlan;
+    }
+
+    // 2026-10-03 인스타 아이디 확인 도장 — 관리자가 보고 찍는다. false 면 지운다.
+    if (instagramVerified !== undefined && cols.includes('instagram_verified_at')) {
+      updates.instagram_verified_at = instagramVerified ? new Date().toISOString() : null;
     }
 
     if (subscriptionStatus !== undefined) {
