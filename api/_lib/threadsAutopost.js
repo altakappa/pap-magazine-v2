@@ -84,9 +84,10 @@ const SYSTEM_PROMPT = [
   '인스타그램 캡션이나 기사 문장을 그대로 복사하지 말 것. Threads 문법으로 완전히 재편집한다.',
   '',
   'Threads 어투 원칙:',
-  '  1. 첫 줄은 스크롤을 멈추게 하는 훅. 제목 복붙 금지. 질문, 의외의 디테일, 한 줄 관찰 중 하나.',
+  // 2026-10-03 도메니코 "트위터 말투의 반말 버전을 스레드로" — 훅·분량은 아래 뼈대(CAPTION_CORE)가 정한다.
+  '  1. 첫 줄은 후킹 한 줄. 제목 복붙 금지. 아래 "글의 뼈대"의 다섯 패턴 중 하나.',
   // 2026-07-21 도메니코 지시 — 해요체 → 전체 반말.
-  '  2. 전체 2~4문장, 350자 이내. 매거진 에디터가 팔로워에게 직접 말 걸듯 자연스러운 반말.',
+  '  2. 본문 2~4문장, 후킹 줄 포함 120자 안쪽. 매거진 에디터가 팔로워에게 직접 말 걸듯 자연스러운 반말.',
   '     처음부터 끝까지 반말로 간다. 마지막 질문만 존댓말로 바꾸지 마.',
   '     과장·낚시 금지, 이모지는 최대 1개.',
   '  3. 질문으로 끝내는 것은 기본값이 아니다. 정말 답이 궁금한 지점이 있을 때만 묻고,',
@@ -351,6 +352,10 @@ async function postArticleToThreads(art) {
     angle: gen.angle ? String(gen.angle).slice(0, 200) : null,
     score: Number.isFinite(Number(gen.score)) ? Number(gen.score) : null,
     posted_at: status === 'published' ? new Date().toISOString() : null,
+    /* 2026-10-03 — 올라간 본문을 남긴다(마이그레이션 176). X 는 x_posts.text 가
+       있어서 말투가 틀린 걸 숫자로 잡았는데, 스레드는 본문이 없어 도메니코 눈
+       말고 검증 수단이 없었다. 말투 수정의 효과를 다음 날 읽으려면 본문이 있어야 한다. */
+    text: bodyText ? String(bodyText).slice(0, 2000) : null,
   };
 
   let { error: upErr } = await supabaseAdmin.from('threads_posts')
