@@ -80,6 +80,27 @@ function isSubmissionFeeEvent(data) {
  * carries `submissionType` — recomputed server-side from the persisted looks, so
  * it can't be spoofed by the client. Returns null on any parse issue.
  */
+/* 2026-10-03 도메니코 "두 번째 유료 서브미션 반값" — 연간 프리미엄이 면제(1회)를 쓴 뒤 내는 €380 유형은 50%.
+   제출 때 서버가 판정해 description.feeDiscount 로 굳힌다(위조 불가). 가격을 쓰는 모든 곳은 effectiveFeeCents 를 본다. */
+const YEARLY_SECOND_DISCOUNT_PCT = 50;
+function storedFeeDiscount(sub) {
+  if (!sub || sub.description == null) return null;
+  try {
+    const desc = typeof sub.description === 'string' ? JSON.parse(sub.description) : sub.description;
+    const d = desc && desc.feeDiscount;
+    if (!d || !Number(d.pct) || Number(d.pct) <= 0 || Number(d.pct) > 100) return null;
+    return { pct: Number(d.pct), reason: String(d.reason || ''), periodEnd: d.periodEnd || null };
+  } catch (_) { return null; }
+}
+/** 저장된 유형의 정가에서 저장된 할인(있으면)을 뺀 실제 청구액(센트). 유료 유형이 아니면 0. */
+function effectiveFeeCents(sub) {
+  const base = feeForType(storedSubmissionType(sub));
+  if (!base) return 0;
+  const d = storedFeeDiscount(sub);
+  if (!d) return base;
+  return Math.round(base * (100 - d.pct) / 100);
+}
+
 function storedSubmissionType(sub) {
   if (!sub || sub.description == null) return null;
   try {
@@ -191,6 +212,9 @@ async function handleSubmissionFeeTransaction(data, db) {
 }
 
 module.exports = {
+  YEARLY_SECOND_DISCOUNT_PCT,
+  storedFeeDiscount,
+  effectiveFeeCents,
   handleSubmissionFeeTransaction,
   isSubmissionFeeEvent,
   feeForType,

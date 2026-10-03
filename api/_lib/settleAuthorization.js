@@ -51,7 +51,7 @@ async function settleSubmissionAuthorization(db, sub, status, notify) {
   const nowIso = new Date().toISOString();
 
   if (status === 'approved') {
-    const cents = feeForType(storedSubmissionType(sub));
+    const cents = require('./submissionPayment').effectiveFeeCents(sub);   // 2026-10-03 할인 반영
     if (!cents) {
       await say('🚨 승인했는데 금액을 산출할 수 없다 — 수동 확인 필요 submission=' + sub.id
         + ' auth=' + authId);

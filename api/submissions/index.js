@@ -22,7 +22,7 @@ const { isPremiumUser, resolveCoverIndex } = require('../_lib/premiumCover');   
 const { brandRolesIn } = require('../_lib/brandRoleGuard');   // 2026-09-12 브랜드/디자이너는 팀 크레딧 금지
 const { checkPullLetterForSubmission, linkPullLetterToSubmission } = require('../_lib/pullLetterLink');   // 2026-09-13 풀레터 후속 제출
 const englishOnly = require('../_lib/submissionEnglishOnly');   // 전부 영어로 + 자동번역 방어 (POST·PUT 공용)
-const { feeForType } = require('../_lib/submissionPayment');
+const { feeForType, YEARLY_SECOND_DISCOUNT_PCT } = require('../_lib/submissionPayment');
 const { checkFeeWaiver, waiverRecord, WAIVED_STATUS } = require('../_lib/premiumFeeWaiver');
 const { premiumSubmissionAlertText } = require('../_lib/premiumReviewSla');   // 2026-09-13 프리미엄 우선 심사(2영업일)   // 2026-09-13 연간 프리미엄 €380 1회 면제
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
@@ -241,9 +241,12 @@ module.exports = async function handler(req, res) {
       // 2026-09-13 도메니코 — 연간 프리미엄 회원은 €380(소룩) 서브미션 1회 면제(구독 연도당). €790 브랜디드는 제외.
       // 서버가 판정하고 payment_status='waived' 로 저장 → PayPal 승인 단계를 건너뛴다. 폼은 응답의 feeWaived 를 본다.
       let _feeWaiver = null;
+      // 2026-10-03 도메니코 "두 번째 유료 서브미션 반값": 연간 프리미엄인데 면제를 이미 썼으면 €380 → 50%.
+      let _feeDiscount = null;
       if (feeForType(submissionType) === 38000) {
         const _fw = await checkFeeWaiver(supabaseAdmin, user.id, submissionType);
         if (_fw && _fw.eligible) _feeWaiver = _fw;
+        else if (_fw && _fw.reason === 'already_used') _feeDiscount = { pct: YEARLY_SECOND_DISCOUNT_PCT, reason: 'yearly_second', periodEnd: _fw.periodEnd || null, usedAt: _fw.usedAt || null };
       }
       // 2026-09-05 — 역할도 같은 이유로 표준화(摄影师 → Photographer 등).
       // 모르는 자유입력 역할은 normalizeRole 이 원본을 보존한다.
@@ -278,6 +281,7 @@ module.exports = async function handler(req, res) {
             needsCreditReview: !!_cls.needsCreditReview,
             reviewReason: _cls.reviewReason || null,
             feeWaiver: _feeWaiver ? waiverRecord(_feeWaiver) : null,   // 2026-09-13 연간 프리미엄 €380 면제 기록
+            feeDiscount: _feeDiscount,   // 2026-10-03 연간 2번째 유료 서브미션 50% (서버 판정, 결제 전 과정이 이 값을 본다)
           }),
           file_urls: [...lookUrls, ...additionalUrls],
           status: 'pending',
@@ -354,7 +358,7 @@ module.exports = async function handler(req, res) {
             + '\nsubmission=' + submission.id);
         } catch (_) {}
       }
-      return res.status(201).json({ submission, feeWaived: !!_feeWaiver });
+      return res.status(201).json({ submission, feeWaived: !!_feeWaiver, feeDiscount: _feeDiscount, feeCents: _feeWaiver ? 0 : require('../_lib/submissionPayment').effectiveFeeCents(submission) });
     } catch (error) {
       try {
         console.error('Create submission error:', {

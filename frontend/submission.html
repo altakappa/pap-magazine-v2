@@ -1060,7 +1060,7 @@ function navigateWithInterstitial(url){
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
 <script src="/pap-name-validator.js?v=5" defer></script>
 <script src="submission-terms.js?v=6"></script>
-<script src="/pap-submission-fee.js?v=9"></script>
+<script src="/pap-submission-fee.js?v=10"></script>
 <script src="/pap-submission-fee-consent.js?v=6"></script>
 <script>
 var lookCount=0;
@@ -1373,7 +1373,7 @@ function _svDetailBody(s, p, inModal){
               // 아래 추가옵션(addon)은 Paddle 전용 결제(2026-07-27) — PayPal 제거.
               var _subType = (desc && desc.submissionType) || '';
               var _payStatus = s.payment_status || '';
-              var baseFeeBlock = _baseFeeApprovalBlock(s.id, _subType, _payStatus);
+              var baseFeeBlock = _baseFeeApprovalBlock(s.id, _subType, _payStatus, s.feeCents);
               return '<div style="margin-top:24px;padding:20px 22px;background:rgba(255,255,255,.03);border-left:3px solid rgba(201,168,106,.7);font-size:13px;line-height:1.75;color:rgba(255,255,255,.85)">'+
                 '<p style="margin:0 0 12px">'+_apT('greeting',{name:_esc(s.submitterName||'')})+'</p>'+
                 '<p style="margin:0 0 12px">'+_apT('apScheduled',{sched:_esc(schedTxt)})+'</p>'+

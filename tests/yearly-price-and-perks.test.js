@@ -170,11 +170,11 @@ console.log('\n=== 10. 구독 페이지: 연간 프리미엄 혜택 상자 ===')
   t('무료 회원도 "지정" 가능 (상자·카드)', /PAP 회원이면 무료 회원도 지정 가능 · 제출 후에도 수정/.test(D.ko.ypCollabSub) && /무료 회원도 지정 가능 · 제출 후 수정 가능/.test(D.ko.features.prem[1].text));
   t('€790 유형 제외를 밝힌다 (면제는 €380 유형만)', langs.every((l) => /€790/.test(D[l].ypWaiverSub)));
   t('공동작업자: 5명 · 제출 후 수정', langs.every((l) => /5/.test(D[l].ypCollabSub)));
-  t('프리미엄 카드 맨 위 네 줄 = €380 면제 · 공동작업자 · 캐스팅 콜 7일 · 인증서 (y:true), 9블록', (() => {
+  t('프리미엄 카드 맨 위 다섯 줄 = €380 면제 · 공동작업자 · 캐스팅 콜 7일 · 인증서 · 2번째 반값 (y:true), 9블록', (() => {
     const lists = sub.match(/prem: \[\n[\s\S]*?\n    \]/g) || [];
     return lists.length === 9 && lists.every((x) => {
       const it = x.split('\n').slice(1, -1);
-      return /y:true[^\n]*€380/.test(it[0]) && /y:true[^\n]*5/.test(it[1]) && /y:true[^\n]*7/.test(it[2]) && /y:true/.test(it[3]) && it.slice(4).every((y) => !/y:true/.test(y));
+      return /y:true[^\n]*€380/.test(it[0]) && /y:true[^\n]*5/.test(it[1]) && /y:true[^\n]*7/.test(it[2]) && /y:true/.test(it[3]) && /y:true[^\n]*190/.test(it[4]) && it.slice(5).every((y) => !/y:true/.test(y));
     });
   })());
   t('renderFeatures: y 줄은 li.yp (금색)', /if \(f\.on && f\.y\) \{\s*html \+= '<li class="yp">'/.test(sub) && /\.plan-features li\.yp\{color:#ffd43b/.test(sub));

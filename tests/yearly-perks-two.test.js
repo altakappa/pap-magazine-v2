@@ -45,7 +45,7 @@ t('2. 마이페이지 사전 9개 언어 certBtn·certLocked·certFail', ['certB
 // ── 구독 페이지 ──
 const sb = R('frontend/subscribe.html');
 t('구독: 연간 상자 4칸(€380·5·7·PDF) + 사전 9개 언어', /class="yp-big">7</.test(sb) && /class="yp-big">PDF</.test(sb) && ['ypCasting','ypCastingSub','ypCert','ypCertSub'].every((k) => (sb.match(new RegExp(k + ":'", 'g')) || []).length === 9));
-t('구독: 프리미엄 표 연간 줄(y:true) 9개 언어 × 4', (sb.match(/y:true, text:'/g) || []).length === 36);
+t('구독: 프리미엄 표 연간 줄(y:true) 9개 언어 × 5 (10/3 두 번째 반값 추가)', (sb.match(/y:true, text:'/g) || []).length === 45);
 t('구독: ru 사전 블록이 하나(죽은 중복 제거) + 10/1 키가 살아있는 블록에', (sb.match(/ypTag:'/g) || []).length === 9 && /\nru:\{ ctaSwitchYearly:[^\n]*\n  business:'БИЗНЕС'/.test(sb));
 t('구독 사전 버전 올림 (≥7)', (() => { const m = sb.match(/content="subscribe" data-v="(\d+)"/); return m && Number(m[1]) >= 7; })());
 // ── 월간 지렛대 1: 화보 공개 메일에 티어시트 한 줄 (무료 회원만) ──

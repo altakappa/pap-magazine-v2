@@ -58,9 +58,11 @@ function _payT(k,amt){
 // Build the approval-block base-fee sub-block. Returns '' for free / legacy /
 // unknown types (safe no-op). Pure string builder — no side effects.
 //   paid_few_looks → €380 · branded → €790
-function _baseFeeApprovalBlock(submissionId, submissionType, paymentStatus){
+function _baseFeeApprovalBlock(submissionId, submissionType, paymentStatus, feeCents){
   if(submissionType!=='paid_few_looks' && submissionType!=='branded') return '';
   var amt = submissionType==='branded' ? '€790' : '€380';
+  // 2026-10-03 서버가 준 실제 청구액(연간 2번째 유료 서브미션 50% 등)이 있으면 그 값을 보인다. 정가는 서버 단일 소스.
+  if(Number(feeCents)>0){ var _c=Number(feeCents); amt='€'+(_c%100===0 ? String(_c/100) : (_c/100).toFixed(2)); }
   // 이미 결제됨(서버 payment_status) 또는 이번 세션에서 방금 결제 완료(로컬 잠금 플래그)
   // → 버튼 대신 '결제 완료 · 게재 대기' 상태. 로컬 플래그는 checkout.completed 시 설정되어
   //   같은 세션에서 모달을 다시 열어도 버튼이 재노출되지 않게 한다(이중청구 방지).

@@ -879,7 +879,7 @@ module.exports = async function handler(req, res) {
         if (status === 'approved' && String(submission.payment_status || '') !== 'waived') {
           try {
             const _d = submission.description ? JSON.parse(submission.description) : {};
-            _feeCents = feeForType(_d && _d.submissionType);
+            _feeCents = require('../../_lib/submissionPayment').effectiveFeeCents({ description: _d });   // 2026-10-03 할인 반영
           } catch (_) { _feeCents = null; }
         }
         // 2026-09-13 도메니코 — 승인 메일에 프리미엄 업셀(비프리미엄에게만). 템플릿이 isPremium 을 보고 블록을 넣는다.

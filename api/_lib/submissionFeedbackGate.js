@@ -49,6 +49,8 @@ function shapeForOwner(row, profile) {
   try { _desc = row.description ? (typeof row.description === 'string' ? JSON.parse(row.description) : row.description) : {}; } catch (_) { _desc = {}; }
   out.feedbackRequestedAt = (_desc && _desc.feedbackRequestedAt) || null;
   out.feedbackWritten = hasRealFeedback(row.admin_notes);
+  // 2026-10-03 실제 청구액(할인 반영) — 화면 버튼이 €380 대신 이 값을 보인다. 유료 유형 아니면 0.
+  try { out.feeCents = require('./submissionPayment').effectiveFeeCents(row); } catch (_) { out.feeCents = 0; }
   out.canRequestFeedback = canSeeFeedback(profile) && FEEDBACK_REQUESTABLE_STATUSES.indexOf(row.status) !== -1 && !out.feedbackWritten && !out.feedbackRequestedAt;
   // 자동 반려문만 있는 건 "피드백 없음" 으로 보여준다 — 그래야 신청 버튼이 의미를 가진다.
   if (seeFeedback && !out.feedbackWritten) out.admin_notes = null;

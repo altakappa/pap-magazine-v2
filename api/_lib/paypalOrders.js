@@ -74,9 +74,12 @@ function resolveAmount(sub, kind, addon) {
   }
   // 기본 게재료 — 저장된(위조 불가) 유형으로만 산출
   const type = storedSubmissionType(sub);
-  const cents = feeForType(type);
-  if (!cents) return { error: 'not_a_paid_submission' };
-  return { cents, label: 'PAP MAGAZINE publication fee — ' + type };
+  if (!feeForType(type)) return { error: 'not_a_paid_submission' };
+  // 2026-10-03 저장된 할인(연간 2번째 반값)을 반영한 실제 청구액. 주문·승인·캡처가 전부 이 값을 쓴다.
+  const { effectiveFeeCents, storedFeeDiscount } = require('./submissionPayment');
+  const cents = effectiveFeeCents(sub);
+  const d = storedFeeDiscount(sub);
+  return { cents, label: 'PAP MAGAZINE publication fee — ' + type + (d ? ' (' + d.pct + '% off)' : '') };
 }
 
 /** custom_id 로 되돌려 받을 식별자. PayPal 은 127자 제한이 있어 짧게 쓴다. */

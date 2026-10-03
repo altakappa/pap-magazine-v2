@@ -54,7 +54,7 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   const idx = read('api/submissions/index.js');
   ok('POST: €380 유형일 때만 checkFeeWaiver, 자격 있으면 _feeWaiver', /if \(feeForType\(submissionType\) === 38000\) \{[\s\S]{0,200}checkFeeWaiver\(supabaseAdmin, user\.id, submissionType\)/.test(idx));
   ok('payment_status: 면제면 waived, 아니면 종전 규칙', /payment_status: _feeWaiver \? WAIVED_STATUS : \(feeForType\(submissionType\) \? 'awaiting_authorization' : 'none'\)/.test(idx));
-  ok('description.feeWaiver 기록 + 응답 feeWaived + 텔레그램(await)', /feeWaiver: _feeWaiver \? waiverRecord\(_feeWaiver\) : null/.test(idx) && /json\(\{ submission, feeWaived: !!_feeWaiver \}\)/.test(idx) && /await sendTextToTelegramSafe\('🎁 연간 프리미엄 €380 면제 적용/.test(idx));
+  ok('description.feeWaiver 기록 + 응답 feeWaived + 텔레그램(await)', /feeWaiver: _feeWaiver \? waiverRecord\(_feeWaiver\) : null/.test(idx) && /json\(\{ submission, feeWaived: !!_feeWaiver, feeDiscount: _feeDiscount/.test(idx) && /await sendTextToTelegramSafe\('🎁 연간 프리미엄 €380 면제 적용/.test(idx));
   ok('GET /api/submissions/fee-waiver 가 같은 lib 로 답한다', /checkFeeWaiver\(supabaseAdmin, user\.id\)/.test(read('api/submissions/fee-waiver.js')) && /requireAuth\(req, res\)/.test(read('api/submissions/fee-waiver.js')));
   const rv = read('api/submissions/[id]/review.js');
   ok('review.js: 승인 게이트는 awaiting_authorization 만 막는다(waived 통과)', /String\(prevPaymentStatus\) === 'awaiting_authorization'/.test(rv) && !/prevPaymentStatus\) === 'waived'/.test(rv));
@@ -75,7 +75,7 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   ok('마이페이지: waived 는 payment_required 가 아니다', /s\.payment_status !== 'paid' && s\.payment_status !== 'waived'\) return 'payment_required'/.test(mp));
   const adm = read('frontend/pap-admin.js');
   ok('관리자: waived 배지 + 미결제 판정 4곳에서 waived 제외', /paymentStatus==='waived'/.test(adm) && (adm.match(/payment_status ?!== ?'waived'/g) || []).length >= 4);
-  ok('캐시버스트: fee v9 · consent ≥5 · admin ≥159', /pap-submission-fee\.js\?v=9/.test(sub) && /pap-submission-fee\.js\?v=9/.test(mp) && /pap-submission-fee-consent\.js\?v=([5-9]|[1-9]\d)"/.test(sub) && /pap-admin\.js\?v=(159|1[6-9]\d)/.test(read('frontend/admin.html')));
+  ok('캐시버스트: fee ≥9 · consent ≥5 · admin ≥159', /pap-submission-fee\.js\?v=(9|[1-9]\d)/.test(sub) && /pap-submission-fee\.js\?v=(9|[1-9]\d)/.test(mp) && /pap-submission-fee-consent\.js\?v=([5-9]|[1-9]\d)"/.test(sub) && /pap-admin\.js\?v=(159|1[6-9]\d)/.test(read('frontend/admin.html')));
 
   console.log('\n=== 1. 심사 우선권 — premiumReviewSla ===');
   const S = require(path.join(ROOT, 'api', '_lib', 'premiumReviewSla'));

@@ -113,7 +113,7 @@ async function _maybeSendApprovalEmail(editorialRow, opts) {
     if (submission.payment_status !== 'paid' && submission.payment_status !== 'waived') {   // 2026-09-13 면제 건은 청구 없음
       try {
         const _d = submission.description ? JSON.parse(submission.description) : {};
-        _feeCents = feeForType(_d && _d.submissionType);
+        _feeCents = require('../_lib/submissionPayment').effectiveFeeCents({ description: _d });   // 2026-10-03 할인 반영
       } catch (_) { _feeCents = null; }
     }
 
