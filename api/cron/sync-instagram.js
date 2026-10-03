@@ -79,7 +79,7 @@ function recordBoost(results, b){
 function isBoostOk(v){
   return /^ok(\(|$)/.test(String(v || ''));
 }
-const { postTweet, isConfigured: xConfigured, buildThreadsParityTweet, uploadArticleMedia } = require('../_lib/xPost');
+const { postTweet, isConfigured: xConfigured, buildThreadsParityTweet, uploadArticleMedia, withIgHandle } = require('../_lib/xPost');
 const { postArticleToThreads } = require('../_lib/threadsAutopost');
 const {
   listRecentMedia,
@@ -359,6 +359,16 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
             if (xConfigured()){
               try {
                 const artForX = { title: generated.title_ko || row.title, url: artUrl, tags: generated.tags, body: generated.body_ko, category: generated.category };
+                /* 2026-10-03 (도메니코 "전부 적용해줘") — 같은 주제가 창 안에 이미
+                   나갔으면 X 는 건너뛴다. 실측 10/2: 지효 루부탱 3건/70분.
+                   스레드·웹은 그대로 — 억제는 X 타임라인 한 곳의 문제다. */
+                const { recentClash } = require('../_lib/xTopicGuard');
+                const clash = await recentClash(generated.tags);
+                if (clash.clash) {
+                  console.log('[sync-ig] X 건너뜀(같은 주제 ' + clash.with + '): ' + clash.key.join('/'));
+                  results.tweets = (results.tweets || []).concat(['건너뜀(같은주제:' + clash.with + ')']);
+                  throw Object.assign(new Error('__x_topic_skip__'), { xTopicSkip: true });
+                }
                 /* 2026-08-18 (도메니코: "포맷은 스레드와 동일하게") — 본문에는
                    링크를 넣지 않고(도달 억제 회피), 링크는 본글 성공 직후
                    첫 답글로 붙인다. threadsAutopost 와 같은 구조, 말투만 X용. */
@@ -372,16 +382,20 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                    업로드가 실패해도 트윗 자체는 내보낸다(그림 없이라도 나가는 게
                    아무것도 안 나가는 것보다 낫다). 대신 결과에 표시를 남긴다. */
                 let xMedia = { mediaIds: [], kind: 'none' };
-                try { xMedia = await uploadArticleMedia(row, {}); }
+                /* teaser: 영상은 앞 7초 + 워터마크 + 엔드카드로 굽는다(xTeaser).
+                   풀 영상은 인스타에만 둔다 — X 에서 인스타로 넘어올 이유를 만든다. */
+                try { xMedia = await uploadArticleMedia(row, {}, { teaser: true }); }
                 catch (e) { console.error('[sync-ig] X 미디어 업로드 실패:', (e && e.message) || e); }
                 /* 2026-08-18 도메니코: "글만 올라가는 게시물은 없었으면" —
                    미디어가 있으면 스레드 패리티(본문+미디어, 링크는 답글),
                    미디어가 없으면 본문에 링크를 넣어 나간다. 어느 경로로도
                    이미지도 링크도 없는 트윗은 불가능하다. */
                 const hasMedia = xMedia.mediaIds.length > 0;
+                /* articleId 를 넘긴다 — x_posts.article_id 가 비어 있으면 주제 가드
+                   (xTopicGuard)가 비교할 지문이 없다. 실측 10/2 트윗 전부 null 이었다. */
                 const tw = hasMedia
-                  ? await postTweet(gen.body, { mediaIds: xMedia.mediaIds })
-                  : await postTweet(gen.bodyWithLink || (gen.body + '\n\n' + gen.url));  // 미디어 없는 경로는 280자 제약이 빡빡해 링크 한 줄 유지 (IG 우선은 답글 경로에서)
+                  ? await postTweet(withIgHandle(gen.body, xMedia.kind), { mediaIds: xMedia.mediaIds, articleId: inserted.id, kind: 'article' })
+                  : await postTweet(gen.bodyWithLink || (gen.body + '\n\n' + gen.url), { articleId: inserted.id, kind: 'article' });  // 미디어 없는 경로는 280자 제약이 빡빡해 링크 한 줄 유지 (IG 우선은 답글 경로에서)
                 let mark = hasMedia ? '' : '(미디어없음→링크본문)';
                 /* 링크 답글 — 미디어 본글이 성공했을 때만. 실패해도 본글은
                    유지하되 반드시 표시한다 (링크가 안 붙으면 웹 유입이 0 —
@@ -407,8 +421,10 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                    상태코드 401/403/429 를 봐야 원인을 가를 수 있다). */
                 if (!tw.ok) console.error('[sync-ig] X 트윗 실패:', tw.status || '', tw.detail || tw.skipped || '');
               } catch (e) {
-                results.tweets = (results.tweets || []).concat(['실패(예외):' + String(e && e.message || e).slice(0, 80)]);
-                console.error('[sync-ig] X 트윗 예외:', e && e.message || e);
+                if (!(e && e.xTopicSkip)) {
+                  results.tweets = (results.tweets || []).concat(['실패(예외):' + String(e && e.message || e).slice(0, 80)]);
+                  console.error('[sync-ig] X 트윗 예외:', e && e.message || e);
+                }
               }
             }
             // Threads 자동 게시 — 실패해도 수집 흐름 계속(스위퍼가 재시도).

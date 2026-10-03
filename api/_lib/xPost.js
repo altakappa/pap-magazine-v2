@@ -486,7 +486,7 @@ async function uploadMedia(bytes, mimeType, creds) {
 }
 
 /** URL 에서 미디어를 받아 업로드(서버는 Supabase 스토리지에 직접 접근 가능). */
-async function uploadMediaFromUrl(url, creds) {
+async function uploadMediaFromUrl(url, creds, opts) {
   try {
     const r = await fetch(String(url), { signal: AbortSignal.timeout(60000) });
     if (!r.ok) return { ok: false, detail: 'fetch ' + r.status };
@@ -497,7 +497,15 @@ async function uploadMediaFromUrl(url, creds) {
       else if (/\.webp($|\?)/i.test(url)) mime = 'image/webp';
       else mime = 'image/jpeg';
     }
-    const buf = Buffer.from(await r.arrayBuffer());
+    let buf = Buffer.from(await r.arrayBuffer());
+    /* 2026-10-03 (도메니코 "전부 적용해줘") — X 에는 풀 영상을 올리지 않는다.
+       앞 7초 + 워터마크 + 엔드카드(@pap_magazine)로 굽는다. 풀 영상은 인스타에만.
+       굽기가 실패하면 null → 원본으로 올린다 (xTeaser 머리말). */
+    if (opts && opts.teaser && String(mime).toLowerCase().startsWith('video/')) {
+      const { makeTeaser } = require('./xTeaser');
+      const teased = await makeTeaser(buf);
+      if (teased) { buf = teased; mime = 'video/mp4'; }
+    }
     return uploadMedia(buf, mime, creds);
   } catch (e) {
     return { ok: false, detail: String(e && e.message || e).slice(0, 150) };
@@ -524,12 +532,12 @@ function selectArticleMedia(article) {
  * 기사 미디어를 X 에 올려 media_ids 를 반환(호출부는 이 값을 postTweet 에 넘긴다).
  * 이미지 여러 장은 순서대로 업로드. 하나라도 실패하면 성공분만 반환하고 detail 에 기록.
  */
-async function uploadArticleMedia(article, creds) {
+async function uploadArticleMedia(article, creds, opts) {
   const sel = selectArticleMedia(article);
   if (sel.kind === 'none') return { ok: true, kind: 'none', mediaIds: [] };
   const ids = [];
   for (const u of sel.urls) {
-    const up = await uploadMediaFromUrl(u, creds);
+    const up = await uploadMediaFromUrl(u, creds, sel.kind === 'video' ? opts : undefined);
     if (up.ok && up.media_id) ids.push(up.media_id);
     else if (sel.kind === 'video') return { ok: false, kind: 'video', mediaIds: [], detail: up.detail || up.skipped };
     // 이미지는 일부 실패해도 성공분으로 진행
@@ -605,8 +613,34 @@ function _withLinkInBody(main, tagLine, url, art) {
   return _clampTitle(art.title) + '\n\n' + url + '\n\n#PAPMAGAZINE';
 }
 
+/**
+ * 영상 트윗 본문에 인스타 안내 한 줄 (2026-10-03, 도메니코 "전부 적용해줘").
+ *
+ * 실측(지효 루부탱 트윗): 2,972 뷰·349 좋아요·147 RT 에 답글의 인스타 링크
+ * 클릭은 8명. 답글은 안 읽힌다. 본문에 **링크 없이** 글자로 적는다 —
+ * 글자는 도달을 안 누른다. 영상이 예고편(xTeaser)이 됐으니 "풀 영상은 인스타"
+ * 가 사실이 된다.
+ *
+ * ⚠️ `@pap_magazine` 이라고 쓰지 않는다. X 에서 @ 는 X 계정 멘션이고 우리 X 는
+ * @papmagazine_ 이다. 엉뚱한 계정으로 링크가 걸린다. 영상 엔드카드(그림)에만
+ * @ 가 들어간다.
+ *
+ * 태그 줄 바로 앞에 끼운다. 280 가중자를 넘으면 안 끼운다(트윗을 잃지 않는다).
+ * @param {string} body  '본문\n\n#태그' 꼴 (buildThreadsParityTweet 의 body)
+ * @param {'video'|'image'|'none'} kind
+ */
+const IG_HANDLE_LINE = '풀 영상은 인스타그램 pap_magazine';
+function withIgHandle(body, kind) {
+  if (kind !== 'video') return body;
+  const s = String(body || '');
+  if (s.includes(IG_HANDLE_LINE)) return s;
+  const i = s.lastIndexOf('\n\n');
+  const out = i > 0 ? s.slice(0, i) + '\n\n' + IG_HANDLE_LINE + s.slice(i) : s + '\n\n' + IG_HANDLE_LINE;
+  return weightedLen(out) <= 280 ? out : s;
+}
+
 module.exports = {
-  weightedLen, URL_PLACEHOLDER, recordTweet,
+  weightedLen, URL_PLACEHOLDER, recordTweet, withIgHandle, IG_HANDLE_LINE,
   buildConversationalTweet, buildThreadsParityTweet,
   postTweet, postPepperitTweet, buildArticleTweet, buildPepperitTweet,
   isConfigured, isPepperitConfigured, requestToken, accessToken,
