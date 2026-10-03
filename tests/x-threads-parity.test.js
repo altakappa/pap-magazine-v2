@@ -53,7 +53,9 @@ function t(n, c, d){ if(c){pass++;console.log('  ✓',n);} else {fail++;console.
   const sync = fs.readFileSync(path.join(__dirname, '..', 'api', 'cron', 'sync-instagram.js'), 'utf8');
   t('미디어 있으면 패리티, 없으면 링크 본문 (글만 트윗 불가)',
     /const hasMedia = xMedia\.mediaIds\.length > 0/.test(sync) &&
-    /hasMedia\s*\n?\s*\? await postTweet\(gen\.body, \{ mediaIds: xMedia\.mediaIds \}\)\s*\n?\s*: await postTweet\(gen\.bodyWithLink/.test(sync));
+    /* 2026-10-03: 미디어 경로는 withIgHandle(gen.body, xMedia.kind) 로 감싸고
+       postTweet 옵션에 articleId 가 붙는다. 성질(미디어→패리티, 무매체→링크 본문)은 그대로. */
+    /hasMedia\s*\n?\s*\? await postTweet\((?:withIgHandle\()?gen\.body(?:, xMedia\.kind\))?, \{ mediaIds: xMedia\.mediaIds[^}]*\}\)\s*\n?\s*: await postTweet\(gen\.bodyWithLink/.test(sync));
   t('미디어 본글 성공 시에만 링크 답글', /if \(hasMedia && tw\.ok && gen\.url\)/.test(sync));
   t('링크 답글 실패는 반드시 표시된다 (유입 0 침묵 방지)',
     /링크답글실패/.test(sync) && /console\.error\('\[sync-ig\] X 링크 답글 실패:'/.test(sync));
