@@ -131,9 +131,16 @@ async function generateThreadsText(art, url) {
       { title: art.title, body: art.content, tags: art.tags, category: art.category },
       'threads');
     if (hook) {
-      const text = (normalize(hook.text).slice(0, 430) + '\n\n' + url).slice(0, 500);
+      /* 2026-10-04 실측(threads_posts.text 저장 첫날): 대화형 7/7 전부 본문에
+         링크가 박혀 나갔고 링크 답글(IG 먼저)은 0건이었다. 이 경로만 body/url 을
+         안 돌려줘서 bodyText = gen.body || text 가 링크 포함 text 로 떨어지고,
+         답글 조건(gen.body && gen.url)도 거짓이었다. 8/13 "본문은 링크 없이,
+         링크는 첫 답글로" 와 8/22 "IG 먼저" 가 대화형에는 한 번도 적용된 적이
+         없었던 것. 일반 AI 경로(아래)와 같은 모양으로 맞춘다. */
+      const clean = normalize(hook.text).slice(0, 430);
+      const text = (clean + '\n\n' + url).slice(0, 500);
       console.log('[threadsAutopost] 대화형 (점수 ' + hook.score + '): ' + hook.angle);
-      return { text, ai: true, conversational: true, angle: hook.angle, score: hook.score };
+      return { text, body: clean, url, ai: true, conversational: true, angle: hook.angle, score: hook.score };
     }
   } catch (e) {
     console.warn('[threadsAutopost] 대화형 실패, 기본 카피로:', (e && e.message) || e);

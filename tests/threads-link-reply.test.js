@@ -67,6 +67,10 @@ console.log('\n[2] 본문에 링크가 없다');
 
   t('AI 경로도 body 와 url 을 나눠 돌려준다',
     /return \{ text, body: clean, url, ai: true \}/.test(ap));
+  /* 2026-10-04 실측: 대화형 경로만 body/url 이 없어 7/7 이 링크 본문으로 나갔고
+     IG 먼저 답글은 0건이었다. 세 경로(대화형·일반 AI·폴백) 전부 body 를 돌려줘야 한다. */
+  t('대화형 경로도 body 와 url 을 나눠 돌려준다',
+    /return \{ text, body: clean, url, ai: true, conversational: true/.test(ap));
   t('text(본문+링크)는 하위호환으로 남는다', /const text = \(clean \+ '\\n\\n' \+ url\)/.test(ap));
 }
 
