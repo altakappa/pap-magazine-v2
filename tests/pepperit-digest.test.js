@@ -241,7 +241,7 @@ function seed(n) {
   ok('꼬리말이 끝에서 둘째 줄', lines[lines.length - 2] === copy.PEPPERIT_CLOSING,
     lines[lines.length - 2]);
   ok('페퍼릿은 채널과 무관하게 존댓말', copy.isPoliteFor('pepperit', 'threads') === true);
-  ok('PAP 스레드는 예전대로 반말', copy.isPoliteFor('celeb', 'threads') === false);
+  ok('PAP 스레드도 X 와 같은 존댓말 (2026-10-04)', copy.isPoliteFor('celeb', 'threads') === true);
   ok('PAP X 는 예전대로 존댓말', copy.isPoliteFor('celeb', 'x') === true);
   ok('closingFor 가 갈래를 안 받으면 예전 PAP 문장',
     copy.closingFor(false) === '더 많은 현장은 PAP 인스타그램에서 확인!'

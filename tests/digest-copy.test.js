@@ -90,13 +90,13 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
   t('상한 근처에서 잘렸다', long.length <= 26, long.length + '자: ' + long);
   t('문장 중간에서 안 끊긴다', /[.!?요다죠네]$/.test(long), long);
 
-  console.log('\n[6] 어미 — X 존댓말 / 스레드 반말');
+  console.log('\n[6] 마무리 — X 문장 / 스레드 문장 (2026-10-04 어미는 둘 다 존댓말, 마무리는 채널별 고정 문장)');
   const fbPolite = copy.fallbackCopy(ITEMS, true);
   const fbCasual = copy.fallbackCopy(ITEMS, false);
   t('존댓말 마무리', /요$/.test(fbPolite.closing), fbPolite.closing);
   t('반말 마무리', !/요$/.test(fbCasual.closing), fbCasual.closing);
   t('X 는 존댓말 문장을 쓴다', (await copy.build(PICKED, 'x')).text.includes(fbPolite.closing));
-  t('스레드는 반말 문장을 쓴다', (await copy.build(PICKED, 'threads')).text.includes(fbCasual.closing));
+  t('스레드는 도메니코가 못 박은 스레드 마무리를 그대로 쓴다', (await copy.build(PICKED, 'threads')).text.includes(fbCasual.closing));
 
   t('스레드 마무리는 도메니코가 못 박은 문장',
     fbCasual.closing === '더 많은 현장은 PAP 인스타그램에서 확인!', fbCasual.closing);

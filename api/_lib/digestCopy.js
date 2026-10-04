@@ -83,7 +83,7 @@ function isTitleOnly(bucket) {
 /**
  * 존댓말인가.
  *
- * 채널 축은 socialHook.isPolite 가 정한다(스레드=반말 / X=존댓말) — 그 판정은
+ * 채널 축은 socialHook.isPolite 가 정한다(2026-10-04 부터 스레드·X 둘 다 존댓말) — 그 판정은
  * 여기서 다시 쓰지 않고 그대로 넘겨받는다. 그 위에 브랜드 축이 하나 더 있다:
  * 페퍼릿은 채널과 무관하게 전체 존댓말이다. PAP 갈래는 예전 그대로다.
  */
@@ -128,7 +128,7 @@ const HEADLINE = {
   pepperit:   { threads: '요 며칠 페퍼릿 소식 모아봤어요 🩷' },
 };
 
-/* 마무리 한 줄도 브랜드마다 다르다. PAP 은 존댓말/반말 두 벌이고(closingFor),
+/* 마무리 한 줄도 브랜드마다 다르다. PAP 은 X 문장/스레드 문장 두 벌이고(closingFor),
    페퍼릿은 어느 채널이든 이 한 줄이다. 2026-08-05 도메니코 확정. */
 const PEPPERIT_CLOSING = '더 많은 소식은 인스타에서 확인해주세요 🩷';
 
@@ -144,9 +144,15 @@ const URLISH = /(https?:\/\/\S+|www\.\S+|\b[\w-]+\.(?:com|net|org|co\.kr|kr|io|m
  * 그래서 존댓말·반말 두 벌을 미리 적어 둔다. 채널 판정은 socialHook.isPolite
  * 하나뿐이고 여기서는 그 결과(boolean)만 쓴다.
  */
-function closingFor(polite, bucket) {
+/* 2026-10-04 — 스레드도 X 와 같은 존댓말이 됐지만(socialHook.isPolite), 스레드
+   마무리 한 줄은 도메니코가 못 박은 문장이라 그대로 둔다. "확인!" 은 반말이
+   아니라 어미 없는 체언형이라 존댓말 글 끝에 붙어도 튀지 않는다.
+   그래서 마무리만은 polite 가 아니라 채널(platform)로 고른다. */
+const THREADS_CLOSING = '더 많은 현장은 PAP 인스타그램에서 확인!';
+function closingFor(polite, bucket, platform) {
   if (bucket === PEPPERIT_BUCKET) return PEPPERIT_CLOSING;
-  return polite ? '전체 기사는 인스타에서 보실 수 있어요' : '더 많은 현장은 PAP 인스타그램에서 확인!';
+  if (platform === 'threads') return THREADS_CLOSING;
+  return polite ? '전체 기사는 인스타에서 보실 수 있어요' : THREADS_CLOSING;
 }
 
 /** 소개말 한 줄 정제 — 링크·해시태그·따옴표·군더더기 제거. */
@@ -254,7 +260,7 @@ async function generateNotes(items, bucket, platform) {
     const notes = Array.isArray(g.notes) ? g.notes : [];
     return {
       /* 모델이 intro·closing 을 보내와도 안 쓴다. 머리말과 마무리는 코드 몫이다. */
-      closing: closingFor(polite, bucket),
+      closing: closingFor(polite, bucket, platform),
       notes: items.map((_, i) => papVoice.normalizeSocialAddress(cleanNote(notes[i], { max: noteMax }), { polite })),
     };
   } catch (_) {
@@ -266,9 +272,9 @@ async function generateNotes(items, bucket, platform) {
    제목만 나열하는 갈래(페퍼릿)는 '모델이 죽었을 때'가 아니라 *늘* 이 경로다 —
    notes 가 전부 빈 문자열이라 조립부가 제목만 남긴다. bucket 은 마무리 한 줄을
    고르는 데만 쓴다. 안 주면 예전과 같이 PAP 문장이다. */
-function fallbackCopy(items, polite, bucket) {
+function fallbackCopy(items, polite, bucket, platform) {
   return {
-    closing: closingFor(polite, bucket),
+    closing: closingFor(polite, bucket, platform),
     notes: items.map(() => ''),
   };
 }
@@ -356,8 +362,8 @@ async function build(picked, platform) {
      조립부가 제목만 남긴다. 여기서 generateNotes 를 부르면 쓰지도 않을 소개말에
      항목 수만큼 토큰을 쓰고, 자동 발행 경로에 실패 지점을 하나 더 다는 셈이다. */
   const copy = isTitleOnly(bucket)
-    ? fallbackCopy(items, polite, bucket)
-    : ((await generateNotes(items, bucket, platform)) || fallbackCopy(items, polite, bucket));
+    ? fallbackCopy(items, polite, bucket, platform)
+    : ((await generateNotes(items, bucket, platform)) || fallbackCopy(items, polite, bucket, platform));
 
   let text = (ASSEMBLE[platform] || assembleThreads)(headline, copy, items, igUrl);
 

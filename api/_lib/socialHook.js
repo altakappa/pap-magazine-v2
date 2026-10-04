@@ -92,7 +92,7 @@ const SYSTEM = [
   '어떻게 쓰나:',
   '- 기사에서 사람들이 한마디 보탤 만한 지점을 하나 골라 첫 줄에 콕 집는다.',
   '  꼭 미스터리일 필요 없다. 스타일 취향, 의외의 선택, 요즘 유행,',
-  '  전시·작품·영화 같은 아트/컬쳐 이야기, "이거 어떻게 생각해" 정도의',
+  '  전시·작품·영화 같은 아트/컬쳐 이야기, "이거 어떻게 생각하세요" 정도의',
   '  가벼운 화제면 충분하다. 제목 복붙 금지.',
   '- 아트·컬쳐는 정답이 없는 영역이다. 평가를 내리기보다 어떻게 생각하는지 나누자는',
   '  자리로 만든다. 해석이 갈리는 지점을 짚어주면 대화가 붙는다.',
@@ -162,24 +162,26 @@ function stripDashes(input) {
    · 2026-07-21 "전부 반말로 통일" → 스레드에만 있던 규칙을 X 까지 넓혔다.
    · 2026-08-03 "인스타는 평서체, 스레드는 반말, 나머지는 존댓말"
      → 위 지시를 대체한다. 스레드와 X 가 여기서 다시 갈린다.
+   · 2026-10-04 "스레드에 말투가 퉁명한데 그냥 트위터랑 똑같은 말투로써줘"
+     → 스레드도 X 와 같은 존댓말. 다시 하나로 합친다.
    갈라진 것은 어미와 호칭뿐이고 문장 리듬 규칙은 papVoice 안에서 공유한다.
    샤오홍슈·카카오톡(socialRepurpose.js)은 여기 묶지 않는다. 중국어에는
    반말/존댓말 구분이 없고, 카톡은 처음부터 정중체 채널이었다.
 
    2026-08-03: 어투 문자열은 papVoice.js 로 단일화돼 있다.
    여기서 문자열을 직접 고치지 말고 papVoice 쪽을 고친다. */
-const SOCIAL_TONE = papVoice.SOCIAL_VOICE;   // 스레드 — 반말
+const SOCIAL_TONE = papVoice.SOCIAL_VOICE;   // 스레드 — 존댓말 (2026-10-04, X 와 같은 목소리)
 const X_TONE = papVoice.X_VOICE;             // X — 존댓말
 
 /* 분기는 이 한 곳에만 둔다. 호출부마다 삼항을 흩뿌리면 한 곳이 빠졌을 때
    그 경로로 나간 글만 어미가 다르고, 그건 눈으로 안 잡힌다. */
 function toneFor(platform) { return platform === 'x' ? X_TONE : SOCIAL_TONE; }
-function isPolite(platform) { return platform === 'x'; }
+function isPolite(platform) { return platform === 'x' || platform === 'threads'; }
 
 /**
  * 대화형 카피 생성. 기준 미달이거나 실패하면 null → 호출부가 기존 방식으로.
  * @param {object} art  {title, body, tags, category}
- * @param {'threads'|'x'} platform  스레드는 반말, X 는 존댓말 (2026-08-03)
+ * @param {'threads'|'x'} platform  둘 다 존댓말 (2026-10-04 통합)
  * @returns {Promise<{text:string, angle:string, score:number}|null>}
  */
 /* 모델 호출 한 곳 (2026-09-03 분리).
@@ -200,7 +202,7 @@ async function _ask(system, payload, limit, platform) {
       body: JSON.stringify({
         model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
         max_tokens: 700,
-        // 2026-08-03 도메니코 지시 — 채널별 어미. 스레드 반말 / X 존댓말.
+        // 2026-10-04 도메니코 지시 — 스레드도 X 와 같은 존댓말. 어미 분기는 toneFor 한 곳.
         // 어느 쪽이든 본문과 마지막 문장의 어미가 갈리면 안 된다. 예전에
         // 본문은 반말인데 끝만 존댓말로 튀던 사고가 있었고, 원인은 프롬프트에
         // 박아둔 예시 문구였다. 그래서 예시는 지시와 같은 어미로만 적는다.
