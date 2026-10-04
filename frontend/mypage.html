@@ -517,9 +517,7 @@ a{color:#fff;text-decoration:none}
 <script src="/pap-inclick.js?v=4" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="/pap-logos-data.js?v=1" defer></script>
-<!-- 서브미션 기본료 Paddle 결제 (구조개편 Phase 2) — submission.html 과 공용 모듈 공유.
-     vercel.json 전역 CSP 가 이미 *.paddle.com 을 허용하므로 페이지 CSP 추가 불필요. -->
-<script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
+<!-- 서브미션 기본료 결제 모듈 — submission.html 과 공용(PayPal). Paddle SDK 태그는 2026-10-04 제거. -->
 <script src="/pap-submission-fee.js?v=10" defer></script>
 <style>
 .mp-dl-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);margin-bottom:6px;transition:all .2s}

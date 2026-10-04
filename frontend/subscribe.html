@@ -554,9 +554,8 @@ function navigateWithInterstitial(url){
 
 <!-- PortOne V2 Browser SDK (국내 결제 — KRW 빌링키 정기결제) -->
 <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
-<!-- 2026-08-12 — Paddle SDK. 8/14 계정 폐쇄로 더는 쓰지 않는다(호출하는 JS 없음). 제거 예정.
-       VAT 는 이제 결제사가 대신 걷어주지 않는다. 판매자는 주식회사 알타카파다. -->
-<script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
+<!-- Paddle SDK 태그 제거(2026-10-04). 8/14 계정 폐쇄 뒤 호출하는 JS 가 없었다.
+       VAT 는 결제사가 대신 걷어주지 않는다. 판매자는 주식회사 알타카파다. -->
 <!-- PortOne config (storeId & channelKey set from Vercel env at build, or inline) -->
 <script>
 // PortOne V2 — PAP MAGAZINE 테스트 채널 (토스페이먼츠 정기결제, iamporttest_4).
