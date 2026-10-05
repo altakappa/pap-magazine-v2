@@ -485,6 +485,44 @@ async function uploadMedia(bytes, mimeType, creds) {
   }
 }
 
+/**
+ * 트윗 공개 지표 (2026-10-05, 본문 링크 A/B 의 '도달' 눈금).
+ * GET /2/tweets?ids=…&tweet.fields=public_metrics — 한 번에 최대 100개.
+ * OAuth1 GET 은 쿼리를 서명에 넣어야 한다(_oauthGetHeader). 읽기 권한이 없는
+ * 요금제면 402/403 이 온다 — 던지지 않고 {ok:false,status} 로 돌려 크론이 노트에 남긴다.
+ * @param {string[]} ids
+ * @returns {Promise<{ok:boolean,status?:number,metrics?:Object<string,{views,likes,replies,reposts,quotes}>,missing?:string[],detail?:string}>}
+ */
+async function getTweetMetrics(ids) {
+  if (!isConfigured()) return { ok: false, skipped: 'X env 미설정' };
+  const list = (ids || []).map(String).filter(Boolean).slice(0, 100);
+  if (!list.length) return { ok: true, metrics: {}, missing: [] };
+  const base = 'https://api.twitter.com/2/tweets';
+  const q = { ids: list.join(','), 'tweet.fields': 'public_metrics' };
+  try {
+    const r = await fetch(base + '?ids=' + encodeURIComponent(q.ids) + '&tweet.fields=public_metrics', {
+      method: 'GET',
+      headers: { 'Authorization': _oauthGetHeader(base, q) },
+      signal: AbortSignal.timeout(15000),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, status: r.status, detail: JSON.stringify(j).slice(0, 200) };
+    const metrics = {};
+    for (const t of (j.data || [])) {
+      const m = t.public_metrics || {};
+      metrics[String(t.id)] = {
+        views: Number(m.impression_count) || 0, likes: Number(m.like_count) || 0,
+        replies: Number(m.reply_count) || 0, reposts: Number(m.retweet_count) || 0,
+        quotes: Number(m.quote_count) || 0,
+      };
+    }
+    const missing = (j.errors || []).map((e) => String(e.resource_id || e.value || '')).filter(Boolean);
+    return { ok: true, metrics, missing };
+  } catch (e) {
+    return { ok: false, detail: String(e && e.message || e).slice(0, 150) };
+  }
+}
+
 /** URL 에서 미디어를 받아 업로드(서버는 Supabase 스토리지에 직접 접근 가능). */
 async function uploadMediaFromUrl(url, creds, opts) {
   try {
@@ -653,5 +691,5 @@ module.exports = {
   buildConversationalTweet, buildThreadsParityTweet,
   postTweet, postPepperitTweet, buildArticleTweet, buildPepperitTweet,
   isConfigured, isPepperitConfigured, requestToken, accessToken,
-  uploadMedia, uploadMediaFromUrl, selectArticleMedia, uploadArticleMedia,
+  uploadMedia, uploadMediaFromUrl, selectArticleMedia, uploadArticleMedia, getTweetMetrics,
 };

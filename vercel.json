@@ -152,6 +152,10 @@
       "schedule": "17 * * * *"
     },
     {
+      "path": "/api/cron/x-metrics",
+      "schedule": "23 * * * *"
+    },
+    {
       "path": "/api/cron/sync-pepperit",
       "schedule": "4-54/10 * * * *"
     },

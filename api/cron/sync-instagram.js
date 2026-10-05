@@ -79,7 +79,7 @@ function recordBoost(results, b){
 function isBoostOk(v){
   return /^ok(\(|$)/.test(String(v || ''));
 }
-const { postTweet, isConfigured: xConfigured, buildThreadsParityTweet, uploadArticleMedia, withIgHandle } = require('../_lib/xPost');
+const { postTweet, isConfigured: xConfigured, buildThreadsParityTweet, uploadArticleMedia, withIgHandle, weightedLen, URL_PLACEHOLDER } = require('../_lib/xPost');
 const { postArticleToThreads } = require('../_lib/threadsAutopost');
 const {
   listRecentMedia,
@@ -391,10 +391,19 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                    미디어가 없으면 본문에 링크를 넣어 나간다. 어느 경로로도
                    이미지도 링크도 없는 트윗은 불가능하다. */
                 const hasMedia = xMedia.mediaIds.length > 0;
+                /* 2026-10-05 본문 링크 A/B (도메니코 "일주일만 인스타링크로 시험").
+                   'body' 갈래: 본문에 인스타 링크(ig-out src=x_body), 답글엔 웹만.
+                   'reply' 갈래: 지금 그대로. 갈래는 x_posts.kind 에 남는다. */
+                const ab = require('../_lib/xBodyLinkAb');
+                const { igOutUrl, igFirstLinkBlock } = require('../_lib/igFirstLink');
+                const abVariant = hasMedia ? ab.variantFor(inserted.id) : null;
+                const igSrcUrl = (post && (post.permalink || post.source_instagram_url)) || (row && row.source_instagram_url) || '';
+                const abBody = abVariant === 'body' ? ab.bodyWithIgLink(gen.body, igOutUrl(igSrcUrl, ab.IG_OUT_SRC), { weightedLen, URL_PLACEHOLDER }) : null;
+                const abKind = abBody ? 'ab_body' : (abVariant ? 'ab_reply' : 'article');
                 /* articleId 를 넘긴다 — x_posts.article_id 가 비어 있으면 주제 가드
                    (xTopicGuard)가 비교할 지문이 없다. 실측 10/2 트윗 전부 null 이었다. */
                 const tw = hasMedia
-                  ? await postTweet(withIgHandle(gen.body, xMedia.kind), { mediaIds: xMedia.mediaIds, articleId: inserted.id, kind: 'article' })
+                  ? await postTweet(abBody || withIgHandle(gen.body, xMedia.kind), { mediaIds: xMedia.mediaIds, articleId: inserted.id, kind: abKind })
                   : await postTweet(gen.bodyWithLink || (gen.body + '\n\n' + gen.url), { articleId: inserted.id, kind: 'article' });  // 미디어 없는 경로는 280자 제약이 빡빡해 링크 한 줄 유지 (IG 우선은 답글 경로에서)
                 let mark = hasMedia ? '' : '(미디어없음→링크본문)';
                 /* 링크 답글 — 미디어 본글이 성공했을 때만. 실패해도 본글은
@@ -405,8 +414,9 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                      답글에 IG 를 먼저, 웹을 다음에. 게시 횟수가 그대로라
                      X 과금($0.20/답글)도 그대로다. 웹 링크는 남긴다 —
                      웹은 2순위 도달점이고 유료 사다리가 거기 있다. */
-                  const { igFirstLinkBlock } = require('../_lib/igFirstLink');
-                  const rep = await postTweet(igFirstLinkBlock(post || {}, 'x', gen.url), { replyToId: tw.id });
+                  /* body 갈래는 인스타 링크가 이미 본문에 있다 — 답글은 웹 링크만. */
+                  const replyText = abBody ? ('웹에서 전문 보기 → ' + gen.url) : igFirstLinkBlock(post || {}, 'x', gen.url);
+                  const rep = await postTweet(replyText, { replyToId: tw.id });
                   if (!rep.ok) {
                     mark += '(링크답글실패:' + (rep.status || '') + ')';
                     console.error('[sync-ig] X 링크 답글 실패:', rep.status || '', rep.detail || rep.skipped || '');

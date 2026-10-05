@@ -57,7 +57,9 @@ const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', '
      이제 같은 채널의 두 방향을 나란히 볼 수 있다 —
        threads → 웹  social_inclicks(utm_source=threads)
        threads → IG  ig_outclicks_human(src=threads) */
-  'threads', 'x']);
+  'threads', 'x',
+  /* 2026-10-05 — X 본문 링크 A/B (api/_lib/xBodyLinkAb.js). 답글 링크(x)와 본문 링크(x_body)를 나란히 센다. */
+  'x_body']);
 const IG_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 
 /* 경로형 단축 링크 /ig/:src (2026-07-30 신설).

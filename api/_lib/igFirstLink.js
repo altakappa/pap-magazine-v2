@@ -44,7 +44,7 @@ const IG_PROFILE = 'https://www.instagram.com/pap_magazine/';
 
 /** 이 채널 이름은 api/ig-out.js 의 SRC_WHITELIST 와 같아야 한다.
  *  다르면 조용히 'other' 로 뭉개져 채널별 판정이 불가능해진다. */
-const CHANNELS = new Set(['threads', 'x', 'newsletter', 'youtube', 'naverblog']);
+const CHANNELS = new Set(['threads', 'x', 'newsletter', 'youtube', 'naverblog', 'x_body' /* 2026-10-05 X 본문 링크 A/B */]);
 
 /**
  * IG 목적지 URL (계측 경유).
