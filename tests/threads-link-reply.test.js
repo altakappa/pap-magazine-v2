@@ -100,8 +100,13 @@ console.log('\n[4] 하루 상한 — 두 경로 공용');
 {
   /* 2026-08-17 — 3 -> 7. 실측이 "게시량을 줄이면 유입이 그만큼 준다" 였다
      (게시당 유입 4~7 로 일정). 중간값으로 2주 재판정한다. */
-  t('상한 기본값 7', AP.DAILY_CAP === 7, String(AP.DAILY_CAP));
-  t('env 로 바꿀 수 있다', /process\.env\.THREADS_DAILY_CAP \|\| '7'/.test(ap));
+  // 2026-10-05 도메니코 "둘다": 상한 7→12 + 최소 간격. 7건이 매일 00~01시에 소진되던 실측.
+  t('상한 기본값 12', AP.DAILY_CAP === 12, String(AP.DAILY_CAP));
+  t('env 로 바꿀 수 있다', /process\.env\.THREADS_DAILY_CAP \|\| '12'/.test(ap));
+  t('최소 간격 기본값 = 1440/상한 - 10 (12건이면 110분)', AP.MIN_GAP_MIN === 110, String(AP.MIN_GAP_MIN));
+  t('간격 미달은 실패가 아니라 skipped (행 없음 → 스위퍼가 다시 집는다)', /status: 'skipped', detail: '간격 대기/.test(ap));
+  t('간격 조회 실패는 게시를 막지 않는다', /간격 조회 실패, 그대로 진행/.test(ap));
+  t('간격 판정은 상한 판정 뒤, 생성 전', ap.indexOf('하루 상한 조회 실패') < ap.indexOf('간격 조회 실패') && ap.indexOf('간격 조회 실패') < ap.indexOf('const gen = await generateThreadsText'));
   t('상한 근거가 코드에 남아 있다 (되돌릴 때 판단 근거가 된다)',
     /게시 1건당 유입은 4~7 로 거의 일정하다/.test(ap));
   t('상한 판정이 공용 함수(threadsAutopost)에 있다 — 크론에만 두면 실시간 경로가 샌다',

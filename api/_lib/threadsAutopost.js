@@ -221,8 +221,28 @@ async function generateThreadsText(art, url) {
  *   일반론이 우리 계정에서는 아직 확인되지 않았다.
  *   그렇다고 11 로 되돌리면 아무것도 배우지 못한다. 중간값 7 로 2주 관찰한다.
  *   판정: 유입이 게시량에 다시 비례하면 상한을 풀고, 게시당 유입이 오르면
- *   상한 쪽이 옳았던 것이므로 다시 낮춘다. */
-const DAILY_CAP = Math.max(1, parseInt(process.env.THREADS_DAILY_CAP || '7', 10) || 7);
+ *   상한 쪽이 옳았던 것이므로 다시 낮춘다.
+ *
+ * ■ 2026-10-05 상한 7 -> 12 + 최소 간격 (도메니코 "둘다 해야하지 않을까?").
+ *   실측(9/29~10/3 닷새 전부): 7건이 **매일 00:03~01:03 KST 에 전부 소진**됐다.
+ *   자정에 상한이 풀리면 스위퍼(10분마다)가 밀린 기사를 한 시간 안에 7건 쏟고,
+ *   그 뒤 23시간은 전부 "하루 상한" 스킵. 스레드 글이 전부 새벽에만 올라갔다.
+ *   하루 상한만으로는 '언제' 를 못 정한다. 그래서 두 가지:
+ *     (1) 상한 12 — 8/17 표에서 11건/일이 유입 70 을 냈고 게시당 유입은 일정했다.
+ *     (2) 최소 간격 — 직전 게시로부터 THREADS_MIN_GAP_MIN 분이 안 지났으면 스킵.
+ *         기본값은 1440/상한 - 10 (12건이면 110분) 이라 하루에 고르게 퍼진다.
+ *         스킵은 행을 남기지 않으므로 스위퍼가 간격이 지나면 다시 집어 간다. */
+const DAILY_CAP = Math.max(1, parseInt(process.env.THREADS_DAILY_CAP || '12', 10) || 12);
+const MIN_GAP_MIN = Math.max(0, parseInt(process.env.THREADS_MIN_GAP_MIN || String(Math.max(10, Math.floor(1440 / DAILY_CAP) - 10)), 10) || 0);
+
+/** 직전 게시 시각(ISO) — 간격 판정용. 없으면 null. */
+async function lastPostedAt() {
+  const { data, error } = await supabaseAdmin.from('threads_posts')
+    .select('posted_at').eq('status', 'published').not('posted_at', 'is', null)
+    .order('posted_at', { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  return data && data.posted_at ? data.posted_at : null;
+}
 
 /* KST 오늘 0시 (UTC 기준 -9h). 스레드 운영 감각은 한국 시간이다. */
 function kstDayStartIso(now) {
@@ -267,6 +287,21 @@ async function postArticleToThreads(art) {
     }
   } catch (e) {
     console.warn('[threadsAutopost] 하루 상한 조회 실패, 그대로 진행:', (e && e.message) || e);
+  }
+
+  /* 최소 간격 (2026-10-05). 상한과 같은 방침: 조회 실패는 게시를 막지 않는다. */
+  if (MIN_GAP_MIN > 0) {
+    try {
+      const last = await lastPostedAt();
+      if (last) {
+        const elapsedMin = (Date.now() - new Date(last).getTime()) / 60000;
+        if (elapsedMin < MIN_GAP_MIN) {
+          return { status: 'skipped', detail: '간격 대기 ' + Math.ceil(MIN_GAP_MIN - elapsedMin) + '분 (최소 ' + MIN_GAP_MIN + '분)' };
+        }
+      }
+    } catch (e) {
+      console.warn('[threadsAutopost] 간격 조회 실패, 그대로 진행:', (e && e.message) || e);
+    }
   }
 
   /* 2026-08-08 — 성장 헌법 3조 집행: 발신 링크는 전부 계측.
@@ -382,4 +417,4 @@ async function postArticleToThreads(art) {
 }
 
 module.exports = { postArticleToThreads, generateThreadsText, fallbackText, fallbackBody, stripDashes,
-  DAILY_CAP, kstDayStartIso, publishedTodayCount };
+  DAILY_CAP, MIN_GAP_MIN, kstDayStartIso, publishedTodayCount, lastPostedAt };
