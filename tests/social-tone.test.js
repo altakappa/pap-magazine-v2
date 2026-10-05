@@ -122,13 +122,14 @@ t('텍스트 반환 지점 수만큼 필터가 걸려 있다 (반환 ' + returns
    원문 한 줄을 통째로 비교하던 방식은 배선이 늘 때마다 깨지므로, 지키려던
    것만 남긴다: 한 함수 안에서 줄표 제거와 호칭 정규화가 **함께** 걸릴 것. */
 t('normalize 가 줄표 제거를 감싼다',
-  /function normalize\(s\) \{[\s\S]{0,260}papVoice\.normalizeSocialAddress\(stripDashes\(s\), \{ polite: true \}\)/.test(threads),
+  /function normalize\(s\) \{[\s\S]{0,260}papVoice\.normalizeSocialAddress\(stripDashes\(s\), \{ plain: true \}\)/.test(threads),
   '한쪽만 걸면 지시 하나가 통째로 샌다');
 
 /* 2026-10-04 도메니코 "스레드에 말투가 퉁명한데 그냥 트위터랑 똑같은 말투로써줘".
    스레드는 반말(2026-07-21~10-03)을 끝내고 X 와 같은 존댓말로 간다. */
-console.log('\n=== 4. 스레드 프롬프트가 X 와 같은 존댓말을 지시하는가 ===');
-t('스레드 프롬프트가 존댓말을 지시한다', /X 와 같은 존댓말/.test(threads) && /처음부터 끝까지 존댓말로 간다/.test(threads));
+/* 2026-10-05 도메니코 "평서체로" — 존댓말(10/4~10/5)도 끝. X·스레드 = 인스타 기사와 같은 평서체. */
+console.log('\n=== 4. 스레드 프롬프트가 X 와 같은 평서체를 지시하는가 ===');
+t('스레드 프롬프트가 평서체를 지시한다', /X 와 같은 평서체/.test(threads) && /처음부터 끝까지 평서체로 간다/.test(threads));
 t('스레드 프롬프트에 반말 지시가 남아있지 않다',
   !/자연스러운 반말|처음부터 끝까지 반말|어느 쪽이든 반말/.test(threads));
 /* 검사 대상은 "모델에게 실제로 가는 문자열"이다. 코드 주석은 전달되지 않으므로
@@ -179,17 +180,17 @@ t('글자수 제한 분기는 어투와 별개로 남아 있다',
 t('두 어투 모두 papVoice 단일 소스에서 온다',
   /const SOCIAL_TONE = papVoice\.SOCIAL_VOICE;/.test(hook)
     && /const X_TONE = papVoice\.X_VOICE;/.test(hook)
-    && /const SOCIAL_VOICE = politeSocialVoice\('threads'\);/.test(voice)
-    && /const X_VOICE = politeSocialVoice\('x'\);/.test(voice),
+    && /const SOCIAL_VOICE = socialVoice\('threads'\);/.test(voice)
+    && /const X_VOICE = socialVoice\('x'\);/.test(voice),
   '어투 문자열을 socialHook 에 다시 하드코딩하면 채널마다 문체가 갈린다');
 t('papVoice 에 반말 지시가 남아있지 않다', !/처음부터 끝까지 반말/.test(voice));
-t('papVoice 의 X 존댓말 지시가 있다', /처음부터 끝까지 존댓말/.test(voice));
+t('papVoice 의 X 평서체 지시가 있다', /처음부터 끝까지 평서체/.test(voice) && !/처음부터 끝까지 존댓말/.test(voice));
 
 /* papVoice 는 supabase 를 안 물어서 통째로 require 할 수 있다. 문자열 검사로
    끝내지 않고 실제 값을 본다 — 상수 이름만 맞고 내용이 뒤바뀌는 사고가 있다. */
 const papVoice = require(path.join(ROOT, 'api/_lib/papVoice.js'));
-t('SOCIAL_VOICE 가 X 와 같은 존댓말이다',
-  /처음부터 끝까지 존댓말/.test(papVoice.SOCIAL_VOICE) && !/처음부터 끝까지 반말/.test(papVoice.SOCIAL_VOICE));
+t('SOCIAL_VOICE 가 X 와 같은 평서체다',
+  /처음부터 끝까지 평서체/.test(papVoice.SOCIAL_VOICE) && !/처음부터 끝까지 반말/.test(papVoice.SOCIAL_VOICE) && !/처음부터 끝까지 존댓말/.test(papVoice.SOCIAL_VOICE));
 t('isPolite 가 스레드·X 둘 다 존댓말로 판정한다',
   /function isPolite\(platform\) \{ return platform === 'x' \|\| platform === 'threads'; \}/.test(hook));
 t('X_VOICE 안에 반말 지시가 섞여 있지 않다',
@@ -199,10 +200,13 @@ console.log('\n=== 6. 존댓말 채널의 후처리가 반말로 되돌리지 �
 /* 호칭 정규화(normalizeSocialAddress)는 원래 반말 전용이었다. X 가 존댓말이
    된 뒤에도 반말판을 그대로 걸면 마지막 문장만 반말로 튄다 — 2026-07-21 에
    고쳤던 사고가 방향만 뒤집혀 재발한다. */
-t('X 는 존댓말 치환표를 쓴다',
-  /normalizeSocialAddress\(raw2, \{ polite: isPolite\(platform\) \}\)/.test(hook));
-t('스레드 호출부도 존댓말 치환표를 쓴다 (2026-10-04)',
-  /papVoice\.normalizeSocialAddress\(stripDashes\(s\), \{ polite: true \}\)/.test(threads));
+t('X 는 평서체 치환표를 쓴다 (2026-10-05)',
+  /normalizeSocialAddress\(raw2, \{ plain: isPolite\(platform\) \}\)/.test(hook));
+t('스레드 호출부도 평서체 치환표를 쓴다 (2026-10-05)',
+  /papVoice\.normalizeSocialAddress\(stripDashes\(s\), \{ plain: true \}\)/.test(threads));
+t('plain:true 면 물음이 평서체로 정리된다',
+  papVoice.normalizeSocialAddress('다들 어떻게 보세요?', { plain: true }) === '다들 어떻게 생각하나?'
+  && papVoice.normalizeSocialAddress('너희는 어떻게 봐?', { plain: true }) === '다들 어떻게 생각하나?');
 /* 2026-08-13 — 호칭이 '패퍼들' 에서 '다들' 로 바뀌었다. 규칙 전체는
    social-address.test.js 가 지킨다. 여기서 지키는 것은 '어미 갈래(반말/존댓말)가
    채널별로 유지되는가' 하나다. */

@@ -226,7 +226,7 @@ async function _ask(system, payload, limit, platform) {
     // 2026-08-03 — 독자 호칭('패퍼들')과 "어떻게 생각해"는 프롬프트로만 두면
     // 샌다. 길이 판정 전에 확정한다. 치환으로 글자 수가 늘기 때문에(너는 →
     // 패퍼들은) 나중에 걸면 X 의 280자 판정이 어긋난다.
-    const text = papVoice.normalizeSocialAddress(raw2, { polite: isPolite(platform) });
+    const text = papVoice.normalizeSocialAddress(raw2, { plain: isPolite(platform) })  // 2026-10-05 평서체(도메니코);
     if (!text || text.length > limit * 1.3) return null; // 길이 폭주 방어
     return { text, angle: (g.angle || '').trim() };
   } catch (_) {

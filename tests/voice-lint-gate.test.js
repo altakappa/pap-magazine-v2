@@ -62,12 +62,12 @@ t('정상 반말 문장은 통과시킨다',
   papVoice.lintKoreanBody('패퍼들은 어떻게 생각해?', { style: 'casual', structure: false }).length === 0);
 
 console.log('\n[3] 채널별 배선');
-t('스레드 = polite, structure:false (2026-10-04 X 와 같은 존댓말)',
-  /auditKoreanBody\([\s\S]{0,200}style: 'polite'[\s\S]{0,80}where: 'threads'/.test(threads),
+t('스레드 = plain, structure:false (2026-10-05 X 와 같은 평서체)',
+  /auditKoreanBody\([\s\S]{0,200}style: 'plain'[\s\S]{0,80}where: 'threads'/.test(threads),
   '네 갈래 반환 경로가 전부 통과하는 normalize() 안에 있어야 한다');
 t('스레드 검수는 normalize() 안에 있다',
   /function normalize\(s\) \{[\s\S]{0,220}auditKoreanBody/.test(threads));
-t('X = polite', /style: 'polite'[\s\S]{0,60}where: 'x'/.test(xpost));
+t('X = plain (2026-10-05 평서체)', /style: 'plain'[\s\S]{0,80}where: 'x'/.test(xpost));
 t('X 검수는 길이 판정보다 먼저 걸린다',
   xpost.indexOf('auditKoreanBody') < xpost.indexOf('weightedLen(measured) > 280'),
   '치환·검수 순서가 뒤집히면 280자 판정이 어긋난다');

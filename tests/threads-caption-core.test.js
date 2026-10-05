@@ -25,16 +25,17 @@ const src = fs.readFileSync(path.join(ROOT, 'api/_lib/papVoice.js'), 'utf8');
 t('뼈대 문장이 파일에 한 번만 있다(복사본 없음)', (src.match(/고유명사를 그대로 부른다/g) || []).length === 1);
 
 // 스레드 어미·호칭·모양 (2026-10-04 X 와 같은 존댓말)
-t('스레드: X 와 같은 존댓말 "~해요"', /처음부터 끝까지 존댓말/.test(v.SOCIAL_VOICE) && !/처음부터 끝까지 반말/.test(v.SOCIAL_VOICE));
-t('스레드: 넘기기 네 꼴 존댓말판 ("지금 만나보세요" 는 10/5 도메니코 지시로 제외)', /네 꼴 중 하나만 쓴다/.test(v.SOCIAL_VOICE) && /"꼭 한번 직접 보시길." \/ "~일지도요."/.test(v.SOCIAL_VOICE) && !/지금 만나보세요/.test(v.SOCIAL_VOICE));
-t('스레드: 호칭은 X 와 같은 "다들"', /독자를 부를 때는 "다들"이라고 한다/.test(v.SOCIAL_VOICE) && !/스치니들/.test(v.SOCIAL_VOICE));
+t('스레드: 반말·존댓말 지시가 없다 (2026-10-05 평서체)', !/처음부터 끝까지 존댓말/.test(v.SOCIAL_VOICE) && !/처음부터 끝까지 반말/.test(v.SOCIAL_VOICE));
+t('스레드: 넘기기 네 꼴 존댓말판 ("지금 만나보세요" 는 10/5 도메니코 지시로 제외)', /네 꼴 중 하나만 쓴다/.test(v.SOCIAL_VOICE) && /"꼭 한번 직접 보길." \/ "~일지도."/.test(v.SOCIAL_VOICE) && !/지금 만나보세요/.test(v.SOCIAL_VOICE));
+t('스레드: 독자를 부르지 않는다 (평서체, 스치니들 없음)', /독자를 부르지 않는다/.test(v.SOCIAL_VOICE) && !/스치니들/.test(v.SOCIAL_VOICE));
+t('스레드·X: 평서체 (2026-10-05)', /처음부터 끝까지 평서체/.test(v.SOCIAL_VOICE) && /처음부터 끝까지 평서체/.test(v.X_VOICE));
 t('스레드: 퉁명함의 원인이던 모양 규칙(마침표 생략·조사 덜기)이 없다', !/마침표를 문장마다 찍지 않는다/.test(v.SOCIAL_VOICE) && !/조사와 서술어를 덜어낸다/.test(v.SOCIAL_VOICE));
-t('스레드 예시에 반말 어미가 없다', !/만나봐\n|옮겨\n|어떤 맛일까\n/.test(v.SOCIAL_VOICE) && /꼭 한번 직접 보시길/.test(v.SOCIAL_VOICE) && /발렌티노가 도서관에서 꺼낸 안티라이브러리/.test(v.SOCIAL_VOICE));
+t('스레드 예시는 평서체 (반말·존댓말 어미 없음)', !/만나봐\n|옮겨\n|옮겨요|공개했어요|올랐어요/.test(v.SOCIAL_VOICE) && /공개했다/.test(v.SOCIAL_VOICE) && /꼭 한번 직접 보길/.test(v.SOCIAL_VOICE) && /발렌티노가 도서관에서 꺼낸 안티라이브러리/.test(v.SOCIAL_VOICE));
 t('스레드와 X 의 차이는 안내 줄과 모양 제목뿐', (() => { const a = v.SOCIAL_VOICE.split('\n'); return v.X_VOICE.split('\n').filter((l) => !a.includes(l)).length === 2; })());
 // X 어미
-t('X: 넘기기 네 꼴 존댓말판', /네 꼴 중 하나만 쓴다/.test(v.X_VOICE) && !/지금 만나보세요/.test(v.X_VOICE) && /처음부터 끝까지 존댓말/.test(v.X_VOICE));
+t('X: 넘기기 네 꼴 평서체판', /네 꼴 중 하나만 쓴다/.test(v.X_VOICE) && !/지금 만나보세요/.test(v.X_VOICE) && /"꼭 한번 직접 보길." \/ "~일지도."/.test(v.X_VOICE));
 t('스레드와 X 의 글자수 상한이 같다(완전히 똑같이)', /\(platform === 'x' \|\| platform === 'threads'\) \? 80 : 420/.test(fs.readFileSync(path.join(ROOT, 'api/_lib/socialHook.js'), 'utf8')));
-t('X 예시에 반말 어미가 없다', !/만나봐\n|옮겨\n|어떤 맛일까\n/.test(v.X_VOICE));
+t('X 예시는 평서체', !/만나봐\n|옮겨요|공개했어요/.test(v.X_VOICE) && /공개했다/.test(v.X_VOICE));
 // 안내 줄 규칙은 X 에만 (스레드는 코드가 안 붙인다)
 t('"풀 영상은 인스타" 안내 줄 규칙은 X 에만', /안내 줄은 쓰지 않는다/.test(v.X_VOICE) && !/안내 줄은 쓰지 않는다/.test(v.SOCIAL_VOICE));
 

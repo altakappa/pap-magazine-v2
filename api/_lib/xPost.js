@@ -258,7 +258,7 @@ async function buildConversationalTweet(art) {
   // 길이 판정 전에 걸러야 한다. 나중에 걸면 제거로 줄어든 길이가 반영되지 않아
   // 280자를 넘는다고 잘못 판단하고 멀쩡한 트윗을 버린다.
   const body = papVoice.auditKoreanBody(stripDashes(hook.text),
-    { style: 'polite', structure: false, where: 'x' });
+    { style: 'plain', structure: false, where: 'x' }  /* 2026-10-05 평서체(도메니코) */);
   const measured = body + '\n\n' + URL_PLACEHOLDER + '\n\n' + tagLine;
   if (weightedLen(measured) > 280) return null; // 넘치면 기존 방식으로
   return { text: body + '\n\n' + link + '\n\n' + tagLine, angle: hook.angle, score: hook.score };
@@ -578,7 +578,7 @@ async function buildThreadsParityTweet(art) {
       // 길이 판정 **전에** 걸러야 한다. 나중에 걸면 제거로 줄어든 길이가 반영되지 않아
       // 280자를 넘는다고 잘못 판단하고 멀쩡한 트윗을 버린다.
       const audited = papVoice.auditKoreanBody(stripDashes(got.text),
-        { style: 'polite', structure: false, where: 'x' });
+        { style: 'plain', structure: false, where: 'x' }  /* 2026-10-05 평서체(도메니코) */);
       const body = audited + '\n\n#PAPMAGAZINE';
       if (weightedLen(body) > 280) return null;
       return { body, url, bodyWithLink: _withLinkInBody(audited, '#PAPMAGAZINE', url, art),
