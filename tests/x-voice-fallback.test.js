@@ -85,7 +85,7 @@ t('두 생성기가 같은 호출을 쓴다',
 t('어투는 여전히 papVoice 에서 온다 (여기 하드코딩 금지)',
   !/처음부터 끝까지 존댓말/.test(hook.VOICE_SYSTEM),
   'VOICE_SYSTEM 에 어미 지시를 또 적으면 papVoice 와 갈린다');
-t('길이 상한도 한 곳이다', (HOOK.match(/platform === 'x' \? 115 : 420/g) || []).length === 1);
+t('길이 상한도 한 곳이다', (HOOK.match(/\(platform === 'x' \|\| platform === 'threads'\) \? 115 : 420/g) || []).length === 1);
 
 console.log('\n' + (fail ? '✗' : '✓') + ' x-voice-fallback: ' + pass + ' passed / ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

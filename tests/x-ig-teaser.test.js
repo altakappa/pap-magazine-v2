@@ -70,7 +70,7 @@ const xPost = require('../api/_lib/xPost');
   const fat = '가'.repeat(135) + '\n\n#PAPMAGAZINE';            // 270+14: 어느 쪽도 안 들어간다
   t('그래도 넘치면 안 넣는다(트윗을 잃지 않는다)', xPost.withIgHandle(fat, 'video') === fat);
   const hook = require('../api/_lib/socialHook');
-  t('X 글자수 상한 115 (가중 280 - 태그 - 안내 줄 역산)', hook._limitFor ? hook._limitFor('x') === 115 : /platform === 'x' \? 115 : 420/.test(fs.readFileSync(path.join(ROOT, 'api/_lib/socialHook.js'), 'utf8')));
+  t('X 글자수 상한 115 (가중 280 - 태그 - 안내 줄 역산)', hook._limitFor ? hook._limitFor('x') === 115 : /\(platform === 'x' \|\| platform === 'threads'\) \? 115 : 420/.test(fs.readFileSync(path.join(ROOT, 'api/_lib/socialHook.js'), 'utf8')));
 }
 
 // ── ③ 주제 가드 순수 로직 ────────────────────────────────────
@@ -115,7 +115,7 @@ const xPost = require('../api/_lib/xPost');
     t('vercel.json: sync-instagram 에 폰트 자산 포함(엔드카드 글자)', /_assets\/celeb/.test(String(fn.includeFiles || '')));
     t('vercel.json: sync-instagram maxDuration 유지(120)', fn.maxDuration === 120);
     const pv = fs.readFileSync(path.join(ROOT, 'api/_lib/papVoice.js'), 'utf8');
-    t('X_VOICE: 마지막 문장은 다섯 꼴로만, 안내 줄은 모델이 쓰지 않음', /다섯 꼴 중 하나로 끝낸다/.test(pv) && /안내 줄은 쓰지 않는다. 코드가 붙인다/.test(pv));
+    t('X_VOICE: 마지막 문장은 다섯 꼴로만, 안내 줄은 모델이 쓰지 않음', /네 꼴 중 하나로 끝낸다/.test(pv) && !/지금 만나보세요/.test(require('../api/_lib/papVoice').X_VOICE) && /안내 줄은 쓰지 않는다. 코드가 붙인다/.test(pv));
 
     console.log('\n' + pass + ' passed, ' + fail + ' failed');
     process.exit(fail ? 1 : 0);
