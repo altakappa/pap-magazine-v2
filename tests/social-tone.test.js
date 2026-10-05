@@ -174,8 +174,8 @@ t('어투 분기가 socialHook 안에서 한 번만 나온다',
 /* 같은 이유로 이 줄도 원문을 보고 있었다. 값(180/420)이 지켜지는지가 뜻이지
    그 값이 어느 줄에 적혀 있는지가 뜻이 아니다. */
 t('글자수 제한 분기는 어투와 별개로 남아 있다',
-  /\(platform === 'x' \|\| platform === 'threads'\) \? 115 : 420/.test(hook),
-  '어투를 가르면서 X 의 글자수 제한(115, 가중 280 역산)을 건드리지 않았는지 같이 확인한다');
+  /\(platform === 'x' \|\| platform === 'threads'\) \? 80 : 420/.test(hook),
+  '어투를 가르면서 X 의 글자수 제한(80)을 건드리지 않았는지 같이 확인한다');
 t('두 어투 모두 papVoice 단일 소스에서 온다',
   /const SOCIAL_TONE = papVoice\.SOCIAL_VOICE;/.test(hook)
     && /const X_TONE = papVoice\.X_VOICE;/.test(hook)
