@@ -46,16 +46,42 @@ function lateThresholdSec(medSec) {
 }
 
 /**
+ * 몰아친 호출 하나로 접기 (2026-10-06 화요일 견고화).
+ *
+ * 왜 — 9/24 신설된 월 1회 크론 creator-monthly 의 기록이 **16초 안에 몰린 수동
+ * 호출 7번**(간격 0.9~7.3초)으로 시작했다. 간격 중앙값이 1.9초로 나와 임계가
+ * 30분이 됐고, 월간 크론을 '1초 주기' 로 오해해 9/24 부터 10/05 까지 매일
+ * 텔레그램에 가짜 지연 알림을 보냈다(ops_alert_state lateNow
+ * 'creator-monthly:7200/30'). creator-report-card 도 같은 날 18초 안에 7번 몰렸다.
+ * 스케줄 크론 중 가장 짧은 주기는 10분이다(vercel.json) — 60초 안에 연달아 찍힌
+ * 실행은 스케줄의 두 박자가 아니라 사람 손(또는 재시도) 한 번이다. 한 번으로 센다.
+ * 접힌 뒤 실행 수가 MIN_RUNS 미만이면 종전 규칙대로 판단을 보류한다.
+ */
+const BURST_SEC = 60;
+
+function collapseBursts(tsDesc, burstSec) {
+  const win = (Number.isFinite(burstSec) ? burstSec : BURST_SEC) * 1000;
+  const out = [];
+  for (const t of tsDesc) {
+    if (out.length && out[out.length - 1] - t < win) continue;   // 직전에 남긴 실행과 60초 안 → 같은 박자
+    out.push(t);
+  }
+  return out;
+}
+
+/**
  * ranAts: 한 크론의 실행 시각 목록(순서 무관, ISO 또는 ms). 최신 → 과거로 정렬해 간격의 중앙값을 낸다.
- * 반환 { n, medSec, lastRunMs } — n 은 실행 횟수(간격 수 + 1).
+ * 60초 안에 몰린 실행은 한 번으로 접는다(collapseBursts).
+ * 반환 { n, medSec, lastRunMs, collapsed } — n 은 접은 뒤 실행 횟수(간격 수 + 1), collapsed 는 접힌 행 수.
  */
 function summarizeHistory(ranAts) {
-  const ts = (ranAts || []).map((x) => (typeof x === 'number' ? x : Date.parse(x)))
+  const raw = (ranAts || []).map((x) => (typeof x === 'number' ? x : Date.parse(x)))
     .filter((x) => Number.isFinite(x)).sort((a, b) => b - a);
-  if (!ts.length) return { n: 0, medSec: null, lastRunMs: null };
+  if (!raw.length) return { n: 0, medSec: null, lastRunMs: null, collapsed: 0 };
+  const ts = collapseBursts(raw);
   const gaps = [];
   for (let i = 0; i + 1 < ts.length; i++) gaps.push((ts[i] - ts[i + 1]) / 1000);
-  return { n: ts.length, medSec: median(gaps), lastRunMs: ts[0] };
+  return { n: ts.length, medSec: median(gaps), lastRunMs: ts[0], collapsed: raw.length - ts.length };
 }
 
 /**
@@ -175,7 +201,7 @@ function cronNamesFromVercel(json) {
 }
 
 module.exports = {
-  MIN_RUNS, GRACE_FLOOR_SEC, GRACE_CEIL_SEC, DEFAULT_EXCLUDE,
+  MIN_RUNS, BURST_SEC, collapseBursts, GRACE_FLOOR_SEC, GRACE_CEIL_SEC, DEFAULT_EXCLUDE,
   REALERT_CEIL_MS, realertCooldownMs,
   median, lateThresholdSec, summarizeHistory, judgeLateCrons, decideLateAlerts,
   buildLateAlert, fmtLate, cronNamesFromVercel,

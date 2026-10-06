@@ -19,6 +19,7 @@
  *   ⑥ 9/14 12:00 되감기 — 스킵 7건 중 일·주 크론이 잡힌다 / 3배 규칙은 못 잡는다
  *   ⑦ 감시가 핸들러에 배선돼 있고 기본이 알림이다 (9/23 — 관찰 끝나고 켬)
  *   ⑧ 재알림 간격이 크론 주기에 비례한다 (주 크론이 닷새 내리 울지 않게)
+ *   ⑨ 60초 안에 몰린 수동 호출은 한 번으로 접는다 (10/06 — creator-monthly 오경보)
  */
 'use strict';
 
@@ -200,6 +201,44 @@ console.log('\n=== ⑧ 재알림 간격은 주기에 비례한다 (2026-09-23) =
   t('돌아오면 recovered 로 빠진다', r4.recovered.includes('weekly-briefing') && !('weekly-briefing' in r4.nextState.late), r4);
   const again = L.decideLateAlerts(j, r4.nextState, { now: NOW + 2 * H, cooldownMs: BASE });
   t('다시 늦으면 쿨다운 안 기다리고 알린다', again.toAlert.length === 1, again);
+}
+
+console.log('\n=== ⑨ 몰아친 호출은 한 번으로 접는다 (2026-10-06) ===');
+{
+  // 실측 그대로: creator-monthly 9/24 18:23 수동 호출 7번 + 10/01 01:00 정기 1번
+  const cm = ['2026-10-01T01:00:46.522Z', '2026-09-24T18:23:39.933Z', '2026-09-24T18:23:32.638Z',
+    '2026-09-24T18:23:28.980Z', '2026-09-24T18:23:27.121Z', '2026-09-24T18:23:25.969Z',
+    '2026-09-24T18:23:25.103Z', '2026-09-24T18:23:23.989Z'];
+  const N10 = Date.parse('2026-10-05T02:30:55Z');   // 실제 가짜 알림이 나간 시각
+  const s = L.summarizeHistory(cm);
+  t('8행이 2번 실행으로 접힌다', s.n === 2 && s.collapsed === 6, s);
+  const j = L.judgeLateCrons({ 'creator-monthly': cm }, { now: N10 });
+  t('월간 크론을 1초 주기로 오해하지 않는다 (late 없음)', j.late.length === 0, j.late);
+  t('판단 보류(fewRuns)로 간다', j.skipped.fewRuns.includes('creator-monthly'), j.skipped);
+  // 접기 전 종전 동작 재현 — 이 테스트가 무엇을 막는지 증명
+  const rawTs = cm.map(Date.parse); const rawGaps = rawTs.slice(1).map((x, i) => (rawTs[i] - x) / 1000);
+  t('(대조) 접지 않으면 med 가 2초 미만이었다 — 임계 30분의 정체', L.median(rawGaps) < 2 && L.lateThresholdSec(L.median(rawGaps)) === 1800 + L.median(rawGaps), rawGaps);
+
+  // creator-report-card: 9/24 17:31 에 7번 몰림 + 이후 매일 02:10. 접은 뒤 일 크론으로 보여야 한다.
+  const crc = [];
+  for (let d = 0; d < 9; d++) crc.push(Date.parse('2026-10-05T02:10:16Z') - d * D);
+  for (let k = 0; k < 7; k++) crc.push(Date.parse('2026-09-24T17:31:33Z') - k * 2500);
+  const s2 = L.summarizeHistory(crc);
+  t('일 크론 + 몰림 → 주기 1일로 본다', s2.medSec === 86400, s2);
+  const j2 = L.judgeLateCrons({ 'creator-report-card': crc }, { now: Date.parse('2026-10-06T01:00:00Z') });
+  t('제때 돈 일 크론은 정상', j2.late.length === 0 && j2.checked === 1, j2);
+  const j3 = L.judgeLateCrons({ 'creator-report-card': crc }, { now: Date.parse('2026-10-06T09:00:00Z') });
+  t('일 크론이 30시간 넘게 안 돌면 여전히 잡는다 (탐지력 보존)', j3.late.length === 1, j3);
+
+  // 경계값: 정확히 60초는 다른 박자, 59.9초는 같은 박자
+  t('60초 간격은 접지 않는다', L.collapseBursts([120000, 60000, 0]).length === 3);
+  t('59.9초 간격은 접는다', L.collapseBursts([59900, 0]).length === 1);
+  t('접힘은 직전에 남긴 실행 기준 (사슬로 끝없이 잇지 않는다)', L.collapseBursts([100000, 50000, 0]).length === 2);
+  t('가장 최근 실행 시각은 그대로 (lastRunMs)', L.summarizeHistory(cm).lastRunMs === Date.parse(cm[0]));
+  t('가장 짧은 스케줄(10분 크론)은 영향 없다', L.summarizeHistory(hist(NOW, 10 * MIN, 8, 0)).n === 8);
+  t('빈 이력은 collapsed 0', L.summarizeHistory([]).collapsed === 0 && L.summarizeHistory(null).n === 0);
+  const pw = fs.readFileSync(path.join(ROOT, 'api', 'cron', 'pipeline-watch.js'), 'utf8');
+  t('이력 창이 16회로 넓어졌다 (몰림 7번이 창을 다 먹지 않게)', /const LATE_HISTORY_N = 16;/.test(pw));
 }
 
 console.log(`\n크론 지연 자동탐지: ${pass} 통과 · ${fail} 실패`);

@@ -2247,7 +2247,9 @@ module.exports.buildFailingCronAlert = buildFailingCronAlert;
  * ═══════════════════════════════════════════════════════════════════════ */
 const LATE_ALERT_KEY = 'cron-late-detect';
 const LATE_ALERT_MODE = process.env.CRON_LATE_ALERT_MODE === 'log' ? 'log' : 'alert';
-const LATE_HISTORY_N = 8;
+/* 8 → 16 (2026-10-06): 몰아친 수동 호출 7번이 8칸 창을 다 먹으면 진짜 주기가 안 보인다.
+   접기(collapseBursts) 뒤에도 실행 5회가 남도록 창을 넓힌다. */
+const LATE_HISTORY_N = 16;
 const LATE_QUERY_CONCURRENCY = 8;
 
 function _lateExcludeFromEnv() {
