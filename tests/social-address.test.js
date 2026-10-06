@@ -108,7 +108,7 @@ t('스레드가 normalize() 로 네 경로를 모두 통과시킨다',
   (threads.match(/normalize\(/g) || []).length >= 5,
   '대화형 / 일반 AI / 폴백 2곳 + 정의부');
 t('socialHook 이 길이 판정 전에 정규화한다',
-  /const text = papVoice\.normalizeSocialAddress\(raw2[^;]*\);[\s\S]{0,120}text\.length > limit/.test(hook),
+  /const text = papVoice\.normalizeSocialAddress\(raw2[^;]*\);[\s\S]{0,900}bodyPart\.length > limit/.test(hook),  // 2026-10-06 주석 블록 사이에 끼어 창 확대
   '치환으로 글자 수가 달라지므로 나중에 걸면 X 의 280자 판정이 어긋난다');
 t('X 는 socialHook 을 거치므로 자동 적용된다',
   /generateConversationalPost/.test(read('api/_lib/xPost.js')));

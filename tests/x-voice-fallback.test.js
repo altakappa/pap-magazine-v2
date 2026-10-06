@@ -76,6 +76,10 @@ t('둘 다 실패하면 기계식 폴백이 받는다',
   /const voice = build\(await generateVoicePost[\s\S]{0,200}\} catch \(_\) \{[\s\S]{0,60}\}\s*const title = _clampTitle/.test(XP));
 t('길이 초과면 버리고 다음 후보로 간다 (280자 계약 유지)',
   /if \(weightedLen\(body\) > 280\) return null;/.test(XP));
+t('폭주 방어는 후킹 줄을 뺀 본문에 건다 (2026-10-06: 총길이 104 에 걸려 폴백 3/4)',
+  /const bodyPart = nl >= 0 \? text\.slice\(nl \+ 1\)\.trim\(\) : text;\s*if \(!text \|\| bodyPart\.length > limit \* 1\.3/.test(HOOK));
+t('총길이는 X 가 담는 선(limit+45 = 한글 125자) 으로 막는다',
+  /text\.length > limit \+ 45\) return null/.test(HOOK));
 
 console.log('\n[5] 규칙을 두 벌로 만들지 않았다  ← ⑥');
 t('모델 호출이 한 곳이다 (_ask)', (HOOK.match(/await fetch\('https:\/\/api\.anthropic\.com/g) || []).length === 1,

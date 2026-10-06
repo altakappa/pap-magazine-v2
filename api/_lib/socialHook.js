@@ -227,7 +227,14 @@ async function _ask(system, payload, limit, platform) {
     // 샌다. 길이 판정 전에 확정한다. 치환으로 글자 수가 늘기 때문에(너는 →
     // 패퍼들은) 나중에 걸면 X 의 280자 판정이 어긋난다.
     const text = papVoice.normalizeSocialAddress(raw2, { plain: isPolite(platform) })  // 2026-10-05 평서체(도메니코);
-    if (!text || text.length > limit * 1.3) return null; // 길이 폭주 방어
+    /* 2026-10-06 09:30 실측: 10/5 저녁 상한 115→80 뒤 X 폴백이 3/4 로 **늘었다**.
+       모델 출력은 "후킹 한 줄\n본문" 인데 폭주 방어가 **총길이**에 limit*1.3(=104) 을
+       걸어, 후킹 20자 + 두 문장 80자 = 100~140자짜리 멀쩡한 글을 전부 버렸다.
+       폭주 판정은 본문(첫 줄 뒤)에만 건다. 총길이는 X 가 실제로 담는 선
+       (가중 280 − "\n\n#PAPMAGAZINE" 16 = 한글 132자) 안쪽인 limit+45 = 125 로 막는다. */
+    const nl = text.indexOf('\n');
+    const bodyPart = nl >= 0 ? text.slice(nl + 1).trim() : text;
+    if (!text || bodyPart.length > limit * 1.3 || text.length > limit + 45) return null; // 길이 폭주 방어
     return { text, angle: (g.angle || '').trim() };
   } catch (_) {
     return null;
