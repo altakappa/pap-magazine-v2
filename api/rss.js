@@ -13,6 +13,7 @@
 
 const { HTML_TAG_RE, dropKnownTags } = require('./_lib/stripHtml');
 const { supabaseAdmin } = require('./_lib/supabase');
+const { descFromBody } = require('./_lib/seoRenderer');
 const { handleCors } = require('./_lib/cors');
 
 const SITE = 'https://www.pap-magazine.com';
@@ -105,7 +106,11 @@ module.exports = async function handler(req, res) {
       items.push({
         title: a.title,
         link: SITE + '/article/' + encodeURIComponent(handle),
-        desc: cleanDesc(a.seo_description || a.description_en),
+        /* 2026-10-07 — 기사 2,425편이 seo_description·description_en 둘 다 비어 있어
+           설명이 빠진 채 나갔다. DB 를 일괄로 채우지 않고(updated_at 이 바뀌면 sitemap
+           lastmod·IndexNow 가 한꺼번에 흔들린다) 페이지 렌더러와 같은 descFromBody 로
+           본문에서 조립한다. */
+        desc: cleanDesc(a.seo_description || a.description_en || descFromBody(a.content)),
         body: fullContent(a.content),
         date: a.published_date,
         img: a.hero_image_url || a.thumbnail_url || '',
