@@ -157,7 +157,7 @@
     },
     {
       "path": "/api/cron/sync-pepperit",
-      "schedule": "4-54/10 * * * *"
+      "schedule": "4,24,44 * * * *"
     },
     {
       "path": "/api/cron/competitor-watch",

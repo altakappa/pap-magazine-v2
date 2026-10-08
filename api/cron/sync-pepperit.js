@@ -1,6 +1,6 @@
 /**
  * GET /api/cron/sync-pepperit — 페퍼릿(@pepperitmag) 기사 자동 수집.
- * (vercel.json: 10분마다 — PAP sync-instagram 과 4분 오프셋)
+ * (vercel.json: 20분마다 4·24·44분 — 2026-10-08 메타 앱 호출 한도 회피로 10분→20분)
  *
  * business_discovery(공개 조회) → 신규 게시물만 Claude 페퍼릿 톤 기사 생성 →
  * 이미지 Storage 영구 복사(ig-pepperit/) → pepperit_articles 에 published 삽입 →
@@ -17,6 +17,12 @@ const { archiveImagesToStorage, archiveVideosToStorage } = require('../_lib/inst
 const { listPepperitMedia, normalizePepperitMedia, generatePepperitArticle } = require('../_lib/pepperitImport');
 const { submitIndexNowPepperit, pingWebSub, PEPPERIT_SITE } = require('../_lib/pingSearch');
 const { postPepperitTweet, buildPepperitTweet, isPepperitConfigured } = require('../_lib/xPost');
+
+/** 메타 레이트리밋(code 4·17·32·613 / 'request limit reached') 인가. 판단 안 서면 false. */
+function isMetaRateLimit(msg) {
+  const t = String(msg == null ? '' : msg);
+  return /"code"\s*:\s*(4|17|32|613)\b/.test(t) || /application request limit reached/i.test(t);
+}
 
 module.exports = withCronGuard('sync-pepperit', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
@@ -111,7 +117,23 @@ module.exports = withCronGuard('sync-pepperit', async function handler(req, res)
     }
     return res.status(200).json(results);
   } catch (e) {
+    const msg = (e && e.message) || String(e);
+    /* 2026-10-08: 메타 '앱 호출 한도'(code 4 등) 는 우리 코드 고장이 아니라 앱 전체가 공유하는
+       시간당 한도다. 하루 156회 중 79회(50%)가 이걸로 '실패' 로 찍혀 진짜 실패를 묻고 있었다.
+       즉시 재시도는 한도를 더 태우므로 이번 회차만 접고 다음 회차에 맡긴다.
+       ok=true 로 바꾸되 note 는 '⚠️ 한도초과' 로 시작한다 — 조용히 죽은 것처럼 보이지 않게
+       아침 점검이 이 표식을 센다. 한도 말고 다른 오류는 그대로 500. */
+    if (isMetaRateLimit(msg)) {
+      console.warn('[sync-pepperit] 메타 앱 호출 한도 초과 — 이번 회차 건너뜀:', msg.slice(0, 160));
+      return res.status(200).json({
+        imported: 0,
+        rate_limited: true,
+        note: '⚠️ 한도초과 · 메타 앱 호출 한도(#4) — 이번 회차 건너뜀, 다음 회차 재시도',
+      });
+    }
     console.error('[sync-pepperit] top-level failure:', e);
-    return res.status(500).json({ error: (e && e.message) || String(e) });
+    return res.status(500).json({ error: msg });
   }
 }, { silenceTransient: true });
+
+module.exports.isMetaRateLimit = isMetaRateLimit;
