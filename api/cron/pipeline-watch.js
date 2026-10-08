@@ -25,6 +25,7 @@ const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { pushAlert } = require('../_lib/pushAlert');
 const tkd = require('../_lib/tiktokDrive');
+const noMiss = require('../_lib/driveNoMiss');
 const { listRecentMedia, isLikelyEditorialCaption, _extractShortcode } = require('../_lib/instagramImport');
 const { diagnoseBackfill, buildBackfillAlert } = require('../_lib/backfillHealth');
 const { judgeTranslateHealth, buildTranslateAlert, IDLE_NOTE } = require('../_lib/translateHealth');
@@ -261,6 +262,13 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
   const tiktok = await checkTikTok({ dry });
   const tiktokDrive = await checkDriveTikTok({ dry });
 
+  /* ── 영상 원본 누락 감시 (2026-10-08 추가) ──
+   * 도메니코: "틱톡과 유튜브에 빠짐없이 올라가게해줘".
+   * 드라이브 크론들은 폴더에 **있는** 파일만 본다. 니요·리모와·샤넬 영상은 파일이
+   * 아예 안 들어와서 크론이 "올릴 영상 없음" 만 남겼고 사람이 직접 발견했다.
+   * 그래서 반대편에서 본다: 영상 기사인데 유튜브·틱톡 어디에도 없는 것. */
+  const videoSources = await checkVideoSources({ dry });
+
   /* ── 죽은사람 스위치 (2026-08-07 추가) ──
    * 맥미니 영상 압축기는 서버 밖에서 돈다. 조용히 멈춰도 cron_runs 에
    * 흔적이 없다. 그래서 '기록이 안 오는 것' 자체를 신호로 읽는다. */
@@ -319,7 +327,7 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
     ? ((LATE_ALERT_MODE === 'alert' ? '' : '로그전용 ') + late.slice(0, 2).map((x) => x.cron).join('·')).slice(0, 60)
     : undefined;
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, late: late.map((x) => x.cron), lateDetail, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, tiktokDrive, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons, production, deploy, lateCrons });
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, late: late.map((x) => x.cron), lateDetail, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, tiktokDrive, videoSources, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons, production, deploy, lateCrons });
 });
 
 /**
@@ -1212,6 +1220,7 @@ module.exports.buildNaverDraftAlert = buildNaverDraftAlert;
  * 창은 실행 경계에서 표본 0이 되는 순간이 생긴다. 6시간 여유를 준다. */
 const TIKTOK_ALERT_KEY = 'tiktok-post-health';
 const TIKTOK_DRIVE_ALERT_KEY = 'tiktok-drive-backlog';
+const VIDEO_SOURCE_ALERT_KEY = 'video-source-missing';
 
 /**
  * 틱톡 게시 건강도 판정 (순수 함수, 테스트 대상).
@@ -1360,6 +1369,64 @@ async function checkDriveTikTok(opts) {
     return { ...d, alerted };
   } catch (e) {
     console.error('[pipeline-watch] tiktok drive backlog 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+/* 영상 기사인데 채널에 영상이 없는 것 → 원본을 드라이브에 넣어 달라고 알린다.
+ * 판정은 driveNoMiss.judgeMissingSources (순수 함수). 같은 기사로 두 번 알리지 않는다:
+ * 이미 알린 기사 id 를 ops_alert_state 에 남기고, **새로 빠진 기사가 생길 때만** 보낸다. */
+async function checkVideoSources(opts) {
+  try {
+    const since = new Date(Date.now() - 3 * 86400000).toISOString();
+    const { data: arts } = await supabaseAdmin.from('articles')
+      .select('id, title, published_date, created_at, instagram_caption')
+      .eq('status', 'published').eq('source_media_type', 'VIDEO')
+      .gte('created_at', since).limit(300);
+    const list = arts || [];
+    if (!list.length) return { healthy: true, missing: [], reason: '최근 영상 기사 없음' };
+    const ids = list.map((a) => a.id);
+    const { data: yt } = await supabaseAdmin.from('youtube_posts')
+      .select('article_id').in('article_id', ids).not('video_id', 'is', null);
+    const { data: tt } = await supabaseAdmin.from('tiktok_posts')
+      .select('article_id, status').in('article_id', ids);
+    const ytIds = new Set((yt || []).map((r) => r.article_id));
+    const ttIds = new Set((tt || []).filter((r) => r.status !== 'failed').map((r) => r.article_id));
+    let pending = new Set();
+    try { pending = (await tkd.articlesWaitingForDrive()).ids || new Set(); } catch (_e) { /* 못 보면 대기 없음으로 */ }
+    const d = noMiss.judgeMissingSources(list, ytIds, ttIds, pending);
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', VIDEO_SOURCE_ALERT_KEY).maybeSingle();
+    const seen = new Set(((st && st.last_payload && st.last_payload.ids) || []));
+    const fresh = d.missing.filter((x) => !seen.has(x.id));
+    let alerted = false;
+    if (fresh.length) {
+      const lines = ['[원본 영상이 드라이브에 없다 — 넣으면 자동으로 올라간다]'];
+      for (const x of d.missing.slice(0, 8)) {
+        lines.push('· ' + x.title + ' (' + x.channels.join('·') + ' 없음, ' + x.hours + '시간째)');
+        lines.push('   파일명: ' + String(x.fileName).slice(0, 60));
+      }
+      lines.push('드라이브 유튜브 폴더에 위 파일명으로 넣으면 기사에 정확히 붙습니다. 안 올릴 영상이면 무시해도 됩니다.');
+      await pushAlert({
+        personalOnly: true,
+        title: '⚠️ 유튜브·틱톡에 빠진 영상 ' + d.missing.length + '편',
+        lines,
+        url: SITE + '/api/cron/drive-youtube-post?list=1', urlLabel: '드라이브 목록',
+      });
+      alerted = true;
+    }
+    /* 알린 id 는 지금 빠져 있는 것만 남긴다 — 해결된 건 빠지고, 다시 빠지면 다시 알린다. */
+    await supabaseAdmin.from('ops_alert_state').upsert({
+      key: VIDEO_SOURCE_ALERT_KEY,
+      last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+      last_payload: { broken: !d.healthy, ids: d.missing.map((x) => x.id) },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'key' });
+    return { ...d, alerted, fresh: fresh.length };
+  } catch (e) {
+    console.error('[pipeline-watch] video source 실패', e && e.message);
     return { error: (e && e.message) || 'unknown' };
   }
 }

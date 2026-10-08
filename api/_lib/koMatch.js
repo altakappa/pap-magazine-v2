@@ -377,6 +377,10 @@ function groupUnmatched(unmatched) {
     const r = String((u && u.reason) || '');
     let kind = '기타';
     if (/사람이 골라야/.test(r)) kind = '사람이 골라야';
+    /* 2026-10-08 — driveNoMiss.matchOrTieBreak 가 동점을 스스로 고르게 되면서,
+       남는 경우는 '동점 기사가 전부 이미 영상이 있다' 하나다. 그건 사람이 고를 일이
+       아니라 중복이다. 이름을 달리 붙여야 할 일이 다르게 보인다. */
+    else if (/이미 영상 있음/.test(r)) kind = '중복 의심';
     else if (/안 걸림|관련 없어 보임/.test(r)) kind = '기사 없음';
     else if (/닮은 게 없음/.test(r)) kind = '닮은 기사 없음';
     if (!buckets.has(kind)) buckets.set(kind, []);

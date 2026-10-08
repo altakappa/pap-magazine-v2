@@ -260,3 +260,5 @@ module.exports = withCronGuard('drive-story-shorts', async function handler(req,
    그러면 코드만 바뀌어도 테스트는 초록으로 남는다 — 오늘 압축기 사본이
    셋이었던 것과 같은 종류의 거짓 안심이다. 규칙은 한 군데에만 있어야 한다. */
 module.exports.titleFromFilename = titleFromFilename;
+/* 2026-10-08 — drive-youtube-post 가 기사 없는 파일을 같은 방식으로 올릴 때 쓴다 (규칙 한 벌). */
+module.exports.buildStoryDescription = buildDescription;

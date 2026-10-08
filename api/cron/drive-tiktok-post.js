@@ -45,6 +45,11 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
  * 여기 100MB, 스토리지 50MB 로 서로 달라서 50~100MB 영상이 10분마다
  * 영원히 재시도하며 영원히 실패했다 (2026-09-07). */
 const tkd = require('../_lib/tiktokDrive');
+/* 2026-10-08 도메니코 "틱톡과 유튜브에 빠짐없이 올라가게해줘" — drive-youtube-post 와 같은 함수 */
+const noMiss = require('../_lib/driveNoMiss');
+/* 스토리쇼츠의 제목·설명 규칙을 그대로 쓴다. 필요할 때만 불러온다 — 크론끼리 모듈을
+   통째로 물면 테스트의 가짜 모듈 바꿔치기가 새 경로로 샌다. */
+function story() { return require('./drive-story-shorts'); }
 const MAX_BYTES = tkd.MAX_BYTES;
 const CAPTION_MAX = 2200;                 // Buffer 경유 TikTok 캡션 상한 (2026-08-07 실측)
 const ART_COLS = tkd.ART_COLS;
@@ -78,7 +83,8 @@ function buildCaption(art) {
   lines.push('▶ 인스타그램 : ' + IG_HANDLE_URL);
   // 2026-09-21 — 부계정 게시물이 출처면 없는 기사 URL 대신 그 게시물로
   if (art.sub) lines.push('▶ 원문 (@' + art.account + ') : ' + subPostUrl(art));
-  else lines.push('▶ 기사 전문 : ' + url);
+  /* 2026-10-08 — 기사 없이 파일명으로 올리는 영상(noArticle)은 없는 기사 URL 을 적지 않는다 */
+  else if (!art.noArticle) lines.push('▶ 기사 전문 : ' + url);
   lines.push('');
   lines.push(buildHashtags(art, 5).join(' '));
   return lines.join('  ').slice(0, CAPTION_MAX);
@@ -141,6 +147,10 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
     }
 
     const articles = await tkd.recentArticles();
+    /* 이 채널에 이미 게시된 기사 — 동점일 때 '아직 없는 기사' 를 고르는 기준 */
+    /* 조회가 실패하면 빈 집합 — 동점 해소가 '아직 없는 기사' 우선을 못 할 뿐, 게시는 막지 않는다 */
+    let takenTt = new Set();
+    try { if (typeof tkd.takenArticleIds === 'function') takenTt = await tkd.takenArticleIds(); } catch (_e) { takenTt = new Set(); }
 
     /* 2026-09-21 — 웹 기사가 없으면 부계정 게시물(papfashion_·papbeauty_·pap_celeb·
        pap_object)을 출처로 쓴다. drive-youtube-post 와 같은 규칙·같은 함수. */
@@ -191,7 +201,7 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
     const dupSkipped = [];
     let pick = null;
     for (const f of candidates) {
-      const m = matchArticle(f.name, articles);
+      const m = noMiss.matchOrTieBreak(f.name, articles, takenTt, { matchArticle });
       let cand = null;
       if (m.matched) cand = { file: f, art: m.matched, match: m };
       else {
@@ -211,6 +221,14 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
     const dupNote = dupSkipped.length
       ? ' · 중복 방지 ' + dupSkipped.length + '건(' + dupSkipped.map((d) => d.name + (d.recorded ? '' : ' 기록실패:' + d.error)).join(', ').slice(0, 300) + ')'
       : '';
+    /* 기사를 끝내 못 찾은 파일 — FALLBACK_HOURS 뒤 파일명을 제목으로 (유튜브와 같은 규칙) */
+    if (!pick) {
+      const fb = noMiss.pickFallback(unmatched, candidates, Date.now(), (n) => story().titleFromFilename(n));
+      if (fb) {
+        pick = { file: fb.file, art: { id: null, noArticle: true, title: fb.title, tags: [], content: '' },
+          match: { score: 0, runnerUp: null, reason: '기사 없음 ' + Math.round(fb.ageH) + '시간 → 파일명 제목으로 대체 게시' } };
+      }
+    }
     if (!pick) {
       if (dupSkipped.length && !unmatched.length) {
         return res.status(200).json({
@@ -264,7 +282,8 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
         channelId, text: caption, title: shortTitle,
         videoUrl: publicUrl, mode: 'shareNow', maxText: CAPTION_MAX,
       });
-      detail = 'drive:' + file.name + ' · buffer:' + String(post && post.status || '');
+      detail = (art.noArticle ? 'fallback:' : 'drive:') + file.name + ' · buffer:' + String(post && post.status || '')
+        + (match.tieBreak ? ' · 동점 자동선택' : '');
     } catch (err) {
       status = 'failed';
       detail = String(err && err.message || err).slice(0, 400);

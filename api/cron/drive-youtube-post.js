@@ -41,6 +41,12 @@ const drive = require('../_lib/driveVideos');
 const { matchArticle, groupUnmatched, fileCore } = require('../_lib/koMatch');
 const { loadSubPosts, findSubPost, subPostAsArticle, subPostUrl } = require('../_lib/igSubPosts');
 const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim');
+/* 2026-10-08 도메니코 "틱톡과 유튜브에 빠짐없이 올라가게해줘" — 동점 해소·기사 없는 파일
+   대체 업로드·압축 대기는 driveNoMiss 한 곳에 둔다. drive-tiktok-post 도 같은 함수를 쓴다. */
+const noMiss = require('../_lib/driveNoMiss');
+/* 스토리쇼츠의 제목·설명 규칙을 그대로 쓴다. 필요할 때만 불러온다 — 크론끼리 모듈을
+   통째로 물면 테스트의 가짜 모듈 바꿔치기가 새 경로로 샌다. */
+function story() { return require('./drive-story-shorts'); }
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const MAX_BYTES = 100 * 1024 * 1024;   // Vercel 120초·1GB 안에서 다룰 수 있는 선
@@ -126,6 +132,9 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
     const candidates = [];
     for (const f of files) {
       if (done.has(f.id)) continue;                    // 이미 올림 — 조용히
+      /* 압축 전 .mov 를 먼저 올리고 mp4 를 또 올리던 중복 (몽클레르·분크, 2026-10) */
+      const settling = noMiss.settlingReason(f, Date.now());
+      if (settling) { skipped.push({ name: f.name, why: settling }); continue; }
       const why = drive.shouldSkip(f.name, null, 'youtube');
       if (why) { skipped.push({ name: f.name, why }); continue; }
       if (f.bytes > MAX_BYTES) {
@@ -149,6 +158,14 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
       .order('published_date', { ascending: false }).limit(400);
     const articles = arts || [];
 
+    /* 이 채널에 이미 영상이 있는 기사 — 동점일 때 '아직 없는 기사' 를 고르는 기준 */
+    let takenYt = new Set();
+    try {
+      const { data: takenRows } = await supabaseAdmin.from('youtube_posts')
+        .select('article_id').not('article_id', 'is', null).not('video_id', 'is', null).limit(5000);
+      takenYt = new Set((takenRows || []).map((r) => r.article_id));
+    } catch (_e) { takenYt = new Set(); }   // 실패해도 업로드는 막지 않는다
+
     // ── 4. 매칭 — 확신한 첫 건만 처리한다 ────────────────────
     /* 2026-09-21 — 부계정 게시물을 **출처로** 쓴다 (종전엔 알림 힌트뿐).
        도메니코: "pap_celeb 과 papbeauty_ 그리고 pap_object 에서도 기사를 찾아서
@@ -161,12 +178,22 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
     const unmatched = [];
     let pick = null;
     for (const f of candidates) {
-      const m = matchArticle(f.name, articles);
+      const m = noMiss.matchOrTieBreak(f.name, articles, takenYt, { matchArticle });
       if (m.matched) { pick = { file: f, art: m.matched, match: m }; break; }
       const sp = subs.length ? findSubPost(fileCore(f.name), subs) : null;
       const sa = sp ? subPostAsArticle(sp) : null;
       if (sa) { pick = { file: f, art: sa, match: { score: 1, reason: 'sub:@' + sa.account, runnerUp: null } }; break; }
       unmatched.push({ name: f.name, reason: m.reason });
+    }
+
+    /* 기사를 끝내 못 찾은 파일 — FALLBACK_HOURS 를 기다린 뒤 파일명을 제목으로 올린다
+       (스토리쇼츠와 같은 방식). 사람이 지은 이름이 아니면(copy_UUID 등) 올리지 않는다. */
+    if (!pick) {
+      const fb = noMiss.pickFallback(unmatched, candidates, Date.now(), (n) => story().titleFromFilename(n));
+      if (fb) {
+        pick = { file: fb.file, art: { id: null, noArticle: true, title: fb.title, tags: [] },
+          match: { score: 0, runnerUp: null, reason: '기사 없음 ' + Math.round(fb.ageH) + '시간 → 파일명 제목으로 대체 업로드' } };
+      }
     }
 
     if (!pick) {
@@ -217,7 +244,8 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
         note: note(res, '매칭 실패 ' + unmatched.length + '건 — '
           + groupUnmatched(unmatched).slice(0, 1500)
           + subHint
-          + ' · 웹 기사 없이 올리려면 ' + STORY_FOLDER_NAME + ' 폴더로 옮기세요 (파일명이 그대로 제목이 됩니다)'
+          + ' · 기사를 못 찾은 파일은 ' + noMiss.FALLBACK_HOURS + '시간 뒤 파일명을 제목으로 자동 업로드됩니다'
+          + ' · 웹 기사 없이 올리려면 지금 바로 ' + STORY_FOLDER_NAME + ' 폴더로 옮기세요 (파일명이 그대로 제목이 됩니다)'
           + ' · 아예 빼려면 파일명 앞에 _ 를 붙이거나 이름에 완료 를 넣으세요 (지우지 않아도 됩니다)'),
       });
     }
@@ -225,7 +253,9 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
     const { file, art, match } = pick;
     const artUrl = SITE + '/article/' + (art.custom_url || art.slug || '');
     const title = buildTitle(art);
-    const description = buildDescription(art, artUrl);
+    const description = art.noArticle
+      ? story().buildStoryDescription(art.title, buildHashtags(art, 6).join(' '))
+      : buildDescription(art, artUrl);
     const isPublic = process.env.YOUTUBE_PUBLIC === '1';
 
     if (req.query && req.query.dry === '1') {
@@ -298,7 +328,9 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
       });
       videoId = v.id;
       const got = v.status && v.status.privacyStatus;
-      detail = 'drive:' + file.name + (art.sub ? ' · sub:@' + art.account + '/' + (art.shortcode || '') : '')
+      detail = (art.noArticle ? 'fallback:' : 'drive:') + file.name
+        + (art.sub ? ' · sub:@' + art.account + '/' + (art.shortcode || '') : '')
+        + (match.tieBreak ? ' · 동점 자동선택' : '')
         + (isPublic && got && got !== 'public' ? ' · privacy 강제 ' + got : '');
     } catch (err) {
       status = 'failed';

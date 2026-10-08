@@ -42,6 +42,7 @@ const { supabaseAdmin } = require('./supabase');
 const { matchArticle } = require('./koMatch');
 const { doneIdsFrom } = require('./driveClaim');
 const drive = require('./driveVideos');
+const noMiss = require('./driveNoMiss');
 
 /* 우리 스토리지(media 버킷)의 실제 상한과 같은 값이어야 한다.
  * 버킷에 자체 상한이 없어(null) 프로젝트 전역 50MB 가 걸린다 —
@@ -56,13 +57,16 @@ const ART_COLS = 'id, title, slug, custom_url, content, category, tags, publishe
  * 드라이브 파일에서 틱톡에 올릴 수 있는 것만 고른다 — 순수 함수.
  * @returns {{candidates:Array, skipped:Array<{name,why}>}}
  */
-function pickViable(files, doneSet) {
+function pickViable(files, doneSet, nowMs) {
   const done = doneSet || new Set();
   const candidates = [];
   const skipped = [];
   for (const f of (files || [])) {
     if (!f || !f.id) continue;
     if (done.has(f.id)) continue;
+    /* 2026-10-08 — 압축 전 .mov · 방금 들어온 파일은 잠깐 기다린다 (driveNoMiss) */
+    const settling = noMiss.settlingReason(f, nowMs || Date.now());
+    if (settling) { skipped.push({ name: f.name, why: settling, settling: true }); continue; }
     const why = drive.shouldSkip(f.name, null, 'tiktok');
     if (why) { skipped.push({ name: f.name, why }); continue; }
     if (f.bytes > MAX_BYTES) {
@@ -97,6 +101,13 @@ async function doneDriveIds() {
   return doneIdsFrom(data);
 }
 
+/** 틱톡에 이미 게시된 기사 id (실패 제외). 동점 해소의 기준 (2026-10-08). */
+async function takenArticleIds() {
+  const { data } = await supabaseAdmin.from('tiktok_posts')
+    .select('article_id, status').not('article_id', 'is', null).limit(5000);
+  return new Set((data || []).filter((r) => r.status !== 'failed').map((r) => r.article_id));
+}
+
 /**
  * **아직 안 올라간** 드라이브 영상이 가리키는 기사 id 집합.
  * 릴스가 양보할 대상이다.
@@ -123,9 +134,11 @@ async function articlesWaitingForDrive() {
   if (!candidates.length) return { ids: new Set(), files: files.length, note: '대기 중인 드라이브 영상 없음' };
 
   const articles = await recentArticles();
+  /* drive-tiktok-post 와 같은 판단이어야 한다 — 같은 동점 해소 함수를 쓴다 (2026-10-08) */
+  const taken = await takenArticleIds();
   const ids = new Set();
   for (const f of candidates) {
-    const m = matchArticle(f.name, articles);
+    const m = noMiss.matchOrTieBreak(f.name, articles, taken, { matchArticle });
     if (m && m.matched && m.matched.id) ids.add(m.matched.id);
   }
   return { ids, files: files.length, note: '드라이브 대기 ' + candidates.length + '건 · 기사 ' + ids.size + '건 예약' };
@@ -203,6 +216,6 @@ async function driveBacklog(opts) {
 
 module.exports = {
   MAX_BYTES, LOOKBACK_DAYS, ART_COLS, STALE_HOURS,
-  pickViable, recentArticles, doneDriveIds, articlesWaitingForDrive,
+  pickViable, recentArticles, doneDriveIds, takenArticleIds, articlesWaitingForDrive,
   judgeDriveBacklog, driveBacklog,
 };
