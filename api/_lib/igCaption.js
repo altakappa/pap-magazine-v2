@@ -11,6 +11,7 @@
  *   {한국어 훅 한 줄}                          ← AI 생성. 없으면 생략
  *
  *   '{TITLE}' — PAP 매거진 오리지널 에디토리얼
+ *   Published by @kangdm                         ← 발행인 (2026-10-11)
  *
  *   {KR 단락}
  *
@@ -38,6 +39,8 @@
  */
 
 const HOUSE_HANDLE = '@pap_magazine';
+/** 발행인 줄 — 타이틀 바로 아래 (2026-10-11 도메니코). 어드민 미러(pap-admin.js)와 같이 바꿀 것 */
+const PUBLISHED_BY_LINE = 'Published by @kangdm';
 
 /** 제목에서 해시태그용 토큰 생성 (예: "UnWelcome neo queen" → UNWELCOMENEOQUEEN은
  *  과하므로 공백 제거 대신 알파넘 이어붙이되 30자 초과면 생략) */
@@ -69,6 +72,7 @@ function buildPapIgCaption(p) {
 
   // 2) 타이틀 라인
   lines.push(`'${title}' — PAP 매거진 오리지널 에디토리얼`);
+  lines.push(PUBLISHED_BY_LINE);  // 2026-10-11 도메니코 "인스타그램 캡션에 Published by @kangdm 꼭 넣어줘"
   lines.push('');
 
   // 3) KR 단락 (전체 스토리 유도는 하단 "Full Story link" 블록으로 이관)
@@ -153,4 +157,4 @@ function mergeCreditLines(entries) {
   return order.map((k) => { const rec = map.get(k); return (joinRoles(rec.roles) || 'Credit') + ' ' + rec.handle; });
 }
 
-module.exports = { buildPapIgCaption, mergeCreditLines, joinRoles };
+module.exports = { buildPapIgCaption, mergeCreditLines, joinRoles, PUBLISHED_BY_LINE };

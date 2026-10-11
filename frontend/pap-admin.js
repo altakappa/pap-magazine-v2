@@ -6772,6 +6772,7 @@ function _buildIgCaptionFromEditorial(ed){
 
   // 1) 타이틀 라인
   lines.push("'" + title + "' — PAP 매거진 오리지널 에디토리얼");
+  lines.push('Published by @kangdm');  // 2026-10-11 도메니코 — 서버 igCaption.js PUBLISHED_BY_LINE 과 동일
   lines.push('');
 
   // 2) KR 단락 (전체 스토리 유도는 하단 Full Story link 블록으로 이관)

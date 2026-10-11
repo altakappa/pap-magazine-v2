@@ -93,6 +93,11 @@ const at = (needle) => L.findIndex((l) => l.indexOf(needle) !== -1);
     order.every((v, i) => i === 0 || v > order[i - 1]),
     JSON.stringify(order));
   t('URL 은 링크 안내 바로 다음 줄', iUrl === iLink + 1);
+  // 2026-10-11 도메니코 "앞으로 인스타그램 캡션에 Published by @kangdm 꼭 넣어줘" — 타이틀 바로 아래
+  const iPub = at('Published by @kangdm');
+  t('발행인 줄 Published by @kangdm 이 타이틀 바로 다음 줄', iPub === iTitle + 1, JSON.stringify({ iTitle, iPub }));
+  t('어드민 미러도 발행인 줄을 타이틀 바로 아래 넣는다',
+    /오리지널 에디토리얼"\);\s*\n\s*lines\.push\('Published by @kangdm'\)/.test(adm));
 })();
 
 console.log('\n=== [3] 해시태그 정책 (캡션+댓글 합산 5개) ===');
