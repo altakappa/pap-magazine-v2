@@ -93,7 +93,8 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
   console.log('\n[6] 마무리 — X 문장 / 스레드 문장 (2026-10-04 어미는 둘 다 존댓말, 마무리는 채널별 고정 문장)');
   const fbPolite = copy.fallbackCopy(ITEMS, true);
   const fbCasual = copy.fallbackCopy(ITEMS, false);
-  t('존댓말 마무리', /요$/.test(fbPolite.closing), fbPolite.closing);
+  // 2026-10-11 도메니코: X 마무리는 "전체 기사는 아래 링크에서" (평서체 본문에 맞춰 어미 없음)
+  t('X 마무리는 도메니코가 고른 문장', fbPolite.closing === '전체 기사는 아래 링크에서', fbPolite.closing);
   t('반말 마무리', !/요$/.test(fbCasual.closing), fbCasual.closing);
   t('X 는 존댓말 문장을 쓴다', (await copy.build(PICKED, 'x')).text.includes(fbPolite.closing));
   t('스레드는 도메니코가 못 박은 스레드 마무리를 그대로 쓴다', (await copy.build(PICKED, 'threads')).text.includes(fbCasual.closing));

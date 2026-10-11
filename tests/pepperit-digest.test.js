@@ -245,7 +245,7 @@ function seed(n) {
   ok('PAP X 는 예전대로 존댓말', copy.isPoliteFor('celeb', 'x') === true);
   ok('closingFor 가 갈래를 안 받으면 예전 PAP 문장',
     copy.closingFor(false) === '더 많은 현장은 PAP 인스타그램에서 확인!'
-      && copy.closingFor(true) === '전체 기사는 인스타에서 보실 수 있어요');
+      && copy.closingFor(true) === '전체 기사는 아래 링크에서');  // 2026-10-11 도메니코
 
   ok('링크는 딱 하나', (built.text.match(/https?:\/\/\S+/g) || []).length === 1);
   ok('그 링크가 @pepperitmag 프로필',

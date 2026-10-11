@@ -149,10 +149,13 @@ const URLISH = /(https?:\/\/\S+|www\.\S+|\b[\w-]+\.(?:com|net|org|co\.kr|kr|io|m
    아니라 어미 없는 체언형이라 존댓말 글 끝에 붙어도 튀지 않는다.
    그래서 마무리만은 polite 가 아니라 채널(platform)로 고른다. */
 const THREADS_CLOSING = '더 많은 현장은 PAP 인스타그램에서 확인!';
+/* 2026-10-11 도메니코: X 다이제스트 마무리 "전체 기사는 인스타에서 보실 수 있어요" → "전체 기사는 아래 링크에서".
+   X 본문은 10/5 부터 평서체라 "~어요" 가 튀었고, 링크가 바로 아래 붙으니 한 줄이면 된다. */
+const X_CLOSING = '전체 기사는 아래 링크에서';
 function closingFor(polite, bucket, platform) {
   if (bucket === PEPPERIT_BUCKET) return PEPPERIT_CLOSING;
   if (platform === 'threads') return THREADS_CLOSING;
-  return polite ? '전체 기사는 인스타에서 보실 수 있어요' : THREADS_CLOSING;
+  return polite ? X_CLOSING : THREADS_CLOSING;
 }
 
 /** 소개말 한 줄 정제 — 링크·해시태그·따옴표·군더더기 제거. */
