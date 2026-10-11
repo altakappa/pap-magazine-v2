@@ -157,7 +157,7 @@ function isInvalidLinkFailure(msg) {
 /** 대체 문구 — 리다이렉트 없이 게시물 주소 그대로 (쿼리 제거) */
 function boostTextDirect(permalink) {
   const clean = String(permalink).split('?')[0];
-  return '새 화보가 인스타그램에 공개됐습니다.\n지금 가장 먼저 보기 ↓\n\n' + clean;
+  return '새 화보가 공개됐습니다.\n지금 가장 먼저 보기 ↓\n\n' + clean;
 }
 
 /** 게시 시각이 골든아워(기본 90분) 안인가 */
@@ -184,7 +184,7 @@ async function claimBoost(postId, permalink) {
 function boostText(permalink) {
   const clean = String(permalink).split('?')[0];
   const link = SITE + '/api/ig-out?src=boost&to=post&url=' + encodeURIComponent(clean);
-  return '새 화보가 인스타그램에 공개됐습니다.\n지금 가장 먼저 보기 ↓\n\n' + link;
+  return '새 화보가 공개됐습니다.\n지금 가장 먼저 보기 ↓\n\n' + link;
 }
 
 /**
