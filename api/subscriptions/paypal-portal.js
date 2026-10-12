@@ -62,7 +62,7 @@ async function handlePauseResume(req, res, user, action, reason, note) {
   try {
     const { data: row, error } = await supabaseAdmin
       .from('subscriptions')
-      .select('paypal_subscription_id, provider, status, current_period_end, plan')
+      .select('paypal_subscription_id, provider, status, current_period_end, plan, pending_paypal_subscription_id, pending_plan')
       .eq('user_id', user.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -70,6 +70,8 @@ async function handlePauseResume(req, res, user, action, reason, note) {
       return res.status(409).json({ code: 'not_paypal', message: 'not_paypal — no PayPal subscription for this account.' });
     }
     const st = String(row.status || '');
+    // 2026-10-12 — 플랜 변경이 예약된 동안은 쉬어가기/재개를 막는다(이전 구독은 이미 해지됨).
+    if (row.pending_paypal_subscription_id) return res.status(409).json({ code: 'pending_switch', message: 'A plan change is scheduled. Cancel it first.' });
     if (action === 'pause' && st === 'paused') return res.status(200).json({ ok: true, alreadyPaused: true, accessUntil: row.current_period_end });
     if (action === 'resume' && st === 'active') return res.status(200).json({ ok: true, alreadyActive: true });
     if (action === 'pause' && st !== 'active' && st !== 'past_due') return res.status(409).json({ code: 'not_active', message: 'Subscription is not active.' });
@@ -132,7 +134,7 @@ module.exports = async function handler(req, res) {
   try {
     const { data: row, error } = await supabaseAdmin
       .from('subscriptions')
-      .select('paypal_subscription_id, provider, status, current_period_end, plan')
+      .select('paypal_subscription_id, provider, status, current_period_end, plan, pending_paypal_subscription_id, pending_plan')
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -141,6 +143,27 @@ module.exports = async function handler(req, res) {
       // Paddle 시절 구독이거나 구독 자체가 없음 → 프론트가 paddle-portal 로 폴백.
       return res.status(409).json({ code: 'not_paypal', message: 'not_paypal — no PayPal subscription for this account.' });
     }
+    // 2026-10-12 — 플랜 변경 예약 중 해지: 예약된 새 구독을 PayPal 에서 취소하고 예약을 비운다.
+    // 이전 구독은 예약 때 이미 해지됐으므로 행만 canceled 로 적는다. 접근권은 종료일까지.
+    if (row.pending_paypal_subscription_id) {
+      const token0 = await getAccessToken();
+      const r0 = await fetch(`${PAYPAL_API_BASE}/v1/billing/subscriptions/${row.pending_paypal_subscription_id}/cancel`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token0}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'Scheduled plan change cancelled by subscriber from PAP MAGAZINE' }),
+      });
+      if (r0.status !== 204 && r0.status !== 422) {
+        console.error('[paypal-portal] 예약 구독 취소 실패', r0.status);
+        return res.status(502).json({ message: 'Cancellation failed. Please contact support.' });
+      }
+      const { clearPendingPatch } = require('../_lib/planSwitch');
+      await supabaseAdmin.from('subscriptions')
+        .update({ ...clearPendingPatch(), status: 'canceled', updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
+      await recordCancelReason(user.id, row, reason, note);
+      return res.status(200).json({ ok: true, pendingCanceled: true, accessUntil: row.current_period_end });
+    }
+
     if (String(row.status) === 'canceled') {
       await recordCancelReason(user.id, row, reason, note);
       return res.status(200).json({ ok: true, alreadyCanceled: true, accessUntil: row.current_period_end });

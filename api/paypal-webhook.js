@@ -45,6 +45,7 @@
 const { supabaseAdmin } = require('./_lib/supabase');
 const { sendTextToTelegramSafe } = require('./_lib/telegram');
 const { downgradeToFree } = require('./_lib/subscriptionAccess');
+const planSwitch = require('./_lib/planSwitch');   // 2026-10-12 플랜 변경 예약
 const { handleCaptureCompleted, handleCaptureRefunded } = require('./_lib/paypalCaptureRecovery');
 
 const PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID;
@@ -226,10 +227,27 @@ async function upsertSubscription(sub, userId) {
   const status = mapStatus(sub.status);
   const bi = sub.billing_info || {};
 
+  const { data: prev } = await supabaseAdmin.from('subscriptions')
+    .select('paypal_subscription_id, status, plan, current_period_end, pending_paypal_subscription_id')
+    .eq('user_id', userId).maybeSingle();
+
+  // 2026-10-12 — 플랜 변경 예약. 새 구독의 시작일이 미래(= 아직 결제 전)이고 회원에게
+  // 살아 있는 다른 구독이 있으면, 행은 지금 플랜 그대로 두고 pending_* 에만 적는다.
+  // 이전 구독은 지금 PayPal 에서 해지한다(종료일에 둘 다 청구되는 것 방지). 이미 낸
+  // 기간은 그대로 쓴다. 첫 결제(PAYMENT.SALE.COMPLETED)가 오면 아래 즉시 경로로 바꾼다.
+  if (planSwitch.isScheduledStart(sub) && prev && prev.paypal_subscription_id
+      && prev.paypal_subscription_id !== sub.id
+      && ['active', 'past_due', 'paused'].includes(String(prev.status || ''))) {
+    const patch = planSwitch.pendingPatch(sub, plan);
+    const { error: pErr } = await supabaseAdmin.from('subscriptions').update(patch).eq('user_id', userId);
+    if (pErr) throw new Error('pending switch save failed: ' + pErr.message);
+    await cancelOtherPaypalSub(prev.paypal_subscription_id, sub.id, userId);
+    await sendTextToTelegramSafe('🔁 플랜 변경 예약 ' + (prev.plan || '?') + ' → ' + plan + ' 시작 ' + String(patch.pending_start_at || '?').slice(0, 10) + ' user=' + userId);
+    return { plan, status: 'scheduled', startsAt: patch.pending_start_at };
+  }
+
   // 2026-10-01 — 같은 회원의 다른 PayPal 구독이 살아 있으면 그쪽을 해지한다(이중 청구 방지).
   if (status === 'active') {
-    const { data: prev } = await supabaseAdmin.from('subscriptions')
-      .select('paypal_subscription_id, status').eq('user_id', userId).maybeSingle();
     if (prev && prev.paypal_subscription_id && prev.paypal_subscription_id !== sub.id
         && ['active', 'past_due', 'paused', 'pending'].includes(String(prev.status || ''))) {
       await cancelOtherPaypalSub(prev.paypal_subscription_id, sub.id, userId);
@@ -246,6 +264,7 @@ async function upsertSubscription(sub, userId) {
     status,
     current_period_start: (bi.last_payment && bi.last_payment.time) || sub.start_time || null,
     current_period_end: bi.next_billing_time || null,
+    ...planSwitch.clearPendingPatch(),   // 예약이 실행됐거나 무관 → 비운다
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id' });
 
@@ -278,9 +297,29 @@ async function upsertSubscription(sub, userId) {
 async function handleTermination(sub, userId, eventType) {
   const { data: row } = await supabaseAdmin
     .from('subscriptions')
-    .select('paypal_subscription_id, status, current_period_end')
+    .select('paypal_subscription_id, status, current_period_end, pending_paypal_subscription_id, pending_plan')
     .eq('user_id', userId)
     .maybeSingle();
+
+  // 2026-10-12 — 플랜 변경 예약 중.
+  //  · 이전 구독의 해지 이벤트: 우리가 예약 때 직접 해지한 것 → 상태를 건드리지 않는다
+  //    (마이페이지에 "해지됨"이 뜨면 안 된다. 접근권은 종료일까지, 그날 새 플랜 시작).
+  //  · 예약된 새 구독의 해지 이벤트(회원이 PayPal 에서 취소 등): 예약을 비우고, 이전 구독은
+  //    이미 해지됐으니 행을 canceled 로 적는다(종료일까지 쓰고 끝).
+  if (row && row.pending_paypal_subscription_id) {
+    if (sub.id === row.paypal_subscription_id) {
+      console.log('[paypal-webhook]', eventType, '— 플랜 변경 예약 중 이전 구독 종료 이벤트. 상태 유지. user:', userId);
+      return { skipped: 'pending_switch_old_sub' };
+    }
+    if (sub.id === row.pending_paypal_subscription_id) {
+      const { error: cErr } = await supabaseAdmin.from('subscriptions')
+        .update({ ...planSwitch.clearPendingPatch(), status: 'canceled', updated_at: new Date().toISOString() })
+        .eq('user_id', userId);
+      if (cErr) throw new Error('pending switch clear failed: ' + cErr.message);
+      await sendTextToTelegramSafe('↩️ 플랜 변경 예약 취소됨(' + eventType + ') ' + (row.pending_plan || '?') + ' user=' + userId + ' — 현재 기간 끝나면 무료');
+      return { pendingCleared: true };
+    }
+  }
 
   if (row && row.paypal_subscription_id && row.paypal_subscription_id !== sub.id) {
     console.warn('[paypal-webhook] 다른 구독의 종료 이벤트 — 강등하지 않음.',
@@ -401,6 +440,16 @@ module.exports = async function handler(req, res) {
         if (!subId) return res.status(200).json({ received: true, ignored: 'no_subscription' });
         try {
           const sub = await paypalGet(`/v1/billing/subscriptions/${subId}`);
+          // 2026-10-12 — 예약된 플랜 변경의 첫 결제: 행을 새 플랜으로 바꾼다(즉시 경로).
+          {
+            const { data: pend } = await supabaseAdmin.from('subscriptions')
+              .select('user_id').eq('pending_paypal_subscription_id', subId).maybeSingle();
+            if (pend && pend.user_id) {
+              const r = await upsertSubscription(sub, pend.user_id);
+              await sendTextToTelegramSafe('✅ 예약된 플랜 변경 실행 → ' + r.plan + ' user=' + pend.user_id);
+              return res.status(200).json({ received: true, switched: true, ...r });
+            }
+          }
           const bi = sub.billing_info || {};
           // 2026-08-12 — 결제가 성공했으니 past_due 표시를 되돌린다.
           // 예전에는 기간만 늘리고 status 를 그대로 뒀다. 재시도로 결제가 성사돼도

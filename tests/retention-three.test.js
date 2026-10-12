@@ -20,9 +20,9 @@ const HANGUL = /[가-힣]/;
 const portal = R('api/subscriptions/paypal-portal.js');
 t('portal: 사유 whitelist 5종 + skipped', /CANCEL_REASONS = new Set\(\['one_editorial', 'price', 'not_using', 'missing_feature', 'other'\]\)/.test(portal) && /return CANCEL_REASONS\.has\(s\) \? s : 'skipped'/.test(portal));
 t('portal: 메모 300자 자르기', /slice\(0, 300\)/.test(portal));
-t('portal: 성공·이미 해지 세 갈래 모두 기록', (portal.match(/await recordCancelReason\(user\.id, row, reason, note\)/g) || []).length === 3);
+t('portal: 성공·이미 해지·예약취소 네 갈래 모두 기록', (portal.match(/await recordCancelReason\(user\.id, row, reason, note\)/g) || []).length === 4);   // 2026-10-12 플랜 변경 예약 취소 갈래 추가
 t('portal: 기록 실패는 해지를 막지 않음 (fail-open)', /cancel reason 기록 실패\(무시\)/.test(portal) && /catch \(e\)[\s\S]{0,120}cancel reason 예외\(무시\)/.test(portal));
-t('portal: plan 도 select', /select\('paypal_subscription_id, provider, status, current_period_end, plan'\)/.test(portal));
+t('portal: plan 도 select', /select\('paypal_subscription_id, provider, status, current_period_end, plan, pending_paypal_subscription_id, pending_plan'\)/.test(portal));
 t('마이그레이션 172 파일', fs.existsSync(path.join(ROOT, 'supabase_migrations/172_subscription_cancel_reasons.sql')) && /subscription_cancel_reasons/.test(R('supabase_migrations/172_subscription_cancel_reasons.sql')));
 const api = R('frontend/pap-api.js');
 t('pap-api: cancelIntlSubscription(opts) 가 reason·note 를 보냄', /cancelIntlSubscription\(opts\)/.test(api) && /action: 'cancel', reason: o\.reason \|\| null, note: o\.note \|\| null/.test(api));

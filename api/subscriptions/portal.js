@@ -47,6 +47,11 @@ module.exports = async function handler(req, res) {
         status: subscriber.status,
         current_period_start: subscriber.current_period_start,
         current_period_end: subscriber.current_period_end,
+        provider: subscriber.provider || null,
+        // 2026-10-12 플랜 변경 예약(없으면 null)
+        pending_plan: subscriber.pending_plan || null,
+        pending_billing_cycle: subscriber.pending_billing_cycle || null,
+        pending_start_at: subscriber.pending_start_at || null,
       });
     }
 

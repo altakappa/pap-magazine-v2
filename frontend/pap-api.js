@@ -807,9 +807,31 @@ const PAP = (function() {
           throw new Error('This plan is not available for international checkout yet.');
         }
 
+        // 2026-10-12 — 플랜 변경 예약. 지금 살아 있는 구독이 있으면 새 구독을 그 종료일에
+        // 시작시킨다(start_time). 남은 날이 사라지지 않는다. 같은 플랜이면 막고, 이미 예약이
+        // 있으면 막는다. 서버(paypal-webhook)가 start_time 을 보고 예약으로 저장한다.
+        var startTime = null;
+        try {
+          var cur = await request('GET', '/subscriptions/portal');
+          if (cur && cur.pending_plan) {
+            var _pe2 = new Error(_ppT('pending').replace('{date}', String(cur.pending_start_at || '').slice(0, 10)));
+            _pe2.code = 'PENDING_SWITCH';
+            throw _pe2;
+          }
+          if (cur && String(cur.plan || '') === key && ['active', 'past_due'].indexOf(String(cur.status || '')) >= 0) {
+            var _pe3 = new Error(_ppT('samePlan'));
+            _pe3.code = 'SAME_PLAN';
+            throw _pe3;
+          }
+          startTime = _switchStartTime(cur);
+        } catch (e2) {
+          if (e2 && (e2.code === 'PENDING_SWITCH' || e2.code === 'SAME_PLAN')) throw e2;
+          startTime = null;   // 404(구독 없음)·네트워크 오류 → 즉시 시작
+        }
+
         await _loadPayPalSdk(cfg);
-        _openPayPalOverlay(planId, key, user);
-        return { opened: true };
+        _openPayPalOverlay(planId, key, user, startTime);
+        return { opened: true, startTime: startTime };
       } catch (e) {
         window._papCheckoutBusy = false;
         throw e;
@@ -864,20 +886,32 @@ const PAP = (function() {
   // 브라우저가 말하는 "결제됐다"를 신뢰하면 위조가 가능하다.
 
   var _PP_I18N = {
-    ko:{title:'구독 결제', wait:'결제를 확인하는 중입니다… 창을 닫지 말아 주세요.', close:'닫기', fail:'결제창을 여는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.'},
-    en:{title:'Complete your subscription', wait:'Confirming your payment… please keep this window open.', close:'Close', fail:'Something went wrong opening the checkout. Please try again shortly.'},
-    de:{title:'Abonnement abschließen', wait:'Zahlung wird bestätigt… bitte dieses Fenster geöffnet lassen.', close:'Schließen', fail:'Beim Öffnen des Checkouts ist ein Fehler aufgetreten. Bitte erneut versuchen.'},
-    it:{title:'Completa l\'abbonamento', wait:'Conferma del pagamento… tieni aperta questa finestra.', close:'Chiudi', fail:'Si è verificato un errore nell\'apertura del checkout. Riprova a breve.'},
-    fr:{title:'Finaliser votre abonnement', wait:'Confirmation du paiement… veuillez garder cette fenêtre ouverte.', close:'Fermer', fail:'Une erreur est survenue à l\'ouverture du paiement. Veuillez réessayer.'},
-    es:{title:'Completar la suscripción', wait:'Confirmando el pago… mantenga esta ventana abierta.', close:'Cerrar', fail:'Ocurrió un error al abrir el pago. Inténtelo de nuevo pronto.'},
-    ja:{title:'購読のお支払い', wait:'お支払いを確認しています… この画面を閉じないでください。', close:'閉じる', fail:'決済画面を開く際に問題が発生しました。しばらくしてから再度お試しください。'},
-    zh:{title:'完成订阅', wait:'正在确认付款… 请勿关闭此窗口。', close:'关闭', fail:'打开支付时出错。请稍后重试。'},
-    ru:{title:'Оформление подписки', wait:'Подтверждаем платёж… не закрывайте это окно.', close:'Закрыть', fail:'Произошла ошибка при открытии оплаты. Повторите попытку позже.'}
+    ko:{title:'구독 결제', wait:'결제를 확인하는 중입니다… 창을 닫지 말아 주세요.', close:'닫기', fail:'결제창을 여는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.', scheduled:'새 플랜은 {date}부터 시작되고 그날 첫 결제가 됩니다. 그때까지는 지금 플랜을 그대로 이용합니다.', scheduledDone:'플랜 변경이 예약되었습니다. {date}부터 새 플랜이 시작됩니다.', pending:'이미 {date}부터 시작하는 플랜 변경이 예약되어 있습니다.', samePlan:'지금 이용 중인 플랜입니다.'},
+    en:{title:'Complete your subscription', wait:'Confirming your payment… please keep this window open.', close:'Close', fail:'Something went wrong opening the checkout. Please try again shortly.', scheduled:'Your new plan starts on {date} and the first payment is taken that day. Until then you keep your current plan.', scheduledDone:'Your plan change is scheduled. The new plan starts on {date}.', pending:'A plan change starting on {date} is already scheduled.', samePlan:'You are already on this plan.'},
+    de:{title:'Abonnement abschließen', wait:'Zahlung wird bestätigt… bitte dieses Fenster geöffnet lassen.', close:'Schließen', fail:'Beim Öffnen des Checkouts ist ein Fehler aufgetreten. Bitte erneut versuchen.', scheduled:'Ihr neuer Tarif beginnt am {date}; die erste Zahlung erfolgt an diesem Tag. Bis dahin behalten Sie Ihren aktuellen Tarif.', scheduledDone:'Der Tarifwechsel ist vorgemerkt. Der neue Tarif beginnt am {date}.', pending:'Ein Tarifwechsel ab {date} ist bereits vorgemerkt.', samePlan:'Diesen Tarif nutzen Sie bereits.'},
+    it:{title:'Completa l\'abbonamento', wait:'Conferma del pagamento… tieni aperta questa finestra.', close:'Chiudi', fail:'Si è verificato un errore nell\'apertura del checkout. Riprova a breve.', scheduled:'Il nuovo piano inizia il {date} e il primo addebito avviene quel giorno. Fino ad allora mantieni il piano attuale.', scheduledDone:'Il cambio di piano è programmato. Il nuovo piano inizia il {date}.', pending:'Un cambio di piano a partire dal {date} è già programmato.', samePlan:'Stai già usando questo piano.'},
+    fr:{title:'Finaliser votre abonnement', wait:'Confirmation du paiement… veuillez garder cette fenêtre ouverte.', close:'Fermer', fail:'Une erreur est survenue à l\'ouverture du paiement. Veuillez réessayer.', scheduled:'Votre nouveau plan commence le {date} et le premier paiement est prélevé ce jour-là. D\'ici là, vous gardez votre plan actuel.', scheduledDone:'Le changement de plan est programmé. Le nouveau plan commence le {date}.', pending:'Un changement de plan à partir du {date} est déjà programmé.', samePlan:'Vous utilisez déjà ce plan.'},
+    es:{title:'Completar la suscripción', wait:'Confirmando el pago… mantenga esta ventana abierta.', close:'Cerrar', fail:'Ocurrió un error al abrir el pago. Inténtelo de nuevo pronto.', scheduled:'Tu nuevo plan empieza el {date} y el primer cobro se hace ese día. Hasta entonces conservas tu plan actual.', scheduledDone:'El cambio de plan está programado. El nuevo plan empieza el {date}.', pending:'Ya hay un cambio de plan programado a partir del {date}.', samePlan:'Ya estás en este plan.'},
+    ja:{title:'購読のお支払い', wait:'お支払いを確認しています… この画面を閉じないでください。', close:'閉じる', fail:'決済画面を開く際に問題が発生しました。しばらくしてから再度お試しください。', scheduled:'新しいプランは{date}から始まり、その日に初回のお支払いが行われます。それまでは現在のプランをそのまま利用できます。', scheduledDone:'プラン変更を予約しました。{date}から新しいプランが始まります。', pending:'{date}開始のプラン変更がすでに予約されています。', samePlan:'現在ご利用中のプランです。'},
+    zh:{title:'完成订阅', wait:'正在确认付款… 请勿关闭此窗口。', close:'关闭', fail:'打开支付时出错。请稍后重试。', scheduled:'新方案将于{date}开始，并在当天首次扣款。在此之前继续使用当前方案。', scheduledDone:'方案变更已预约。新方案将于{date}开始。', pending:'已预约了自{date}起的方案变更。', samePlan:'您当前正在使用此方案。'},
+    ru:{title:'Оформление подписки', wait:'Подтверждаем платёж… не закрывайте это окно.', close:'Закрыть', fail:'Произошла ошибка при открытии оплаты. Повторите попытку позже.', scheduled:'Новый тариф начнётся {date}, в этот день будет списан первый платёж. До тех пор действует текущий тариф.', scheduledDone:'Смена тарифа запланирована. Новый тариф начнётся {date}.', pending:'Смена тарифа с {date} уже запланирована.', samePlan:'Этот тариф у вас уже подключён.'}
   };
   function _ppT(k){
     var l; try{ l = localStorage.getItem('pap-lang') || 'en'; }catch(_){ l='en'; }
     var d = _PP_I18N[l] || _PP_I18N.en;
     return d[k] || _PP_I18N.en[k] || k;
+  }
+
+  /** 2026-10-12 — 살아 있는 PayPal 구독이 있으면 새 구독의 시작일 = 현재 기간 종료일.
+   *  api/_lib/planSwitch.js switchStartTime 과 같은 규칙(10분 미만 남으면 즉시). */
+  function _switchStartTime(cur) {
+    if (!cur) return null;
+    var st = String(cur.status || '').toLowerCase();
+    if (st !== 'active' && st !== 'past_due') return null;
+    if (String(cur.provider || 'paypal') !== 'paypal') return null;
+    var end = cur.current_period_end ? new Date(cur.current_period_end).getTime() : NaN;
+    if (!isFinite(end) || end - Date.now() < 10 * 60 * 1000) return null;
+    return new Date(end).toISOString();
   }
 
   /** PayPal JS SDK 를 한 번만 싣는다. client-id 가 바뀌면 다시 싣는다. */
@@ -913,7 +947,7 @@ const PAP = (function() {
     })();
   }
 
-  function _openPayPalOverlay(planId, planKey, user) {
+  function _openPayPalOverlay(planId, planKey, user, startTime) {
     var prev = document.getElementById('pap-paypal-overlay');
     if (prev) prev.remove();
 
@@ -926,6 +960,7 @@ const PAP = (function() {
       '<div style="background:#fff;color:#111;max-width:420px;width:100%;border-radius:4px;padding:26px 24px 20px;position:relative">'
       + '<button id="pap-pp-close" aria-label="close" style="position:absolute;top:10px;right:12px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:#666">&times;</button>'
       + '<div style="font-size:14px;font-weight:700;letter-spacing:.04em;margin:0 0 18px">' + _ppT('title') + '</div>'
+      + (startTime ? '<div style="font-size:12px;line-height:1.7;color:#444;margin:0 0 14px;padding:10px 12px;background:#f5f2ec;border-left:3px solid #891717">' + _ppT('scheduled').replace('{date}', String(startTime).slice(0, 10)) + '</div>' : '')
       + '<div id="pap-pp-buttons"></div>'
       + '<div id="pap-pp-wait" style="display:none;font-size:13px;line-height:1.7;color:#333;padding:8px 0">' + _ppT('wait') + '</div>'
       + '</div>';
@@ -943,13 +978,16 @@ const PAP = (function() {
       window.paypal.Buttons({
         style: { layout: 'vertical', shape: 'rect', label: 'subscribe' },
         createSubscription: function (data, actions) {
-          return actions.subscription.create({
+          var req = {
             plan_id: planId,
             // custom_id 로 회원을 잇는다. 위조 가능성이 있으므로 웹훅이 결제자
             // 이메일과 대조한다(api/paypal-webhook.js resolveUserId).
             custom_id: user.id,
             subscriber: user.email ? { email_address: user.email } : undefined,
-          });
+          };
+          // 2026-10-12 플랜 변경 예약: 현재 기간 종료일에 시작(첫 결제도 그날).
+          if (startTime) req.start_time = startTime;
+          return actions.subscription.create(req);
         },
         onApprove: function () {
           // 확정은 웹훅 몫. 여기서는 안내만 하고 등급 반영을 기다린다.
@@ -957,6 +995,12 @@ const PAP = (function() {
           var w = document.getElementById('pap-pp-wait');
           if (b) b.style.display = 'none';
           if (w) w.style.display = 'block';
+          if (startTime) {
+            // 예약이라 등급은 아직 안 바뀐다. 기다리지 말고 안내 후 마이페이지로.
+            if (w) w.textContent = _ppT('scheduledDone').replace('{date}', String(startTime).slice(0, 10));
+            setTimeout(function () { window.location.href = '/mypage'; }, 2500);
+            return;
+          }
           _waitUpgradeThenGo();
         },
         onCancel: function () { close(); },

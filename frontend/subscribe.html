@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="subscribe" data-v="8">
+<meta name="pap-ui-i18n" content="subscribe" data-v="9">
 <meta charset="UTF-8">
 <!-- CSP — 결제 이원화: PortOne(국내) + Paddle(해외) 도메인 허용.
      Paddle 은 script(cdn.paddle.com) + 체크아웃 오버레이 iframe(buy/
@@ -564,7 +564,7 @@ function navigateWithInterstitial(url){
 window._PAP_PORTONE_STORE_ID    = 'store-7b6778d6-f24d-49d2-a939-19df4ec81381';
 window._PAP_PORTONE_CHANNEL_KEY = 'channel-key-1f8ffa8d-2039-48b1-9af1-db8421e9a058';
 </script>
-<script src="/pap-api.js?v=18" defer></script>
+<script src="/pap-api.js?v=19" defer></script>
 <script>
 var checkSvg = '<svg class="tbl-check" viewBox="0 0 16 16" width="16" height="16"><polyline points="3 8 7 12 13 4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var crossSvg = '<svg class="tbl-cross" viewBox="0 0 16 16" width="16" height="16"><line x1="4" y1="4" x2="12" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="4" x2="4" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -572,7 +572,7 @@ var checkIcon = '<span class="icon check"><svg viewBox="0 0 16 16" width="16" he
 var crossIcon = '<span class="icon cross"><svg viewBox="0 0 16 16" width="16" height="16"><use href="#icon-cross"/></svg></span>';
 
 var L = {
-ko: { ctaSwitchYearly:'연간으로 바꾸기', switchYearlyNote:'지금 연간을 시작하면 월간 구독은 자동으로 멈추고, 이번 달 남은 날은 사라집니다. 다음 결제일({date}) 직전에 바꾸면 손해가 없습니다.', ypWaiverAnchor:'면제 1회(€380)가 연간 구독료 4년치보다 큽니다', cancelAnytime:'언제든 마이페이지에서 해지할 수 있고, 이미 결제한 기간은 그대로 이용합니다.',
+ko: { ctaSwitchYearly:'연간으로 바꾸기', ctaSwitch:'이 플랜으로 바꾸기', switchNote:'지금 바꾸면 새 플랜은 {date}부터 시작하고, 그날 첫 결제가 됩니다. 그때까지는 지금 플랜을 그대로 이용합니다. 남은 날은 사라지지 않습니다.', pendingBadge:'{date}부터', pendingNote:'{date}부터 이 플랜으로 바뀝니다. 그날 첫 결제가 됩니다. 취소는 마이페이지에서 할 수 있습니다.', ypWaiverAnchor:'면제 1회(€380)가 연간 구독료 4년치보다 큽니다', cancelAnytime:'언제든 마이페이지에서 해지할 수 있고, 이미 결제한 기간은 그대로 이용합니다.',
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'월간', yearly:'연간', save2mo:'2개월 무료', perYear:'/ 연',
   ypCasting:'다음 호 캐스팅 콜 7일 선공개', ypCastingSub:'"다음 호에서 찾는 작품"을 모두보다 7일 먼저 메일로', ypCert:'검증 코드 인증서', ypCertSub:'게재된 화보마다 검증 코드가 든 인증서(스탠다드·프리미엄은 기본형) · 포트폴리오·에이전시·비자 서류용', ypTag:'연간 프리미엄 전용', ypTitle:'월간 프리미엄에는 없는 혜택', ypWaiver:'유료 서브미션 1회 면제', ypWaiverSub:'구독 1년마다 1회 · €790 유형은 제외', ypCollab:'인스타그램 공동작업자 직접 지정', ypCollabSub:'최대 5명 · PAP 회원이면 무료 회원도 지정 가능 · 제출 후에도 수정', ypValue:'연 {price} · 월간보다 2개월치({save}) 절약', ypValue2:'+ 유료 서브미션 한 번만 써도 €380 더 절약', ypHint:'연간 결제에만 적용 · 눌러서 연간 가격 보기', krPayAsk:'한국 카드·카카오페이·네이버페이로 결제하고 싶다면 눌러 주세요', krPayThanks:'알려주셔서 고마워요. 원하는 분이 모이면 국내 결제를 붙이겠습니다.',
@@ -646,7 +646,7 @@ ko: { ctaSwitchYearly:'연간으로 바꾸기', switchYearlyNote:'지금 연간�
   },
   ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
-en: { ctaSwitchYearly:'Switch to yearly', switchYearlyNote:'If you start yearly now, your monthly subscription stops automatically and the remaining days of this month are lost. Switching just before your next billing date ({date}) avoids that.', ypWaiverAnchor:'One waiver (€380) is worth more than four years of the yearly fee', cancelAnytime:'Cancel any time from My Page; you keep access for the period you have already paid.',
+en: { ctaSwitchYearly:'Switch to yearly', ctaSwitch:'Switch to this plan', switchNote:'If you switch now, the new plan starts on {date} and the first payment is taken that day. Until then you keep your current plan. No remaining days are lost.', pendingBadge:'FROM {date}', pendingNote:'Your plan changes to this one on {date}, with the first payment that day. You can cancel from My Page.', ypWaiverAnchor:'One waiver (€380) is worth more than four years of the yearly fee', cancelAnytime:'Cancel any time from My Page; you keep access for the period you have already paid.',
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
   priceFree:'€0',
@@ -720,7 +720,7 @@ en: { ctaSwitchYearly:'Switch to yearly', switchYearlyNote:'If you start yearly 
   },
   ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
-de:{ ctaSwitchYearly:'Auf Jahr wechseln', switchYearlyNote:'Wenn Sie jetzt jährlich starten, stoppt das Monatsabo automatisch und die restlichen Tage dieses Monats verfallen. Ein Wechsel kurz vor dem nächsten Abrechnungsdatum ({date}) vermeidet das.', ypWaiverAnchor:'Ein Erlass (€380) ist mehr wert als vier Jahre Jahresgebühr', cancelAnytime:'Jederzeit auf Meine Seite kündbar; der bereits bezahlte Zeitraum bleibt nutzbar.',
+de:{ ctaSwitchYearly:'Auf Jahr wechseln', ctaSwitch:'Zu diesem Tarif wechseln', switchNote:'Wenn Sie jetzt wechseln, beginnt der neue Tarif am {date}; die erste Zahlung erfolgt an diesem Tag. Bis dahin behalten Sie Ihren aktuellen Tarif. Es verfallen keine Tage.', pendingBadge:'AB {date}', pendingNote:'Ihr Tarif wechselt am {date} zu diesem; die erste Zahlung erfolgt an diesem Tag. Abbrechen können Sie auf Meine Seite.', ypWaiverAnchor:'Ein Erlass (€380) ist mehr wert als vier Jahre Jahresgebühr', cancelAnytime:'Jederzeit auf Meine Seite kündbar; der bereits bezahlte Zeitraum bleibt nutzbar.',
   business:'BUSINESS', contact:'CONTACT', about:'ÜBER UNS', subscribe:'ABONNIEREN',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'MONATLICH', yearly:'JÄHRLICH', save2mo:'2 MONATE GRATIS', perYear:'/ Jahr',
   priceFree:'€0',
@@ -794,7 +794,7 @@ de:{ ctaSwitchYearly:'Auf Jahr wechseln', switchYearlyNote:'Wenn Sie jetzt jähr
   },
   ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg.-Nr. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
-it: { ctaSwitchYearly:'Passa all’annuale', switchYearlyNote:'Se avvii l’annuale adesso, l’abbonamento mensile si ferma da solo e i giorni rimasti del mese vanno persi. Cambiando poco prima della prossima data di addebito ({date}) non perdi nulla.', ypWaiverAnchor:'Un esonero (€380) vale più di quattro anni di quota annuale', cancelAnytime:'Annulli quando vuoi da La mia pagina; il periodo già pagato resta disponibile.',
+it: { ctaSwitchYearly:'Passa all’annuale', ctaSwitch:'Passa a questo piano', switchNote:'Se cambi adesso, il nuovo piano inizia il {date} e il primo addebito avviene quel giorno. Fino ad allora mantieni il piano attuale. Nessun giorno va perso.', pendingBadge:'DAL {date}', pendingNote:'Il tuo piano passerà a questo il {date}, con il primo addebito quel giorno. Puoi annullare da La mia pagina.', ypWaiverAnchor:'Un esonero (€380) vale più di quattro anni di quota annuale', cancelAnytime:'Annulli quando vuoi da La mia pagina; il periodo già pagato resta disponibile.',
   business:'BUSINESS', contact:'CONTATTI', about:'CHI SIAMO', subscribe:'ABBONATI',
   monthly:'MENSILE', yearly:'ANNUALE', save2mo:'2 MESI GRATIS', perYear:'/ anno',
   ypCasting:'Casting call 7 giorni prima', ypCastingSub:'"Cosa cerca il prossimo numero" via mail, una settimana prima di tutti', ypCert:'Certificato di pubblicazione', ypCertSub:'Uno per ogni editoriale pubblicato, con codice di verifica · per portfolio, agenzie, pratiche visto', ypTag:'SOLO PREMIUM ANNUALE', ypTitle:'Non incluso nel Premium mensile', ypWaiver:'Una candidatura a pagamento esonerata', ypWaiverSub:'Una volta per anno di abbonamento · escluso il tipo da €790', ypCollab:'Collaboratori Instagram scelti da te', ypCollabSub:'Fino a 5 · qualsiasi membro PAP, anche gratuito · modificabili dopo l\'invio', ypValue:'{price} all\'anno · 2 mesi gratis rispetto al mensile (risparmi {save})', ypValue2:'+ una sola candidatura ti fa risparmiare altri €380', ypHint:'Solo con pagamento annuale · tocca per vedere i prezzi annuali', krPayAsk:'Vuoi pagare con carta coreana, KakaoPay o NaverPay? Tocca qui', krPayThanks:'Grazie per avercelo detto. Aggiungeremo i pagamenti coreani quando lo chiederanno abbastanza membri.',
@@ -868,7 +868,7 @@ it: { ctaSwitchYearly:'Passa all’annuale', switchYearlyNote:'Se avvii l’annu
   },
   ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
-fr: { ctaSwitchYearly:'Passer à l’annuel', switchYearlyNote:'Si vous démarrez l’annuel maintenant, l’abonnement mensuel s’arrête automatiquement et les jours restants du mois sont perdus. Changer juste avant la prochaine date de prélèvement ({date}) évite cela.', ypWaiverAnchor:'Une exonération (€380) vaut plus de quatre ans d’abonnement annuel', cancelAnytime:'Résiliable à tout moment depuis Mon compte ; la période déjà payée reste accessible.',
+fr: { ctaSwitchYearly:'Passer à l’annuel', ctaSwitch:'Passer à ce plan', switchNote:'Si vous changez maintenant, le nouveau plan commence le {date} et le premier paiement est prélevé ce jour-là. D’ici là, vous gardez votre plan actuel. Aucun jour n’est perdu.', pendingBadge:'À PARTIR DU {date}', pendingNote:'Votre plan passera à celui-ci le {date}, avec le premier paiement ce jour-là. Annulation possible depuis Mon compte.', ypWaiverAnchor:'Une exonération (€380) vaut plus de quatre ans d’abonnement annuel', cancelAnytime:'Résiliable à tout moment depuis Mon compte ; la période déjà payée reste accessible.',
   business:'BUSINESS', contact:'CONTACT', about:'À PROPOS', subscribe:'S\'ABONNER',
   monthly:'MENSUEL', yearly:'ANNUEL', save2mo:'2 MOIS OFFERTS', perYear:'/ an',
   ypCasting:'Casting calls 7 jours en avance', ypCastingSub:'« Ce que cherche le prochain numéro » par mail, une semaine avant tout le monde', ypCert:'Certificat de publication', ypCertSub:'Un par éditorial publié, avec code de vérification · pour portfolio, agences, dossiers visa', ypTag:'PREMIUM ANNUEL UNIQUEMENT', ypTitle:'Absent du Premium mensuel', ypWaiver:'Une soumission payante offerte', ypWaiverSub:'Une fois par année d\'abonnement · hors formule à €790', ypCollab:'Collaborateurs Instagram de votre choix', ypCollabSub:'Jusqu\'à 5 · tout membre PAP, même gratuit · modifiables après l\'envoi', ypValue:'{price} par an · 2 mois offerts par rapport au mensuel ({save} d\'économie)', ypValue2:'+ une seule soumission vous fait économiser €380 de plus', ypHint:'Paiement annuel uniquement · touchez pour voir les prix annuels', krPayAsk:'Payer avec une carte coréenne, KakaoPay ou NaverPay ? Touchez ici', krPayThanks:'Merci de nous l\'avoir dit. Nous ajouterons les paiements coréens dès que suffisamment de membres le demanderont.',
@@ -942,7 +942,7 @@ fr: { ctaSwitchYearly:'Passer à l’annuel', switchYearlyNote:'Si vous démarre
   },
   ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | PDG : Domenico Kang | N&#176; 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
-es: { ctaSwitchYearly:'Pasar a anual', switchYearlyNote:'Si empiezas el anual ahora, la suscripción mensual se detiene sola y se pierden los días que quedan del mes. Cambiar justo antes de la próxima fecha de cobro ({date}) lo evita.', ypWaiverAnchor:'Una exención (€380) vale más que cuatro años de cuota anual', cancelAnytime:'Cancela cuando quieras desde Mi página; conservas el acceso del periodo ya pagado.',
+es: { ctaSwitchYearly:'Pasar a anual', ctaSwitch:'Cambiar a este plan', switchNote:'Si cambias ahora, el nuevo plan empieza el {date} y el primer cobro se hace ese día. Hasta entonces conservas tu plan actual. No se pierde ningún día.', pendingBadge:'DESDE {date}', pendingNote:'Tu plan cambiará a este el {date}, con el primer cobro ese día. Puedes cancelarlo desde Mi página.', ypWaiverAnchor:'Una exención (€380) vale más que cuatro años de cuota anual', cancelAnytime:'Cancela cuando quieras desde Mi página; conservas el acceso del periodo ya pagado.',
   business:'NEGOCIOS', contact:'CONTACTO', about:'ACERCA DE', subscribe:'SUSCRIBIRSE',
   monthly:'MENSUAL', yearly:'ANUAL', save2mo:'2 MESES GRATIS', perYear:'/ año',
   ypCasting:'Casting calls 7 días antes', ypCastingSub:'"Lo que busca el próximo número" por correo, una semana antes que el resto', ypCert:'Certificado de publicación', ypCertSub:'Uno por editorial publicado, con código de verificación · para portfolio, agencias, trámites de visado', ypTag:'SOLO PREMIUM ANUAL', ypTitle:'No incluido en Premium mensual', ypWaiver:'Una propuesta de pago exenta', ypWaiverSub:'Una vez por año de suscripción · excluye el tipo de €790', ypCollab:'Colaboradores de Instagram a tu elección', ypCollabSub:'Hasta 5 · cualquier miembro de PAP, incluso gratuito · editable tras el envío', ypValue:'{price} al año · 2 meses gratis frente al mensual (ahorras {save})', ypValue2:'+ una sola propuesta te ahorra €380 más', ypHint:'Solo con pago anual · toca para ver los precios anuales', krPayAsk:'¿Quieres pagar con tarjeta coreana, KakaoPay o NaverPay? Toca aquí', krPayThanks:'Gracias por avisarnos. Añadiremos pagos coreanos cuando lo pidan suficientes miembros.',
@@ -1016,7 +1016,7 @@ es: { ctaSwitchYearly:'Pasar a anual', switchYearlyNote:'Si empiezas el anual ah
   },
   ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seúl, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
-ja: { ctaSwitchYearly:'年額に切り替える', switchYearlyNote:'今すぐ年額を始めると月額購読は自動で止まり、今月の残り日数は失われます。次回の請求日（{date}）の直前に切り替えれば損はありません。', ypWaiverAnchor:'免除1回（€380）は年額4年分より大きい金額です', cancelAnytime:'マイページからいつでも解約でき、お支払い済みの期間はそのまま利用できます。',
+ja: { ctaSwitchYearly:'年額に切り替える', ctaSwitch:'このプランに切り替える', switchNote:'今切り替えると、新しいプランは{date}から始まり、その日に初回のお支払いが行われます。それまでは現在のプランをそのまま利用できます。残りの日数は失われません。', pendingBadge:'{date}から', pendingNote:'{date}からこのプランに切り替わり、その日に初回のお支払いが行われます。取り消しはマイページからできます。', ypWaiverAnchor:'免除1回（€380）は年額4年分より大きい金額です', cancelAnytime:'マイページからいつでも解約でき、お支払い済みの期間はそのまま利用できます。',
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'購読',
   monthly:'月間', yearly:'年間', save2mo:'2ヶ月無料', perYear:'/ 年',
   ypCasting:'キャスティングコール7日先行', ypCastingSub:'「次号で探している作品」を全員より1週間早くメールで', ypCert:'掲載証明書', ypCertSub:'掲載エディトリアルごとに検証コード付き · ポートフォリオ・エージェンシー・ビザ書類に', ypTag:'年間プレミアム限定', ypTitle:'月額プレミアムにはない特典', ypWaiver:'有料応募1回免除', ypWaiverSub:'購読1年ごとに1回・€790タイプは対象外', ypCollab:'Instagramコラボレーターを自分で指定', ypCollabSub:'最大5名・PAP会員なら無料会員も可・提出後も変更可', ypValue:'年{price}・月払いより2か月分お得（{save}節約）', ypValue2:'＋有料応募1回でさらに€380節約', ypHint:'年払いのみ・タップで年間価格を表示', krPayAsk:'韓国のカード・KakaoPay・NaverPayで支払いたい方はタップ', krPayThanks:'お知らせありがとうございます。希望が集まり次第、韓国の決済を追加します。',
@@ -1090,7 +1090,7 @@ ja: { ctaSwitchYearly:'年額に切り替える', switchYearlyNote:'今すぐ年
   },
   ft:'<strong>株式会社アルタカッパ</strong> | CEO : カン・ドンミン | 事業者番号 192-88-02644<br>ソウル特別市江南区論峴路146キル18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
-zh: { ctaSwitchYearly:'改为年付', switchYearlyNote:'现在开始年付，月付订阅会自动停止，本月剩余天数将失效。在下次扣款日（{date}）之前切换则不会有损失。', ypWaiverAnchor:'一次免除（€380）超过四年的年费', cancelAnytime:'可随时在我的页面取消，已付费周期仍可继续使用。',
+zh: { ctaSwitchYearly:'改为年付', ctaSwitch:'切换到此方案', switchNote:'现在切换，新方案将于{date}开始，并在当天首次扣款。在此之前继续使用当前方案，剩余天数不会损失。', pendingBadge:'{date}起', pendingNote:'您的方案将于{date}切换为此方案，并在当天首次扣款。可在我的页面取消。', ypWaiverAnchor:'一次免除（€380）超过四年的年费', cancelAnytime:'可随时在我的页面取消，已付费周期仍可继续使用。',
   business:'商务', contact:'联系', about:'关于', subscribe:'订阅',
   monthly:'月付', yearly:'年付', save2mo:'免费2个月', perYear:'/ 年',
   ypCasting:'征稿提前7天', ypCastingSub:'"下一期在找什么"提前一周邮件告知', ypCert:'刊登证书', ypCertSub:'每篇已刊登作品一份，含验证码 · 用于作品集、经纪公司、签证材料', ypTag:'年度高级会员专享', ypTitle:'月付高级会员没有的权益', ypWaiver:'免除1次付费投稿', ypWaiverSub:'每个订阅年度1次 · 不含€790类型', ypCollab:'自行指定 Instagram 合作者', ypCollabSub:'最多5位 · 任何 PAP 会员（含免费会员）· 提交后可修改', ypValue:'每年 {price} · 比月付省下2个月（省 {save}）', ypValue2:'+ 只投稿一次再省 €380', ypHint:'仅限年付 · 点击查看年付价格', krPayAsk:'想用韩国银行卡、KakaoPay 或 NaverPay 付款？点这里', krPayThanks:'感谢告知。需求足够时我们会接入韩国支付。',
@@ -1164,7 +1164,7 @@ zh: { ctaSwitchYearly:'改为年付', switchYearlyNote:'现在开始年付，月
   },
   ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号 192-88-02644<br>首尔特别市江南区论岘路146街18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
-ru:{ ctaSwitchYearly:'Перейти на год', switchYearlyNote:'Если начать годовую подписку сейчас, месячная остановится автоматически, а оставшиеся дни месяца пропадут. Переход прямо перед датой списания ({date}) этого избежит.', ypWaiverAnchor:'Одно освобождение (€380) стоит больше четырёх лет годовой подписки', cancelAnytime:'Отменить можно в любой момент на странице «Моя страница»; оплаченный период остаётся доступным.',
+ru:{ ctaSwitchYearly:'Перейти на год', ctaSwitch:'Перейти на этот тариф', switchNote:'Если перейти сейчас, новый тариф начнётся {date}, и в этот день будет списан первый платёж. До тех пор действует текущий тариф. Оставшиеся дни не пропадают.', pendingBadge:'С {date}', pendingNote:'Ваш тариф сменится на этот {date}, первый платёж в этот день. Отменить можно на «Моя страница».', ypWaiverAnchor:'Одно освобождение (€380) стоит больше четырёх лет годовой подписки', cancelAnytime:'Отменить можно в любой момент на странице «Моя страница»; оплаченный период остаётся доступным.',
   business:'БИЗНЕС', contact:'КОНТАКТ', about:'О НАС', subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',
   monthly:'МЕСЯЦ', yearly:'ГОД', save2mo:'2 МЕСЯЦА БЕСПЛАТНО', perYear:'/ год',
   ypCasting:'Кастинг-коллы на 7 дней раньше', ypCastingSub:'«Что ищет следующий выпуск» — письмом, за неделю до всех', ypCert:'Сертификат публикации', ypCertSub:'На каждый опубликованный эдиториал, с кодом проверки · для портфолио, агентств, визовых документов', ypTag:'ТОЛЬКО ГОДОВОЙ PREMIUM', ypTitle:'Нет в месячном Premium', ypWaiver:'Одна платная заявка бесплатно', ypWaiverSub:'Раз в год подписки · кроме типа за €790', ypCollab:'Соавторы в Instagram на ваш выбор', ypCollabSub:'До 5 человек · любой участник PAP, даже бесплатный · можно изменить после отправки', ypValue:'{price} в год · 2 месяца бесплатно по сравнению с помесячной оплатой (экономия {save})', ypValue2:'+ одна платная заявка экономит ещё €380', ypHint:'Только при оплате за год · нажмите, чтобы увидеть цены', krPayAsk:'Хотите платить корейской картой, KakaoPay или NaverPay? Нажмите здесь', krPayThanks:'Спасибо, что сообщили. Добавим корейские способы оплаты, когда об этом попросит достаточно участников.',
@@ -1318,6 +1318,7 @@ function _applyTrialCta(){
   rows.forEach(function(r){
     var card=document.getElementById(r[4]); if(!card) return;
     var cta=card.querySelector('.plan-cta'); if(!cta) return;
+    if(card.classList.contains('is-switch') || card.classList.contains('is-current')) return;   // 2026-10-12
     if(currentPlan===r[0]){ cta.textContent = d.ctaCurrent || 'CURRENTLY ON'; return; }
     // 2026-08-10 무료 체험 폐지 — '7일 무료 체험 시작' 문구를 더 쓰지 않는다.
     // 체험 플랜이 없는데 체험을 약속하면 결제창에서 바로 들통난다.
@@ -1413,7 +1414,7 @@ function _getCurrentUserPlan(){
    pap-user 에는 등급만 있고 주기(월간/연간)가 없어, 로그인 상태면 portal GET 으로 한 번 읽는다.
    월간 이용 중인 사람이 연간 탭을 켜면 그 카드의 '이용 중' 잠금을 풀고 "연간으로 바꾸기"를 보여준다.
    새 연간 구독이 활성화되면 서버(paypal-webhook upsertSubscription)가 이전 월간 구독을 PayPal 에서 해지한다.
-   남은 날이 사라진다는 사실은 숨기지 않는다(switchYearlyNote). */
+   2026-10-12 부터는 새 구독을 종료일에 시작시켜 남은 날이 사라지지 않는다(_markCurrentPlan). */
 var _papSubInfo = null;   // { billing_cycle, status, current_period_end } | null
 function _loadSubInfo(){
   try{
@@ -1424,51 +1425,61 @@ function _loadSubInfo(){
       .catch(function(){});
   }catch(_){}
 }
-function _monthlyToYearly(){
-  return !!(_papSubInfo && String(_papSubInfo.billing_cycle||'') === 'monthly'
-    && ['active','past_due'].indexOf(String(_papSubInfo.status||'')) >= 0 && currentBilling === 'yearly');
+/* 2026-10-12 — 플랜 변경 예약(도메니코 "제대로 된 길로 가자").
+   살아 있는 PayPal 구독자가 다른 플랜(스탠다드↔프리미엄, 월간↔연간)을 고르면 pap-api.checkoutIntl 이
+   새 구독의 start_time 을 현재 기간 종료일로 넘긴다. 남은 날은 사라지지 않는다. 여기서는 그 사실을
+   카드에 보여 주고, 이미 예약된 플랜이 있으면 그 카드에 "{date}부터" 배지를 단다. */
+function _switchable(){
+  if(!_papSubInfo) return false;
+  if(['active','past_due'].indexOf(String(_papSubInfo.status||'')) < 0) return false;
+  if(String(_papSubInfo.provider||'paypal') !== 'paypal') return false;
+  var end = _papSubInfo.current_period_end ? new Date(_papSubInfo.current_period_end).getTime() : NaN;
+  return isFinite(end) && (end - Date.now()) > 10*60*1000;
 }
+function _monthlyToYearly(){   // 같은 등급 월간 → 연간 (버튼 문구만 다르다)
+  return _switchable() && String(_papSubInfo.billing_cycle||'') === 'monthly' && currentBilling === 'yearly';
+}
+function _basePlan(k){ return /^premium/i.test(String(k||'')) ? 'premium' : /^standard/i.test(String(k||'')) ? 'standard' : null; }
 function _markCurrentPlan(d){
   d = d || L[localStorage.getItem('pap-lang')||'ko'] || L.ko;
   var current = _getCurrentUserPlan();
   ['switchYearlyNote','switchYearlyNoteStd'].forEach(function(id){ var n=document.getElementById(id); if(n){ n.hidden=true; n.textContent=''; } });
-  ['planStandard','planPremium'].forEach(function(id){
-    var c=document.getElementById(id); var b=c&&c.querySelector('.plan-cta'); if(b){ b.removeAttribute('aria-disabled'); }
-  });
-  if(current && (current==='premium' || current==='standard') && _monthlyToYearly()){
-    var sw = document.getElementById(current==='premium' ? 'planPremium' : 'planStandard');
-    var swCta = sw && sw.querySelector('.plan-cta');
-    if(swCta) swCta.textContent = d.ctaSwitchYearly || (L.en && L.en.ctaSwitchYearly) || 'Switch to yearly';
-    var note = document.getElementById(current==='premium' ? 'switchYearlyNote' : 'switchYearlyNoteStd');
-    if(note){
-      var dt = String((_papSubInfo && _papSubInfo.current_period_end) || '').slice(0,10);
-      note.textContent = String(d.switchYearlyNote || (L.en && L.en.switchYearlyNote) || '').replace('{date}', dt);
-      note.hidden = false;
-    }
-    ['planFree','planStandard','planPremium'].forEach(function(id){ var c=document.getElementById(id); if(c){ c.classList.remove('is-current'); c.removeAttribute('data-current-label'); } });
-    return;
-  }
-  // Reset all cards first so re-running on language change doesn't stack badges
   ['planFree','planStandard','planPremium'].forEach(function(id){
-    var c = document.getElementById(id);
-    if(!c) return;
-    c.classList.remove('is-current');
-    c.removeAttribute('data-current-label');
+    var c=document.getElementById(id); if(!c) return;
+    c.classList.remove('is-current'); c.classList.remove('is-switch'); c.removeAttribute('data-current-label');
+    var b=c.querySelector('.plan-cta'); if(b){ b.removeAttribute('aria-disabled'); }
   });
   if(!current) return;
-  var idMap = { free:'planFree', standard:'planStandard', premium:'planPremium' };
-  var cardId = idMap[current];
-  var card = cardId ? document.getElementById(cardId) : null;
-  if(!card) return;
-  card.classList.add('is-current');
-  card.setAttribute('data-current-label', d.currentPlanBadge || 'CURRENTLY ON');
-  // Override the CTA text/handler so the user doesn't try to re-subscribe
-  // to the plan they already have.
-  var cta = card.querySelector('.plan-cta');
-  if(cta){
-    cta.textContent = d.ctaCurrent || 'CURRENTLY ON';
-    cta.setAttribute('aria-disabled','true');
+  var sw = _switchable();
+  var curBilling = _papSubInfo && _papSubInfo.billing_cycle || null;
+  var pend = (_papSubInfo && _papSubInfo.pending_plan) ? { plan:_basePlan(_papSubInfo.pending_plan), billing:String(_papSubInfo.pending_billing_cycle||'monthly'), date:String(_papSubInfo.pending_start_at||'').slice(0,10) } : null;
+  var endDate = String((_papSubInfo && _papSubInfo.current_period_end) || '').slice(0,10);
+  function markCurrent(c){
+    c.classList.add('is-current'); c.setAttribute('data-current-label', d.currentPlanBadge || 'CURRENTLY ON');
+    var cta=c.querySelector('.plan-cta'); if(cta){ cta.textContent = d.ctaCurrent || 'CURRENTLY ON'; cta.setAttribute('aria-disabled','true'); }
   }
+  if(current==='free'){ var fc=document.getElementById('planFree'); if(fc) markCurrent(fc); return; }
+  [['standard','planStandard','switchYearlyNoteStd'],['premium','planPremium','switchYearlyNote']].forEach(function(r){
+    var c=document.getElementById(r[1]); if(!c) return;
+    var cta=c.querySelector('.plan-cta'); var note=document.getElementById(r[2]);
+    var base=r[0];
+    // ① 예약된 플랜 카드: "{date}부터" 배지 + 잠금
+    if(pend && pend.plan===base && pend.billing===currentBilling){
+      c.classList.add('is-current'); c.setAttribute('data-current-label', String(d.pendingBadge||'FROM {date}').replace('{date}', pend.date));
+      if(cta){ cta.textContent = d.ctaCurrent || 'CURRENTLY ON'; cta.setAttribute('aria-disabled','true'); }
+      if(note){ note.textContent = String(d.pendingNote||'').replace(/\{date\}/g, pend.date); note.hidden=false; }
+      return;
+    }
+    // ② 지금 쓰는 플랜(같은 등급·같은 주기, 주기를 모르면 등급만): 이용 중
+    var sameBilling = !sw || !curBilling || curBilling===currentBilling;
+    if(base===current && sameBilling){ markCurrent(c); return; }
+    // ③ 바꿀 수 있는 다른 플랜: 예약 안내. 이미 예약이 있으면 더 못 바꾼다(버튼은 그대로, 서버가 막는다).
+    if(sw && !pend){
+      c.classList.add('is-switch');
+      if(cta) cta.textContent = (base===current && _monthlyToYearly()) ? (d.ctaSwitchYearly || 'Switch to yearly') : (d.ctaSwitch || 'Switch to this plan');
+      if(note){ note.textContent = String(d.switchNote||'').replace(/\{date\}/g, endDate); note.hidden=false; }
+    }
+  });
 }
 
 // ======== LANGUAGE ========
@@ -1497,6 +1508,7 @@ function setLang(l) {
         e.textContent = d.ctaCurrent || (d[k] || '');
         return;
       }
+      if (card && card.classList.contains('is-switch')) return;   // 2026-10-12 바꾸기 문구는 _markCurrentPlan 이 정한다
     }
     // If logged in, use logged-in version of CTA buttons
     if (isLoggedIn) {

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="mypage" data-v="17">
+<meta name="pap-ui-i18n" content="mypage" data-v="18">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP Magazine - My Page">
@@ -511,7 +511,7 @@ a{color:#fff;text-decoration:none}
        so users get one consistent navigation surface. -->
 </div>
 
-<script src="/pap-api.js?v=18" defer></script>
+<script src="/pap-api.js?v=19" defer></script>
 <script src="/pap-countries.js?v=1" defer></script>
 <!-- 2026-09-25 메일·비교 줄 링크(utm)가 이 페이지로 온다 → 유입 기록 (social_inclicks) -->
 <script src="/pap-inclick.js?v=4" defer></script>
@@ -757,6 +757,23 @@ var _MP_CANCEL_REASON_I18N = {
   zh:{q:'能告诉我们一个原因吗？（可选）',r1:'我的作品已经发布，不再需要了',r2:'价格太高',r3:'用得不多',r4:'缺少我想要的功能或内容',r5:'其他',ph:'留一句话对我们帮助很大',keep:'继续订阅'},
   ru:{q:'Назовёте одну причину? (по желанию)',r1:'Мой эдиториал опубликован, больше не нужно',r2:'Слишком дорого',r3:'Редко пользуюсь',r4:'Не хватает того, что я хотел(а)',r5:'Другое',ph:'Одна строка здесь очень поможет',keep:'Оставить подписку'}
 };
+// ───── 플랜 변경 예약 안내 (2026-10-12) ─────
+var _MP_SWITCH_I18N = {
+  ko:{pending:'{date}부터 {plan} 플랜으로 바뀝니다. 그날 첫 결제가 되고, 그때까지는 지금 플랜을 그대로 이용합니다.',monthly:'월간',yearly:'연간'},
+  en:{pending:'Your plan changes to {plan} on {date}. The first payment is taken that day; until then you keep your current plan.',monthly:'monthly',yearly:'yearly'},
+  de:{pending:'Ihr Tarif wechselt am {date} zu {plan}. Die erste Zahlung erfolgt an diesem Tag; bis dahin behalten Sie Ihren aktuellen Tarif.',monthly:'monatlich',yearly:'jährlich'},
+  it:{pending:'Il tuo piano passerà a {plan} il {date}. Il primo addebito avviene quel giorno; fino ad allora mantieni il piano attuale.',monthly:'mensile',yearly:'annuale'},
+  fr:{pending:'Votre plan passera à {plan} le {date}. Le premier paiement est prélevé ce jour-là ; d’ici là, vous gardez votre plan actuel.',monthly:'mensuel',yearly:'annuel'},
+  es:{pending:'Tu plan cambiará a {plan} el {date}. El primer cobro se hace ese día; hasta entonces conservas tu plan actual.',monthly:'mensual',yearly:'anual'},
+  ja:{pending:'{date}から{plan}プランに切り替わります。その日に初回のお支払いが行われ、それまでは現在のプランをそのまま利用できます。',monthly:'月額',yearly:'年額'},
+  zh:{pending:'您的方案将于{date}切换为{plan}。当天首次扣款，在此之前继续使用当前方案。',monthly:'月付',yearly:'年付'},
+  ru:{pending:'Ваш тариф сменится на {plan} {date}. В этот день будет списан первый платёж; до тех пор действует текущий тариф.',monthly:'ежемесячно',yearly:'ежегодно'}
+};
+function _mpSwitchT(k){
+  var l; try{ l=localStorage.getItem('pap-lang')||'en'; }catch(_){ l='en'; }
+  var d=_MP_SWITCH_I18N[l]||_MP_SWITCH_I18N.en;
+  return d[k]||_MP_SWITCH_I18N.en[k]||k;
+}
 // ───── 쉬어가기 / 다시 시작 (2026-10-01) ─────
 // 해지 창의 세 번째 선택지. PayPal 일시정지(suspend): 다음 결제가 멈추고, 결제한 기간은 그대로, 뒤에는 무료.
 // 멈춘 사람은 마이페이지에서 한 번에 다시 시작(activate). 떠나는 사람 일부를 "멈춘 사람"으로 남긴다.
@@ -848,6 +865,21 @@ async function mpMaybeShowCancel(opts){
     if(!s) return;
     var st = String(s.status||'').toLowerCase();
     _mpSubEndsAt = s.current_period_end || null;
+    // 2026-10-12 — 플랜 변경 예약 중이면 구독 카드 아래에 한 줄 (취소는 아래 '구독 해지' 버튼이 예약까지 함께 취소)
+    if(s.pending_plan && !document.getElementById('mpPendingSwitch')){
+      try{
+        var sc = document.getElementById('mpSubCard');
+        if(sc){
+          var pl = /^premium/i.test(String(s.pending_plan)) ? 'PREMIUM' : 'STANDARD';
+          var cyc = String(s.pending_billing_cycle||'') === 'yearly' ? _mpSwitchT('yearly') : _mpSwitchT('monthly');
+          var pn = document.createElement('div');
+          pn.id = 'mpPendingSwitch';
+          pn.style.cssText = 'margin:14px 0 0;padding:10px 12px;border-left:3px solid #891717;background:rgba(255,255,255,.04);font-size:12px;line-height:1.7;color:rgba(255,255,255,.8)';
+          pn.textContent = _mpSwitchT('pending').replace('{date}', String(s.pending_start_at||'').slice(0,10)).replace('{plan}', pl + ' (' + cyc + ')');
+          sc.appendChild(pn);
+        }
+      }catch(_){}
+    }
     if(st === 'paused'){   // 2026-10-01 쉬는 중 → 다시 시작 버튼 (같은 자리)
       var pcard = document.querySelector('#mp-account .mp-card');
       if(!pcard || document.getElementById('mpResumeSubBtn')) return;

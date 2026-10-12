@@ -81,7 +81,8 @@ const wh = R('api/paypal-webhook.js');
 t('6. 웹훅: 갱신 결제(PAYMENT.SALE.COMPLETED) 뒤 연간 제안 시도, 실패해도 갱신 처리 유지', /maybeSendYearlyOffer\(sub, row, \{ db: supabaseAdmin/.test(wh) && /연간 제안 건너뜀/.test(wh));
 t('6. 웹훅: 새 구독 활성화 시 같은 회원의 다른 PayPal 구독 해지 (이중 청구 방지)', /async function cancelOtherPaypalSub\(oldId, newId, userId\)/.test(wh) && /prev\.paypal_subscription_id !== sub\.id/.test(wh) && /\['active', 'past_due', 'paused', 'pending'\]\.includes/.test(wh) && /r\.status === 204 \|\| r\.status === 422/.test(wh));
 t('6. 웹훅: 같은 구독 id 면 해지 안 함', /if \(!oldId \|\| !newId \|\| oldId === newId\) return \{ skipped: 'same' \}/.test(wh));
-t('6. 구독 페이지: 월간 이용자 + 연간 탭 → 연간으로 바꾸기 + 손실 안내 (9개 언어)', /function _monthlyToYearly\(\)/.test(sb) && /ctaSwitchYearly/.test(sb) && cnt('ctaSwitchYearly') === 9 && cnt('switchYearlyNote') === 9 && /id="switchYearlyNote"/.test(sb) && /_loadSubInfo\(\);/.test(sb) && /남은 날은 사라집니다/.test(sb));
+// 2026-10-12 플랜 변경 예약으로 바뀜: 손실 안내(switchYearlyNote) 대신 "종료일부터 시작" 안내(switchNote). 상세는 tests/plan-switch-scheduled.test.js
+t('6. 구독 페이지: 월간 이용자 + 연간 탭 → 연간으로 바꾸기 (9개 언어) · 예약 안내로 교체', /function _monthlyToYearly\(\)/.test(sb) && cnt('ctaSwitchYearly') === 9 && cnt('switchNote') === 9 && cnt('switchYearlyNote') === 0 && /id="switchYearlyNote"/.test(sb) && /_loadSubInfo\(\);/.test(sb) && /남은 날은 사라지지 않습니다/.test(sb));
 t('6. 구독 페이지: 탭 바꿀 때 다시 판정', /_applyTrialCta\(\);\n  try\{ _markCurrentPlan\(\); \}catch\(_\)\{\}/.test(sb));
 
 console.log('\n  ' + pass + ' passed, ' + fail + ' failed');
