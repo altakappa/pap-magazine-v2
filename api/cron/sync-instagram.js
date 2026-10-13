@@ -399,7 +399,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                 const abVariant = hasMedia ? ab.variantFor(inserted.id) : null;
                 const igSrcUrl = (post && (post.permalink || post.source_instagram_url)) || (row && row.source_instagram_url) || '';
                 const abBody = abVariant === 'body' ? ab.bodyWithIgLink(gen.body, igOutUrl(igSrcUrl, ab.IG_OUT_SRC), { weightedLen, URL_PLACEHOLDER }) : null;
-                const abKind = abBody ? 'ab_body' : (abVariant ? 'ab_reply' : 'article');
+                const abKind = ab.kindFor(abVariant, !!abBody);  // 2026-10-13 상시 모드는 'body'
                 /* articleId 를 넘긴다 — x_posts.article_id 가 비어 있으면 주제 가드
                    (xTopicGuard)가 비교할 지문이 없다. 실측 10/2 트윗 전부 null 이었다. */
                 const tw = hasMedia

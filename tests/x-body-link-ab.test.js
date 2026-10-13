@@ -26,6 +26,18 @@ t('UNTIL 전이면 켜짐', ab.variantFor('abc0', Date.parse('2026-10-12T23:00:0
 t('UNTIL 이후면 저절로 꺼짐 (일주일 실험)', ab.variantFor('abc0', Date.parse('2026-10-13T00:00:01Z')) === null);
 delete process.env.X_BODY_LINK_AB_UNTIL;
 
+// 2026-10-13 도메니코 "본문 상시로 가자" — all 모드
+process.env.X_BODY_LINK_AB = 'all';
+t('all 모드: 홀짝 상관없이 전부 body', ab.variantFor('abc0') === 'body' && ab.variantFor('abc1') === 'body' && ab.variantFor('abcd') === 'body');
+process.env.X_BODY_LINK_AB_UNTIL = '2000-01-01';
+t('all 모드는 UNTIL 을 무시한다 (상시)', ab.variantFor('abc1') === 'body');
+delete process.env.X_BODY_LINK_AB_UNTIL;
+t("all 모드 kind: 본문 링크 들어가면 'body', 넘쳐서 못 넣으면 'article'", ab.kindFor('body', true) === 'body' && ab.kindFor('body', false) === 'article');
+process.env.X_BODY_LINK_AB = 'on';
+t("on 모드 kind: 'ab_body' / 'ab_reply' 그대로", ab.kindFor('body', true) === 'ab_body' && ab.kindFor('body', false) === 'ab_reply' && ab.kindFor('reply', false) === 'ab_reply');
+t("꺼짐 kind: 'article'", ab.kindFor(null, false) === 'article');
+delete process.env.X_BODY_LINK_AB;
+
 const body = '후킹 한 줄\n\n본문이다.\n\n#PAPMAGAZINE';
 const link = 'https://www.pap-magazine.com/api/ig-out?src=x_body&to=post&url=https%3A%2F%2Fwww.instagram.com%2Freel%2FABC%2F';
 const out = ab.bodyWithIgLink(body, link, x);
@@ -45,7 +57,7 @@ t('igOutUrl 이 x_body 를 src 로 보낸다', /src=x_body/.test(igOutUrl('https
 // 배선
 const sync = fs.readFileSync(path.join(ROOT, 'api/cron/sync-instagram.js'), 'utf8');
 t('sync-instagram: 갈래 계산은 미디어 있을 때만', /const abVariant = hasMedia \? ab\.variantFor\(inserted\.id\) : null/.test(sync));
-t('sync-instagram: body 갈래 본문 → kind ab_body, reply 갈래 → ab_reply, 꺼짐 → article', /const abKind = abBody \? 'ab_body' : \(abVariant \? 'ab_reply' : 'article'\)/.test(sync));
+t('sync-instagram: kind 는 ab.kindFor 가 정한다 (all→body · on→ab_body/ab_reply · 꺼짐→article)', /const abKind = ab\.kindFor\(abVariant, !!abBody\)/.test(sync));
 t('sync-instagram: body 갈래의 답글은 웹 링크만', /abBody \? \('웹에서 전문 보기 → ' \+ gen\.url\) : igFirstLinkBlock/.test(sync));
 t('sync-instagram: postTweet 에 kind 를 넘긴다', /kind: abKind/.test(sync));
 

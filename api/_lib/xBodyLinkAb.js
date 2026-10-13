@@ -24,8 +24,17 @@
 
 const IG_OUT_SRC = 'x_body';
 
+/* 2026-10-13 판정(일주일 · 트윗 63건): 본문 링크 38건 vs 답글 링크 25건
+     인스타 고유 클릭 287 vs 107 (트윗당 7.6 vs 4.3) · 조회수 평균(1,000뷰↑ 제외) 135 vs 79 · 중앙값 46 vs 36.
+     통설("본문 링크는 도달이 눌린다")은 우리 계정에서 틀렸다. 도메니코 "본문 상시로 가자".
+     → X_BODY_LINK_AB=all : 미디어 있는 기사 트윗 전부 본문 링크(kind 'body'). 홀짝 갈래 없음.
+       'on'(+UNTIL) 은 실험용 50/50 으로 남겨 둔다. */
+function mode() { return String(process.env.X_BODY_LINK_AB || '').toLowerCase(); }
+function isAll() { return mode() === 'all'; }
+
 function isOn(now) {
-  if (String(process.env.X_BODY_LINK_AB || '').toLowerCase() !== 'on') return false;
+  if (isAll()) return true;
+  if (mode() !== 'on') return false;
   const until = process.env.X_BODY_LINK_AB_UNTIL;
   if (until) {
     const t = Date.parse(until);
@@ -36,6 +45,7 @@ function isOn(now) {
 
 /** @returns {'body'|'reply'|null} null = 실험 꺼짐 */
 function variantFor(articleId, now) {
+  if (isAll()) return 'body';
   if (!isOn(now)) return null;
   const s = String(articleId || '').replace(/[^0-9a-f]/gi, '');
   if (!s) return 'reply';
@@ -61,4 +71,11 @@ function bodyWithIgLink(body, igLink, x) {
   return x.weightedLen(measured) <= 280 ? full : null;
 }
 
-module.exports = { isOn, variantFor, bodyWithIgLink, IG_OUT_SRC };
+/** x_posts.kind — 상시 모드는 'body', 실험 모드는 'ab_body'/'ab_reply' (판정 SQL 이 kind 로 묶는다) */
+function kindFor(variant, hasBody) {
+  if (!variant) return 'article';
+  if (isAll()) return hasBody ? 'body' : 'article';
+  return hasBody ? 'ab_body' : 'ab_reply';
+}
+
+module.exports = { isOn, isAll, variantFor, bodyWithIgLink, kindFor, IG_OUT_SRC };
