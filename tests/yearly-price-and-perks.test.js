@@ -143,7 +143,7 @@ console.log('\n=== 9. 가입 화면 플랜 문구 ===');
   t('스탠다드 문구 10블록: Pull Letter · 우선 리뷰를 약속하지 않는다', std.length === 10 && !std.some((x) => /Pull.?Letter|우선|Priority|prioritar|приоритет|bevorzugt|優先|优先/i.test(x)), std.length);
   const prem = a.match(/planPremFeatures:'[^']*'/g) || [];
   t('프리미엄 문구 10블록: 연간 €380 면제 · 5명', prem.length === 10 && prem.every((x) => /€380/.test(x) && /5/.test(x)));
-  t('정적 한국어 · 사전 8개 언어 일치, data-v 5', /data-i18n="planPremFeatures">전체 아카이브 · Pull-Letter 월 1건/.test(a) && /content="auth" data-v="5"/.test(a)
+  t('정적 한국어 · 사전 8개 언어 일치, data-v 5', /data-i18n="planPremFeatures">전체 아카이브 · Pull-Letter 월 1건/.test(a) && Number((a.match(/content="auth" data-v="(\d+)"/)||[])[1]) >= 5
     && ['en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'].every((l) => { const d = JSON.parse(R('frontend/i18n/ui/auth.' + l + '.json')); return d['전체 아카이브 · Pull-Letter 월 1건 · 우선 심사 · 연간: €380 서브미션 1회 면제 + 공동작업자 5명 지정'] && !d['Standard 포함 + 비하인드 콘텐츠 · 1:1 피드백 · 독점 이벤트 초대']; }));
 }
 

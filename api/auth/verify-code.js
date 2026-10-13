@@ -92,7 +92,7 @@ module.exports = async function handler(req, res) {
 
     // Code is correct — return a verified token for signup
     const verifiedToken = jwt.sign(
-      { email: decoded.email, verified: true },
+      { email: decoded.email, verified: true, purpose: decoded.purpose === 'reset' ? 'reset' : 'signup' },   // 2026-10-13 용도 고정
       JWT_SECRET,
       { expiresIn: '30m', algorithm: 'HS256' }
     );

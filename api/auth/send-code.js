@@ -46,6 +46,21 @@ const CODE_COPY = {
   de: { subject: 'PAP Magazine Bestätigungscode', heading: 'E-Mail-Bestätigung', body: 'Bitte gib den folgenden Bestätigungscode ein.', expiry: 'Der Code ist 10 Minuten gültig. Wenn du ihn nicht angefordert hast, ignoriere diese E-Mail.', rights: 'Alle Rechte vorbehalten.' },
 };
 
+/* 2026-10-13 — 비밀번호 재설정도 6자리 코드로 (purpose:'reset').
+ * 이유: 핫메일/아웃룩의 링크 스캐너가 Supabase 재설정 링크(1회용)를 사람보다 먼저 열어 버려
+ * 사용자가 누르면 "만료"가 된다(10/13 Iván 사례, 로그 /verify 가 다른 IP 에서 먼저 호출됨).
+ * 코드는 로봇이 열어도 아무 일이 없다. 메일 문구만 다르고 발송·해시·만료는 가입 코드와 같다. */
+const RESET_COPY = {
+  ko: { subject: 'PAP 매거진 비밀번호 재설정 코드', heading: '비밀번호 재설정', body: '아래 코드를 비밀번호 재설정 화면에 입력해 주세요.' },
+  en: { subject: 'PAP Magazine password reset code', heading: 'Password reset', body: 'Enter the code below on the password reset screen.' },
+  it: { subject: 'Codice per reimpostare la password PAP Magazine', heading: 'Reimposta la password', body: 'Inserisci il codice qui sotto nella schermata di reimpostazione della password.' },
+  fr: { subject: 'Code de réinitialisation du mot de passe PAP Magazine', heading: 'Réinitialisation du mot de passe', body: 'Saisissez le code ci-dessous sur l’écran de réinitialisation du mot de passe.' },
+  es: { subject: 'Código para restablecer la contraseña de PAP Magazine', heading: 'Restablecer contraseña', body: 'Introduce el código de abajo en la pantalla de restablecimiento de contraseña.' },
+  ja: { subject: 'PAPマガジン パスワード再設定コード', heading: 'パスワード再設定', body: '以下のコードをパスワード再設定画面に入力してください。' },
+  zh: { subject: 'PAP 杂志密码重置验证码', heading: '重置密码', body: '请在密码重置页面输入以下验证码。' },
+  ru: { subject: 'Код для сброса пароля PAP Magazine', heading: 'Сброс пароля', body: 'Введите код ниже на экране сброса пароля.' },
+  de: { subject: 'PAP Magazine Code zum Zurücksetzen des Passworts', heading: 'Passwort zurücksetzen', body: 'Gib den folgenden Code auf der Seite zum Zurücksetzen des Passworts ein.' },
+};
 function pickCodeLang(bodyLang, acceptLanguage) {
   const norm = (v) => String(v || '').trim().toLowerCase().slice(0, 2);
   const a = norm(bodyLang);
@@ -54,8 +69,9 @@ function pickCodeLang(bodyLang, acceptLanguage) {
   return first || 'en';
 }
 
-function buildVerificationEmail(code, lang) {
-  const C = CODE_COPY[lang] || CODE_COPY.en;
+function buildVerificationEmail(code, lang, purpose) {
+  const base = CODE_COPY[lang] || CODE_COPY.en;
+  const C = purpose === 'reset' ? Object.assign({}, base, RESET_COPY[lang] || RESET_COPY.en) : base;
   const safeCode = String(code).replace(/[^0-9A-Za-z]/g, '');
   return {
     subject: C.subject,
@@ -99,6 +115,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const { email } = req.body;
+    const purpose = (req.body && req.body.purpose === 'reset') ? 'reset' : 'signup';   // 2026-10-13
     const codeLang = pickCodeLang(req.body && req.body.lang, req.headers && req.headers['accept-language']);
 
     if (!email || !isValidEmail(email)) {
@@ -112,15 +129,22 @@ module.exports = async function handler(req, res) {
     const code = generateCode();
     const codeHash = hashCode(code, email);
 
-    // Create a signed token with hashed code + email + expiry
+    // Create a signed token with hashed code + email + expiry (+ purpose: 재설정 토큰으로 가입 못 하고, 가입 토큰으로 재설정 못 한다)
     const verificationToken = jwt.sign(
-      { email: email.trim().toLowerCase(), codeHash },
+      { email: email.trim().toLowerCase(), codeHash, purpose },
       JWT_SECRET,
       { expiresIn: '10m', algorithm: 'HS256' }
     );
 
+    // 재설정: 가입된 이메일이 아니면 메일을 보내지 않는다. 응답은 똑같이(계정 유무 노출 방지).
+    if (purpose === 'reset') {
+      const { supabaseAdmin } = require('../_lib/supabase');
+      const { data: prof } = await supabaseAdmin.from('profiles').select('id').ilike('email', email.trim()).maybeSingle();
+      if (!prof) return res.status(200).json({ verificationToken, message: 'Verification code sent' });
+    }
+
     // Send the code via email
-    const result = await sendEmail(email.trim(), buildVerificationEmail(code, codeLang), { transactional: true });
+    const result = await sendEmail(email.trim(), buildVerificationEmail(code, codeLang, purpose), { transactional: true });
 
     if (result.skipped) {
       // SMTP not configured — log warning but do NOT expose code in response

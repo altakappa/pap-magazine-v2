@@ -114,7 +114,7 @@ console.log('\n=== 3. 인증번호 메일 ===');
   t('한국어 메일에 영어 문장 없음 · 독일어 메일에 한국어 없음', !/Verification|Please enter|expires|All rights/.test(vis(ko.html) + ko.subject) && !/[가-힣]/.test(vis(de.html) + de.subject));
   t('코드는 그대로 보인다', vis(ko.html).includes('123456'));
   t('가입 화면이 화면 언어를 보낸다 (두 곳: 첫 발송 · 재발송)', (R('frontend/auth.html').match(/JSON\.stringify\(\{ email: email, lang: lang \}\)/g) || []).length === 2);
-  t('핸들러가 lang 을 써서 만든다', /buildVerificationEmail\(code, codeLang\), \{ transactional: true \}/.test(R('api/auth/send-code.js')));
+  t('핸들러가 lang 을 써서 만든다', /buildVerificationEmail\(code, codeLang, purpose\), \{ transactional: true \}/.test(R('api/auth/send-code.js')));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

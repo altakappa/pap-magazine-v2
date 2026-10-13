@@ -54,7 +54,7 @@ module.exports = async function handler(req, res) {
     }
     try {
       const decoded = jwt.verify(verifiedToken, JWT_SECRET, { algorithms: ['HS256'] });
-      if (!decoded.verified || decoded.email !== email.trim().toLowerCase()) {
+      if (!decoded.verified || decoded.email !== email.trim().toLowerCase() || decoded.purpose === 'reset') {   // 2026-10-13 재설정 토큰으로 가입 불가
         return res.status(400).json({ message: 'Email verification mismatch' });
       }
     } catch (err) {

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="auth" data-v="5">
+<meta name="pap-ui-i18n" content="auth" data-v="6">
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.portone.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.portone.io https://service.portone.io; frame-src https://service.portone.io;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -540,13 +540,13 @@ a{color:#fff;text-decoration:none}
   <div class="login-panel" id="forgotPanel">
     <div class="step-hero">
       <h2 data-i18n="forgotTitle">비밀번호 재설정</h2>
-      <p style="color:rgba(255,255,255,.6);font-size:14px;margin-top:8px;line-height:1.6" data-i18n="forgotDesc">가입하신 이메일을 입력하시면 재설정 링크를 보내드립니다.</p>
+      <p style="color:rgba(255,255,255,.6);font-size:14px;margin-top:8px;line-height:1.6" data-i18n="forgotDesc">가입하신 이메일을 입력하시면 재설정 코드를 보내드립니다.</p>
     </div>
     <div class="form-group">
       <label class="form-label" data-i18n="labelEmail">이메일</label>
       <input type="email" class="form-input" id="forgotEmail" placeholder="email@example.com" onkeydown="if(event.key==='Enter')sendResetEmail()">
     </div>
-    <button class="auth-btn" id="btnSendReset" data-i18n="forgotBtn" onclick="sendResetEmail()">재설정 링크 받기</button>
+    <button class="auth-btn" id="btnSendReset" data-i18n="forgotBtn" onclick="sendResetEmail()">재설정 코드 받기</button>
     <div class="auth-link"><a href="#" onclick="showLogin();return false;" data-i18n="backToLogin">← 로그인으로 돌아가기</a></div>
   </div>
 
@@ -555,6 +555,11 @@ a{color:#fff;text-decoration:none}
     <div class="step-hero">
       <h2 data-i18n="resetTitle">새 비밀번호 설정</h2>
       <p style="color:rgba(255,255,255,.6);font-size:14px;margin-top:8px;line-height:1.6" data-i18n="resetDesc">새로 사용하실 비밀번호를 입력해주세요.</p>
+    </div>
+    <!-- 2026-10-13 링크 대신 6자리 코드 (핫메일 링크 스캐너 대응). 코드는 send-code purpose:'reset' 가 보낸다. -->
+    <div class="form-group" id="resetCodeGroup">
+      <label class="form-label" data-i18n="resetCodeHint">이메일로 전송된 6자리 코드를 입력하세요.</label>
+      <input type="text" class="form-input" id="resetCode" maxlength="6" inputmode="numeric" placeholder="000000" style="text-align:center;font-size:28px;font-weight:800;letter-spacing:12px;font-family:monospace;padding:16px" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
     </div>
     <div class="form-group">
       <label class="form-label" data-i18n="labelPw">비밀번호</label>
@@ -1040,14 +1045,16 @@ async function doLogin() {
 
 // ======== FORGOT PASSWORD ========
 //
-// Two-stage flow using Supabase's built-in recovery:
-//   1) sendResetEmail(): supabase.auth.resetPasswordForEmail(email, {redirectTo})
-//      Supabase emails the user a link with #access_token=...&type=recovery
-//   2) The link lands them back on auth.html with that hash. The page-init
-//      block at the bottom detects type=recovery and switches to resetPanel.
-//      Supabase JS auto-promotes the hash to a session via onAuthStateChange.
-//   3) doResetPassword(): supabase.auth.updateUser({password}) succeeds
-//      because the recovery session has the right scope.
+// 2026-10-13 — 링크 대신 6자리 코드. 이유: 핫메일/아웃룩의 링크 스캐너가 Supabase 의 1회용
+// 재설정 링크를 사람보다 먼저 열어 버려 사용자가 누르면 "만료"가 됐다(Iván 사례, 10/13).
+//   1) sendResetEmail(): POST /api/auth/send-code {purpose:'reset'} → 코드 메일 + verificationToken
+//   2) resetPanel: 코드 + 새 비밀번호 입력
+//   3) doResetPassword(): POST /api/auth/verify-code → verifiedToken(purpose reset)
+//                         → POST /api/auth/reset-password {verifiedToken, password}
+// 옛 Supabase 링크(#type=recovery)로 들어온 경우의 감지 코드는 아래 IIFE-2 에 남아 있지만,
+// 더는 그런 메일을 보내지 않는다.
+var _resetVerificationToken = null;
+var _resetEmail = null;
 async function sendResetEmail() {
   var email = document.getElementById('forgotEmail').value.trim();
   var lang = localStorage.getItem('pap-lang') || 'ko';
@@ -1056,31 +1063,24 @@ async function sendResetEmail() {
   if (!email) { PAP.ui.toast(msgs.emailEmpty, 'error'); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { PAP.ui.toast(msgs.emailInvalid, 'error'); return; }
 
-  var sb = getSupabase();
-  if (!sb) { PAP.ui.toast(msgs.networkError, 'error'); return; }
-
   var btn = document.getElementById('btnSendReset');
   var origLabel = btn.textContent;
   btn.disabled = true; btn.textContent = '...';
   try {
-    // redirectTo brings the user back to auth.html with a recovery hash.
-    // IMPORTANT: use '/auth' (no .html) because vercel.json has
-    // cleanUrls:true, which 308-redirects /auth → /auth. That extra
-    // hop drops Supabase's #access_token=...&type=recovery fragment, so
-    // we land on /auth with no recovery context and just see the login
-    // panel. Targeting the clean URL directly skips the redirect and
-    // preserves the hash all the way to the in-page handler.
-    var redirect = location.origin + '/auth';
-    var { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: redirect });
-    if (error) {
-      // Supabase throws for hard failures only (network, malformed email).
-      // It does NOT distinguish "no such user" — that's intentional UX so
-      // attackers can't use the form for email enumeration.
-      throw error;
-    }
-    // Always show "check your email" — even when the email isn't registered,
-    // because Supabase silently succeeds in that case (anti-enumeration).
-    PAP.ui.toast(d.forgotSent || 'Please check your email — we sent you a reset link.', 'success');
+    var resp = await fetch((window._PAP_API_BASE || '') + '/api/auth/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, lang: lang, purpose: 'reset' })
+    });
+    var data = await resp.json().catch(function(){ return {}; });
+    if (!resp.ok) throw new Error(data.message || 'Failed');
+    _resetVerificationToken = data.verificationToken || null;
+    _resetEmail = email;
+    // 가입 안 된 주소여도 같은 안내(계정 유무 노출 방지). 코드는 가입된 주소에만 간다.
+    PAP.ui.toast(d.forgotSent || 'We sent a 6-digit code to your email.', 'success');
+    var ci = document.getElementById('resetCode'); if (ci) ci.value = '';
+    showReset();
+    setTimeout(function(){ try { document.getElementById('resetCode').focus(); } catch(_){} }, 50);
   } catch (e) {
     PAP.ui.toast((e && e.message) || msgs.networkError, 'error');
   }
@@ -1089,36 +1089,41 @@ async function sendResetEmail() {
 }
 
 async function doResetPassword() {
+  var code = (document.getElementById('resetCode') || {}).value || '';
   var pw1 = document.getElementById('resetPw1').value;
   var pw2 = document.getElementById('resetPw2').value;
   var lang = localStorage.getItem('pap-lang') || 'ko';
   var msgs = ERR[lang] || ERR.en || ERR.ko;
   var d = (L[lang] || L.en || L.ko);
 
+  if (!_resetVerificationToken) { PAP.ui.toast(d.forgotDesc || 'Please request a reset code first.', 'error'); showForgot(); return; }
+  if (!/^[0-9]{6}$/.test(code.trim())) { PAP.ui.toast(d.resetCodeHint || 'Enter the 6-digit code sent to your email.', 'error'); return; }
   if (!pw1 || !pw2) { PAP.ui.toast(msgs.pwEmpty, 'error'); return; }
   if (pw1.length < 8) { PAP.ui.toast(msgs.pwTooShort || msgs.pwWeak || 'Password must be at least 8 characters.', 'error'); return; }
   if (!/[A-Z]/.test(pw1) || !/[0-9]/.test(pw1)) { PAP.ui.toast(msgs.pwWeak || 'Password must contain an uppercase letter and a number.', 'error'); return; }
   if (pw1 !== pw2) { PAP.ui.toast(msgs.pwMismatch || 'Passwords do not match.', 'error'); return; }
 
-  var sb = getSupabase();
-  if (!sb) { PAP.ui.toast(msgs.networkError, 'error'); return; }
-
   var btn = document.getElementById('btnResetPw');
   var origLabel = btn.textContent;
   btn.disabled = true; btn.textContent = '...';
   try {
-    // Recovery session was already established by Supabase JS auto-detect
-    // when the page loaded with #type=recovery. updateUser writes the
-    // new password using that scoped session.
-    var { data, error } = await sb.auth.updateUser({ password: pw1 });
-    if (error) throw error;
+    var r1 = await fetch((window._PAP_API_BASE || '') + '/api/auth/verify-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code.trim(), verificationToken: _resetVerificationToken })
+    });
+    var j1 = await r1.json().catch(function(){ return {}; });
+    if (!r1.ok) throw new Error(j1.message || 'Incorrect code');
+    var r2 = await fetch((window._PAP_API_BASE || '') + '/api/auth/reset-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verifiedToken: j1.verifiedToken, password: pw1 })
+    });
+    var j2 = await r2.json().catch(function(){ return {}; });
+    if (!r2.ok) throw new Error(j2.message || 'Failed');
     PAP.ui.toast(d.resetSuccess || 'Your password has been changed. Please log in.', 'success');
-    // Sign out the recovery session so the user is forced to log in fresh
-    // with the new password — catches the "I forgot my password but I'm
-    // still logged in" edge case.
-    try { await sb.auth.signOut(); } catch(_){}
-    // Clear hash so a subsequent reload doesn't re-enter recovery mode.
+    _resetVerificationToken = null;
+    try { var sb = getSupabase(); if (sb) await sb.auth.signOut(); } catch(_){}
     try { history.replaceState(null, '', location.pathname); } catch(_){}
+    try { var le = document.getElementById('loginEmail'); if (le && _resetEmail) le.value = _resetEmail; } catch(_){}
     setTimeout(function(){ showLogin(); }, 800);
   } catch (e) {
     PAP.ui.toast((e && e.message) || msgs.networkError, 'error');
@@ -1452,8 +1457,9 @@ ko: {
   planPremFeatures:'전체 아카이브 · Pull-Letter 월 1건 · 우선 심사 · 연간: €380 서브미션 1회 면제 + 공동작업자 5명 지정',
   loginTitle:'다시 만나서 반가워요', loginGoogle:'Google로 로그인', loginFacebook:'Facebook으로 로그인', loginKakao:'카카오로 로그인',
   forgot:'비밀번호를 잊으셨나요?',
-  forgotTitle:'비밀번호 재설정', forgotDesc:'가입하신 이메일을 입력하시면 재설정 링크를 보내드립니다.',
-  forgotBtn:'재설정 링크 받기', forgotSent:'이메일을 확인해주세요. 재설정 링크를 보내드렸습니다.',
+  forgotTitle:'비밀번호 재설정', forgotDesc:'가입하신 이메일을 입력하시면 재설정 코드를 보내드립니다.',
+  forgotBtn:'재설정 코드 받기', forgotSent:'이메일로 6자리 코드를 보냈습니다. 아래에 입력해 주세요.',
+  resetCodeHint:'이메일로 전송된 6자리 코드를 입력하세요.',
   resetTitle:'새 비밀번호 설정', resetDesc:'새로 사용하실 비밀번호를 입력해주세요.',
   resetBtn:'비밀번호 변경', resetSuccess:'비밀번호가 변경되었습니다. 로그인해주세요.',
   backToLogin:'← 로그인으로 돌아가기', labelPwConfirm:'비밀번호 확인', phPwConfirm:'비밀번호 재입력',
@@ -1488,8 +1494,9 @@ en: {
   planPremFeatures:'Full archive · 1 Pull-Letter a month · Priority review · Yearly: one €380 submission waived + choose 5 collaborators',
   loginTitle:'Welcome back', loginGoogle:'Log in with Google', loginFacebook:'Log in with Facebook', loginKakao:'Log in with Kakao',
   forgot:'Forgot your password?',
-  forgotTitle:'Reset Password', forgotDesc:'Enter the email you signed up with and we\'ll send you a reset link.',
-  forgotBtn:'Send reset link', forgotSent:'Check your email. We\'ve sent you a reset link.',
+  forgotTitle:'Reset Password', forgotDesc:'Enter the email you signed up with and we\'ll send you a 6-digit reset code.',
+  forgotBtn:'Send reset code', forgotSent:'We sent a 6-digit code to your email. Enter it below.',
+  resetCodeHint:'Enter the 6-digit code sent to your email.',
   resetTitle:'Set new password', resetDesc:'Choose a new password for your account.',
   resetBtn:'Update password', resetSuccess:'Password updated. Please log in.',
   backToLogin:'← Back to login', labelPwConfirm:'CONFIRM PASSWORD', phPwConfirm:'Re-enter password',
@@ -1524,8 +1531,9 @@ ru:{
   planPremFeatures:'Полный архив · 1 Pull-Letter в месяц · Приоритетное рассмотрение · Годовой: одна заявка €380 бесплатно + 5 соавторов на выбор',
   loginTitle:'С возвращением', loginGoogle:'Войти через Google', loginFacebook:'Войти через Facebook', loginKakao:'Войти через Kakao',
   forgot:'Забыли пароль?',
-  forgotTitle:'Сброс пароля', forgotDesc:'Введите email, с которым вы регистрировались, и мы отправим ссылку для сброса.',
-  forgotBtn:'Отправить ссылку для сброса', forgotSent:'Проверьте почту. Мы отправили вам ссылку для сброса.',
+  forgotTitle:'Сброс пароля', forgotDesc:'Введите email, с которым вы регистрировались, и мы отправим 6-значный код для сброса.',
+  forgotBtn:'Отправить код', forgotSent:'Мы отправили 6-значный код на вашу почту. Введите его ниже.',
+  resetCodeHint:'Введите 6-значный код, отправленный на вашу почту.',
   resetTitle:'Задать новый пароль', resetDesc:'Выберите новый пароль для вашего аккаунта.',
   resetBtn:'Обновить пароль', resetSuccess:'Пароль обновлён. Пожалуйста, войдите.',
   backToLogin:'← Назад ко входу', labelPwConfirm:'ПОДТВЕРДИТЕ ПАРОЛЬ', phPwConfirm:'Введите пароль повторно',
@@ -1560,8 +1568,9 @@ de:{
   planPremFeatures:'Gesamtarchiv · 1 Pull-Letter pro Monat · Bevorzugte Prüfung · Jährlich: eine €380-Einreichung erlassen + 5 Collaborators wählen',
   loginTitle:'Willkommen zurück', loginGoogle:'Mit Google anmelden', loginFacebook:'Mit Facebook anmelden', loginKakao:'Mit Kakao anmelden',
   forgot:'Passwort vergessen?',
-  forgotTitle:'Passwort zurücksetzen', forgotDesc:'Geben Sie die E-Mail ein, mit der Sie sich registriert haben, und wir senden Ihnen einen Link zum Zurücksetzen.',
-  forgotBtn:'Link zum Zurücksetzen senden', forgotSent:'Überprüfen Sie Ihre E-Mail. Wir haben Ihnen einen Link zum Zurücksetzen gesendet.',
+  forgotTitle:'Passwort zurücksetzen', forgotDesc:'Geben Sie die E-Mail ein, mit der Sie sich registriert haben, und wir senden Ihnen einen 6-stelligen Code.',
+  forgotBtn:'Code senden', forgotSent:'Wir haben einen 6-stelligen Code an Ihre E-Mail gesendet. Geben Sie ihn unten ein.',
+  resetCodeHint:'Geben Sie den 6-stelligen Code ein, den wir per E-Mail gesendet haben.',
   resetTitle:'Neues Passwort festlegen', resetDesc:'Wählen Sie ein neues Passwort für Ihr Konto.',
   resetBtn:'Passwort aktualisieren', resetSuccess:'Passwort aktualisiert. Bitte melden Sie sich an.',
   backToLogin:'← Zurück zur Anmeldung', labelPwConfirm:'PASSWORT BESTÄTIGEN', phPwConfirm:'Passwort erneut eingeben',
@@ -1596,8 +1605,9 @@ it: {
   planPremFeatures:'Archivio completo · 1 Pull-Letter al mese · Revisione prioritaria · Annuale: una candidatura da €380 esonerata + 5 collaboratori a scelta',
   loginTitle:'Bentornato', loginGoogle:'Accedi con Google', loginFacebook:'Accedi con Facebook', loginKakao:'Accedi con Kakao',
   forgot:'Password dimenticata?',
-  forgotTitle:'Reimposta password', forgotDesc:'Inserisci l\'email con cui ti sei registrato e ti invieremo un link per reimpostare la password.',
-  forgotBtn:'Invia link di reset', forgotSent:'Controlla la tua email. Ti abbiamo inviato un link per il reset.',
+  forgotTitle:'Reimposta password', forgotDesc:'Inserisci l\'email con cui ti sei registrato e ti invieremo un codice di 6 cifre.',
+  forgotBtn:'Invia codice', forgotSent:'Abbiamo inviato un codice di 6 cifre alla tua email. Inseriscilo qui sotto.',
+  resetCodeHint:'Inserisci il codice di 6 cifre inviato alla tua email.',
   resetTitle:'Imposta nuova password', resetDesc:'Scegli una nuova password per il tuo account.',
   resetBtn:'Aggiorna password', resetSuccess:'Password aggiornata. Effettua l\'accesso.',
   backToLogin:'← Torna al login', labelPwConfirm:'CONFERMA PASSWORD', phPwConfirm:'Reinserisci la password',
@@ -1632,8 +1642,9 @@ fr: {
   planPremFeatures:'Archive complète · 1 Pull-Letter par mois · Examen prioritaire · Annuel : une soumission à €380 offerte + 5 collaborateurs au choix',
   loginTitle:'Content de vous revoir', loginGoogle:'Connexion avec Google', loginFacebook:'Connexion avec Facebook', loginKakao:'Connexion avec Kakao',
   forgot:'Mot de passe oublié ?',
-  forgotTitle:'Réinitialiser le mot de passe', forgotDesc:'Saisissez l\'email avec lequel vous vous êtes inscrit, nous vous enverrons un lien de réinitialisation.',
-  forgotBtn:'Envoyer le lien', forgotSent:'Vérifiez votre email. Nous vous avons envoyé un lien de réinitialisation.',
+  forgotTitle:'Réinitialiser le mot de passe', forgotDesc:'Saisissez l\'email utilisé à l\'inscription et nous vous enverrons un code à 6 chiffres.',
+  forgotBtn:'Envoyer le code', forgotSent:'Nous avons envoyé un code à 6 chiffres à votre email. Saisissez-le ci-dessous.',
+  resetCodeHint:'Saisissez le code à 6 chiffres envoyé à votre email.',
   resetTitle:'Nouveau mot de passe', resetDesc:'Choisissez un nouveau mot de passe pour votre compte.',
   resetBtn:'Mettre à jour', resetSuccess:'Mot de passe mis à jour. Veuillez vous connecter.',
   backToLogin:'← Retour à la connexion', labelPwConfirm:'CONFIRMER LE MOT DE PASSE', phPwConfirm:'Saisir à nouveau',
@@ -1668,8 +1679,9 @@ es: {
   planPremFeatures:'Archivo completo · 1 Pull-Letter al mes · Revisión prioritaria · Anual: una propuesta de €380 exenta + 5 colaboradores a elegir',
   loginTitle:'Bienvenido de vuelta', loginGoogle:'Iniciar con Google', loginFacebook:'Iniciar con Facebook', loginKakao:'Iniciar con Kakao',
   forgot:'¿Olvidó su contraseña?',
-  forgotTitle:'Restablecer contraseña', forgotDesc:'Introduzca el correo con el que se registró y le enviaremos un enlace para restablecerla.',
-  forgotBtn:'Enviar enlace', forgotSent:'Revise su correo. Le enviamos un enlace de restablecimiento.',
+  forgotTitle:'Restablecer contraseña', forgotDesc:'Introduce el correo con el que te registraste y te enviaremos un código de 6 dígitos.',
+  forgotBtn:'Enviar código', forgotSent:'Enviamos un código de 6 dígitos a tu correo. Introdúcelo abajo.',
+  resetCodeHint:'Introduce el código de 6 dígitos enviado a tu correo.',
   resetTitle:'Nueva contraseña', resetDesc:'Elija una nueva contraseña para su cuenta.',
   resetBtn:'Actualizar contraseña', resetSuccess:'Contraseña actualizada. Inicie sesión.',
   backToLogin:'← Volver al inicio de sesión', labelPwConfirm:'CONFIRMAR CONTRASEÑA', phPwConfirm:'Reingrese la contraseña',
@@ -1704,8 +1716,9 @@ ja: {
   planPremFeatures:'全アーカイブ · Pull-Letter 月1件 · 優先審査 · 年間: €380の応募1回免除 + コラボレーター5名指定',
   loginTitle:'おかえりなさい', loginGoogle:'Googleでログイン', loginFacebook:'Facebookでログイン', loginKakao:'カカオでログイン',
   forgot:'パスワードをお忘れですか？',
-  forgotTitle:'パスワードのリセット', forgotDesc:'ご登録のメールアドレスを入力していただければ、リセット用リンクをお送りします。',
-  forgotBtn:'リセットリンクを送信', forgotSent:'メールをご確認ください。リセット用リンクをお送りしました。',
+  forgotTitle:'パスワードのリセット', forgotDesc:'登録したメールアドレスを入力すると、6桁の再設定コードをお送りします。',
+  forgotBtn:'コードを送信', forgotSent:'6桁のコードをメールでお送りしました。下に入力してください。',
+  resetCodeHint:'メールで送信された6桁のコードを入力してください。',
   resetTitle:'新しいパスワードを設定', resetDesc:'新しいパスワードを入力してください。',
   resetBtn:'パスワードを変更', resetSuccess:'パスワードが更新されました。ログインしてください。',
   backToLogin:'← ログインに戻る', labelPwConfirm:'パスワード確認', phPwConfirm:'パスワードを再入力',
@@ -1740,8 +1753,9 @@ zh: {
   planPremFeatures:'全部存档 · 每月 1 次 Pull-Letter · 优先审核 · 年付：免除 1 次 €380 投稿 + 指定 5 位合作者',
   loginTitle:'欢迎回来', loginGoogle:'使用Google登录', loginFacebook:'使用Facebook登录', loginKakao:'使用Kakao登录',
   forgot:'忘记密码？',
-  forgotTitle:'重置密码', forgotDesc:'输入您注册时使用的邮箱，我们将向您发送重置链接。',
-  forgotBtn:'发送重置链接', forgotSent:'请查收邮件。我们已发送重置链接。',
+  forgotTitle:'重置密码', forgotDesc:'输入注册邮箱，我们将发送 6 位重置验证码。',
+  forgotBtn:'发送验证码', forgotSent:'我们已向您的邮箱发送 6 位验证码，请在下方输入。',
+  resetCodeHint:'请输入发送到邮箱的 6 位验证码。',
   resetTitle:'设置新密码', resetDesc:'请为您的账户选择一个新密码。',
   resetBtn:'更新密码', resetSuccess:'密码已更新。请登录。',
   backToLogin:'← 返回登录', labelPwConfirm:'确认密码', phPwConfirm:'再次输入密码',
@@ -1776,8 +1790,9 @@ ru: {
   planPremFeatures:'Полный архив · 1 Pull-Letter в месяц · Приоритетное рассмотрение · Годовой: одна заявка €380 бесплатно + 5 соавторов на выбор',
   loginTitle:'С возвращением', loginGoogle:'Войти через Google', loginFacebook:'Войти через Facebook', loginKakao:'Войти через Kakao',
   forgot:'Забыли пароль?',
-  forgotTitle:'Сброс пароля', forgotDesc:'Введите email, с которым вы регистрировались, и мы отправим вам ссылку для сброса.',
-  forgotBtn:'Отправить ссылку', forgotSent:'Проверьте вашу почту. Мы отправили ссылку для сброса.',
+  forgotTitle:'Сброс пароля', forgotDesc:'Введите email, с которым вы регистрировались, и мы отправим 6-значный код для сброса.',
+  forgotBtn:'Отправить код', forgotSent:'Мы отправили 6-значный код на вашу почту. Введите его ниже.',
+  resetCodeHint:'Введите 6-значный код, отправленный на вашу почту.',
   resetTitle:'Новый пароль', resetDesc:'Выберите новый пароль для вашей учётной записи.',
   resetBtn:'Обновить пароль', resetSuccess:'Пароль обновлён. Пожалуйста, войдите.',
   backToLogin:'← Назад ко входу', labelPwConfirm:'ПОДТВЕРДИТЕ ПАРОЛЬ', phPwConfirm:'Введите пароль ещё раз',
