@@ -225,7 +225,7 @@ module.exports = async function handler(req, res) {
     }
     // Supabase 의 유출 비밀번호 검사(HIBP) 거절 — 서버 장애가 아니라 안내가 필요한 400
     if (error.message && /weak|easy to guess|pwned|leaked/i.test(error.message)) {
-      return res.status(400).json({ code: 'weak_password', message: 'This password has appeared in a data breach and cannot be used. Please choose a different one.' });
+      return res.status(400).json({ code: 'weak_password', message: "This password appears on public lists from other websites' data breaches, so it is not safe to use. Nothing leaked from PAP. Please choose a different password." });
     }
     return res.status(500).json({ message: 'Registration failed. Please try again.' });
   }
