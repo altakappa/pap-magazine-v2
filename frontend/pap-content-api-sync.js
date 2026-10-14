@@ -470,6 +470,51 @@ window._papFilmAutoPlay = function(){
   // 줄어든다. 동시 6개 상한은 이미지·폰트 대역폭을 다 빼앗지 않도록 일부러 둔 것.
   var FETCH_ALL_CONCURRENCY = 6;
 
+  /* ── 전체 카탈로그 쪽 응답을 브라우저 Cache API 에 10분 보관 (2026-10-14) ──
+     [실측 10/14, 크롬·서울] 홈/에디토리얼 허브 한 번 열 때 /api/articles 32회 4.0MB
+     + /api/editorials 24회 2.2MB = 6.6MB. 서버 Cache-Control 이 max-age=0 이라
+     (엣지는 s-maxage=300 으로 받아치지만) 브라우저는 매 방문 전량을 다시 받았다.
+     전체 카탈로그는 목록·검색용이지 "최신 12건"(STAGE 1, 별도 fetch, 캐시 안 함)이 아니다.
+     10분 안 재방문·페이지 이동은 전송량 0. 실패(프라이빗 모드, 용량)는 전부 네트워크로 폴백.
+     TTL 지난 항목은 읽을 때 버리고, 쓸 때 오래된 키(TTL×6)를 치운다. */
+  var CATALOG_CACHE = 'pap-catalog-v1';
+  var CATALOG_TTL_MS = 10 * 60 * 1000;
+  function _catalogJson(url){
+    var net = function(){ return fetch(url).then(function(r){ return r.json(); }); };
+    if (typeof caches === 'undefined' || !caches || !caches.open) return net();
+    return caches.open(CATALOG_CACHE).then(function(c){
+      return c.match(url).then(function(hit){
+        var at = hit && Number(hit.headers.get('x-pap-cached-at') || 0);
+        if (hit && at && (Date.now() - at) < CATALOG_TTL_MS) return hit.json();
+        return fetch(url).then(function(r){
+          if (!r || !r.ok || typeof r.clone !== 'function') return r.json();
+          return r.clone().text().then(function(body){
+            try {
+              var h = new Headers({ 'content-type': 'application/json', 'x-pap-cached-at': String(Date.now()) });
+              c.put(url, new Response(body, { headers: h })).catch(function(){});
+              _catalogPrune(c);
+            } catch (_) {}
+            return JSON.parse(body);
+          });
+        });
+      });
+    }).catch(net);
+  }
+  var _pruned = false;
+  function _catalogPrune(c){
+    if (_pruned) return; _pruned = true;
+    try {
+      c.keys().then(function(reqs){
+        reqs.forEach(function(req){
+          c.match(req).then(function(res){
+            var at = res && Number(res.headers.get('x-pap-cached-at') || 0);
+            if (!at || (Date.now() - at) > CATALOG_TTL_MS * 6) c.delete(req).catch(function(){});
+          }).catch(function(){});
+        });
+      }).catch(function(){});
+    } catch (_) {}
+  }
+
   /* ── 메인 스레드를 놓아주며 처리한다 (2026-08-22) ──────────────────────
      [측정] 라이브·데스크톱·warm cache·크롬 탭 포그라운드:
          홈       롱태스크 1개 969ms   · TBT 979ms
@@ -550,8 +595,7 @@ window._papFilmAutoPlay = function(){
       }, 0);
     }
 
-    fetch(pageUrl(1))
-      .then(function(r){ return r.json(); })
+    _catalogJson(pageUrl(1))
       .then(function(res){
         var first = (res && res.data) || [];
         if (!first.length){ callback([]); return; }
@@ -573,8 +617,7 @@ window._papFilmAutoPlay = function(){
             next++;
             running++;
             (function(pageNo){
-              fetch(pageUrl(pageNo))
-                .then(function(r){ return r.json(); })
+              _catalogJson(pageUrl(pageNo))
                 .then(function(res2){
                   return new Promise(function(resolve){
                     absorb(buckets, pageNo, (res2 && res2.data) || [], resolve);
