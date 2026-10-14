@@ -123,6 +123,19 @@ console.log('=== 감시가 실제로 연결돼 있는가 ===');
     return d.status === 'stalled' && /일감 있던 90회/.test(d.reason) && /대기 5회 제외/.test(d.reason);
   })());
 
+  // 2026-10-11 21:00 헛알림 재현: 13회 중 12회 대기, 일감 있던 1회는 진행 중 → 정체 아님
+  t('일감이 막 생겨 일감 있던 실행이 1회뿐이면 정체가 아니다 (2026-10-11 헛알림)', (() => {
+    const d = judgeTranslateHealth({ remaining: 7, producedInWindow: 0, windowHours: 3, runsInWindow: 13, idleRunsInWindow: 12 });
+    return d.status === 'ok' && /막 생겼다/.test(d.reason);
+  })());
+  t('일감 있던 실행이 2회 이상인데 저장 0이면 여전히 정체', (() => {
+    const d = judgeTranslateHealth({ remaining: 7, producedInWindow: 0, windowHours: 3, runsInWindow: 13, idleRunsInWindow: 11 });
+    return d.status === 'stalled';
+  })());
+  t('실행 기록 자체가 0이면 여전히 정체(크론·배포 문제)', (() => {
+    const d = judgeTranslateHealth({ remaining: 7, producedInWindow: 0, windowHours: 3, runsInWindow: 0, idleRunsInWindow: 0 });
+    return d.status === 'stalled' && /실행 기록이 없다/.test(d.reason);
+  })());
   t('idleRunsInWindow 를 안 주면 옛 동작 그대로 (호출부 호환)', (() => {
     const d = judgeTranslateHealth({
       remaining: 9000, producedInWindow: 8, windowHours: 3, runsInWindow: 90,

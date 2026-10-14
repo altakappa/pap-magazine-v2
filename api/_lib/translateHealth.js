@@ -27,6 +27,14 @@ const MIN_RUNS_TO_JUDGE = 10;
    두 곳에 문자열을 복사하면 한쪽만 고쳐지고 분모가 조용히 틀어진다. */
 const IDLE_NOTE = '처리 대상 없음';
 
+/* 2026-10-11 21:00 헛알림: 화보 1건이 20:5x 에 들어와 잔량 7, 감시가 21:00 에 돌 때
+   번역 크론(15분 주기)도 같은 분에 돌며 73초 동안 7건을 저장하는 **중**이었다.
+   창 안 13회 실행 중 12회가 대기, 일감 있던 실행은 진행 중인 그 1회뿐.
+   "저장 0" 은 멈춘 게 아니라 아직 첫 기회였다. 일감 있던 실행이 이 횟수보다
+   적으면 정체라 부르지 않는다 — 다음 감시(30분 뒤)에 두 번째 기회를 보고 판정한다.
+   진짜 정체는 최대 30분 늦게 잡힐 뿐 놓치지 않는다 (2026-08-02 의 90회는 그대로 잡힌다). */
+const MIN_WORKING_RUNS_FOR_STALL = 2;
+
 /**
  * @param {object}  o
  * @param {number}  o.remaining     남은 번역 건수(전 언어 합)
@@ -53,6 +61,13 @@ function judgeTranslateHealth(o) {
   }
 
   if (produced === 0) {
+    /* 일감이 방금 생겨 아직 한 번(진행 중)밖에 못 봤으면 정체가 아니다 (2026-10-11). */
+    if (runs != null && runs > 0 && workingRuns != null && workingRuns < MIN_WORKING_RUNS_FOR_STALL) {
+      return {
+        status: 'ok', remaining, perHour: 0, etaHours: null,
+        reason: `잔량 ${remaining}건이 막 생겼다. 일감 있던 실행 ${workingRuns}회(대기 ${idle}회) — 다음 감시에서 다시 본다.`,
+      };
+    }
     /* 실행 자체가 없었는지, 실행은 했는데 생산이 0이었는지를 구분해 준다.
        전자는 크론·배포 문제, 후자는 번역 호출 문제 — 볼 곳이 다르다. */
     const reason = runs === 0
