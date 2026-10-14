@@ -51,7 +51,7 @@ module.exports = async function handler(req, res) {
     if (upErr) {
       console.error('[reset-password] updateUserById 실패:', upErr.message);
       if (/weak|easy to guess|pwned|leaked/i.test(upErr.message || '')) {
-        return res.status(400).json({ code: 'weak_password', message: "This password appears on public lists from other websites' data breaches, so it is not safe to use. Nothing leaked from PAP. Please choose a different password." });
+        return res.status(400).json({ code: 'weak_password', message: "This password appears on public lists from other websites' data breaches, so it is not safe to use. Please choose a different password." });
       }
       return res.status(500).json({ message: 'Could not update password. Please try again.' });
     }

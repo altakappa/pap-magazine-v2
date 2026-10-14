@@ -19,14 +19,14 @@ t('reset-password: updateUserById 거절 중 weak 는 400 weak_password', /if \(
 
 const au = R('frontend/auth.html');
 const cnt = (k) => (au.match(new RegExp('\\b' + k + ":'", 'g')) || []).length;
-t('auth.html: ERR 사전 전 블록(10, ru 중복 포함)에 pwLeaked, 한국어 문구', cnt('pwLeaked') === 10 && /pwLeaked:'이 비밀번호는 다른 사이트 해킹으로 공개된 비밀번호 목록에 올라 있어 안전하지 않습니다\. PAP에서 유출된 것이 아니며/.test(au));
+t('auth.html: ERR 사전 전 블록(10, ru 중복 포함)에 pwLeaked, 한국어 문구', cnt('pwLeaked') === 10 && /pwLeaked:'이 비밀번호는 다른 사이트 해킹으로 공개된 비밀번호 목록에 올라 있어 안전하지 않습니다\. 다른 비밀번호를 골라주세요/.test(au));
 t('auth.html: 가입 catch 가 weak 메시지를 pwLeaked 로 보여준다 (emailDuplicate 다음, 일반 오류보다 앞)', /msgs\.emailDuplicate, 'error'\);\s*\n\s*\} else if \(\/weak\|easy to guess\|breach\|leaked\|pwned\/i\.test\(msg\)\) \{\s*\n[^\n]*\n\s*PAP\.ui\.toast\(msgs\.pwLeaked \|\| msg, 'error'\);/.test(au));
 t('auth.html: 재설정 catch 도 같은 매핑', /if \(\/weak\|easy to guess\|breach\|leaked\|pwned\/i\.test\(em\)\) em = msgs\.pwLeaked \|\| em;/.test(au));
-t('auth 사전 버전 ≥8', Number((au.match(/content="auth" data-v="(\d+)"/) || [])[1]) >= 8);
+t('auth 사전 버전 ≥9', Number((au.match(/content="auth" data-v="(\d+)"/) || [])[1]) >= 9);
 // ERR 사전이 문법상 살아 있는지: 스크립트 블록을 실제로 파싱
 t('auth.html 인라인 스크립트가 파싱된다', (() => { try { const scripts = [...au.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]); for (const s of scripts) new Function(s); return true; } catch (e) { return e.message; } })());
 
-t('문구가 "PAP 유출" 로 오해되지 않게 출처를 밝힌다 (10개 언어 블록 + 서버)', (au.match(/PAP에서 유출된 것이 아니며|Nothing leaked from PAP|Утечки из PAP не было|Bei PAP ist nichts geleakt|Nessuna fuga di dati da PAP|Rien n\\'a fuité chez PAP|No hubo filtración en PAP|PAPからの漏えいではありません|PAP 没有发生泄露/g) || []).length === 10 && /Nothing leaked from PAP/.test(su) && /Nothing leaked from PAP/.test(rp));
+t('문구는 출처(다른 사이트 유출 목록)만 밝히고 "PAP 는 아니다" 류 문장은 쓰지 않는다 (도메니코 10/14)', !/PAP에서 유출|Nothing leaked from PAP|Утечки из PAP|Bei PAP ist|fuga di dati da PAP|fuité chez PAP|filtración en PAP|PAPからの漏えい|PAP 没有发生泄露/.test(au) && !/leaked from PAP/.test(su) && !/leaked from PAP/.test(rp) && (au.match(/pwLeaked:'[^\n]*?(다른 사이트|other websites|других сайтов|anderer Websites|altri siti|autres sites|otros sitios|他サイト|其他网站)/g) || []).length === 10);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
