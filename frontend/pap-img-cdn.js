@@ -66,10 +66,12 @@
       var src = img.getAttribute('src') || '';
       if(!isOptHost(src) || isSkippedFormat(src)) return;
       if(src.indexOf('/_vercel/image') !== -1) return;
-      // 로드 완료분은 그대로. 정적 HTML 의 eager(히어로 LCP)도 그대로.
+      // 로드 완료분은 그대로. 초기 sweep 에서 eager(히어로 LCP·상단 3장)는 그대로.
+      // lazy·auto(미지정) 는 아직 안 받았으면 바꾼다 — 10/14 배포 뒤 실측에서 모듈보다
+      // 먼저 그려진 auto 카드 12장이 Supabase 원본으로 남아 있었다.
       // JS 가 나중에 넣은 카드(dynamic)는 loading 값과 무관하게 바꾼다.
       if(img.complete) return;
-      if(!dynamic && img.loading !== 'lazy') return;
+      if(!dynamic && img.loading === 'eager') return;
       img.dataset.papCdn = '1';
       img.dataset.papOrig = src;
       img.addEventListener('error', function(){
@@ -84,7 +86,7 @@
 
   function sweep(root, dynamic){
     if(!root || !root.querySelectorAll) return;
-    var imgs = root.querySelectorAll(dynamic ? 'img' : 'img[loading="lazy"]');
+    var imgs = root.querySelectorAll('img');
     for(var i = 0; i < imgs.length; i++) rewrite(imgs[i], dynamic);
   }
 
