@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="auth" data-v="6">
+<meta name="pap-ui-i18n" content="auth" data-v="7">
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.portone.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.portone.io https://service.portone.io; frame-src https://service.portone.io;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -981,6 +981,9 @@ async function completeSignup() {
     var msg = e.message || '';
     if (msg.includes('already registered') || msg.includes('already')) {
       PAP.ui.toast(msgs.emailDuplicate, 'error');
+    } else if (/weak|easy to guess|breach|leaked|pwned/i.test(msg)) {
+      // Supabase 가 유출 비밀번호(HIBP) 를 거절한 경우 — 일반 오류로 뭉개지 않는다
+      PAP.ui.toast(msgs.pwLeaked || msg, 'error');
     } else if (msg.includes('network') || msg.includes('fetch')) {
       PAP.ui.toast(msgs.networkError, 'error');
     } else {
@@ -1082,7 +1085,9 @@ async function sendResetEmail() {
     showReset();
     setTimeout(function(){ try { document.getElementById('resetCode').focus(); } catch(_){} }, 50);
   } catch (e) {
-    PAP.ui.toast((e && e.message) || msgs.networkError, 'error');
+    var em = (e && e.message) || '';
+    if (/weak|easy to guess|breach|leaked|pwned/i.test(em)) em = msgs.pwLeaked || em;
+    PAP.ui.toast(em || msgs.networkError, 'error');
   }
   btn.disabled = false;
   btn.textContent = origLabel;
@@ -1232,6 +1237,7 @@ ko: {
   codeWrong:'인증 코드가 올바르지 않습니다.',
   codeResent:'인증 코드를 다시 보냈습니다.',
   networkError:'네트워크 연결을 확인해주세요. 인터넷에 연결되어 있나요?',
+  pwLeaked:'이 비밀번호는 유출된 적이 있어 사용할 수 없습니다. 다른 비밀번호를 골라주세요.',
   signupFail:'회원가입 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
   consentRequired:'필수 동의 항목에 모두 동의해주세요.',
   loginWrong:'이메일 또는 비밀번호가 올바르지 않습니다.',
@@ -1253,6 +1259,7 @@ en: {
   codeWrong:'Incorrect verification code.',
   codeResent:'Verification code has been resent.',
   networkError:'Please check your internet connection.',
+  pwLeaked:'This password has appeared in a data breach and cannot be used. Please choose a different one.',
   signupFail:'Something went wrong. Please try again in a moment.',
   consentRequired:'Please agree to all required terms to continue.',
   loginWrong:'Incorrect email or password.',
@@ -1274,6 +1281,7 @@ ru:{
   codeWrong:'Неверный код подтверждения.',
   codeResent:'Код подтверждения отправлен повторно.',
   networkError:'Пожалуйста, проверьте подключение к интернету.',
+  pwLeaked:'Этот пароль был скомпрометирован в утечке данных и не может быть использован. Выберите другой.',
   signupFail:'Что-то пошло не так. Пожалуйста, повторите попытку через мгновение.',
   consentRequired:'Пожалуйста, примите все обязательные условия, чтобы продолжить.',
   loginWrong:'Неверный email или пароль.',
@@ -1295,6 +1303,7 @@ de:{
   codeWrong:'Falscher Bestätigungscode.',
   codeResent:'Der Bestätigungscode wurde erneut gesendet.',
   networkError:'Bitte überprüfen Sie Ihre Internetverbindung.',
+  pwLeaked:'Dieses Passwort ist aus einem Datenleck bekannt und kann nicht verwendet werden. Bitte wählen Sie ein anderes.',
   signupFail:'Etwas ist schiefgelaufen. Bitte versuchen Sie es gleich erneut.',
   consentRequired:'Bitte stimmen Sie allen erforderlichen Bedingungen zu, um fortzufahren.',
   loginWrong:'Falsche E-Mail oder falsches Passwort.',
@@ -1316,6 +1325,7 @@ it: {
   codeWrong:'Codice di verifica errato.',
   codeResent:'Codice inviato di nuovo.',
   networkError:'Verifica la tua connessione internet.',
+  pwLeaked:'Questa password è comparsa in una violazione di dati e non può essere usata. Scegline un\'altra.',
   signupFail:'Si è verificato un errore. Riprova tra poco.',
   consentRequired:'Accetta tutti i termini obbligatori per continuare.',
   loginWrong:'Email o password non corretti.',
@@ -1337,6 +1347,7 @@ fr: {
   codeWrong:'Code de vérification incorrect.',
   codeResent:'Le code a été renvoyé.',
   networkError:'Vérifiez votre connexion internet.',
+  pwLeaked:'Ce mot de passe figure dans une fuite de données et ne peut pas être utilisé. Veuillez en choisir un autre.',
   signupFail:'Une erreur est survenue. Veuillez réessayer.',
   consentRequired:'Veuillez accepter toutes les conditions obligatoires.',
   loginWrong:'Email ou mot de passe incorrect.',
@@ -1358,6 +1369,7 @@ es: {
   codeWrong:'Código de verificación incorrecto.',
   codeResent:'El código ha sido reenviado.',
   networkError:'Verifique su conexión a internet.',
+  pwLeaked:'Esta contraseña apareció en una filtración de datos y no se puede usar. Elija otra.',
   signupFail:'Ocurrió un error. Intente de nuevo en un momento.',
   consentRequired:'Acepte todos los términos obligatorios para continuar.',
   loginWrong:'Email o contraseña incorrectos.',
@@ -1379,6 +1391,7 @@ ja: {
   codeWrong:'認証コードが正しくありません。',
   codeResent:'認証コードを再送しました。',
   networkError:'インターネット接続を確認してください。',
+  pwLeaked:'このパスワードは情報漏えいで確認されているため使用できません。別のパスワードを選んでください。',
   signupFail:'エラーが発生しました。しばらくしてからお試しください。',
   consentRequired:'必須項目にすべて同意してください。',
   loginWrong:'メールまたはパスワードが正しくありません。',
@@ -1400,6 +1413,7 @@ zh: {
   codeWrong:'验证码不正确。',
   codeResent:'验证码已重新发送。',
   networkError:'请检查您的网络连接。',
+  pwLeaked:'该密码曾出现在数据泄露中，无法使用。请选择其他密码。',
   signupFail:'发生错误，请稍后重试。',
   consentRequired:'请同意所有必选项后继续。',
   loginWrong:'邮箱或密码不正确。',
@@ -1421,6 +1435,7 @@ ru: {
   codeWrong:'Неверный код подтверждения.',
   codeResent:'Код подтверждения отправлен повторно.',
   networkError:'Проверьте подключение к интернету.',
+  pwLeaked:'Этот пароль был скомпрометирован в утечке данных и не может быть использован. Выберите другой.',
   signupFail:'Произошла ошибка. Попробуйте позже.',
   consentRequired:'Пожалуйста, примите все обязательные условия.',
   loginWrong:'Неверный email или пароль.',

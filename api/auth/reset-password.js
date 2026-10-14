@@ -50,6 +50,9 @@ module.exports = async function handler(req, res) {
     const { error: upErr } = await supabaseAdmin.auth.admin.updateUserById(prof.id, { password: String(password) });
     if (upErr) {
       console.error('[reset-password] updateUserById 실패:', upErr.message);
+      if (/weak|easy to guess|pwned|leaked/i.test(upErr.message || '')) {
+        return res.status(400).json({ code: 'weak_password', message: 'This password has appeared in a data breach and cannot be used. Please choose a different one.' });
+      }
       return res.status(500).json({ message: 'Could not update password. Please try again.' });
     }
     // 기존 로그인 전부 무효화

@@ -223,6 +223,10 @@ module.exports = async function handler(req, res) {
     if (error.message && (error.message.includes('already') && error.message.includes('registered'))) {
       return res.status(409).json({ message: 'Email already registered' });
     }
+    // Supabase 의 유출 비밀번호 검사(HIBP) 거절 — 서버 장애가 아니라 안내가 필요한 400
+    if (error.message && /weak|easy to guess|pwned|leaked/i.test(error.message)) {
+      return res.status(400).json({ code: 'weak_password', message: 'This password has appeared in a data breach and cannot be used. Please choose a different one.' });
+    }
     return res.status(500).json({ message: 'Registration failed. Please try again.' });
   }
 };
