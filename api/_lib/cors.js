@@ -1,3 +1,4 @@
+require('./quietDep0169'); // DEP0169(url.parse) 소음 차단 — 파일 주석 참조
 /**
  * PAP Magazine - CORS Helper
  */
