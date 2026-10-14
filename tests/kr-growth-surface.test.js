@@ -1047,7 +1047,7 @@ console.log('\n[20] 언어별 진입 페이지 /ja · /en');
   t('성장·광고 성과 정량 섹션이 있다', /성장과 광고 성과/.test(im) && /686만/.test(im) && /93,429/.test(im));
   t('광고 효과 FAQ 가 화면·JSON-LD 양쪽에 있다',
     (im.match(/인스타그램 매거진 광고는 효과가 있나요\?/g) || []).length >= 2);
-  t('ko 광고 표면은 원화만 (3원칙 ②)', /250만 원/.test(im) && /150만 원/.test(im) && !/EUR|€/.test(im));
+  t('ko 광고 표면은 원화만 (3원칙 ②) · 250만은 미노출(2026-10-15)', !/250만/.test(im) && /150만 원/.test(im) && !/EUR|€/.test(im));
   t('해외 비중 신호 미노출 (3원칙 ①)', !/93% international|해외 비중|international audience/.test(im));
 }
 
