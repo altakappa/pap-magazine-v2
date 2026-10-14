@@ -10,7 +10,7 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { countryFromRequest } = require('../_lib/emailLocale');
 const { normalizeHandle } = require('../_lib/collaborators');
 const { normalizeCountryCode, normalizeCity } = require('../_lib/countries');   // 2026-09-12 자동 매치용 코드 저장
-const { alertInstagramClaim } = require('../_lib/instagramClaimAlert');       // 2026-10-03 가짜 아이디 걸러내기(알림)
+const { alertInstagramClaim, countCreditedEditorials } = require('../_lib/instagramClaimAlert');       // 2026-10-03 가짜 아이디 걸러내기(알림)
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -67,7 +67,15 @@ module.exports = async function handler(req, res) {
           // 2026-10-03 아이디가 바뀌면 확인 도장을 지운다(새 아이디는 다시 확인). 같은 아이디면 그대로.
           const { data: prev } = await supabaseAdmin.from('profiles').select('instagram').eq('id', user.id).maybeSingle();
           const prevHandle = (prev && prev.instagram) || null;
-          if (prevHandle !== h) { updates.instagram_verified_at = null; _igChanged = { previous: prevHandle, handle: h }; }
+          if (prevHandle !== h) {
+            // 2026-10-14 도메니코 "인스타 등록을 원하는 사람들은 자동으로 등록해 주자":
+            // 그 아이디가 적힌 게재 화보가 0편이면 가로챌 크레딧이 없으니 즉시 자동 도장.
+            // 1편이라도 있으면 종전대로 도장 없이 저장 + 텔레그램으로 도메니코가 확인(볼트 규칙).
+            const credited = await countCreditedEditorials(supabaseAdmin, h);
+            const autoVerified = credited === 0;
+            updates.instagram_verified_at = autoVerified ? new Date().toISOString() : null;
+            _igChanged = { previous: prevHandle, handle: h, credited, autoVerified };
+          }
         }
       }
 
@@ -82,7 +90,7 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ message: 'Failed to update profile' });
       }
       // 2026-10-03 새 아이디·바뀐 아이디 → 도메니코에게 텔레그램(크레딧에 적힌 화보 수 포함). 응답은 안 기다린다.
-      if (_igChanged) alertInstagramClaim(supabaseAdmin, { email: profile.email, userId: user.id, handle: _igChanged.handle, previous: _igChanged.previous }).catch(() => {});
+      if (_igChanged) alertInstagramClaim(supabaseAdmin, { email: profile.email, userId: user.id, handle: _igChanged.handle, previous: _igChanged.previous, credited: _igChanged.credited, autoVerified: _igChanged.autoVerified }).catch(() => {});
 
       return res.status(200).json({
         user: {

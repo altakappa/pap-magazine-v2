@@ -22,13 +22,19 @@ async function countCreditedEditorials(db, handle) {
   return n;
 }
 
-async function alertInstagramClaim(db, { email, userId, handle, previous }) {
+/**
+ * credited 를 넘기면 다시 세지 않는다(me.js 가 도장 판정에 쓴 값 그대로).
+ * autoVerified=true 면 "0편이라 자동 도장" 안내 — 도메니코가 할 일이 없다 (2026-10-14).
+ */
+async function alertInstagramClaim(db, { email, userId, handle, previous, credited, autoVerified }) {
   try {
-    const n = await countCreditedEditorials(db, handle);
+    const n = (typeof credited === 'number') ? credited : await countCreditedEditorials(db, handle);
     const text = '🪪 인스타 아이디 ' + (previous ? '변경' : '등록') + ': ' + (email || userId) + ' → @' + handle
       + (previous ? ' (전: @' + previous + ')' : '')
       + '\n크레딧에 이 아이디가 적힌 게재 화보: ' + n + '편'
-      + '\n확인 전엔 연락 버튼·프리미엄 배지가 안 붙는다. 관리자 → 회원 → IG 확인 도장.';
+      + (autoVerified
+        ? '\n✅ 0편이라 자동으로 확인 도장을 찍었다. 할 일 없음.'
+        : '\n확인 전엔 연락 버튼·프리미엄 배지가 안 붙는다. 인스타에서 본인 계정인지 보고 관리자 → 회원 → IG 확인 도장.');
     await sendTextToTelegramSafe(text);
     return { credited: n };
   } catch (e) {

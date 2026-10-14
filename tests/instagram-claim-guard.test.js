@@ -13,7 +13,8 @@ const LANGS = ['ko','en','de','it','fr','es','ja','zh','ru'];
 
 t('마이그레이션 176: instagram_verified_at + 기존 등록자 일괄 도장', /add column if not exists instagram_verified_at/.test(R('supabase_migrations/176_profiles_instagram_verified.sql')) && /where instagram is not null and instagram_verified_at is null/.test(R('supabase_migrations/176_profiles_instagram_verified.sql')));
 const me = R('api/auth/me.js');
-t('me.js: 아이디가 바뀌면 도장을 지우고 알림, 같으면 그대로', /if \(prevHandle !== h\) \{ updates\.instagram_verified_at = null; _igChanged = /.test(me) && /if \(_igChanged\) alertInstagramClaim\(supabaseAdmin/.test(me) && /instagramVerified: !!profile\.instagram_verified_at/.test(me));
+t('me.js: 아이디가 바뀌면 게재 화보 수를 세서 0편이면 자동 도장, 아니면 도장 없이 저장 (2026-10-14)', /const credited = await countCreditedEditorials\(supabaseAdmin, h\);\s*\n\s*const autoVerified = credited === 0;\s*\n\s*updates\.instagram_verified_at = autoVerified \? new Date\(\)\.toISOString\(\) : null;/.test(me) && /if \(_igChanged\) alertInstagramClaim\(supabaseAdmin[^\n]*credited: _igChanged\.credited, autoVerified: _igChanged\.autoVerified/.test(me) && /instagramVerified: !!profile\.instagram_verified_at/.test(me));
+t('알림 lib: 자동 도장이면 "할 일 없음", 아니면 확인 안내. credited 넘기면 재계산 안 함', /autoVerified\s*\n?\s*\? '\\n✅ 0편이라 자동으로 확인 도장을 찍었다\. 할 일 없음\.'/.test(R('api/_lib/instagramClaimAlert.js')) && /\(typeof credited === 'number'\) \? credited : await countCreditedEditorials/.test(R('api/_lib/instagramClaimAlert.js')));
 const lib = R('api/_lib/instagramClaimAlert.js');
 t('알림 lib: @ 유무 둘 다 세고, 실패해도 저장을 안 막는다', /for \(const v of \[h, '@' \+ h\]\)/.test(lib) && /contains\('credits', \[\{ instagram: v \}\]\)/.test(lib) && /sendTextToTelegramSafe\(text\)/.test(lib));
 t('member-update: instagramVerified → 도장 찍기/지우기', /instagramVerified \? new Date\(\)\.toISOString\(\) : null/.test(R('api/admin/member-update.js')) && /instagramVerified: !!m\.instagram_verified_at/.test(R('api/admin/members.js')));
