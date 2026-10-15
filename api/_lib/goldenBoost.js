@@ -191,7 +191,7 @@ function boostText(permalink, src) {
  * X 용 부스트 문구 (2026-10-15 CTA 한 줄 A/B, xBodyLinkAb 주석).
  * 스레드는 boostText 그대로(src=boost). X 만 갈래를 탄다 — 실험이 꺼져 있으면 X 도 그대로.
  *   bare : 지금 문구,                         src boost_x     kind 'boost'
- *   cta  : '전체 화보는 인스타그램에서 ↓' 로 교체, src boost_x_cta kind 'boost_cta'
+ *   cta  : '전체 화보는 아래 링크에서 ↓' 로 교체, src boost_x_cta kind 'boost_cta'
  * @param {string} permalink
  * @param {string} mediaId  IG 미디어 id — 마지막 자리 홀짝이 갈래
  * @returns {{text:string, kind:string}}

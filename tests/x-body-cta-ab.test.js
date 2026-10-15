@@ -21,7 +21,7 @@ const x = require('../api/_lib/xPost');
 console.log('[1] 문구 — 도메니코가 정한 세 줄 그대로');
 t('일반 기사', ab.CTA_LINE.article === '자세한 내용은 아래 링크에서↓');
 t('영상 기사', ab.CTA_LINE.video === '풀 영상은 아래 링크에서 ↓');
-t('에디토리얼', ab.CTA_LINE.editorial === '전체 화보는 인스타그램에서 ↓');
+t('에디토리얼', ab.CTA_LINE.editorial === '전체 화보는 아래 링크에서 ↓');
 t('ctaLineFor: video → 영상 문구, 그 외 → 기사 문구', ab.ctaLineFor('video') === ab.CTA_LINE.video && ab.ctaLineFor('image') === ab.CTA_LINE.article && ab.ctaLineFor('none') === ab.CTA_LINE.article);
 
 console.log('[2] 스위치 — env 로 켜고 날짜로 끈다');

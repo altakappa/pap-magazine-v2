@@ -86,7 +86,7 @@ function kindFor(variant, hasBody) {
  * 비교 자료가 없어 일주일 반반으로 잰다. 문구는 도메니코가 정했다:
  *     일반 기사  '자세한 내용은 아래 링크에서↓'
  *     영상 기사  '풀 영상은 아래 링크에서 ↓'
- *     에디토리얼 '전체 화보는 인스타그램에서 ↓'   (골든아워 부스트 트윗, goldenBoost.boostTextX)
+ *     에디토리얼 '전체 화보는 아래 링크에서 ↓'   (골든아워 부스트 트윗, goldenBoost.boostTextX)
  *
  * 설계
  *   · X_BODY_CTA_AB=on 이고 X_BODY_CTA_AB_UNTIL 전이면 실험 중. 'all' 이면 전부 CTA.
@@ -101,7 +101,7 @@ function kindFor(variant, hasBody) {
 const CTA_LINE = Object.freeze({
   article: '자세한 내용은 아래 링크에서↓',
   video: '풀 영상은 아래 링크에서 ↓',
-  editorial: '전체 화보는 인스타그램에서 ↓',
+  editorial: '전체 화보는 아래 링크에서 ↓',
 });
 const IG_OUT_SRC_CTA = 'x_body_cta';
 
