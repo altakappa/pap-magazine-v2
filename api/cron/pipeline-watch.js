@@ -66,6 +66,9 @@ const FAQ_I18N_ALERT_KEY = 'faq-i18n-backfill-health';
 const DURATION_ALERT_KEY = 'cron-duration-health';
 /* 네이버 초안 — 상한·정지로 생성이 멎었는지 본다 (2026-08-07). */
 const NAVER_ALERT_KEY = 'naver-draft-health';
+/* 2026-10-15 — 스레드 링크 답글. 본글은 published 인데 답글만 30일째 전부 실패(권한). */
+const THREADS_REPLY_ALERT_KEY = 'threads-link-reply-health';
+const { judgeThreadsReplyHealth, buildThreadsReplyAlert, classify: classifyThreadsReply } = require('../_lib/threadsReplyHealth');
 const SITE = 'https://www.pap-magazine.com';
 
 /* 게시 후 이 시간이 지나도 발행되지 않으면 이상으로 본다.
@@ -255,6 +258,11 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 그래서 여기서는 "막혔다" 를 3일이 되기 전에 잡는다. */
   const naver = await checkNaverDrafts({ dry });
 
+  /* ── 스레드 링크 답글 감시 (2026-10-15 추가) ──
+   * 본글 252건/월이 전부 published 인데 밑에 붙는 링크 답글(IG→웹)은 0건 성공.
+   * 실패가 threads_posts.detail 에만 적혀 cron_runs 는 평화로웠다. detail 을 직접 센다. */
+  const threadsReply = await checkThreadsLinkReply({ dry });
+
   /* ── 틱톡 게시 감시 (2026-08-07 추가) ──
    * 틱톡은 21일 동안 0건이었는데 cron_runs 는 전부 ok 였다. 조기 반환에서
    * res.locals.cronNote 를 안 세운 탓에 기록이 통째로 비어 있었기 때문이다.
@@ -327,7 +335,7 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
     ? ((LATE_ALERT_MODE === 'alert' ? '' : '로그전용 ') + late.slice(0, 2).map((x) => x.cron).join('·')).slice(0, 60)
     : undefined;
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, late: late.map((x) => x.cron), lateDetail, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, tiktok, tiktokDrive, videoSources, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons, production, deploy, lateCrons });
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, late: late.map((x) => x.cron), lateDetail, backfill, translate, reels, faq, faqEn, faqI18n, duration, naver, threadsReply, tiktok, tiktokDrive, videoSources, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons, production, deploy, lateCrons });
 });
 
 /**
@@ -1199,6 +1207,58 @@ async function checkNaverDrafts(opts) {
   } catch (e) {
     // 감시가 죽어도 본 크론은 계속 돌아야 한다.
     console.error('[pipeline-watch] naver draft health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+/**
+ * 스레드 링크 답글이 실제로 붙고 있는지 본다 (2026-10-15).
+ * 근거는 threads_posts.detail 의 '링크 답글 실패' 다 — 크론 note 가 아니다.
+ * 대상 = 창 안 status='published' 본글 전부 (링크 답글은 본글마다 시도한다).
+ */
+async function checkThreadsLinkReply(opts) {
+  const WINDOW_H = Number(process.env.THREADS_REPLY_WINDOW_HOURS || 24);
+  try {
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+    const { data: rows } = await supabaseAdmin.from('threads_posts')
+      .select('detail').eq('status', 'published').gte('posted_at', since).limit(500);
+    const list = rows || [];
+    let failed = 0, scopeFails = 0;
+    for (const r of list) {
+      const c = classifyThreadsReply(r && r.detail);
+      if (!c) continue;
+      failed++;
+      if (c === 'scope') scopeFails++;
+    }
+    const d = judgeThreadsReplyHealth({ attempted: list.length, failed, scopeFails, windowHours: WINDOW_H });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', THREADS_REPLY_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.THREADS_REPLY_ALERT_COOLDOWN_H || 12);
+
+    let alerted = false;
+    if (!d.healthy && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildThreadsReplyAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (d.healthy && wasBroken) {
+      await pushAlert({ personalOnly: true, title: '✅ 스레드 링크 답글 재개', lines: [d.reason],
+        url: `${SITE}/threads-diagnose`, urlLabel: '스레드 진단' });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== !d.healthy) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: THREADS_REPLY_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken: !d.healthy, cause: d.cause, failed: d.failed, attempted: d.attempted },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] threads reply health 실패', e && e.message);
     return { error: (e && e.message) || 'unknown' };
   }
 }

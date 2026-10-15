@@ -49,7 +49,11 @@ const IMAGE_EXT = /\.(jpe?g|png)(\?|$)/i;
 // reposts/quotes) 조회에 필요하다. 기존 토큰에는 이 권한이 없으므로
 // /api/threads/oauth 재인증 1회가 있어야 threads-metrics 크론이 동작한다.
 // (토큰 자체가 2026-09-05 만료라 어차피 재인증이 필요한 시점이다.)
-const SCOPES = 'threads_basic,threads_content_publish,threads_manage_insights';
+// 2026-10-15 — threads_manage_replies 추가. 링크 답글(reply_to_id)에 필요하다.
+// 실측: 8/13 부터 답글에 링크를 붙이기로 했는데 이 권한이 없어 30일 동안 0건
+// 성공 (10/04 부터 전부 code 10 "Application does not have permission").
+// 기존 토큰에는 이 권한이 없으므로 /api/threads/oauth 재인증 1회가 필요하다.
+const SCOPES = 'threads_basic,threads_content_publish,threads_manage_insights,threads_manage_replies';
 const REDIRECT_URI = 'https://www.pap-magazine.com/api/threads/callback';
 
 /* threads_auth.id → 계정. 번호는 DB 행 번호 그 자체다 (1=PAP, 2=페퍼릿).
