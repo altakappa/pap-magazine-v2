@@ -93,6 +93,25 @@ console.log('\n[4] GEO 확장 — alt 의미화 · 위키데이터 엔티티 연
     /Finding editorial references/.test(llms) && /macro beauty/.test(llms));
 }
 
+console.log('\n[5] GEO 확장 — 정적 페이지·창립자·법인까지 위키데이터 연결 (2026-10-15)');
+{
+  // 정적 페이지 20여 개의 Organization sameAs 에는 위키데이터가 빠져 있었다(SSR 기사만 있었음).
+  // 규칙: PAP Organization sameAs(첫 항목이 @pap_magazine)를 가진 정적 페이지는 전부 Q140578366 을 싣는다.
+  const dir = path.join(ROOT, 'frontend');
+  const pages = fs.readdirSync(dir).filter(f => f.endsWith('.html'))
+    .filter(f => /"sameAs":\s*\[\s*"https:\/\/www\.instagram\.com\/pap_magazine\/"/.test(R('frontend/' + f)));
+  const missing = pages.filter(f => !/wikidata\.org\/wiki\/Q140578366/.test(R('frontend/' + f)));
+  t('PAP Organization 을 실은 정적 페이지 전부에 위키데이터 Q140578366 (' + pages.length + '쪽)',
+    pages.length >= 15 && missing.length === 0, missing.join(', '));
+  const home = R('frontend/index.html');
+  t('홈 founder 가 위키데이터 Q141738044(Domenico Kang)를 가리킨다',
+    /"founder":[^}]*Q141738044/.test(home));
+  t('홈 parentOrganization 이 위키데이터 Q141738121(ALTAKAPPA)를 가리킨다',
+    /"parentOrganization":[^}]*Q141738121/.test(home));
+  t('SSR Organization 에 founder(Q141738044)·parentOrganization(Q141738121) sameAs',
+    /founder:\s*\{[^}]*Q141738044/.test(seo) && /parentOrganization:\s*\{[^}]*Q141738121/.test(seo));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ geo-citation-surface tests FAILED'); process.exit(1); }
 console.log('✅ geo-citation-surface tests passed');

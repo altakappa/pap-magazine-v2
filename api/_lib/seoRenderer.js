@@ -338,9 +338,22 @@ const ORG_PUBLISHER = {
      ⚠️ 이건 schema.org 정의를 읽고 내린 판단이다. Google Rich Results Test
      로 한 번 확인하면 확정된다. 다만 두 속성 다 바꾼 쪽이 명백히 옳으므로
      확인 전에 고쳐도 손해가 없다. */
+  /* 2026-10-15 (GEO) — 창립자·법인도 위키데이터로 묶는다. 같은 날 도메니코가
+     위키데이터에 Domenico Kang(Q141738044)·ALTAKAPPA(Q141738121) 항목을 직접 만들었다.
+     사이트 JSON-LD 가 그 번호를 가리켜야 '사이트의 창립자 = 위키데이터의 그 사람' 이
+     기계적으로 성립한다. 홈(index.html)도 같은 번호를 싣는다. */
+  founder: {
+    '@type': 'Person',
+    name: 'Domenico Kang',
+    alternateName: '강동민',
+    jobTitle: 'Founder & Editor-in-Chief',
+    sameAs: 'https://www.wikidata.org/wiki/Q141738044'
+  },
   parentOrganization: {
     '@type': 'Organization',
     name: 'ALTAKAPPA Co., Ltd.',
+    alternateName: '주식회사 알타카파',
+    sameAs: 'https://www.wikidata.org/wiki/Q141738121',
     address: {
       '@type': 'PostalAddress',
       streetAddress: '1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu',
