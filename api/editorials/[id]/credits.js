@@ -46,7 +46,7 @@ module.exports = async function handler(req, res) {
   try {
     const { data: ed, error: edErr } = await supabaseAdmin
       .from('editorials')
-      .select('id, title, slug, status, source_submission_id, credits, fashion, credits_edit_count, credits_history')
+      .select('id, title, slug, status, source_submission_id, credits, fashion, credits_edit_count, credits_history, instagram_caption')
       .eq('id', id)
       .single();
     if (edErr || !ed) return res.status(404).json({ message: 'Editorial not found' });
@@ -197,6 +197,12 @@ module.exports = async function handler(req, res) {
       after: { credits: nextCredits, fashion: { brands: nextBrands, imageCredits: remap.imageCredits || null } },
     };
     const prevHistory = Array.isArray(ed.credits_history) ? ed.credits_history : [];
+    /* 2026-10-15 — 인스타 캡션의 크레딧 줄도 같이 고친다(바뀐 사람의 줄만). 캡션이 옛 역할을
+       들고 있으면 텔레그램 알림을 받아도 인스타에 붙일 글이 틀린 채로 남는다. */
+    const { syncCaptionCredits, captionSyncAlert } = require('../../_lib/captionCreditSync');
+    const capSync = syncCaptionCredits(ed.instagram_caption || '', prevCredits, nextCredits,
+      { beforeBrands: prevBrands, afterBrands: nextBrands });
+    const captionChanged = capSync.caption !== String(ed.instagram_caption || '');
 
     const { data: upRows, error: upErr } = await supabaseAdmin
       .from('editorials')
@@ -205,6 +211,7 @@ module.exports = async function handler(req, res) {
         fashion: nextFashion,
         credits_history: prevHistory.concat([historyEntry]),
         credits_edit_count: used + 1,
+        ...(captionChanged ? { instagram_caption: capSync.caption } : {}),
         updated_at: now.toISOString(),
         updated_by: user.id,
       })
@@ -259,6 +266,12 @@ module.exports = async function handler(req, res) {
       link: FRONTEND_URL + '/editorial/' + encodeURIComponent(ed.slug || ed.id),
     });
     await sendTextToTelegramSafe(alert);
+    /* 2026-10-15 도메니코 "인스타용 크레딧 어떻게 바꿔야하는지 텔레그램으로" — 바뀐 줄 요약 1통 +
+       고친 캡션 전문 1통(머리말 없이, 그대로 복사). 캡션이 없거나 바뀐 줄이 없으면 안 보낸다. */
+    if (String(ed.instagram_caption || '').trim() && (capSync.changed.length || capSync.unresolved.length)) {
+      await sendTextToTelegramSafe(captionSyncAlert(ed.title, capSync, FRONTEND_URL + '/editorial/' + encodeURIComponent(ed.slug || ed.id)));
+      if (captionChanged) await sendTextToTelegramSafe(capSync.caption);
+    }
 
     // 이 응답은 절대 캐시하지 않는다. 상세 엔드포인트도 캐시가 없으므로
     // 화면은 다음 조회에서 바로 새 크레딧을 읽는다(스펙 2절, 방향 1).

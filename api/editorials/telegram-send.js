@@ -48,6 +48,16 @@ module.exports = async function handler(req, res) {
     const { data: ed, error } = await supabaseAdmin.from('editorials').select('*').eq('id', id).single();
     if (error || !ed) return res.status(404).json({ error: 'not found' });
     if (ed.status !== 'published') return res.status(409).json({ error: 'not published', status: ed.status });
+    /* 2026-10-15 — ?only=caption : 인스타 캡션 텍스트만 다시 보낸다(이미지 합성·업로드 없이 1초).
+       크레딧 수정 뒤 캡션만 필요할 때 16장을 다시 받을 이유가 없다. */
+    if (String((req.query && req.query.only) || '') === 'caption') {
+      const cap = String(ed.instagram_caption || '').trim();
+      if (!cap) return res.status(409).json({ error: 'no instagram_caption' });
+      const { sendTextToTelegramSafe } = require('../_lib/telegram');
+      const r = await sendTextToTelegramSafe(cap);
+      console.log('[telegram-send] 캡션만:', ed.title, 'by', who, JSON.stringify(r));
+      return res.status(r.ok ? 200 : 502).json({ ok: !!r.ok, id, only: 'caption', result: r });
+    }
     console.log('[telegram-send] 시작:', ed.title, 'by', who);
     const r = await sendEditorialToTelegramSafe(ed);
     const ms = Date.now() - started;
