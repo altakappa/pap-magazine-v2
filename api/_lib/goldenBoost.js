@@ -181,10 +181,29 @@ async function claimBoost(postId, permalink) {
   return true;
 }
 
-function boostText(permalink) {
+function boostText(permalink, src) {
   const clean = String(permalink).split('?')[0];
-  const link = SITE + '/api/ig-out?src=boost&to=post&url=' + encodeURIComponent(clean);
+  const link = SITE + '/api/ig-out?src=' + (src || 'boost') + '&to=post&url=' + encodeURIComponent(clean);
   return '새 화보가 공개됐습니다.\n지금 가장 먼저 보기 ↓\n\n' + link;
+}
+
+/**
+ * X 용 부스트 문구 (2026-10-15 CTA 한 줄 A/B, xBodyLinkAb 주석).
+ * 스레드는 boostText 그대로(src=boost). X 만 갈래를 탄다 — 실험이 꺼져 있으면 X 도 그대로.
+ *   bare : 지금 문구,                         src boost_x     kind 'boost'
+ *   cta  : '전체 화보는 인스타그램에서 ↓' 로 교체, src boost_x_cta kind 'boost_cta'
+ * @param {string} permalink
+ * @param {string} mediaId  IG 미디어 id — 마지막 자리 홀짝이 갈래
+ * @returns {{text:string, kind:string}}
+ */
+function boostTextX(permalink, mediaId) {
+  const ab = require('./xBodyLinkAb');
+  const v = ab.ctaVariantFor(mediaId);
+  if (!v) return { text: boostText(permalink), kind: 'boost' };
+  if (v === 'bare') return { text: boostText(permalink, 'boost_x'), kind: 'boost' };
+  const clean = String(permalink).split('?')[0];
+  const link = SITE + '/api/ig-out?src=boost_x_cta&to=post&url=' + encodeURIComponent(clean);
+  return { text: '새 화보가 공개됐습니다.\n' + ab.CTA_LINE.editorial + '\n\n' + link, kind: 'boost_cta' };
 }
 
 /**
@@ -263,8 +282,9 @@ async function maybeBoostPost(m, opts) {
       if (!x.isConfigured()) {
         xErr = '미설정';
       } else {
+        const xt = boostTextX(m.permalink, m.id);  // 2026-10-15 CTA A/B — X 만 갈래
         const r = await postWithTransientRetry(async () => {
-          const tr = await x.postTweet(text);
+          const tr = await x.postTweet(xt.text, { kind: xt.kind });
           /* postTweet 은 던지지 않고 {ok:false, error} 를 돌려주는 경로가 있다.
              그 사유를 삼키면 재시도 판정에 쓸 문자열이 사라지므로 예외로 올린다. */
           if (tr && tr.ok) return true;
@@ -293,7 +313,7 @@ module.exports = {
   maybeBoostPost,
   /* 구이름 호환 (2026-08-09 이전 배선) */
   maybeBoostEditorialPost: maybeBoostPost,
-  withinGoldenWindow, boostText, BOOST_WINDOW_MIN,
+  withinGoldenWindow, boostText, boostTextX, BOOST_WINDOW_MIN,
   /* 재시도 판정은 테스트가 직접 돌려 본다 (2026-09-17) — 정규식으로 소스를
      훑는 검사는 규칙이 실제로 맞는지 못 본다. */
   isTransientFailure, postWithTransientRetry,

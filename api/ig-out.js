@@ -59,7 +59,10 @@ const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', '
        threads → IG  ig_outclicks_human(src=threads) */
   'threads', 'x',
   /* 2026-10-05 — X 본문 링크 A/B (api/_lib/xBodyLinkAb.js). 답글 링크(x)와 본문 링크(x_body)를 나란히 센다. */
-  'x_body']);
+  'x_body',
+  /* 2026-10-15 — CTA 한 줄 A/B. 기사 트윗 'x_body'(링크만) vs 'x_body_cta'(안내 줄+링크),
+     에디토리얼 부스트 트윗 'boost_x'(지금 문구) vs 'boost_x_cta'(전체 화보는 인스타그램에서). */
+  'x_body_cta', 'boost_x', 'boost_x_cta']);
 const IG_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 
 /* 경로형 단축 링크 /ig/:src (2026-07-30 신설).

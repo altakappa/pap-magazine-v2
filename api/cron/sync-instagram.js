@@ -398,8 +398,16 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                 const { igOutUrl, igFirstLinkBlock } = require('../_lib/igFirstLink');
                 const abVariant = hasMedia ? ab.variantFor(inserted.id) : null;
                 const igSrcUrl = (post && (post.permalink || post.source_instagram_url)) || (row && row.source_instagram_url) || '';
-                const abBody = abVariant === 'body' ? ab.bodyWithIgLink(gen.body, igOutUrl(igSrcUrl, ab.IG_OUT_SRC), { weightedLen, URL_PLACEHOLDER }) : null;
-                const abKind = ab.kindFor(abVariant, !!abBody);  // 2026-10-13 상시 모드는 'body'
+                /* 2026-10-15 CTA 한 줄 A/B (xBodyLinkAb 주석) — 홀수 id 는 링크 위에
+                   "자세한 내용은 아래 링크에서↓"(영상이면 "풀 영상은 아래 링크에서 ↓"),
+                   짝수 id 는 지금처럼 링크만. 넘치면 CTA 를 떼고 링크만 — kind 도 bare. */
+                const ctaVariant = abVariant === 'body' ? ab.ctaVariantFor(inserted.id) : null;
+                const igSrc = ctaVariant === 'cta' ? ab.IG_OUT_SRC_CTA : ab.IG_OUT_SRC;
+                const abCta = abVariant === 'body'
+                  ? ab.bodyWithIgLinkCta(gen.body, igOutUrl(igSrcUrl, igSrc), ctaVariant === 'cta' ? ab.ctaLineFor(xMedia.kind) : '', { weightedLen, URL_PLACEHOLDER })
+                  : null;
+                const abBody = abCta ? abCta.text : null;
+                const abKind = ab.kindWithCta(ab.kindFor(abVariant, !!abBody), !!(abCta && abCta.cta));  // 2026-10-13 상시 모드는 'body' · 10-15 CTA 면 'body_cta'
                 /* articleId 를 넘긴다 — x_posts.article_id 가 비어 있으면 주제 가드
                    (xTopicGuard)가 비교할 지문이 없다. 실측 10/2 트윗 전부 null 이었다. */
                 const tw = hasMedia

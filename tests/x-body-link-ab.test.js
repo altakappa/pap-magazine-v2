@@ -57,7 +57,7 @@ t('igOutUrl 이 x_body 를 src 로 보낸다', /src=x_body/.test(igOutUrl('https
 // 배선
 const sync = fs.readFileSync(path.join(ROOT, 'api/cron/sync-instagram.js'), 'utf8');
 t('sync-instagram: 갈래 계산은 미디어 있을 때만', /const abVariant = hasMedia \? ab\.variantFor\(inserted\.id\) : null/.test(sync));
-t('sync-instagram: kind 는 ab.kindFor 가 정한다 (all→body · on→ab_body/ab_reply · 꺼짐→article)', /const abKind = ab\.kindFor\(abVariant, !!abBody\)/.test(sync));
+t('sync-instagram: kind 는 ab.kindFor 가 정한다 (all→body · on→ab_body/ab_reply · 꺼짐→article)', /const abKind = ab\.kindWithCta\(ab\.kindFor\(abVariant, !!abBody\)/.test(sync)  /* 2026-10-15 CTA A/B 가 _cta 를 덧붙인다 */);
 t('sync-instagram: body 갈래의 답글은 웹 링크만', /abBody \? \('웹에서 전문 보기 → ' \+ gen\.url\) : igFirstLinkBlock/.test(sync));
 t('sync-instagram: postTweet 에 kind 를 넘긴다', /kind: abKind/.test(sync));
 

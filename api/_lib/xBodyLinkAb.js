@@ -78,4 +78,82 @@ function kindFor(variant, hasBody) {
   return hasBody ? 'ab_body' : 'ab_reply';
 }
 
-module.exports = { isOn, isAll, variantFor, bodyWithIgLink, kindFor, IG_OUT_SRC };
+/* ───────────────────────────────────────────────────────────────────────────
+ * 2026-10-15 — CTA 한 줄 A/B (도메니코 "링크만 vs 링크를 알리는 한 줄").
+ *
+ * 질문: 본문의 인스타 링크 바로 위에 "무엇이 있는지" 한 줄을 적으면 클릭이 느는가.
+ * 지금은 링크가 말없이 혼자 서 있다(본문 링크 43건 · 트윗당 고유 클릭 8.1).
+ * 비교 자료가 없어 일주일 반반으로 잰다. 문구는 도메니코가 정했다:
+ *     일반 기사  '자세한 내용은 아래 링크에서↓'
+ *     영상 기사  '풀 영상은 아래 링크에서 ↓'
+ *     에디토리얼 '전체 화보는 인스타그램에서 ↓'   (골든아워 부스트 트윗, goldenBoost.boostTextX)
+ *
+ * 설계
+ *   · X_BODY_CTA_AB=on 이고 X_BODY_CTA_AB_UNTIL 전이면 실험 중. 'all' 이면 전부 CTA.
+ *   · 갈래는 id 마지막 자리 홀짝 — 홀수 'cta' / 짝수 'bare'(지금 그대로). 결정적.
+ *   · CTA 는 링크 **바로 윗줄**에 붙는다: 본문 \n\n CTA \n 링크 \n\n 태그.
+ *     280 가중자를 넘으면 CTA 를 떼고 링크만(트윗을 잃지 않는다) — kind 도 bare 로 남는다.
+ *   · 계측: x_posts.kind 'body' / 'body_cta' · ig_outclicks_human.src 'x_body' / 'x_body_cta'.
+ *     부스트(에디토리얼)는 kind 'boost' / 'boost_cta' · src 'boost_x' / 'boost_x_cta'.
+ *
+ * 판정(일주일 뒤): 갈래별 트윗당 고유 클릭, 클릭/뷰. CTA 가 높으면 all 로 전환.
+ * ─────────────────────────────────────────────────────────────────────────── */
+const CTA_LINE = Object.freeze({
+  article: '자세한 내용은 아래 링크에서↓',
+  video: '풀 영상은 아래 링크에서 ↓',
+  editorial: '전체 화보는 인스타그램에서 ↓',
+});
+const IG_OUT_SRC_CTA = 'x_body_cta';
+
+function ctaMode() { return String(process.env.X_BODY_CTA_AB || '').toLowerCase(); }
+function ctaIsOn(now) {
+  if (ctaMode() === 'all') return true;
+  if (ctaMode() !== 'on') return false;
+  const until = process.env.X_BODY_CTA_AB_UNTIL;
+  if (until) {
+    const t = Date.parse(until);
+    if (Number.isFinite(t) && (now || Date.now()) >= t) return false;
+  }
+  return true;
+}
+function lastIsOdd(id) {
+  const s = String(id || '').replace(/[^0-9a-f]/gi, '');
+  if (!s) return false;
+  return parseInt(s[s.length - 1], 16) % 2 === 1;
+}
+/** @returns {'cta'|'bare'|null} null = 실험 꺼짐(지금 그대로) */
+function ctaVariantFor(id, now) {
+  if (ctaMode() === 'all') return 'cta';
+  if (!ctaIsOn(now)) return null;
+  return lastIsOdd(id) ? 'cta' : 'bare';
+}
+/** 기사 트윗의 CTA 문구 — 미디어 종류로 고른다 */
+function ctaLineFor(mediaKind) { return mediaKind === 'video' ? CTA_LINE.video : CTA_LINE.article; }
+
+/**
+ * CTA 갈래 트윗 텍스트: 본문 + CTA + 링크 + 태그 줄.
+ * @returns {{text:string, cta:boolean}|null}  CTA 가 안 들어가면 cta:false 로 링크만, 그것도 넘치면 null
+ */
+function bodyWithIgLinkCta(body, igLink, ctaLine, x) {
+  const s = String(body || '');
+  const i = s.lastIndexOf('\n\n');
+  const main = i > 0 ? s.slice(0, i) : s;
+  const tagLine = i > 0 ? s.slice(i + 2) : '#PAPMAGAZINE';
+  const line = String(ctaLine || '').trim();
+  if (line) {
+    const full = main + '\n\n' + line + '\n' + igLink + '\n\n' + tagLine;
+    const measured = main + '\n\n' + line + '\n' + x.URL_PLACEHOLDER + '\n\n' + tagLine;
+    if (x.weightedLen(measured) <= 280) return { text: full, cta: true };
+  }
+  const bare = bodyWithIgLink(body, igLink, x);
+  return bare ? { text: bare, cta: false } : null;
+}
+
+/** 기사 트윗 kind 에 CTA 표시를 덧붙인다 — 본문 링크가 실제로 들어갔을 때만 */
+function kindWithCta(kind, cta) {
+  if (!cta) return kind;
+  return (kind === 'body' || kind === 'ab_body') ? kind + '_cta' : kind;
+}
+
+module.exports = { isOn, isAll, variantFor, bodyWithIgLink, kindFor, IG_OUT_SRC,
+  CTA_LINE, IG_OUT_SRC_CTA, ctaIsOn, ctaVariantFor, ctaLineFor, bodyWithIgLinkCta, kindWithCta };
