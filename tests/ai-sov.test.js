@@ -203,6 +203,34 @@ t('robots.txt 가 재검토 계기를 지목한다 (기억이 아니라 표로 �
 t('live·index 봇에 이름 그룹을 만들지 않았다 (robots 규격 사고 방지)',
   !/User-agent: OAI-SearchBot/i.test(robots) && !/User-agent: ChatGPT-User/i.test(robots));
 
+/* ── 2026-10-15 타깃 세트·피기백·금지어 (도메니코 "챗GPT 가 우리를 더 인용하게") ── */
+{
+  const vj = JSON.parse(rd('vercel.json'));
+  const sov = (vj.crons || []).filter((c) => /ai-sov-probe/.test(c.path));
+  t('타깃 질문 6개, 브랜드명 없음, 키 고유(core 와도 안 겹침)',
+    V.TARGET_PROBES.length === 6 && V.TARGET_PROBES.every((p) => !/pap|팝매거진/i.test(p.q))
+    && new Set(V.PROBES.concat(V.TARGET_PROBES).map((p) => p.key)).size === V.PROBES.length + V.TARGET_PROBES.length);
+  t('타깃 질문이 네 의도를 다 덮는다 (인스타 매거진·웹매거진·해외·광고주, ko+en)',
+    ['kr_ig_magazine_reco', 'kr_web_magazine_reco', 'overseas_mag_ko', 'ad_media_ko', 'kr_web_magazine_en', 'ad_media_en']
+      .every((k) => V.TARGET_PROBES.some((p) => p.key === k)));
+  t('PROBE_SETS core/target/all', V.PROBE_SETS.core === V.PROBES && V.PROBE_SETS.target === V.TARGET_PROBES && V.PROBE_SETS.all.length === 14);
+  t('크론 2개: 월 core(기본) · 목 ?set=target, 같은 시각', sov.length === 2
+    && sov.some((c) => c.path === '/api/cron/ai-sov-probe' && /\* \* 0$/.test(c.schedule))
+    && sov.some((c) => c.path === '/api/cron/ai-sov-probe?set=target' && /\* \* 4$/.test(c.schedule)));
+  const cron = rd('api/cron/ai-sov-probe.js');
+  t('크론 핸들러가 ?set 으로 세트를 고르고 note 에 적는다', /PROBE_SETS\[req\.query\.set\]/.test(cron) && /probes: PROBE_SETS\[setName\]/.test(cron) && /out\.note = '\[' \+ setName/.test(cron));
+  t('회차 = 7일 창 (월·목 분리 실행을 한 회차로 묶음)', /roundOf\(r\.day\) === latest/.test(lib) && /dayMinus\(d0, 7\)/.test(lib) && /dayMinus\(d0, 14\)/.test(lib));
+  t('피기백: citations 도메인 집계, pap-magazine.com 제외, 부재 답 우선 정렬', /select\('day, engine, mode, present, desc_ok, rivals, question_key, citations'\)/.test(lib)
+    && /pap-magazine\\\.com\$\/\.test\(host\)\) continue;/.test(lib) && /\(b\.miss - a\.miss\) \|\| \(b\.n - a\.n\)/.test(lib));
+  const md = V.renderSovMd({ latest: '2026-10-15', prev: null, pretrain: { n: 0 }, search: { n: 2, hit: 1, sov: 50, prevSov: null, byEngine: { chatgpt: { n: 2, hit: 1 } }, descOk: 100 },
+    topRivals: [], blind: [], piggyback: [{ host: 'example.org', n: 3, miss: 2, keys: ['kr_web_magazine_reco'], url: 'https://example.org/best-magazines' }] });
+  t('브리핑 마크다운에 피기백 섹션(도메인·횟수·부재·URL)', /피기백 타깃/.test(md) && /example\.org · 인용 3회 \(PAP 부재 2\)/.test(md) && /https:\/\/example\.org\/best-magazines/.test(md));
+  t('금지어: 영문 디지털 매거진 · (digital, in English)', ['영문 디지털', 'english-language digital', 'digital, in english'].every((w) => V.DESC_BAD.includes(w)));
+  t('analyze: "영문 디지털 매거진" 은 desc_ok=false, "including English" 는 true',
+    V.analyze('PAP MAGAZINE - 서울 기반의 영문 디지털 매거진으로 패션을 다룹니다.').desc_ok === false
+    && V.analyze('PAP Magazine is a Korean digital fashion magazine in Seoul, with content in multiple languages including English.').desc_ok === true);
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail > 0) process.exit(1);
 console.log('✓ ai-sov tests passed');

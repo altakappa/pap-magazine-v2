@@ -75,6 +75,21 @@ const PROBES = [
   { key: 'seoul_fashion_mag',      lang: 'en', q: 'Independent fashion magazines based in Seoul?' },
 ];
 
+/* ── 타깃 세트 (2026-10-15, 도메니코 "챗GPT 가 우리를 더 인용하게") ───────
+   도메니코가 상단에 뜨길 원하는 네 가지 의도: ①국내 인스타그램 매거진 추천
+   ②국내 웹매거진 추천 ③한국인이 해외 매거진을 찾을 때 ④광고주가 광고 매체를 찾을 때.
+   위 8개(core)는 월요일, 이 6개(target)는 목요일에 따로 돈다 — 한 번에 56콜이면
+   10/11 실측(32콜 211초)으로는 270초 예산 안에서 뒷줄이 굶는다. set 별로 쪼갠다. */
+const TARGET_PROBES = [
+  { key: 'kr_ig_magazine_reco',  lang: 'ko', q: '국내 인스타그램 매거진 추천해줘. 패션·뷰티 쪽으로' },
+  { key: 'kr_web_magazine_reco', lang: 'ko', q: '국내 웹매거진 추천해줘. 패션·뷰티·컬처 콘텐츠가 좋은 곳' },
+  { key: 'overseas_mag_ko',      lang: 'ko', q: '해외 패션 매거진 추천해줘. 한국어나 영어로 볼 수 있는 곳' },
+  { key: 'ad_media_ko',          lang: 'ko', q: '패션·뷰티 브랜드가 인스타그램 광고를 집행하기 좋은 국내 매거진 추천해줘' },
+  { key: 'kr_web_magazine_en',   lang: 'en', q: 'Best Korean web magazines for fashion, beauty and culture?' },
+  { key: 'ad_media_en',          lang: 'en', q: 'Which Korean digital magazines should a fashion or beauty brand advertise with?' },
+];
+const PROBE_SETS = { core: PROBES, target: TARGET_PROBES, all: PROBES.concat(TARGET_PROBES) };
+
 /* ── 엔진 ─────────────────────────────────────────────────────
    키가 없는 엔진은 조용히 건너뛴다 (호출 자체를 안 한다).
    Gemini·Perplexity 는 키가 없어 목록에 없다 — 없는 걸 있는 척하지 않는다. */
@@ -118,6 +133,10 @@ const DESC_BAD = [
   'english-language magazine',  // 이렇게 불리면 안 된다 — llms.txt 가 금지
   '영문 매거진',                 // 이렇게 불리면 안 된다 — 자칭이 아니라 금지어다
   'print magazine', '종이 잡지', '인쇄 매거진',
+  // 2026-10-15 실측: 챗GPT 가 PAP 를 '영문 디지털 매거진'(불리면 안 되는 표현)으로 불렀다. en 은 '(digital, in English)'.
+  // 한국어 우선 매체(llms.txt)를 영어 매체로 분류하는 것이라 금지어에 더한다.
+  '영문 디지털', '영문 온라인', 'english-language digital', 'english digital magazine', 'digital, in english',
+  'english-language online', 'english online magazine',
 ];
 
 /** 정규식 이스케이프 — 별칭에 특수문자가 섞여도 안전하게. */
@@ -519,19 +538,27 @@ async function buildSovReport({ days = 30 } = {}) {
   const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
   const { data, error } = await db()
     .from('ai_sov_probes')
-    .select('day, engine, mode, present, desc_ok, rivals, question_key')
+    .select('day, engine, mode, present, desc_ok, rivals, question_key, citations')
     .gte('day', since)
     .order('day', { ascending: false });
   if (error) throw error;
   const all = data || [];
   if (!all.length) return null;
 
+  /* 회차 = 최근 7일 창 (2026-10-15). 월요일 core 8문항 + 목요일 target 6문항이 다른 날에
+     돌므로 "마지막 날" 만 보면 목요일 6문항만 남아 전회(월요일 8문항)와 비교가 어긋난다.
+     최신 날짜 d0 기준 (d0-7, d0] 을 이번 회차, (d0-14, d0-7] 을 전회로 묶는다. */
   const days_ = Array.from(new Set(all.map((r) => r.day))).sort().reverse();
-  const latest = days_[0];
-  const prev = days_[1] || null;
+  const d0 = days_[0];
+  const dayMinus = (d, n) => new Date(new Date(d + 'T00:00:00Z').getTime() - n * 86400000).toISOString().slice(0, 10);
+  const inWin = (day, hi, lo) => day <= hi && day > lo;
+  const latest = d0;
+  const prevRows = all.filter((r) => inWin(r.day, dayMinus(d0, 7), dayMinus(d0, 14)));
+  const prev = prevRows.length ? prevRows.map((r) => r.day).sort().reverse()[0] : null;
+  const roundOf = (day) => inWin(day, d0, dayMinus(d0, 7)) ? latest : (inWin(day, dayMinus(d0, 7), dayMinus(d0, 14)) ? prev : null);
 
   const slice = (day, mode) => all.filter(
-    (r) => r.day === day && r.mode === mode && r.present !== null);
+    (r) => roundOf(r.day) === day && r.mode === mode && r.present !== null);
 
   const layer = (mode) => {
     const cur = slice(latest, mode);
@@ -554,7 +581,7 @@ async function buildSovReport({ days = 30 } = {}) {
 
   // 우리가 안 나온 자리에 누가 나왔나 — 그게 다음 멘션 타겟이다.
   const missRivals = {};
-  for (const r of all.filter((x) => x.day === latest && x.present === false)) {
+  for (const r of all.filter((x) => roundOf(x.day) === latest && x.present === false)) {
     for (const name of (r.rivals || [])) missRivals[name] = (missRivals[name] || 0) + 1;
   }
   const topRivals = Object.entries(missRivals).sort((a, b) => b[1] - a[1]).slice(0, 6);
@@ -562,11 +589,32 @@ async function buildSovReport({ days = 30 } = {}) {
   // 두 레이어 모두에서 한 번도 안 나온 질문 = 가장 아픈 구멍
   const blind = [];
   for (const key of Array.from(new Set(all.map((r) => r.question_key)))) {
-    const rows = all.filter((r) => r.day === latest && r.question_key === key && r.present !== null);
+    const rows = all.filter((r) => roundOf(r.day) === latest && r.question_key === key && r.present !== null);
     if (rows.length && rows.every((r) => !r.present)) blind.push(key);
   }
 
-  return { latest, prev, pretrain: layer('pretrain'), search: layer('search'), topRivals, blind };
+  /* 피기백 타깃 (2026-10-15, 도메니코 "챗GPT 가 우리를 더 인용하게"):
+     AI 가 답할 때 실제로 인용한 출처 URL 을 도메인별로 센다. 우리가 없던 답에서
+     인용된 글이 1순위 — 그 글 운영자에게 "PAP 도 넣어 달라" 고 연락하는 게
+     백링크보다 싼 레버다(교재: 멘션 상관 0.664). 창은 days 전체(60일)로 넓게 본다. */
+  const pig = {};
+  for (const r of all) {
+    for (const u of (r.citations || [])) {
+      let host; try { host = new URL(String(u)).hostname.replace(/^www\./, ''); } catch (_) { continue; }
+      if (!host || /pap-magazine\.com$/.test(host)) continue;
+      const g = pig[host] || (pig[host] = { host, n: 0, miss: 0, keys: new Set(), url: null });
+      g.n++;
+      if (r.present === false) { g.miss++; if (!g.url) g.url = String(u).replace(/[?&]utm_source=[^&]+/, ''); }
+      if (!g.url) g.url = String(u).replace(/[?&]utm_source=[^&]+/, '');
+      g.keys.add(r.question_key);
+    }
+  }
+  const piggyback = Object.values(pig)
+    .map((g) => ({ host: g.host, n: g.n, miss: g.miss, keys: Array.from(g.keys), url: g.url }))
+    .sort((a, b) => (b.miss - a.miss) || (b.n - a.n))
+    .slice(0, 12);
+
+  return { latest, prev, pretrain: layer('pretrain'), search: layer('search'), topRivals, blind, piggyback };
 }
 
 function arrow(cur, old) {
@@ -603,6 +651,14 @@ function renderSovMd(rep) {
       + rep.topRivals.map(([n, c]) => n + ' ' + c).join(' · ')
       + '  ← 다음 멘션 타겟');
   }
+  if (rep.piggyback && rep.piggyback.length) {
+    L.push('');
+    L.push('**피기백 타깃 (AI 가 인용한 출처, 우리가 없던 답 우선)** — 이 글들에 PAP 추가를 요청한다:');
+    for (const g of rep.piggyback) {
+      L.push('- ' + g.host + ' · 인용 ' + g.n + '회' + (g.miss ? ' (PAP 부재 ' + g.miss + ')' : '')
+        + ' · ' + g.keys.slice(0, 3).join(',') + (g.url ? '\n  ' + g.url : ''));
+    }
+  }
   if (rep.pretrain && rep.pretrain.sov != null && rep.pretrain.prevSov != null
       && rep.pretrain.sov < rep.pretrain.prevSov) {
     L.push('');
@@ -616,6 +672,7 @@ function renderSovMd(rep) {
 }
 
 module.exports = {
+  TARGET_PROBES, PROBE_SETS,
   runSovProbe, buildSovReport, renderSovMd,
   analyze, extractCitations, papPatterns, sentences, reasonOf,
   PROBES, ENGINES, MODES, RIVALS, DESC_GOOD, DESC_BAD, engineReady,

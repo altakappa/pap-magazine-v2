@@ -49,6 +49,10 @@ const STATIC_PAGES = [
   // 2026-08-23: /instagram-magazine — "인스타그램 매거진"(월 200, 이 카테고리 최대 검색어)
   // 전용 페이지. SERP 1페이지가 정의·리스트형 글로 채워져 있어 그 형태로 만들었다.
   { path: '/instagram-magazine', priority: '0.7', changefreq: 'monthly' },
+  // 2026-10-15: 도메니코 "챗GPT 가 우리를 더 인용하게" — 타깃 의도 2개의 답변 페이지.
+  // /web-magazine "국내 웹매거진 추천" (경쟁사 공정 포함 리스티클), /ad-media 광고주용 매체 선택 기준.
+  { path: '/web-magazine', priority: '0.7', changefreq: 'monthly' },
+  { path: '/ad-media', priority: '0.7', changefreq: 'monthly' },
   // 2026-08-26: /submissions — 공개 서브미션 랜딩 (SERP 실측: 'fashion magazine
   // submissions' 상위 10 중 6개가 매거진 자체 /submissions 페이지, KD 0)
   { path: '/submissions', priority: '0.7', changefreq: 'monthly' },

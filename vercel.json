@@ -80,6 +80,10 @@
       "schedule": "5 22 * * 0"
     },
     {
+      "path": "/api/cron/ai-sov-probe?set=target",
+      "schedule": "5 22 * * 4"
+    },
+    {
       "path": "/api/cron/weekly-briefing",
       "schedule": "45 22 * * 0"
     },
@@ -787,6 +791,14 @@
       "destination": "/en-korean-digital-magazines.html"
     },
     {
+      "source": "/web-magazine",
+      "destination": "/web-magazine.html"
+    },
+    {
+      "source": "/ad-media",
+      "destination": "/ad-media.html"
+    },
+    {
       "source": "/:slug([^./]+)",
       "destination": "/api/seo/editorial/:slug?root=1"
     }
@@ -833,6 +845,16 @@
     {
       "source": "/instagram-magazine.html",
       "destination": "/instagram-magazine",
+      "statusCode": 301
+    },
+    {
+      "source": "/web-magazine.html",
+      "destination": "/web-magazine",
+      "statusCode": 301
+    },
+    {
+      "source": "/ad-media.html",
+      "destination": "/ad-media",
       "statusCode": 301
     },
     {

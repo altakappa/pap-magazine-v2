@@ -2456,6 +2456,8 @@ ${(kind === 'article' || kind === 'editorial') && UUID_RE.test(String(record.id 
        (GEO 핵심)의 내부 링크가 about 한 곳뿐이라 크롤·권위 전달이 안 됐다. -->
   <a href="${SITE}/digital-magazine">Digital Magazine</a>
   <a href="${SITE}/instagram-magazine">Instagram Magazine</a>
+  <a href="${SITE}/web-magazine">Web Magazines</a>
+  <a href="${SITE}/ad-media">Advertiser Guide</a>
   <a href="${SITE}/submissions">Submissions</a>
 </nav>
 <!-- 2026-08-17 도메니코 지시 — '팝매거진' 구글 검색 대응. 메타가 아니라 **보이는

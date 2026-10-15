@@ -22,7 +22,7 @@
 const { bearerOk } = require('../_lib/secretCompare');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
-const { runSovProbe } = require('../_lib/aiVisibility');
+const { runSovProbe, PROBE_SETS } = require('../_lib/aiVisibility');
 
 module.exports = withCronGuard('ai-sov-probe', async function handler(req, res) {
   res.locals = res.locals || {};
@@ -36,7 +36,10 @@ module.exports = withCronGuard('ai-sov-probe', async function handler(req, res) 
   try {
     /* maxDuration 300 (vercel.json 개별 키). 240 → 270 (2026-08-30 실측):
        웹검색 콜이 느려 마지막 웨이브가 예산에 걸렸다. 여유 30초는 남긴다. */
-    const out = await runSovProbe({ timeoutMs: 270000 });
+    /* ?set=core(월, 기본) | target(목, 2026-10-15 도메니코 타깃 질문 6) | all */
+    const setName = (req.query && PROBE_SETS[req.query.set]) ? req.query.set : 'core';
+    const out = await runSovProbe({ timeoutMs: 270000, probes: PROBE_SETS[setName] });
+    out.note = '[' + setName + '] ' + out.note;
     res.locals.cronNote = out.note;
     return res.status(200).json({ ok: true, ...out });
   } catch (err) {
