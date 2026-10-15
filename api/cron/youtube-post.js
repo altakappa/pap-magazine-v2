@@ -39,8 +39,9 @@ const { muteMp4 } = require('../_lib/mp4Mute');
 const IG_REELS_TO_YOUTUBE = false;
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
+const igFirstLink = require('../_lib/igFirstLink');
 const MAX_BYTES = 100 * 1024 * 1024; // 안전 상한 (IG 아카이브는 ≤60MB)
-const ART_COLS = 'id, title, slug, custom_url, content, videos, category, source_media_type, tags, source_instagram_post_id';
+const ART_COLS = 'id, title, slug, custom_url, content, videos, category, source_media_type, tags, source_instagram_post_id, source_instagram_url';
 // 크레딧 게이트가 한 번에 Graph 재조회할 후보 수 상한 (외부 크레딧 릴스는 건너뛴다)
 const CREDIT_SCAN_MAX = 5;
 
@@ -70,7 +71,16 @@ function buildDescription(art, url) {
    * 주 도달은 웹사이트가 아닌 인스타그램이고 서브 도달은 웹사이트입니다."
    * 스레드·X(igFirstLinkBlock)와 같은 원칙이다. 웹을 끊지 않고 순서로
    * 우선순위를 표현한다 — "우선시"는 "독점"이 아니다. */
-  lines.push('▶ 인스타그램 : ' + SITE + '/ig/youtube');
+  /* 2026-10-15 — 프로필이 아니라 **그 영상의 인스타 원본**으로 보낸다 (도메니코
+     "있는 파이프에 문을 달자"). 실측 30일: 업로드 156편에 인스타 클릭 13명.
+     "pap_magazine 프로필" 은 가고 싶은 이유가 없다. "이 영상의 풀 버전·원본" 은 있다.
+     계측은 그대로 ig-out(src=youtube, to=post) 경유. 원본 주소가 없으면 종전 프로필(/ig/youtube). */
+  const igPost = igFirstLink.igOutUrl(art.source_instagram_url, 'youtube');
+  if (art.source_instagram_url && /instagram\.com/.test(String(art.source_instagram_url))) {
+    lines.push('▶ 인스타그램 원본 : ' + igPost);
+  } else {
+    lines.push('▶ 인스타그램 : ' + SITE + '/ig/youtube');
+  }
   /* 2026-08-08 — 성장 헌법 3조: 유튜브 설명란 링크는 클릭 가능하므로 계측한다.
      (유튜브는 링크의 쿼리 파라미터를 보존한다 — 미디어킷의 '외부 앱이 쿼리를
      지운다' 교훈은 IG 프로필 링크(/ig/youtube 경로형) 쪽에만 해당.) */

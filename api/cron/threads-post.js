@@ -26,6 +26,7 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const { postArticleToThreads, generateThreadsText } = require('../_lib/threadsAutopost');
 
 module.exports = withCronGuard('threads-post', async function handler(req, res) {
+  res.locals = res.locals || {};
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
   if (!cronOk) {
@@ -93,7 +94,15 @@ module.exports = withCronGuard('threads-post', async function handler(req, res) 
       gallery: art.gallery, videos: art.videos, source_media_type: art.source_media_type,
     });
     if (r.status === 'failed') return res.status(502).json({ error: 'threads post failed', title: art.title, detail: r.detail });
-    return res.status(200).json({ ok: true, posted: art.title, thread_id: r.thread_id, ai: r.ai });
+    /* 2026-10-15 — 간격 대기·상한으로 건너뛴 실행을 "posted" 로 적지 않는다.
+       실측: 10분마다 "posted 삼성과 이탈리아…" 가 7번 찍혔는데 실제 게시는 0건.
+       기록이 거짓말을 하면 사람이 사고를 못 본다 (오늘 스레드 답글 사고와 같은 구멍). */
+    if (r.status === 'skipped') {
+      res.locals.cronNote = '건너뜀: ' + String(r.detail || '').slice(0, 80);
+      return res.status(200).json({ ok: true, skipped: art.title, detail: r.detail });
+    }
+    res.locals.cronNote = '게시: ' + String(art.title || '').slice(0, 60) + (r.link_reply_id ? ' · 링크 답글 ok' : ' · 링크 답글 없음' + (r.detail ? ' (' + String(r.detail).slice(0, 60) + ')' : ''));
+    return res.status(200).json({ ok: true, posted: art.title, thread_id: r.thread_id, ai: r.ai, link_reply_id: r.link_reply_id || null });
   } catch (err) {
     console.error('[threads-post] error:', err);
     throw err; // cronGuard 가 이메일 알림 + cron_runs 기록
