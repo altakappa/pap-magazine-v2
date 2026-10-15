@@ -315,6 +315,12 @@ function navigateWithInterstitial(url){
           <a href="#" onclick="event.preventDefault();downloadMediaKit('en')" style="display:inline-block;padding:8px 20px;border:1px solid #fff;color:#fff;font-size:10px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:all .3s;" onmouseover="this.style.background='#fff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#fff'">English</a>
           <a href="#" onclick="event.preventDefault();downloadMediaKit('ko')" style="display:inline-block;padding:8px 20px;border:1px solid #fff;color:#fff;font-size:10px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:all .3s;" onmouseover="this.style.background='#fff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#fff'">Korean</a>
         </div>
+        <!-- 2026-10-15 — 공개 PDF 직링크. 위 버튼은 드라이브로 가는 계측 리다이렉트라 봇에게는
+             빈 noindex 페이지만 보였고, 챗GPT는 경쟁 매체의 공개 미디어킷 PDF(CDN 직링크)를 인용했다.
+             같은 PDF를 사이트 정적 파일로 두고 크롤 가능한 <a> 로 건다. 사람 클릭 집계는 버튼이 맡는다. -->
+        <p class="media-kit-pdf" style="margin-top:var(--sp-2);font-size:11px;color:rgba(255,255,255,.45)">PDF:
+          <a href="/media-kit/PAP-Magazine-Media-Kit-2026-KO.pdf" type="application/pdf" hreflang="ko">Media Kit 2026 (Korean, PDF)</a> ·
+          <a href="/media-kit/PAP-Magazine-Media-Kit-2026-EN.pdf" type="application/pdf" hreflang="en">Media Kit 2026 (English, PDF)</a></p>
       </div>
     </div>
     <!-- QA #323 — 회전 배지는 기획상 이메일 컨택 버튼. 장식 SVG 를

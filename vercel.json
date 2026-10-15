@@ -232,6 +232,22 @@
       "schedule": "6 * * * *"
     },
     {
+      "path": "/api/cron/sync-instagram?account=fashion",
+      "schedule": "16 */2 * * *"
+    },
+    {
+      "path": "/api/cron/sync-instagram?account=beauty",
+      "schedule": "26 */2 * * *"
+    },
+    {
+      "path": "/api/cron/sync-instagram?account=trends",
+      "schedule": "36 */2 * * *"
+    },
+    {
+      "path": "/api/cron/sync-instagram?account=object",
+      "schedule": "46 */2 * * *"
+    },
+    {
       "path": "/api/cron/celeb-classify",
       "schedule": "7-57/10 * * * *"
     },
@@ -1937,6 +1953,23 @@
         {
           "key": "Content-Type",
           "value": "application/json; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/media-kit/(.*).pdf",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/pdf"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "inline"
         }
       ]
     },

@@ -53,6 +53,10 @@ const STATIC_PAGES = [
   // /web-magazine "국내 웹매거진 추천" (경쟁사 공정 포함 리스티클), /ad-media 광고주용 매체 선택 기준.
   { path: '/web-magazine', priority: '0.7', changefreq: 'monthly' },
   { path: '/ad-media', priority: '0.7', changefreq: 'monthly' },
+  // 2026-10-15: 공개 미디어킷 PDF(frontend/media-kit/). /mediakit 계측 경로는 봇에게 noindex 라
+  // AI·검색엔진이 미디어킷을 읽을 길이 없었다. 정적 PDF 를 직접 등재한다.
+  { path: '/media-kit/PAP-Magazine-Media-Kit-2026-KO.pdf', priority: '0.5', changefreq: 'yearly' },
+  { path: '/media-kit/PAP-Magazine-Media-Kit-2026-EN.pdf', priority: '0.5', changefreq: 'yearly' },
   // 2026-08-26: /submissions — 공개 서브미션 랜딩 (SERP 실측: 'fashion magazine
   // submissions' 상위 10 중 6개가 매거진 자체 /submissions 페이지, KD 0)
   { path: '/submissions', priority: '0.7', changefreq: 'monthly' },
