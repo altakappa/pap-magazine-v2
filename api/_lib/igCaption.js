@@ -28,7 +28,8 @@
  *   Full Story link🔎 <Screenshot and copy-paste>   ← slug 있으면
  *   https://www.pap-magazine.com/editorial/<slug>
  *
- *   Fashion by @brand1 @brand2 …
+ *   Fashion by @brand1 @brand2 …              ← 뷰티 화보는 Beauty by (2026-10-18)
+ *   Subscribe to the PAP platform …            ← 구독 안내 (2026-10-18)
  *
  *   #태그 × 5 (줄바꿈 구분 — 2025.12 정책상 캡션+댓글 합산 최대 5개)
  *
@@ -41,6 +42,14 @@
 const HOUSE_HANDLE = '@pap_magazine';
 /** 발행인 줄 — 타이틀 바로 아래 (2026-10-11 도메니코). 어드민 미러(pap-admin.js)와 같이 바꿀 것 */
 const PUBLISHED_BY_LINE = 'Published by @kangdm';
+/** 구독 안내 줄 — 브랜드 줄 다음, 해시태그 앞 (2026-10-18 도메니코, MATISSE 캡션 예시). 어드민 미러와 같이 바꿀 것 */
+const SUBSCRIBE_LINE = 'Subscribe to the PAP platform to enjoy affordable access to a range of premium services, including tearsheet downloads, collaborator selection, and more.';
+/** 브랜드 줄 머리말 — 장르가 BEAUTY 이고 FASHION 이 아니면 'Beauty by', 그 외 'Fashion by' (2026-10-18 MATISSE 예시).
+ *  genres 는 서브미션 desc.genre 또는 editorials.tags (둘 다 'FASHION'/'BEAUTY'/… 대문자). */
+function brandLineLabel(genres) {
+  const g = (Array.isArray(genres) ? genres : []).map((x) => String(x || '').trim().toUpperCase());
+  return (g.indexOf('BEAUTY') !== -1 && g.indexOf('FASHION') === -1) ? 'Beauty by' : 'Fashion by';
+}
 
 /** 제목에서 해시태그용 토큰 생성 (예: "UnWelcome neo queen" → UNWELCOMENEOQUEEN은
  *  과하므로 공백 제거 대신 알파넘 이어붙이되 30자 초과면 생략) */
@@ -61,6 +70,7 @@ function _titleTag(title) {
  * @param {string[]} [p.brandHandles]  ['@brand1', …]
  * @param {string}   [p.moodTag]       AI가 뽑은 한국어 무드 태그 1개 (# 없이)
  * @param {string}   [p.slug]          에디토리얼 슬러그 (Full Story link URL: /editorial/<slug>)
+ * @param {string[]} [p.genres]        장르 (BEAUTY 만이면 'Beauty by', 그 외 'Fashion by')
  */
 function buildPapIgCaption(p) {
   const title = String(p.title || '').trim();
@@ -108,9 +118,13 @@ function buildPapIgCaption(p) {
     lines.push('');
   }
 
-  // 8) Fashion by
+  // 8) Fashion by / Beauty by (2026-10-18 — 뷰티 화보는 'Beauty by')
   const brands = Array.isArray(p.brandHandles) ? p.brandHandles.filter(Boolean) : [];
-  if (brands.length) { lines.push('Fashion by ' + brands.join(' ')); lines.push(''); }
+  if (brands.length) { lines.push(brandLineLabel(p.genres) + ' ' + brands.join(' ')); lines.push(''); }
+
+  // 8-1) 구독 안내 (2026-10-18 도메니코 — MATISSE 캡션 예시)
+  lines.push(SUBSCRIBE_LINE);
+  lines.push('');
 
   // 9) 해시태그 — 정확히 5개, 줄바꿈 구분.
   //    고정 2(#패션화보 #에디토리얼) + 무드 1(AI) or 제목 태그 + 영문 2.
@@ -157,4 +171,4 @@ function mergeCreditLines(entries) {
   return order.map((k) => { const rec = map.get(k); return (joinRoles(rec.roles) || 'Credit') + ' ' + rec.handle; });
 }
 
-module.exports = { buildPapIgCaption, mergeCreditLines, joinRoles, PUBLISHED_BY_LINE };
+module.exports = { buildPapIgCaption, mergeCreditLines, joinRoles, PUBLISHED_BY_LINE, SUBSCRIBE_LINE, brandLineLabel };

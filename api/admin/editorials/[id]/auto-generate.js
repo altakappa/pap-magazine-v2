@@ -146,6 +146,7 @@ function _buildCaptionFromEditorial(ed, descKr, descEn, descIt, extra) {
     starring: starringParts,
     brandHandles,
     slug: (ed && ed.slug) || _slugify(title),
+    genres: (ed && Array.isArray(ed.tags)) ? ed.tags : [],   // 2026-10-18 Beauty by (editorials.tags 에 장르)
   });
 }
 

@@ -348,6 +348,7 @@ function _buildInstagramCaption(desc, title, opts) {
     descKo, descEn, descIt,
     creditLines, starring, brandHandles,
     slug: (opts && opts.slug) || _slugifyForUrl(title),
+    genres: Array.isArray(desc.genre) ? desc.genre : (desc.genre ? [desc.genre] : []),   // 2026-10-18 Beauty by
   });
 }
 

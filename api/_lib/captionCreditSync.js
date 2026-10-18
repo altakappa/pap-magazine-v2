@@ -87,7 +87,7 @@ function syncCaptionCredits(caption, beforeCredits, afterCredits, opts) {
   const isCreditLine = (ln) => {
     const p = _lineHandle(ln);
     if (!p) return false;
-    return !/^(starring|fashion by|for more editorials|published by|collaborators)\b/i.test(p.role.trim());
+    return !/^(starring|fashion by|beauty by|for more editorials|published by|collaborators|subscribe)\b/i.test(p.role.trim());
   };
   const findLine = (k) => lines.findIndex((ln) => { const p = _lineHandle(ln); return p && p.handle.toLowerCase() === k && isCreditLine(ln); });
 
@@ -120,8 +120,10 @@ function syncCaptionCredits(caption, beforeCredits, afterCredits, opts) {
     const bb = _brandHandles(o.beforeBrands).map((x) => x.toLowerCase()).join(' ');
     const ab = _brandHandles(o.afterBrands);
     if (bb !== ab.map((x) => x.toLowerCase()).join(' ')) {
-      const i = lines.findIndex((ln) => /^fashion by\b/i.test(ln.trim()));
-      const next = ab.length ? 'Fashion by ' + ab.join(' ') : '';
+      const i = lines.findIndex((ln) => /^(fashion|beauty) by\b/i.test(ln.trim()));
+      /* 2026-10-18 — 뷰티 화보는 'Beauty by'. 기존 줄의 머리말을 그대로 쓴다(사람이 정한 것). */
+      const head = (i >= 0 && /^beauty by\b/i.test(lines[i].trim())) ? 'Beauty by' : 'Fashion by';
+      const next = ab.length ? head + ' ' + ab.join(' ') : '';
       if (i >= 0) {
         changed.push({ from: lines[i], to: next });
         if (next) lines[i] = next; else lines.splice(i, 1);

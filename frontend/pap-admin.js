@@ -6805,8 +6805,14 @@ function _buildIgCaptionFromEditorial(ed){
     lines.push('');
   }
 
-  // 7) Fashion by
-  if(brandHandles.length){ lines.push('Fashion by ' + brandHandles.join(' ')); lines.push(''); }
+  // 7) Fashion by / Beauty by — 서버 igCaption.js brandLineLabel 미러 (2026-10-18)
+  var _g = (Array.isArray(ed.tags) ? ed.tags : []).map(function(x){ return String(x||'').trim().toUpperCase(); });
+  var _brandLabel = (_g.indexOf('BEAUTY') !== -1 && _g.indexOf('FASHION') === -1) ? 'Beauty by' : 'Fashion by';
+  if(brandHandles.length){ lines.push(_brandLabel + ' ' + brandHandles.join(' ')); lines.push(''); }
+
+  // 7-1) 구독 안내 — 서버 igCaption.js SUBSCRIBE_LINE 과 동일 (2026-10-18)
+  lines.push('Subscribe to the PAP platform to enjoy affordable access to a range of premium services, including tearsheet downloads, collaborator selection, and more.');
+  lines.push('');
 
   // 8) 해시태그 — 정확히 5개, 줄바꿈 구분 (2025.12 정책: 캡션+댓글 합산 최대 5)
   var tags = ['패션화보','에디토리얼'];

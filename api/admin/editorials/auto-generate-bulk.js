@@ -107,6 +107,7 @@ function _buildCaption(ed, descKr, descEn, descIt, extra) {
     starring: starringParts,
     brandHandles,
     slug: (ed && ed.slug) || _slugify(title),
+    genres: (ed && Array.isArray(ed.tags)) ? ed.tags : [],   // 2026-10-18 Beauty by (editorials.tags 에 장르)
   });
 }
 
@@ -147,7 +148,7 @@ module.exports = async function handler(req, res) {
       const from = page * SPAN;
       const { data: rows, error: listErr } = await supabaseAdmin
         .from('editorials')
-        .select('id, title, slug, gallery, credits, fashion, description, description_en, instagram_caption, source_submission_id')
+        .select('id, title, slug, gallery, credits, fashion, description, description_en, instagram_caption, source_submission_id, tags')
         .order('created_at', { ascending: true })
         .range(from, from + SPAN - 1);
       if (listErr) {
