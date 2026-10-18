@@ -198,7 +198,7 @@ async function recordDigest(row, items) {
 async function publish(platform, text, threadsAccountId) {
   if (platform === 'x') {
     if (!xPost.isConfigured()) return { skipped: 'X env 미설정' };
-    const r = await xPost.postTweet(text);
+    const r = await xPost.postTweet(text, { kind: 'digest' });   // 2026-10-18 x_posts.kind 로 다이제스트를 따로 센다(여태 null)
     if (r && r.ok && r.id) return { ok: true, id: r.id };
     if (r && r.skipped) return { skipped: r.skipped };
     return { ok: false, error: (r && (r.detail || r.status)) || 'unknown' };

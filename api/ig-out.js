@@ -62,7 +62,9 @@ const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', '
   'x_body',
   /* 2026-10-15 — CTA 한 줄 A/B. 기사 트윗 'x_body'(링크만) vs 'x_body_cta'(안내 줄+링크),
      에디토리얼 부스트 트윗 'boost_x'(지금 문구) vs 'boost_x_cta'(전체 화보는 아래 링크에서). */
-  'x_body_cta', 'boost_x', 'boost_x_cta']);
+  'x_body_cta', 'boost_x', 'boost_x_cta',
+  /* 2026-10-18 — X 다이제스트(social-digest) 프로필 링크. 이전엔 instagram.com 직링크라 0 계측. */
+  'x_digest']);
 const IG_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 
 /* 경로형 단축 링크 /ig/:src (2026-07-30 신설).

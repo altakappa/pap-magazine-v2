@@ -62,6 +62,10 @@ const IG_URLS = {
   pepperit: 'https://www.instagram.com/pepperitmag/',
 };
 const IG_URL = IG_URLS.pap;
+/* 2026-10-18 도메니코 "트위터 캡션의 인스타그램 링크를 api(ig-out) 주소로". X 다이제스트만 계측 경유로
+   보낸다(src=x_digest, to=profile). 실측 14일: 다이제스트 24건이 instagram.com 직링크라 클릭을 한 번도 못 셌다.
+   스레드·페퍼릿은 종전 그대로(요청 범위 밖, 페퍼릿은 도메니코 별도 처리). */
+const X_IG_LINK = require('./igFirstLink').igOutUrl('', 'x_digest');
 
 /* 페퍼릿 갈래 이름. 브랜드 분기가 이 상수 하나를 보게 해서, 갈래 이름이
    문자열로 여기저기 박히는 걸 막는다. */
@@ -356,7 +360,7 @@ async function build(picked, platform) {
 
   const bucket = picked.bucket;
   const polite = isPoliteFor(bucket, platform);
-  const igUrl = igUrlFor(bucket);
+  const igUrl = (platform === 'x' && bucket !== PEPPERIT_BUCKET) ? X_IG_LINK : igUrlFor(bucket);
   const headRow = HEADLINE[bucket] || {};
   const headline = headRow[platform] || picked.label;
 
@@ -404,6 +408,7 @@ async function build(picked, platform) {
 
 module.exports = {
   IG_URL,
+  X_IG_LINK,
   IG_URLS,
   PEPPERIT_BUCKET,
   PEPPERIT_CLOSING,

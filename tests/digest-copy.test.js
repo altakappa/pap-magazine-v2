@@ -54,9 +54,10 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
     t(platform + ': 문안이 만들어진다', !!r);
     const links = (r.text.match(/https?:\/\/\S+/g) || []);
     t(platform + ': 링크 1개', links.length === 1, JSON.stringify(links));
-    t(platform + ': 그 링크가 인스타 프로필', links[0] === copy.IG_URL, links[0]);
+    const want = platform === 'x' ? copy.X_IG_LINK : copy.IG_URL;   // 2026-10-18 X 는 ig-out(src=x_digest) 경유
+    t(platform + ': 그 링크가 인스타 프로필' + (platform === 'x' ? ' (ig-out 계측 경유)' : ''), links[0] === want, links[0]);
     t(platform + ': 기사 링크 없음', !/pap-magazine\.com\/(article|editorial)/.test(r.text));
-    t(platform + ': 링크가 맨 끝', r.text.trim().endsWith(copy.IG_URL));
+    t(platform + ': 링크가 맨 끝', r.text.trim().endsWith(want));
   }
 
   console.log('\n[2] 제목은 원문 그대로 나간다');
@@ -69,7 +70,7 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
     title: '아주 긴 제목을 가진 기사 ' + i + ' 번째 — 파리 뒷골목 빈티지 아카이브 상점 탐방기',
   }));
   const x = await copy.build({ bucket: 'celeb', label: '셀럽 소식', days: 3, items: many }, 'x');
-  const w = weightedLen(x.text.replace(copy.IG_URL, '')) + 23;
+  const w = weightedLen(x.text.replace(copy.X_IG_LINK, '')) + 23;
   t('가중 길이 ' + w + ' ≤ 280', w <= 280);
   t('항목을 덜어냈다', x.items.length < many.length, x.items.length + '개');
   t('기록되는 항목은 실제로 실린 것뿐', x.items.every((it) => x.text.includes(it.title)));
