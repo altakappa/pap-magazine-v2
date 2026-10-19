@@ -16,7 +16,7 @@
  *   국문 기준선 (99.7,  851.0)         (99.7, 1101.0)
  *   영문 기준선 (101.5, 988.6)         (101.5, 1238.6)
  *   그림자     op51 @ (0,485)          op51 @ (1,695)
- *   심볼       70×70 @ (505,1219)      70×70 @ (506,1469)
+ *   심볼       70×70 @ (505,1219)      70×70 @ (506,1469)   ← 2026-10-19 부터 안 얹음(좌표만 보존)
  *
  *   ※ 릴스 판형은 글자가 아래로 250px 내려간 것뿐이다. 규격이 갈린 게 아니라
  *     같은 규격을 세로 판형에 옮긴 것 — 그래서 상수만 다르고 로직은 하나다.
@@ -164,7 +164,7 @@ function lineToPath(font, text, x, baseline, size, trackPx) {
  * @returns {Promise<Buffer>} JPEG
  * @throws 제목이 2줄에 안 들어가면 던진다 — 폰트를 줄이지 않는다(§4-7).
  */
-/* 글자·그림자·심볼만 담은 **투명 배경** 레이어 목록을 만든다.
+/* 글자·그림자만 담은 **투명 배경** 레이어 목록을 만든다 (심볼은 2026-10-19 제거).
    renderThumb(사진 위)과 renderOverlay(영상 위)가 같은 조판을 쓰게 하기 위한 것 —
    두 벌로 갈라지면 한쪽만 고쳐지는 날이 온다. */
 function _layers(titleKo, titleEn, opts) {
@@ -193,7 +193,9 @@ function _layers(titleKo, titleEn, opts) {
     composite: [
       { input: path.join(ASSETS, V.shadow), left: V.shadowXY[0], top: V.shadowXY[1] + dy },
       { input: Buffer.from(svg), left: 0, top: 0 },
-      { input: path.join(ASSETS, 'symbol70.png'), left: V.symbolXY[0], top: V.symbolXY[1] + dy },
+      /* 2026-10-19 도메니코 "섬네일에 심볼로고를 삭제해서" → 앞으로 전부(기본값). 심볼 레이어를 뺀다.
+         좌표 상수(SYMBOL_XY·symbolXY)와 에셋은 남겨 둔다 — 되돌릴 때 실측값을 다시 재지 않게.
+         TEXT_SHIFT_MAX(96) 는 심볼 안전구간에서 나온 값이지만 글자 위치를 바꾸지 않으려고 그대로 둔다. */
     ],
   };
 }
@@ -241,7 +243,7 @@ async function renderThumb(photoBuffer, titleKo, titleEn, opts) {
   const shift = photoShiftFor(V.W, V.H, opts && opts.focusTop);
   if (shift > 0) base = await shiftPhotoDown(base, V.W, V.H, shift);
 
-  // 3) 그림자 → 글자 → 심볼 (전부 _layers 가 준 것)
+  // 3) 그림자 → 글자 (전부 _layers 가 준 것. 심볼은 2026-10-19 부터 안 얹는다)
   return sharp(base).composite(composite).jpeg({ quality: 92 }).toBuffer();
 }
 

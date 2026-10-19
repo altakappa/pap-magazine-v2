@@ -233,6 +233,12 @@ t('글자 내림이 심볼을 안전구간 밖으로 밀지 않는다', () => {
   assert.ok(TH.TEXT_SHIFT_MAX <= 96, '상한이 느슨해졌다');
 });
 
+t('심볼 로고를 얹지 않는다 (도메니코 2026-10-19 "섬네일에 심볼로고를 삭제", 기본값)', () => {
+  const SRC2 = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  assert.ok(!/symbol70\.png/.test(SRC2), '심볼 레이어가 다시 들어갔다');
+  assert.ok(/SYMBOL_XY = \[505, 1219\]/.test(SRC), '좌표 상수는 되돌릴 때를 위해 남긴다');
+});
+
 t('feed 판형은 글자를 내리지 않는다 (잘릴 게 없다)', () => {
   const TH = require('../api/_lib/celebThumb');
   assert.strictEqual(TH.textShiftFor('feed'), 0);
