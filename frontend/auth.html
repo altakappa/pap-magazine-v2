@@ -441,7 +441,7 @@ a{color:#fff;text-decoration:none}
     <div class="signup-email-lang">
       <label class="signup-email-lang-label" data-i18n="emailLangLabel">메일 수신 언어</label>
       <div class="signup-email-lang-sub" data-i18n="emailLangSub">PAP의 뉴스레터를 어떤 언어로 받아보시겠어요?</div>
-      <select id="signupEmailLang" class="signup-email-lang-select">
+      <select id="signupEmailLang" class="signup-email-lang-select" onchange="this.dataset.touched='1'">
         <option value="ko">한국어</option>
         <option value="en">English</option>
         <option value="it">Italiano</option>
@@ -775,7 +775,7 @@ function showSignup() {
   try {
     var lang = (localStorage.getItem('pap-lang') || 'en').toLowerCase();
     var el = document.getElementById('signupEmailLang');
-    if (el) el.value = ['ko','en','it','fr','es','ja','zh','ru','de'].indexOf(lang) >= 0 ? lang : 'en';
+    if (el && el.dataset.touched !== '1') el.value = ['ko','en','it','fr','es','ja','zh','ru','de'].indexOf(lang) >= 0 ? lang : 'en';
   } catch (_) { /* localStorage may throw in some private-browsing modes */ }
   // QA #228 v2 — showSignup is always a panel toggle (the only other
   // way to land here is the initial mode=signup URL, which IIFE handles
@@ -974,7 +974,10 @@ async function completeSignup() {
     // Falls back to signupLang (mirror site language) if the field
     // wasn't initialised — same logic the form bootstrap uses.
     var emailLangEl = document.getElementById('signupEmailLang');
-    var emailLang = (emailLangEl && emailLangEl.value) || signupLang;
+    /* 2026-10-19 — 사용자가 드롭다운을 직접 바꾼 경우에만 그 값을 쓴다. 안 건드렸으면 사이트 언어.
+       사고: /auth 로 바로 들어오면(mode 없음) showSignup() 이 안 불려 드롭다운이 HTML 첫 옵션 '한국어'
+       그대로였다. 해외 회원 48명이 메일 언어 ko 로 가입 → 심사 결과 메일이 한국어로 갔다. */
+    var emailLang = (emailLangEl && emailLangEl.dataset.touched === '1' && emailLangEl.value) || signupLang;
     await PAP.auth.signup({ name: fullName, email: email, password: pw, verifiedToken: verifiedToken, consent: consentData, language: signupLang, emailLanguage: emailLang });
     showSuccess();
   } catch (e) {
@@ -1954,6 +1957,12 @@ document.addEventListener('DOMContentLoaded', function(){
   } else {
     // Default entry: signup step 1 — seed the initial entry's state so
     // popstate has data to restore against later.
+    // 2026-10-19 — 이 경로는 showSignup() 을 안 거쳐 메일 언어 드롭다운이 '한국어'(첫 옵션)로 남았다. 사이트 언어로 맞춘다.
+    try {
+      var _el = document.getElementById('signupEmailLang');
+      var _sl = (localStorage.getItem('pap-lang') || 'en').toLowerCase();
+      if (_el && _el.dataset.touched !== '1') _el.value = ['ko','en','it','fr','es','ja','zh','ru','de'].indexOf(_sl) >= 0 ? _sl : 'en';
+    } catch (_) {}
     _syncAuthHistory({ authView: 'signup', authStep: 1 });
   }
   // QA #228 — switch to push mode immediately (no microtask deferral).
