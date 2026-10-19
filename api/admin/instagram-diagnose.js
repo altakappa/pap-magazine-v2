@@ -6,6 +6,7 @@
  *
  * 사용법:
  *   GET  ?scan=1&days=14         — 최근 14일 게시물 목록 + 상태(imported/skipped/reason)
+ *   GET  ?token=1                — 토큰 scopes·만료 (debug_token). 게시 권한(instagram_content_publish) 유무 확인용
  *   POST { instagramUrl, forceArticle: true }
  *        — 필터 우회하고 아티클로 강제 저장.
  *          isLikelyEditorialCaption / AI Editorial 분류를 모두 건너뜀.
@@ -42,6 +43,34 @@ module.exports = async function handler(req, res){
   }
 
   try {
+    /* ===== TOKEN 모드 (GET ?token=1) — 2026-10-19 신설 =====
+       셀럽 브리프 게시가 "Graph GET 0 (400) Unsupported get request [code 100/33]" 로 죽었다.
+       코드 힌트는 "토큰에 instagram_content_publish 없음" 인데 추측이었다. 토큰이 Vercel env 에만
+       있어 사람이 확인할 길이 없었다. debug_token 은 자기 토큰으로 자기 토큰을 조회할 수 있다.
+       응답에는 scopes·만료·유형만 싣고 토큰 값은 절대 싣지 않는다. */
+    if (req.method === 'GET' && (req.query || {}).token === '1'){
+      const tok = String(process.env.IG_ACCESS_TOKEN || '').trim();
+      const qs = new URLSearchParams({ input_token: tok, access_token: tok });
+      const r = await fetch('https://graph.facebook.com/v25.0/debug_token?' + qs, { signal: AbortSignal.timeout(15000) });
+      const j = await r.json().catch(() => ({}));
+      const d = (j && j.data) || {};
+      if (!r.ok || j.error || !j.data){
+        return res.status(502).json({ ok: false, error: 'debug_token 실패: ' + ((j.error && j.error.message) || ('HTTP ' + r.status)).slice(0, 200) });
+      }
+      const scopes = Array.isArray(d.scopes) ? d.scopes : [];
+      const need = ['instagram_basic', 'instagram_content_publish', 'pages_read_engagement'];
+      return res.status(200).json({
+        ok: true,
+        type: d.type || null, app_id: d.app_id || null, is_valid: d.is_valid !== false,
+        expires_at: d.expires_at ? new Date(d.expires_at * 1000).toISOString() : (d.expires_at === 0 ? 'never' : null),
+        data_access_expires_at: d.data_access_expires_at ? new Date(d.data_access_expires_at * 1000).toISOString() : null,
+        scopes,
+        missing_for_publish: need.filter((p) => !scopes.includes(p)),
+        can_publish: scopes.includes('instagram_content_publish'),
+        granular: Array.isArray(d.granular_scopes) ? d.granular_scopes.map((g) => g.scope) : undefined,
+      });
+    }
+
     // ===== SCAN 모드 (GET) — 진단만 =====
     if (req.method === 'GET' && (req.query || {}).scan === '1'){
       const days = Math.max(1, Math.min(60, parseInt(req.query.days || '14', 10) || 14));
