@@ -101,7 +101,39 @@ async function discoverMediaWithImages(username, opts) {
 async function findPostByShortcode(username, shortcode, opts) {
   const media = await discoverMediaWithImages(username, opts);
   const needle = '/' + String(shortcode) + '/';
-  return media.find((m) => m.permalink && m.permalink.includes(needle)) || null;
+  const hit = media.find((m) => m.permalink && m.permalink.includes(needle)) || null;
+  if (hit) return hit;
+  /* 2026-10-20 — 최근 50건 밖의 게시물. 도메니코가 섬네일로 고른 저스틴 비버 7/19 게시물이
+     13주 전이라 못 찾았다("그 사진 꼭 써야 함"). deepMax 가 있으면 12건씩 더 넘기되
+     **찾는 순간 멈춘다** — 메타 앱 호출 한도(code 4)가 오늘만 8번 걸렸으니 한 페이지도 낭비하지 않는다.
+     첫 호출(discoverMediaWithImages)이 이미 본 구간은 커서로 이어받지 못해 처음부터 다시 넘기지만,
+     그쪽은 최대 5페이지라 중복 비용이 작다. */
+  const deepMax = Math.max(0, Math.min(300, (opts && opts.deepMax) || 0));
+  if (!deepMax) return null;
+  let after = '';
+  let seen = 0;
+  while (seen < deepMax) {
+    const mediaSpec = 'media.limit(12)' + (after ? '.after(' + after + ')' : '')
+      + '{caption,media_type,media_url,thumbnail_url,permalink,timestamp,children{media_url,media_type}}';
+    const fields = 'business_discovery.username(' + username + '){username,name,' + mediaSpec + '}';
+    const url = IG_API + '/' + process.env.IG_USER_ID
+      + '?fields=' + encodeURIComponent(fields) + '&access_token=' + process.env.IG_ACCESS_TOKEN;
+    const r = await fetch(url, { signal: AbortSignal.timeout(25000) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) {
+      throw new Error('business_discovery 실패 (' + r.status + '): '
+        + String((j.error && j.error.message) || '').slice(0, 200));
+    }
+    const m = j.business_discovery && j.business_discovery.media;
+    const rows = (m && m.data) || [];
+    seen += rows.length;
+    const found = rows.find((x) => x.permalink && x.permalink.includes(needle));
+    if (found) return found;
+    const next = m && m.paging && m.paging.cursors && m.paging.cursors.after;
+    if (!next || rows.length === 0) break;
+    after = next;
+  }
+  return null;
 }
 
 module.exports = { discoverAccount, discoverMediaWithImages, findPostByShortcode };

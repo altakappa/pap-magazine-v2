@@ -942,4 +942,18 @@ t('중복 웹 기사를 만들지 않는다 (source_instagram_post_id 선조회)
   assert.ok(/eq\('source_instagram_post_id', row\.shortcode\)/.test(CRON_CODE));
 });
 
+/* 2026-10-20 — 오래된 게시물 깊이 탐색. 저스틴 비버 7/19 게시물(13주 전)이 최근 50건 밖이라 못 찾았다.
+   deepMax 가 있으면 12건씩 더 넘기되 찾는 순간 멈춘다(메타 호출 한도 절약). */
+const DISC = require('fs').readFileSync(require('path').join(__dirname, '..', 'api/_lib/igDiscovery.js'), 'utf8');
+t('findPostByShortcode 가 deepMax 로 깊이 탐색한다 (최대 300)', () => {
+  assert.ok(/deepMax = Math\.max\(0, Math\.min\(300/.test(DISC), 'deepMax 상한이 없거나 바뀌었다');
+  assert.ok(/if \(!deepMax\) return null;/.test(DISC), 'deepMax 없으면 예전처럼 null');
+});
+t('깊이 탐색은 찾는 순간 멈춘다 (한 페이지도 낭비하지 않는다)', () => {
+  assert.ok(/const found = rows\.find\([\s\S]{0,120}if \(found\) return found;/.test(DISC));
+});
+t('브리프 수집·웹 게시 둘 다 deepMax 240 으로 부른다', () => {
+  assert.strictEqual((CRON_CODE.match(/findPostByShortcode\([^)]*deepMax: 240/g) || []).length, 2);
+});
+
 console.log('\n셀럽 속보 브리프: ' + n + '건 통과');

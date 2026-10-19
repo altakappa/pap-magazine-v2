@@ -142,7 +142,7 @@ async function runWebPublish(row, res, dry) {
     }
 
     // 미디어는 CDN 만료 때문에 지금 다시 가져온다 (브리프 시점 URL 은 죽었을 수 있다)
-    const m = await igDiscovery.findPostByShortcode(row.username, row.shortcode, { maxCount: 25 });
+    const m = await igDiscovery.findPostByShortcode(row.username, row.shortcode, { maxCount: 25, deepMax: 240 });
     if (!m) return await webFail('@' + row.username + ' 최근 게시물에서 ' + row.shortcode + ' 를 못 찾았습니다.');
     const items = celebBrief.collectMediaItems(m);
     const imageUrls = items.filter((i) => i.type === 'image').map((i) => i.url);
@@ -424,7 +424,7 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
     // ── 2. 게시물 수집 ────────────────────────────────────────
     const posts = [];
     for (const r of rows) {
-      const m = await igDiscovery.findPostByShortcode(r.username, r.shortcode, { maxCount: 25 });
+      const m = await igDiscovery.findPostByShortcode(r.username, r.shortcode, { maxCount: 25, deepMax: 240 });
       if (!m) {
         return await fail('@' + r.username + ' 최근 게시물에서 ' + r.shortcode + ' 를 못 찾았습니다.'
           + ' (business_discovery 는 최근 게시물만 봅니다. 비공개·개인 계정이거나 오래된 게시물일 수 있습니다.)');
