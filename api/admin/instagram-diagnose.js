@@ -71,6 +71,27 @@ module.exports = async function handler(req, res){
       });
     }
 
+    /* ===== CONTAINER 프로브 (GET ?container=1) — 2026-10-20 신설 =====
+       게시가 "Graph GET 0" 으로 죽는데 토큰 scopes 는 멀쩡했다(?token=1). 컨테이너 생성 POST 가
+       id 를 "0" 으로 돌려주는 것으로 보이나 원문 응답을 본 적이 없다. 공개 이미지 하나로 사진
+       컨테이너만 만들어 보고(게시 안 함, 컨테이너는 24시간 뒤 소멸) 원문 응답을 그대로 돌려준다.
+       이어서 그 id 로 status_code 를 한 번 읽는다. 토큰은 응답에 싣지 않는다. */
+    if (req.method === 'GET' && (req.query || {}).container === '1'){
+      const tok = String(process.env.IG_ACCESS_TOKEN || '').trim();
+      const uid = String(process.env.IG_USER_ID || '').trim();
+      const image = String(req.query.image || 'https://www.pap-magazine.com/pap-logo.png');
+      const me = await fetch('https://graph.facebook.com/v25.0/' + uid + '?' + new URLSearchParams({ fields: 'id,username,media_count', access_token: tok }), { signal: AbortSignal.timeout(15000) }).then((r) => r.json()).catch((e) => ({ error: { message: String(e) } }));
+      const body = new URLSearchParams({ image_url: image, caption: 'diagnose probe (not published)', access_token: tok });
+      const r = await fetch('https://graph.facebook.com/v25.0/' + uid + '/media', { method: 'POST', body, signal: AbortSignal.timeout(30000) });
+      const raw = await r.text();
+      let j = {}; try { j = JSON.parse(raw); } catch (_e) { j = { unparsed: raw.slice(0, 300) }; }
+      let statusProbe = null;
+      if (j && j.id) {
+        statusProbe = await fetch('https://graph.facebook.com/v25.0/' + j.id + '?' + new URLSearchParams({ fields: 'status_code,status', access_token: tok }), { signal: AbortSignal.timeout(15000) }).then((x) => x.json()).catch((e) => ({ error: { message: String(e) } }));
+      }
+      return res.status(200).json({ ok: true, ig_user_id: uid, account: me, container_http: r.status, container_response: j, status_probe: statusProbe });
+    }
+
     // ===== SCAN 모드 (GET) — 진단만 =====
     if (req.method === 'GET' && (req.query || {}).scan === '1'){
       const days = Math.max(1, Math.min(60, parseInt(req.query.days || '14', 10) || 14));
