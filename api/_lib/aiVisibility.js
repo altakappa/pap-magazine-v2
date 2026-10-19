@@ -569,11 +569,24 @@ async function buildSovReport({ days = 30 } = {}) {
       if (rows.length) byEngine[e] = { n: rows.length, hit: rows.filter((r) => r.present).length };
     }
     const descRows = cur.filter((r) => r.present && r.desc_ok !== null);
+    /* 2026-10-19 — 같은 질문끼리 비교. 10/15 에 타깃 질문 6개가 추가되자 전체 비율이
+       71% → 67% 로 내려갔고 브리핑이 "점유율 하락" 이라고 썼다. 분모가 바뀐 것이다.
+       두 회차에 모두 있는 질문만으로 다시 재면 71% → 71%. 새 질문은 따로 센다. */
+    const keyOf = (r) => r.question_key;
+    const curKeys = new Set(cur.map(keyOf));
+    const oldKeys = new Set(old.map(keyOf));
+    const common = Array.from(curKeys).filter((k) => oldKeys.has(k));
+    const curC = cur.filter((r) => oldKeys.has(keyOf(r)));
+    const oldC = old.filter((r) => curKeys.has(keyOf(r)));
+    const newKeys = Array.from(curKeys).filter((k) => !oldKeys.has(k));
     return {
       n: cur.length,
       hit: cur.filter((r) => r.present).length,
       sov: pct(cur.filter((r) => r.present).length, cur.length),
       prevSov: old.length ? pct(old.filter((r) => r.present).length, old.length) : null,
+      sovSameKeys: common.length ? pct(curC.filter((r) => r.present).length, curC.length) : null,
+      prevSovSameKeys: common.length ? pct(oldC.filter((r) => r.present).length, oldC.length) : null,
+      newKeys,
       byEngine,
       descOk: descRows.length ? pct(descRows.filter((r) => r.desc_ok).length, descRows.length) : null,
     };
@@ -643,6 +656,15 @@ function renderSovMd(rep) {
       + ' | ' + (s.descOk == null ? '—' : s.descOk + '%') + ' | ' + eng + ' |');
   }
   L.push('');
+  // 질문이 바뀐 회차는 전체 비율 변화가 분모 변화다. 같은 질문끼리 값을 따로 보여 준다.
+  for (const [k, label] of [['pretrain', '학습'], ['search', '답변']]) {
+    const s = rep[k];
+    if (s && s.newKeys && s.newKeys.length && s.sovSameKeys != null) {
+      L.push('> ' + label + ' 레이어: 이번 회차에 새 질문 ' + s.newKeys.length + '개(' + s.newKeys.join(', ') + ')가 추가됐다.'
+        + ' **같은 질문끼리** 비교하면 ' + s.prevSovSameKeys + '% → ' + s.sovSameKeys + '%' + arrow(s.sovSameKeys, s.prevSovSameKeys) + '.'
+        + ' 전체 비율의 변화는 분모가 바뀐 것이니 하락/상승으로 읽지 말 것.');
+    }
+  }
   if (rep.blind.length) {
     L.push('**두 레이어 모두에서 0인 질문** (가장 아픈 구멍): ' + rep.blind.join(', '));
   }

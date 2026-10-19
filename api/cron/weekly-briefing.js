@@ -38,6 +38,10 @@ const { buildIgContentMix, renderContentMixMd } = require('../_lib/igContentMix'
 const { buildSovReport, renderSovMd } = require('../_lib/aiVisibility');
 const { buildPublishLedger, renderPublishLedgerMd } = require('../_lib/publishLedger');
 const { buildSubscribeFunnel, renderSubscribeFunnelMd } = require('../_lib/subscribeFunnelLedger'); // 2026-10-02 구독 출처별 전환
+/* 2026-10-19 — 추세·계절 맥락. 10/19 브리핑이 파리 패션위크가 끝난 주를 "ChatGPT 유입 40% 붕괴,
+   랭킹 재조정" 으로 읽고 근거 없는 베팅(기사 말미 '관련 질문 3개' 삽입)을 걸었다. 9/21 과 같은 병:
+   7일 두 점만 보면 성수기 끝이 붕괴로 보인다. 6주 표 + 행사 달력 + 기사당 효율 + 선행지표를 같이 넘긴다. */
+const { buildTrendContext, renderTrendMd } = require('../_lib/trendContext');
 
 const SYSTEM = [
   '너는 PAP 매거진(아트 기반 패션·뷰티·컬쳐 디지털 매거진, IG @pap_magazine 38만, 웹 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만 — 두 매체 지표는 절대 합산 금지)의 주간 경영 브리핑을 쓰는 전략 컨설턴트다.',
@@ -50,6 +54,14 @@ const SYSTEM = [
   '  "같은 양을 내보냈는데 유입만 줄었다" 가 훨씬 유용한 문장이다.',
   '· 장부에 error 가 있는 채널은 **0건이 아니라 모르는 것**이다. 0으로 읽지 마라.',
   '· 발행량 회복을 베팅으로 제안하려면 장부에서 실제로 줄어든 것을 먼저 보여라.',
+  '',
+  '추세·계절 규칙 (2026-10-19 신설 — 10/19 브리핑이 패션위크 끝을 "붕괴"로 읽었다):',
+  '· 7일 vs 전 7일은 두 점이다. 유입이 크게 변했으면 **추세·계절 맥락 표(6주)** 를 먼저 읽어라.',
+  '· 전주가 행사 창(패션위크 등) 안이었으면 이번 주 하락은 "성수기 종료" 다. 기준선(행사 없는 주 중앙값)과 비교해 쓰라.',
+  '· 기사당 유입이 그대로면 효율 문제가 아니다. 기사 수가 줄어서 유입이 준 것이다. 그렇게 쓰라.',
+  '· "챗GPT가 글 읽은 횟수" 가 안 줄었으면 "랭킹에서 밀렸다" 는 가설은 쓰지 마라. 선행지표가 반대다.',
+  '· AI 답변 점유율은 **같은 질문끼리** 비교한 값(sovSameKeys)만 전회 대비로 쓴다. 질문이 추가된 회차의 전체 비율 변화는 분모 변화다.',
+  '· 꼼수 금지: 기사에 질문 문장을 끼워 넣기, 발행량만 늘리기 같은 베팅은 제안하지 않는다. 자료 9장 원칙.',
   '',
   '출력 (한국어 마크다운, 구조 고정):',
   '# 주간 브리핑 — {week_start} 주',
@@ -135,6 +147,11 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     try { subFunnel = await buildSubscribeFunnel({ days: 28 }); }
     catch (e) { console.warn('[weekly-briefing] subscribeFunnel failed:', e && e.message); }
 
+    // 추세·계절 맥락 — best-effort (2026-10-19). 실패해도 브리핑 본체를 막지 않는다.
+    let trend = null;
+    try { trend = await buildTrendContext({ weeks: 10 }); }
+    catch (e) { console.warn('[weekly-briefing] trendContext failed:', e && e.message); }
+
     // AI 답변 점유율 — best-effort. DB 읽기뿐이라 싸다. 기록이 없으면 null.
     let sov = null;
     try { sov = await buildSovReport({ days: 60 }); }
@@ -151,6 +168,9 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       /* 맨 앞에 둔다. AI 가 원인을 찾을 때 가장 먼저 읽어야 하는 표다. */
       '발행 장부(우리가 내보낸 양 — 7일 vs 전 7일. error 가 있으면 0이 아니라 모르는 것):',
       JSON.stringify((pubLedger && pubLedger.rows) || []),
+      /* 발행 장부 바로 다음. "유입이 왜 변했나" 를 두 점이 아니라 6주로 보게 한다. */
+      '추세·계절 맥락(주별 chatgpt 유입·웹 기사·기사당 유입·챗GPT가 글 읽은 횟수·행사 창. baseline=행사 없는 주 중앙값):',
+      JSON.stringify(trend ? { baseline: trend.baseline, upcoming: trend.upcoming, rows: trend.rows } : {}),
       '이번 주 데일리 요약(' + thisWeek.length + '일):', JSON.stringify(thisWeek),
       '전주 데일리 요약(' + lastWeek.length + '일):', JSON.stringify(lastWeek),
       '운영 이벤트 로그(14일):', JSON.stringify(evs),
@@ -197,6 +217,10 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     {
       const plMd = renderPublishLedgerMd(pubLedger);
       if (plMd) briefing = briefing ? (briefing + '\n\n---\n\n' + plMd) : plMd;
+    }
+    if (trend) {
+      const trMd = renderTrendMd(trend);
+      if (trMd) briefing = briefing ? (briefing + '\n\n---\n\n' + trMd) : trMd;
     }
     if (igLedger) {
       const lgMd = renderIgLedgerMd(igLedger);
