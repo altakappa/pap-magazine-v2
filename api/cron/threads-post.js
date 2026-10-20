@@ -66,7 +66,7 @@ module.exports = withCronGuard('threads-post', async function handler(req, res) 
     const { data: arts, error: artsErr } = await supabaseAdmin.from('articles')
       /* gallery·videos·source_media_type 은 미디어 선택에 쓴다 (2026-08-07).
          안 읽어 오면 스위퍼로 나가는 글만 조용히 그림 없이 올라간다. */
-      .select('id, title, slug, custom_url, content, category, published_date, gallery, videos, source_media_type')
+      .select('id, title, slug, custom_url, content, category, published_date, gallery, videos, source_media_type, source_instagram_url')
       .eq('status', 'published')
       .gte('published_date', freshCutoff)
       .order('published_date', { ascending: false }).limit(200);
@@ -92,6 +92,7 @@ module.exports = withCronGuard('threads-post', async function handler(req, res) 
     const r = await postArticleToThreads({
       id: art.id, title: art.title, content: art.content, category: art.category, url,
       gallery: art.gallery, videos: art.videos, source_media_type: art.source_media_type,
+      source_instagram_url: art.source_instagram_url,   // 2026-10-20 — 없으면 인스타 링크가 프로필로 간다
     });
     if (r.status === 'failed') return res.status(502).json({ error: 'threads post failed', title: art.title, detail: r.detail });
     /* 2026-10-15 — 간격 대기·상한으로 건너뛴 실행을 "posted" 로 적지 않는다.

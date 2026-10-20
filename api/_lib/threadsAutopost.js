@@ -329,10 +329,19 @@ async function postArticleToThreads(art) {
      그래서 본문은 링크 없이 올리고, 링크는 곧바로 첫 답글로 붙인다.
      한 번에 두 가지를 얻는다: 링크 억제 회피 + thread depth 1 확보.
      body 가 없으면(구 호출부·예외) 예전처럼 링크 포함 본문을 쓴다. */
-  const bodyText = gen.body || text;
-
   /* 미디어를 먼저 고른다. X 와 같은 판단이어야 두 채널이 같은 그림을 올린다. */
   const media = selectArticleMedia(art);
+
+  /* 2026-10-20 — 인스타 링크를 본문으로 (도메니코 "트위터 계정을 참고", threadsBodyLink.js).
+     본문 = 글 + CTA 한 줄 + 인스타 원본 링크, 답글 = 웹 링크만. THREADS_BODY_IG_LINK=off 로 복귀. */
+  const tbl = require('./threadsBodyLink');
+  const bodyIg = !!(gen.body && gen.url && tbl.isOn());
+  let bodyText = gen.body || text;
+  if (bodyIg) {
+    const { igOutUrl } = require('./igFirstLink');
+    const igRaw = String(art.source_instagram_url || art.ig || art.permalink || '');
+    bodyText = tbl.composeBody(gen.body, igOutUrl(igRaw, tbl.IG_OUT_SRC), tbl.ctaFor(art, media)).text;
+  }
   const hasMedia = !!(media.video || (media.images && media.images.length));
 
   let threadId = null; let status = 'published'; let detail = null; let mediaKind = 'text';
@@ -372,7 +381,8 @@ async function postArticleToThreads(art) {
          성장 가이드라인 8항(두 도달점은 서로의 파이프)도 한쪽 제거를 금한다.
          '우선시'는 '독점'이 아니다. */
       const { igFirstLinkBlock } = require('./igFirstLink');
-      linkReplyId = await postText(igFirstLinkBlock(art, 'threads', gen.url), undefined, { replyToId: threadId });
+      const replyText = bodyIg ? tbl.webOnlyReply(gen.url) : igFirstLinkBlock(art, 'threads', gen.url);
+      linkReplyId = await postText(replyText, undefined, { replyToId: threadId });
     } catch (e) {
       const why = String((e && e.message) || e).slice(0, 200);
       console.error('[threadsAutopost] 링크 답글 실패:', why);

@@ -455,6 +455,8 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                      이걸 안 넘기면 스레드가 텍스트로만 나간다 (2026-08-07). */
                   gallery: row.gallery, videos: row.videos,
                   source_media_type: row.source_media_type,
+                  // 2026-10-20 — 인스타 링크를 원본 게시물로 (X 쪽 igSrcUrl 과 같은 출처)
+                  source_instagram_url: (post && (post.permalink || post.source_instagram_url)) || (row && row.source_instagram_url) || '',
                 });
                 results.threads = (results.threads || []).concat(
                   th.status === 'published' ? [th.thread_id]

@@ -93,7 +93,7 @@ console.log('\n[3] 링크 답글 배선');
   t('답글 실패를 detail 에 남긴다 (조용한 실패 금지)',
     /'링크 답글 실패: ' \+ why/.test(ap));
   t('body 가 없는 구 경로는 예전처럼 링크 포함 본문을 쓴다',
-    /const bodyText = gen\.body \|\| text;/.test(ap));
+    /(?:const|let) bodyText = gen\.body \|\| text;/.test(ap));  // 2026-10-20 let: 본문 링크(threadsBodyLink)가 덮어쓴다
 }
 
 console.log('\n[4] 하루 상한 — 두 경로 공용');

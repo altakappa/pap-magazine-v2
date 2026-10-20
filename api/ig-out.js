@@ -57,7 +57,7 @@ const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', '
      이제 같은 채널의 두 방향을 나란히 볼 수 있다 —
        threads → 웹  social_inclicks(utm_source=threads)
        threads → IG  ig_outclicks_human(src=threads) */
-  'threads', 'x',
+  'threads', 'x', 'threads_body' /* 2026-10-20 스레드 본문 인스타 링크 */,
   /* 2026-10-05 — X 본문 링크 A/B (api/_lib/xBodyLinkAb.js). 답글 링크(x)와 본문 링크(x_body)를 나란히 센다. */
   'x_body',
   /* 2026-10-15 — CTA 한 줄 A/B. 기사 트윗 'x_body'(링크만) vs 'x_body_cta'(안내 줄+링크),
