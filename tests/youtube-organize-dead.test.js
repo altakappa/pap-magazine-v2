@@ -30,6 +30,7 @@ const src = fs.readFileSync(path.join(__dirname, '../api/cron/youtube-organize.j
 ok('죽은 행을 건너뛴다', /isDeadVideoRow\(row\)\) \{ dead\.push/.test(src));
 ok('할당량 소진이면 두 루프 모두 멈춘다', (src.match(/isQuotaError\(err\)\) \{ quotaHit = true; break; \}/g) || []).length === 2 && /budget <= 0 \|\| quotaHit/.test(src));
 ok('건너뜀·중단이 note 에 남는다', /영상 삭제됨 건너뜀/.test(src) && /할당량 소진/.test(src));
+ok('첫 단계 조회가 할당량 때문에 실패하면 실패가 아니라 대기로 기록', /isQuotaError\(err\)\) \{\s*note\(res, '⏸ 할당량 소진 대기/.test(src) && /quotaWait: true/.test(src));
 ok('삭제·재생목록 생성은 없다', !/\.delete\(/.test(src) && !/createPlaylist/.test(src));
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

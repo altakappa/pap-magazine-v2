@@ -73,6 +73,12 @@ module.exports = withCronGuard('youtube-organize', async function handler(req, r
       playlists = await yt.listMyPlaylists();
     } catch (err) {
       const msg = String(err && err.message || err).slice(0, 200);
+      /* 하루치 할당량이 이미 바닥이면 실패가 아니라 '대기'다. 매 회차 502 로 쌓지 않는다.
+         (재인증·권한 403 은 reason 이 달라 여기 안 걸리고 계속 실패로 올라간다) */
+      if (isQuotaError(err)) {
+        note(res, '⏸ 할당량 소진 대기 — 재생목록 조회 못 함, 오늘 정리 중단 (태평양시 자정=한국 오후 4시경 리셋)');
+        return res.status(200).json({ ok: true, quotaWait: true, note: res.locals.cronNote });
+      }
       note(res, '재생목록 조회 실패: ' + msg);
       return res.status(502).json({ ok: false, error: 'playlists.list failed', detail: msg });
     }
