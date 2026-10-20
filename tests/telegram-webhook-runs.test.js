@@ -38,12 +38,14 @@ if (!deps) {
   process.env.SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'stub-key';
   process.env.TELEGRAM_WEBHOOK_SECRET = 'test-secret';
   process.env.TELEGRAM_PERSONAL_CHAT_ID = '777';
+  process.env.TELEGRAM_CHAT_ID = '888';            // 단체방 (2026-10-20 검사용)
   process.env.CRON_SECRET = '';                    // 깨우기는 생략시킨다
 
   const upserts = [];
+  const calls = [];                                   // [메서드, 인자...] 기록 (2026-10-20)
   const chain = () => {
     const o = {};
-    for (const m of ['select', 'eq', 'order', 'limit', 'update', 'in']) o[m] = () => o;
+    for (const m of ['select', 'eq', 'order', 'limit', 'update', 'in']) o[m] = (...a) => { calls.push([m, ...a]); return o; };
     o.then = (resolve) => resolve({ data: [], error: null });
     o.upsert = (rows) => { upserts.push(rows); return { then: (r) => r({ data: null, error: null }) }; };
     return o;
@@ -106,6 +108,19 @@ if (!deps) {
     res = await call(msg('안녕'), { 'x-telegram-bot-api-secret-token': 'wrong' });
     assert.strictEqual(res.statusCode, 401, '시크릿이 틀린데 통과했다');
     n++; console.log('  ✓ 시크릿이 틀리면 401');
+
+    /* 2026-10-20 — 브리프는 개인 채팅(777)으로 가는데 명령은 단체방(888)에서 쳤다.
+       chat_id 를 명령 친 채팅으로만 좁히면 영원히 '찾을 수 없습니다' 다.
+       허용 채팅 전부(777, 888)를 대상으로 찾아야 한다. 회신은 888 로 간다. */
+    calls.length = 0; sent.length = 0;
+    res = await call({ message: { message_id: 3, chat: { id: 888 }, from: { id: 777 }, text: '올려 155' } });
+    assert.strictEqual(res.statusCode, 200, '단체방 번호 게시에서 예외: ' + JSON.stringify(res.body));
+    const chatIn = calls.find((c) => c[0] === 'in' && c[1] === 'chat_id');
+    assert.ok(chatIn, '게시 명령이 chat_id 를 in(...) 으로 찾지 않는다');
+    assert.deepStrictEqual([...chatIn[2]].sort(), ['777', '888'], '허용 채팅 전부를 대상으로 찾지 않는다: ' + JSON.stringify(chatIn[2]));
+    assert.ok(!calls.some((c) => c[0] === 'eq' && c[1] === 'chat_id'), '아직 chat_id 를 eq 로 좁힌다');
+    assert.ok(sent.some((s) => s.chatId === '888'), '회신이 명령을 친 채팅(888)으로 가지 않는다');
+    n++; console.log('  ✓ 단체방에서 친 "올려 N" 도 개인 채팅으로 간 브리프를 찾는다');
 
     const other = { message: { message_id: 2, chat: { id: 999 }, text: '@x https://www.instagram.com/p/CCC/' } };
     res = await call(other);

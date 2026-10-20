@@ -133,6 +133,12 @@ async function wakeProcessor() {
   }
 }
 
+/* 수신 로그용 한 단어. 본문은 적지 않는다. */
+function kindOf(p) {
+  if (p.publishCommand) return 'publish' + (p.publishCommand.num != null ? '#' + p.publishCommand.num : '');
+  return p.links.length ? 'link×' + p.links.length : 'text';
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -155,6 +161,10 @@ module.exports = async function handler(req, res) {
     console.warn('[tg-webhook] 허용되지 않은 chat_id 에서 수신 — 무시');
     return OK(res, { ok: true, skipped: 'chat_not_allowed' });
   }
+  /* 2026-10-20 — 수신 흔적을 한 줄 남긴다. 도메니코가 단체방에 "올려 155" 를 쳤는데
+     아무 답이 없었고, 로그에도 아무것도 없어서 '안 닿은 건지, 닿고 버린 건지'
+     구분이 안 됐다. 본문은 안 적는다(데이터). 종류와 채팅만 적는다. */
+  console.log('[tg-webhook] 수신 chat=' + parsed.chatId + ' kind=' + kindOf(parsed));
 
   /* ── 팔로우 수동 기록 ("팔로우 <숏코드|링크> <숫자>", 2026-09-07) ──────
      릴스는 API 가 follows 를 안 준다. 앱 인사이트에서 읽은 숫자를 한 줄로 적으면
@@ -189,15 +199,21 @@ module.exports = async function handler(req, res) {
     const CAND = toWeb
       ? ['done', 'publish_failed', 'web_publish_failed']
       : ['done', 'publish_failed', 'web_published', 'web_publish_failed'];
+    /* 2026-10-20 — 브리프는 개인 채팅(TELEGRAM_PERSONAL_CHAT_ID)으로 가는데
+       도메니코는 단체방에서 "올려 155" 를 쳤다. 행의 chat_id 와 명령을 친 채팅이
+       달라서 '찾을 수 없습니다' 가 되는 구조였다. 둘 다 도메니코의 채팅이므로
+       **허용된 채팅 전부**를 대상으로 찾는다. 회신은 명령을 친 채팅으로 간다. */
+    const ownChats = allow.length ? allow : [parsed.chatId];
     let row = null;
     if (wantNum != null) {
       const { data, error: findErr } = await supabaseAdmin
         .from('celeb_brief_queue')
         .select('id, batch_key, result, status')
-        .eq('chat_id', parsed.chatId).eq('id', wantNum)
+        .in('chat_id', ownChats).eq('id', wantNum)
         .in('status', CAND).limit(1);
       row = data && data[0];
       if (findErr || !row) {
+        console.warn('[tg-webhook] 게시 명령 #' + wantNum + ' 대상 없음' + (findErr ? ' (조회 오류)' : ''));
         await say(parsed.chatId, findErr
           ? ('브리프 조회 실패: ' + String(findErr.message).slice(0, 150))
           : ('#' + wantNum + ' 브리프를 찾을 수 없습니다. 이미 게시됐거나 번호가 다릅니다.'));
@@ -208,7 +224,7 @@ module.exports = async function handler(req, res) {
         .from('celeb_brief_queue')
         .select('id, batch_key, result, status, processed_at')
         /* publish_failed 도 대상 — 실패한 건이 재시도로 다시 잡혀야 한다 */
-        .eq('chat_id', parsed.chatId).in('status', CAND)
+        .in('chat_id', ownChats).in('status', CAND)
         .order('processed_at', { ascending: false }).limit(5);
       const cands = data || [];
       if (findErr || !cands.length) {
