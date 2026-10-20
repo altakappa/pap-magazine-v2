@@ -98,4 +98,21 @@ function retitle(oldTitle, newBody, fallbackPrefix) {
   return ((prefix ? prefix + ' ' : '') + cut + suffix).trim();
 }
 
-module.exports = { KEYS, FASHION_WEEK_RE, pickCategory, matchPlaylist, fileNameFromDetail, retitle };
+/* 2026-10-20 견고화 — 영영 안 되는 행을 매 회차 다시 두드리지 않는다.
+   실측: 10/14~10/20 매 회차 '실패 17건' (videoNotFound 13 · quotaExceeded 4). 실패는 budget 을 안 깎아
+   40행을 전부 다시 시도했고, 유튜브에서 지워진 영상(videoNotFound)은 몇 번을 해도 같다.
+   단, 업로드 직후엔 영상이 잠깐 안 보일 수 있어 24시간은 기다려 준다. */
+const DEAD_VIDEO_GRACE_MS = 24 * 60 * 60 * 1000;
+function isDeadVideoRow(row, now) {
+  if (!row || !row.organize_error || !/videoNotFound/.test(String(row.organize_error))) return false;
+  const t = Date.parse(row.created_at);
+  if (!isFinite(t)) return false;
+  return (now || Date.now()) - t > DEAD_VIDEO_GRACE_MS;
+}
+/* 하루 할당량이 바닥났으면 뒤 행을 더 두드려도 전부 같은 403 이다. */
+function isQuotaError(err) {
+  return !!err && err.status === 403 && err.reason === 'quotaExceeded';
+}
+
+module.exports = {
+  isDeadVideoRow, isQuotaError, DEAD_VIDEO_GRACE_MS, KEYS, FASHION_WEEK_RE, pickCategory, matchPlaylist, fileNameFromDetail, retitle };

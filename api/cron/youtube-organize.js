@@ -29,7 +29,7 @@ const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const yt = require('../_lib/youtube');
 const { classify } = require('../_lib/youtubeMeta');
-const { pickCategory, matchPlaylist, fileNameFromDetail, retitle } = require('../_lib/ytPlaylist');
+const { pickCategory, matchPlaylist, fileNameFromDetail, retitle, isDeadVideoRow, isQuotaError } = require('../_lib/ytPlaylist');
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const ORGANIZE_FROM = process.env.YT_ORGANIZE_FROM || '2026-09-21T00:00:00Z';
@@ -88,11 +88,11 @@ module.exports = withCronGuard('youtube-organize', async function handler(req, r
     const { data: todo, error: e2 } = await supabaseAdmin.from('youtube_posts').select(cols)
       .is('playlisted_at', null).not('video_id', 'is', null).eq('status', 'submitted')
       .or('created_at.gte.' + ORGANIZE_FROM + ',playlist_hint.not.is.null')
-      .order('created_at', { ascending: false }).limit(40);
+      .order('created_at', { ascending: false }).limit(60);
     if (e2) throw new Error('youtube_posts(todo) 조회 실패: ' + e2.message);
 
     const arts = await loadArticles([...(resync || []), ...(todo || [])].map((r) => r.article_id));
-    const done = []; const missing = []; const failed = [];
+    const done = []; const missing = []; const failed = []; const dead = []; let quotaHit = false;
     let budget = MAX_PER_RUN;
 
     // ── 2. 제목·설명 재동기화 ──────────────────────────────
@@ -120,12 +120,14 @@ module.exports = withCronGuard('youtube-organize', async function handler(req, r
         }
         failed.push(row.video_id + ' ' + String(err && err.message || err).slice(0, 80));
         await supabaseAdmin.from('youtube_posts').update({ organize_error: String(err && err.message || err).slice(0, 300) }).eq('id', row.id);
+        if (isQuotaError(err)) { quotaHit = true; break; }
       }
     }
 
     // ── 3. 재생목록 배치 ───────────────────────────────────
     for (const row of (todo || [])) {
-      if (budget <= 0) break;
+      if (budget <= 0 || quotaHit) break;
+      if (isDeadVideoRow(row)) { dead.push(row.video_id); continue; }
       const fileName = fileNameFromDetail(row.detail);
       const art = arts.get(row.article_id) || { title: fileName, tags: [], category: '' };
       const key = pickCategory(art, row.playlist_hint, fileName);
@@ -147,6 +149,7 @@ module.exports = withCronGuard('youtube-organize', async function handler(req, r
         }
         failed.push(row.video_id + ' ' + String(err && err.message || err).slice(0, 80));
         await supabaseAdmin.from('youtube_posts').update({ organize_error: String(err && err.message || err).slice(0, 300) }).eq('id', row.id);
+        if (isQuotaError(err)) { quotaHit = true; break; }
       }
     }
 
@@ -155,6 +158,8 @@ module.exports = withCronGuard('youtube-organize', async function handler(req, r
     parts.push((dry ? '[dry] ' : '') + '정리 ' + done.length + '건');
     if (done.length) parts.push(done.slice(0, 6).join(' · '));
     if (missing.length) parts.push('⚠️ 맞는 재생목록 없음 ' + missing.length + '건 (' + missKeys.join(', ') + ') — 채널 재생목록: ' + playlists.map((p) => p.title).join(' / '));
+    if (dead.length) parts.push('영상 삭제됨 건너뜀 ' + dead.length + '건 (유튜브에 없음)');
+    if (quotaHit) parts.push('⏸ 할당량 소진 — 이번 회차 나머지 중단');
     if (failed.length) parts.push('실패 ' + failed.length + '건: ' + failed.slice(0, 3).join(' · '));
     return res.status(200).json({ ok: true, dry, done, missing, failed, note: note(res, parts.join(' | ')) });
   } catch (err) {
