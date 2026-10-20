@@ -72,7 +72,7 @@ async function listRecentMedia(opts){
   const { userId, token } = _creds(opts);
   const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count';
   const url = `${_IG_API}/${userId}/media?fields=${encodeURIComponent(fields)}&limit=${limit}&access_token=${token}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(20000) });   // 2026-10-20 — 이 파일에서 유일하게 상한이 없던 fetch
   if (!res.ok){
     const body = await res.text().catch(() => '');
     throw new Error('Graph API media list 실패 (' + res.status + '): ' + body.slice(0, 300));
@@ -611,8 +611,12 @@ async function generateArticleFromPost(post, opts){
 
   visionBlocks.push({ type: 'text', text: prompt });
 
+  /* 2026-10-20 — 상한 없음 → 60초. 기사 생성은 vision + 6000토큰이라 길면 40초대를
+     넘긴다. 여기서 끊기면 그 게시물은 아직 INSERT 전이라 다음 실행이 다시 잡는다.
+     sync-instagram 함수 상한(120초)의 절반을 넘기지 않게 하는 안전핀. */
   const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: AbortSignal.timeout(Number(process.env.IG_AI_TIMEOUT_MS || 60000)),
     headers: {
       'content-type': 'application/json',
       'x-api-key': process.env.ANTHROPIC_API_KEY,

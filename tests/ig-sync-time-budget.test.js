@@ -68,6 +68,30 @@ t('고치는 법을 note 에 적는다 (넣거나, 크론 줄을 빼거나)',
 t('재배포가 필요하다는 것도 적는다 (Vercel 은 env 를 빌드에 굽는다)',
   /재배포/.test(src));
 
+/* ── 2026-10-20 — 한 건 안에서도 시계를 본다 ───────────────────────────
+   08-11 예산은 '다음 건을 시작할지' 만 봤다. 시작한 한 건(릴스)은 AI+아카이브
+   ≈45초에 INSERT 한 뒤 X 티저·업로드·폴링 + 스레드 영상 컨테이너 대기가 상한
+   없이 이어져 120초에서 잘렸다 (10/18~10/20 사망 4건, 전부 릴스). */
+console.log('=== 한 건 안 마감 (2026-10-20) ===');
+const hardM = /IG_SYNC_HARD_MS \|\| (\d+)/.exec(src);
+t('함수 상한보다 앞선 마감 상수가 있다 (env IG_SYNC_HARD_MS)', !!hardM && Number(hardM[1]) < 120000 && Number(hardM[1]) >= 100000, hardM && hardM[1]);
+t('AI 생성 뒤 남은 시간이 모자라면 INSERT 전에 이월한다', /DeferredForTime\('after_ai'\)/.test(src));
+t('영상 아카이브(최대 90초) 앞에서도 이월한다', /DeferredForTime\('before_video'\)/.test(src));
+t('시간 이월은 실패로 세지 않는다', /e && e\.igDeferred[\s\S]{0,400}results\.deferred = \(results\.deferred \|\| 0\) \+ 1;[\s\S]{0,300}continue;[\s\S]{0,40}\}\s*results\.failed\+\+/.test(src),
+  '실패로 세면 알림이 울리고, 다음 실행이 같은 게시물을 다시 잡는 사실이 가려진다');
+t('X 게시 블록은 마감과 경주한다 (건너뛰지 않는다 — X 는 스위퍼가 없다)', /const xRun = raceDeadline\(\(async \(\) => \{/.test(src) && /xr\.timedOut/.test(src));
+t('스레드는 남은 시간이 모자라면 시작하지 않고 스위퍼에 맡긴다', /THREADS_NEED_MS/.test(src) && /msLeft\(\) < threadsNeed/.test(src) && /이월:스위퍼/.test(src));
+t('스레드 호출도 마감과 경주한다', /raceDeadline\(postArticleToThreads\(/.test(src) && /timed_out/.test(src));
+const resM = /IG_SYNC_POST_RESERVE_MS \|\| (\d+)/.exec(src);
+t('착수 예비 시간이 실측(한 건 44~75초)에 맞다 (≥50초)', !!resM && Number(resM[1]) >= 50000, resM && resM[1]);
+
+console.log('=== 라이브러리 fetch 상한 (instagramImport) ===');
+const imp = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/instagramImport.js'), 'utf8');
+t('Claude 기사 생성 호출에 타임아웃이 있다 (env IG_AI_TIMEOUT_MS)',
+  /api\.anthropic\.com\/v1\/messages', \{\s*method: 'POST',\s*signal: AbortSignal\.timeout\(Number\(process\.env\.IG_AI_TIMEOUT_MS \|\| 60000\)\)/.test(imp),
+  '상한이 없으면 vision+6000토큰 생성 하나가 함수 상한을 통째로 먹는다');
+t('instagramImport 에 상한 없는 fetch(url) 가 없다', !/await fetch\(url\);/.test(imp));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ ig-sync-time-budget tests FAILED'); process.exit(1); }
 console.log('✅ ig-sync-time-budget tests passed');

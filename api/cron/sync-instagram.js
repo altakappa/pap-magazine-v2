@@ -243,6 +243,40 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       weeklyPublished = count || 0;
     }
 
+    /* ── 한 건 안에서도 시계를 본다 (2026-10-20) ──────────────────────────
+       실측 10/18~10/20 사망 4건 전부 릴스였다. 흐름: AI+아카이브 ≈ 40~50초에
+       INSERT → 그 뒤 X(티저 ffmpeg 60초 + 업로드 + 인코딩 폴링 20회) + 스레드
+       (영상 컨테이너 대기 20회 ≈ 80초) 가 **상한 없이** 이어져 120초에서 통째로
+       잘렸다. 루프의 85초 예산은 '다음 건을 시작할지' 만 보고, 시작한 한 건은
+       끝까지 가게 돼 있었다.
+       잘리면 잃는 것: cron_runs 종료 기록(→ 사망 경보), 검색핑, 유튜브 넛지.
+       X 는 이미 나간 뒤였고 스레드는 스위퍼가 2시간 뒤 메웠다 — 즉 치명적이진
+       않지만 매번 경보가 울리고 실행 시간 자료가 사라진다.
+       방침: 함수 상한보다 12초 앞(108초)을 마감으로 두고,
+         ① INSERT 전 단계는 남은 시간이 부족하면 **이월**(다음 실행이 같은
+            게시물을 '신규' 로 다시 잡는다 — 아무것도 안 넣었으니 안전),
+         ② INSERT 뒤 X 는 마감까지 경주(끊기면 표시만 — 트윗은 서버에서 계속
+            시도되고, X 는 스위퍼가 없어 건너뛰면 영영 안 나간다),
+         ③ 스레드는 남은 시간이 모자라면 건너뛰고 스위퍼(10분)에 맡긴다.
+       마감 자체는 Date.now() 로만 본다 — 라이브러리 안의 긴 폴링은 손대지 않는다. */
+    const RUN_STARTED = Date.now();
+    const HARD_MS = Number(process.env.IG_SYNC_HARD_MS || 108000);
+    const msLeft = () => HARD_MS - (Date.now() - RUN_STARTED);
+    const secLeft = () => Math.max(0, Math.round(msLeft() / 1000));
+    class DeferredForTime extends Error { constructor(stage){ super('deferred:' + stage); this.igDeferred = true; this.stage = stage; } }
+    /* promise 를 마감과 경주시킨다. 마감이 먼저면 { timedOut: true } 를 돌려준다.
+       본래 일은 취소되지 않는다(함수가 멈출 때까지 계속 돈다). */
+    function raceDeadline(promise){
+      const ms = msLeft();
+      if (ms <= 0) return Promise.resolve({ timedOut: true });
+      let timer;
+      const t = new Promise((r) => { timer = setTimeout(() => r({ timedOut: true }), ms); });
+      return Promise.race([promise.then((v) => ({ timedOut: false, value: v })), t])
+        .finally(() => clearTimeout(timer));
+    }
+    const PRE_INSERT_NEED_MS = 35000;   // 이미지 10장 + 영상 2편 + INSERT 가 실측으로 쓰는 몫
+    const THREADS_NEED_MS = { VIDEO: 50000, OTHER: 25000 };  // 컨테이너 대기 상한의 실측 중앙값 근처
+
     // ── 공용: 단일 게시물 처리 ──
     // AI 생성 → 에디토리얼(AI) 스킵 → 이미지/영상 아카이브 → articles INSERT →
     // 사이드이펙트. backfillMode 면 X·Threads 자동게시·검색핑을 전부 차단한다:
@@ -291,6 +325,8 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode, kind: 'editorial' }); recordBoost(results, b); }
         return;
       }
+      /* 2026-10-20 — AI 가 오래 걸렸으면 여기서 접는다. 아직 아무것도 안 넣었다. */
+      if (!backfillMode && msLeft() < PRE_INSERT_NEED_MS) throw new DeferredForTime('after_ai');
       // IG CDN 이미지는 수일 내 만료 — Supabase Storage 영구본으로 교체.
       const archivedUrls = await archiveImagesToStorage(post, 10);
       /* 릴스 mp4 — 목록 응답에 media_url 이 없으면 media id 로 단건 재조회한다.
@@ -301,6 +337,8 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         console.log('[sync-ig] video media_url 재조회: ' + resolveStat.resolved + '/' + resolveStat.attempted + ' 성공');
       }
       const videoReport = {};
+      /* 영상 2편은 최대 90초(45초×2)를 쓸 수 있다 — 남은 시간이 그만큼 없으면 이월. */
+      if (!backfillMode && post.mediaType === 'VIDEO' && (post.videoUrls || []).length && msLeft() < PRE_INSERT_NEED_MS) throw new DeferredForTime('before_video');
       const videoUrls = await archiveVideosToStorage(post, 2, undefined, videoReport);
       /* VIDEO 인데 mp4 를 하나도 못 건졌으면 반드시 로그로 남긴다.
          조용히 넘어가면 "발행은 됐는데 쇼츠는 안 올라가는" 상태가 되고,
@@ -356,7 +394,9 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
           if (!backfillMode){
             newUrls.push(artUrl);
             // X 자동 게시 — 발행 즉시 트윗 (키 미설정 시 조용히 스킵).
+            // 2026-10-20 — 블록 전체를 마감과 경주시킨다 (위 머리말 ②).
             if (xConfigured()){
+              const xRun = raceDeadline((async () => {
               try {
                 const artForX = { title: generated.title_ko || row.title, url: artUrl, tags: generated.tags, body: generated.body_ko, category: generated.category };
                 /* 2026-10-03 (도메니코 "전부 적용해줘") — 같은 주제가 창 안에 이미
@@ -444,11 +484,22 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                   console.error('[sync-ig] X 트윗 예외:', e && e.message || e);
                 }
               }
+              })());
+              const xr = await xRun;
+              if (xr.timedOut) {
+                results.tweets = (results.tweets || []).concat(['마감초과(함수상한 앞에서 손 뗌)']);
+                console.error('[sync-ig] X 게시가 마감(' + Math.round(HARD_MS / 1000) + '초)까지 안 끝남 — 결과는 x_posts 로 확인');
+              }
             }
             // Threads 자동 게시 — 실패해도 수집 흐름 계속(스위퍼가 재시도).
-            if (process.env.THREADS_AUTOPOST !== 'false'){
+            // 2026-10-20 — 남은 시간이 모자라면 시작하지 않고 스위퍼에 맡긴다 (머리말 ③).
+            const threadsNeed = row.source_media_type === 'VIDEO' ? THREADS_NEED_MS.VIDEO : THREADS_NEED_MS.OTHER;
+            if (process.env.THREADS_AUTOPOST !== 'false' && msLeft() < threadsNeed){
+              results.threads = (results.threads || []).concat(['이월:스위퍼(남은 ' + secLeft() + '초 < ' + Math.round(threadsNeed / 1000) + '초)']);
+              console.warn('[sync-ig] 스레드 건너뜀 — 남은 ' + secLeft() + '초, 스위퍼(threads-post)가 올린다');
+            } else if (process.env.THREADS_AUTOPOST !== 'false'){
               try {
-                const th = await postArticleToThreads({
+                const thr = await raceDeadline(postArticleToThreads({
                   id: inserted.id, title: row.title, content: row.content,
                   category: row.category, url: artUrl,
                   /* row 는 방금 insert 한 그 행이라 갤러리·영상이 이미 들어 있다.
@@ -457,10 +508,12 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                   source_media_type: row.source_media_type,
                   // 2026-10-20 — 인스타 링크를 원본 게시물로 (X 쪽 igSrcUrl 과 같은 출처)
                   source_instagram_url: (post && (post.permalink || post.source_instagram_url)) || (row && row.source_instagram_url) || '',
-                });
+                }));
+                const th = thr.timedOut ? { status: 'timed_out' } : thr.value;
                 results.threads = (results.threads || []).concat(
                   th.status === 'published' ? [th.thread_id]
                     : th.status === 'skipped' ? ['스킵:' + (th.detail || '')]
+                    : th.status === 'timed_out' ? ['마감초과(스위퍼가 확인)']
                     : ['실패:' + String(th.detail || '').slice(0, 80)]);
               } catch (e){
                 results.threads = (results.threads || []).concat(['실패:' + String(e && e.message || e).slice(0, 80)]);
@@ -634,7 +687,9 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
      * 즉 못 끝낸 몫은 유실이 아니라 이월이다. (backfill-translations 와 같은 형태) */
     const SYNC_STARTED = Date.now();
     const SYNC_BUDGET_MS = Number(process.env.IG_SYNC_BUDGET_MS || 85000);
-    const PER_POST_RESERVE_MS = 30000;  // 한 건이 최악으로 쓰는 시간(AI+미디어+소셜)
+    /* 30초 → 55초 (2026-10-20). 실측 10/16~10/20 한 건 완주 44~75초(중앙값 ≈52초).
+       30초로 두면 1건 끝난 55초 시점에 2건째를 시작해 120초를 넘긴다. */
+    const PER_POST_RESERVE_MS = Number(process.env.IG_SYNC_POST_RESERVE_MS || 55000);
     for (const m of media){
       if (existingSet.has(m.id)) continue;
       if (!dry && Date.now() - SYNC_STARTED > SYNC_BUDGET_MS - PER_POST_RESERVE_MS){
@@ -670,6 +725,13 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       }
       try { await processOne(m); }
       catch (e){
+        if (e && e.igDeferred){
+          /* 시간 부족으로 접은 건 — 실패가 아니다. 아무것도 안 넣었으니 다음 실행이 잡는다. */
+          results.deferred = (results.deferred || 0) + 1;
+          results.deferred_for_time = (results.deferred_for_time || []).concat([e.stage]);
+          console.warn('[sync-instagram] post ' + m.id + ' 시간 부족으로 이월 (' + e.stage + ', 남은 ' + secLeft() + '초)');
+          continue;
+        }
         results.failed++;
         results.errors.push({ post_id: m.id, error: (e && e.message) || String(e) });
         console.error('[sync-instagram] post ' + m.id + ' failed:', e);

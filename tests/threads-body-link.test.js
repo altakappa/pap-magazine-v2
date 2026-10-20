@@ -67,7 +67,7 @@ console.log('\n[5] 호출부가 인스타 원본을 넘긴다 (빠지면 프로�
   t('threads-post: select 에 source_instagram_url', /select\('[^']*source_instagram_url[^']*'\)/.test(tp));
   t('threads-post: 넘긴다', /source_instagram_url: art\.source_instagram_url/.test(tp));
   const si = R('api/cron/sync-instagram.js');
-  const i = si.indexOf('const th = await postArticleToThreads({');
+  const i = si.indexOf('postArticleToThreads({');   // 2026-10-20 호출이 raceDeadline(...) 로 감싸져 변수명이 바뀜 — 호출 자체를 찾는다
   t('sync-instagram: 넘긴다', i > 0 && /source_instagram_url:/.test(si.slice(i, i + 900)));
 }
 
