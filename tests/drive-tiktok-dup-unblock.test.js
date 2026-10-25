@@ -65,6 +65,7 @@ function makeDb(rows) {
     youtubeMeta: { buildHashtags: () => [] },
     igFirstLink: { IG_HANDLE_URL: 'instagram.com/pap_magazine' },
     driveVideos: { isConfigured: () => true, listVideos: async () => files, downloadVideo: async () => Buffer.from('v') },
+    mp4Check: { mp4Readable: () => ({ ok: true, reason: '', boxes: [] }) },   // 2026-10-25 손상 검사는 여기선 통과시킨다 (가짜 버퍼)
     buffer: { isConfigured: () => true, findChannelId: async () => 'ch', createVideoPost: async (o) => { posts.push(o); return { id: 'P1', status: 'sending' }; } },
     koMatch: { matchArticle: (name) => { const f = files.find((x) => x.name === name); return { matched: arts[f.id], score: 0.9, reason: '' }; }, groupUnmatched: () => '', fileCore: (n) => n },
     igSubPosts: { loadSubPosts: async () => [], findSubPost: () => null, subPostAsArticle: () => null, subPostUrl: () => '' },
@@ -81,7 +82,7 @@ function makeDb(rows) {
   };
   const orig = Module._load;
   Module._load = function (req) {
-    const m = /_lib\/([A-Za-z]+)$/.exec(req);
+    const m = /_lib\/([A-Za-z0-9]+)$/.exec(req);   // 2026-10-25 mp4Check 처럼 숫자 든 이름도 잡는다
     if (m && mocks[m[1]]) return mocks[m[1]];
     return orig.apply(this, arguments);
   };

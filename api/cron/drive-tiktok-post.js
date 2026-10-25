@@ -47,6 +47,7 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const tkd = require('../_lib/tiktokDrive');
 /* 2026-10-08 도메니코 "틱톡과 유튜브에 빠짐없이 올라가게해줘" — drive-youtube-post 와 같은 함수 */
 const noMiss = require('../_lib/driveNoMiss');
+const { mp4Readable } = require('../_lib/mp4Check');   // 2026-10-25 손상 파일 사전 검사
 /* 스토리쇼츠의 제목·설명 규칙을 그대로 쓴다. 필요할 때만 불러온다 — 크론끼리 모듈을
    통째로 물면 테스트의 가짜 모듈 바꿔치기가 새 경로로 샌다. */
 function story() { return require('./drive-story-shorts'); }
@@ -100,6 +101,42 @@ async function relayToStorage(fileId, fileName, buf) {
   const { data } = supabaseAdmin.storage.from('media').getPublicUrl(path);
   if (!data || !data.publicUrl) throw new Error('스토리지 공개 URL 없음');
   return data.publicUrl;
+}
+
+/* ── 같은 파일을 영원히 재시도하지 않는다 (2026-10-25) ─────────────────────
+   실측: 1022_이동욱… .mp4 가 57회 연속 실패(Buffer "Video could not be read").
+   원인은 moov 없는 손상 파일이었는데, 'failed' 는 재시도 대상이라 10분마다
+   스토리지 업로드 + Buffer 거부를 반복했다. 알림도 57번 쌓였다.
+   규칙: ① 올리기 전 mp4 구조 검사 → 손상이면 즉시 'rejected'(재시도 안 함)
+         ② 그 외 사유로도 같은 파일이 GIVE_UP_AFTER 회 연속 실패하면 'given_up'
+   둘 다 doneIdsFrom 이 '끝난 것' 으로 치므로 다음 영상으로 넘어간다.
+   실패 횟수는 ops_alert_state(key=tiktok_drive_fail:<fileId>) 에 둔다 —
+   tiktok_posts 는 파일당 한 줄이고 detail 이 덮어써져 횟수를 못 센다.
+   사람에게는 텔레그램(개인)으로 한 번 알린다 — 드라이브에서 파일을 바꾸거나
+   빼는 건 사람 몫이다. */
+const GIVE_UP_AFTER = Number(process.env.TIKTOK_DRIVE_GIVE_UP_AFTER || 3);
+const FAIL_KEY = (fileId) => 'tiktok_drive_fail:' + fileId;
+
+async function bumpFailCount(fileId, reason) {
+  try {
+    const { data } = await supabaseAdmin.from('ops_alert_state').select('last_payload').eq('key', FAIL_KEY(fileId)).maybeSingle();
+    const n = ((data && data.last_payload && Number(data.last_payload.n)) || 0) + 1;
+    await supabaseAdmin.from('ops_alert_state').upsert({
+      key: FAIL_KEY(fileId), updated_at: new Date().toISOString(),
+      last_payload: { n, last: String(reason || '').slice(0, 200), at: new Date().toISOString() },
+    });
+    return n;
+  } catch (e) {
+    console.warn('[drive-tiktok-post] 실패 횟수 기록 실패:', (e && e.message) || e);
+    return 1;   // 못 세면 1회로 본다 — 세다가 못 세서 포기하는 일은 없게
+  }
+}
+
+async function tellHuman(text) {
+  try {
+    const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
+    await sendTextToTelegramPersonalSafe(text);
+  } catch (e) { console.warn('[drive-tiktok-post] 텔레그램 알림 실패:', (e && e.message) || e); }
 }
 
 module.exports = withCronGuard('drive-tiktok-post', async function handler(req, res) {
@@ -277,6 +314,13 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
     try {
       const channelId = await buffer.findChannelId('tiktok');
       const buf = await drive.downloadVideo(file.id, MAX_BYTES);
+      /* 2026-10-25 — 올리기 전에 파일 구조를 본다. 손상이면 Buffer 까지 가지 않는다. */
+      const chk = mp4Readable(buf);
+      if (!chk.ok) {
+        const err = new Error('영상 파일 손상: ' + chk.reason + ' — 드라이브에 다시 올려야 함');
+        err.permanent = true;
+        throw err;
+      }
       publicUrl = await relayToStorage(file.id, file.name, buf);
       post = await buffer.createVideoPost({
         channelId, text: caption, title: shortTitle,
@@ -287,6 +331,19 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
     } catch (err) {
       status = 'failed';
       detail = String(err && err.message || err).slice(0, 400);
+      if (err && err.permanent) {
+        status = 'rejected';                       // 재시도 안 함 (doneIdsFrom 이 끝난 것으로 본다)
+        await tellHuman('🎬 틱톡 드라이브 영상 거부 — 재시도 안 함\n' + file.name + '\n' + detail
+          + '\n\n드라이브에서 이 파일을 온전한 것으로 바꾸거나(같은 이름이면 새 파일 id 로 다시 잡힌다) 폴더에서 빼세요.');
+      } else {
+        const n = await bumpFailCount(file.id, detail);
+        if (n >= GIVE_UP_AFTER) {
+          status = 'given_up';
+          detail = n + '회 연속 실패 후 포기 · 마지막: ' + detail.slice(0, 300);
+          await tellHuman('🎬 틱톡 드라이브 영상 포기 — ' + n + '회 연속 실패\n' + file.name + '\n' + detail.slice(0, 300)
+            + '\n\n파일을 바꾸거나 폴더에서 빼세요. 다시 시도시키려면 ops_alert_state 의 ' + FAIL_KEY(file.id) + ' 를 지우고 tiktok_posts 상태를 failed 로.');
+        }
+      }
     }
 
     /* 기록 실패를 삼키지 않는다 — 2026-08-07 유튜브 경로에서 같은 영상이
@@ -341,6 +398,14 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
     if (status === 'failed') {
       note(res, '틱톡 게시 실패: ' + file.name + ' — ' + detail);
       return res.status(502).json({ ok: false, error: 'tiktok post failed', file: file.name, detail });
+    }
+    if (status === 'rejected' || status === 'given_up') {
+      /* 이번 회차는 실패지만 '다음 회차에 낫지 않는' 종류라 5xx 로 또 알리지 않는다.
+         사람에겐 위에서 텔레그램으로 알렸고, 다음 회차부터 이 파일은 후보에서 빠진다. */
+      return res.status(200).json({
+        ok: true, [status]: true, file: file.name, detail,
+        note: note(res, '틱톡 영상 ' + (status === 'rejected' ? '거부(손상 파일)' : '포기(연속 실패)') + ': ' + file.name + ' — ' + detail.slice(0, 200)),
+      });
     }
     return res.status(200).json({
       ok: true, publish_id: post.id, file: file.name, article: art.title,

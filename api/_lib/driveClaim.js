@@ -152,6 +152,8 @@ async function releaseClaim(table, driveFileId, opts = {}) {
  *
  * 'failed' 는 재시도 대상이라 뺀다. 'claiming' 은 **아직 살아 있을 때만** 뺀다 —
  * 죽은 찜까지 영구히 빼면 그 영상은 영영 안 올라간다(그게 더 나쁘다).
+ * 'rejected'(손상 파일)·'given_up'(연속 실패 상한) 은 끝난 것으로 쳐서 뺀다 —
+ * 2026-10-25, 같은 손상 파일 57회 재시도 뒤 생긴 상태들 (drive-tiktok-post 머리말).
  */
 function doneIdsFrom(rows, opts = {}) {
   const staleMs = Number.isFinite(opts.staleMs) ? opts.staleMs : STALE_MS;
