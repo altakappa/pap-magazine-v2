@@ -181,6 +181,8 @@ const {
   // 2026-08-05 — 같은 앵커 재탕 가드 + 페퍼릿 태깅
   sameEventRecent, RERUN_WINDOW_MS, pepBlocked, pepCategory, pepScore,
 } = require('../_lib/celebDedup');
+// 2026-10-30 도메니코 — "셀럽속보 채팅방 기사를 아이돌 한정으로". 끄기: CELEB_WATCH_SCOPE=all
+const { isIdolNews, idolOnly } = require('../_lib/celebIdol');
 
 
 /* 영문 헤드라인 → 한국어.
@@ -300,6 +302,12 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
     // 들이는 관문을 걸어 타깃 신호가 있는 소식만 남긴다.
     items = items.filter(i => isOnTarget(i.title));
     const droppedOffTopic = beforeTopic - items.length;
+    // 2026-10-30 도메니코 — "아이돌 한정기사로 추려줘". isOnTarget 은 배우·트로트·
+    // '아이돌 출신' 문구·인도 영화 'BTS(behind the scenes)'까지 들였다 (7일 243건 중 39건).
+    // 아이돌 이름이 있거나, 아이돌 단어가 비유·과거형이 아닐 때만 남긴다.
+    const beforeIdol = items.length;
+    if (idolOnly()) items = items.filter(i => isIdolNews(i.title));
+    const droppedNonIdol = beforeIdol - items.length;
 
     /* 3) 교차 검증 클러스터링 */
     let clusters = clusterEvents(items);
@@ -373,7 +381,7 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
       if (picked.length >= MAX_PER_RUN) break;
     }
     if (dry) {
-      return res.status(200).json({ ok: true, dry: true, scanned: items.length, dropped_offtopic: droppedOffTopic,
+      return res.status(200).json({ ok: true, dry: true, scanned: items.length, dropped_offtopic: droppedOffTopic, dropped_non_idol: droppedNonIdol,
         picked: picked.map(c => ({ score: c.score, sources: c.sourceCount, topic: c.topic,
           headlines: c.headlines.map(h => h.source + ': ' + h.title) })) });
     }
