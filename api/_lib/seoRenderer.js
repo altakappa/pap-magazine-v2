@@ -844,7 +844,20 @@ function renderSeoHtml(kind, record, opts) {
    * (descAlt)' 에도 쓰여서, 바꾸면 한국어 기사에 영어 문단이 새로 붙는다.
    * 영어판이 자기 설명으로 쓸 때만 적용한다. */
   const _enDesc = descFromBody(record.content_en) || descEn;
-  const descMain = lang === 'ko' ? descKo : (lang === 'en' ? _enDesc : (_trDesc || descEn));
+  /* ── 영어판 검색 스니펫 오버라이드 (2026-10-30, 마이그레이션 180) ──────
+     GSC 9/27~10/24: /en 페이지가 노출 1위인데 CTR 0.1~1.5% (ja 10~18%).
+     제목이 검색어에 답을 안 한다 — 사람들은 'what sawadika means',
+     'adela nicole kidman references', 'tuide members' 를 찾는데 제목은
+     "LISA Opens a New Chapter with 'SaWaDiKa'" 같은 감상문이다.
+     ko 는 seo_title/seo_description 이 있는데 en 은 그 자리가 없어 H1 을
+     바꿔야만 했다. 그래서 en 전용 오버라이드를 둔다.
+     ⚠️ 적용 범위: <title>·og:title·twitter:title·meta description·JSON-LD
+     headline/description 뿐. H1(titleMain)·리드·본문은 그대로 — 헤드라인은
+     매거진의 목소리고, 검색 문구는 검색어에 맞춘 안내문이다. 둘은 다른 물건이다.
+     그 밖의 언어(es/de/fr…)는 seo_translations.title/description 이 그 역할. */
+  const _seoTitleEn = lang === 'en' ? String(record.seo_title_en || '').trim() : '';
+  const _seoDescEn = lang === 'en' ? String(record.seo_description_en || '').trim() : '';
+  const descMain = lang === 'ko' ? descKo : (lang === 'en' ? (_seoDescEn || _enDesc) : (_trDesc || descEn));
   const descAlt = lang === 'ko' ? descEn : (lang === 'en' ? descKo : descEn);
   /* 2026-07-22 (SPA 룩 통일) — 일부 요약(desc)이 "제목 — PAP Magazine" 줄로 시작해
      화면에서 h1 바로 아래 제목이 한 번 더 보였다(백필 산출물). SPA 에는 이 줄이 없다.
@@ -918,7 +931,9 @@ function renderSeoHtml(kind, record, opts) {
      번역 생성기 쪽 상한이고, 그건 2026-08-20 에 이미 들어가 있다(신규분 한정). */
   const seoTitle = lang === 'ko'
     ? (record.seo_title || (kind === 'film' ? _brand(`${titleKo} 패션 필름`, 'ko') : _brand(titleKo, 'ko')))
-    : (kind === 'film'
+    : _seoTitleEn
+      ? _brand(_seoTitleEn, 'en')                 // 2026-10-30 영어판 오버라이드 (위 주석)
+      : (kind === 'film'
         ? _brand(`${titleMain} — Fashion Film`, lang)
         : _brand(titleMain, lang));
   /* 2026-07-23 (Ahrefs 감사 — meta description too short 3,261건) — 온페이지
@@ -1379,7 +1394,7 @@ function renderSeoHtml(kind, record, opts) {
     primarySchema = {
       '@context': 'https://schema.org',
       '@type': cfg.schemaType,
-      headline: titleMain,
+      headline: _seoTitleEn || titleMain,   // 2026-10-30 — 영어판 오버라이드는 스키마 headline 에도 (title 태그와 같은 말을 해야 한다)
       // 2026-08-05 — 비한국어 페이지에 한국어 제목을 실으면 언어 신호가 섞여
       // 구글이 ko 판을 표준으로 고른다(articleBody 와 동일 원칙). ko 에서만 방출.
       alternativeHeadline: (!isEn && titleAlt !== titleMain) ? titleAlt : undefined,

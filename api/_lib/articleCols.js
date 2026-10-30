@@ -30,7 +30,8 @@ const ARTICLE_COLUMNS = [
   'title_en', 'content_en', 'videos', 'source_media_type', 'faq',
   'redirect_from', 'is_celeb', 'celeb_by', 'digest_kind', 'kind_by',
   'instagram_caption', 'seo_title', 'seo_description', 'description_en',
-  'faq_en', 'post_form', 'post_form_by'
+  'faq_en', 'post_form', 'post_form_by',
+  'seo_title_en', 'seo_description_en'   // 180 (2026-10-30) 영어판 검색 스니펫 오버라이드
 ];
 
 /* supabase .select() 에 그대로 넣는 문자열 */
