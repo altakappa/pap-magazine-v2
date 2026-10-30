@@ -87,7 +87,8 @@ module.exports = withCronGuard('youtube-organize', async function handler(req, r
     }
 
     // ── 1. 대상 행 ─────────────────────────────────────────
-    const cols = 'id, video_id, article_id, detail, created_at, playlist_hint, playlist_id, playlisted_at, meta_resync';
+    /* organize_error 를 빼먹으면 isDeadVideoRow 가 항상 false 다 — 10/20 수리가 5일간 헛돌았던 원인(10/27 정정). */
+    const cols = 'id, video_id, article_id, detail, created_at, playlist_hint, playlist_id, playlisted_at, meta_resync, organize_error';
     const { data: resync, error: e1 } = await supabaseAdmin.from('youtube_posts').select(cols)
       .eq('meta_resync', true).not('video_id', 'is', null).limit(MAX_PER_RUN);
     if (e1) throw new Error('youtube_posts(resync) 조회 실패: ' + e1.message);

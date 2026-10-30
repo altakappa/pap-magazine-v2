@@ -33,5 +33,15 @@ ok('건너뜀·중단이 note 에 남는다', /영상 삭제됨 건너뜀/.test(
 ok('첫 단계 조회가 할당량 때문에 실패하면 실패가 아니라 대기로 기록', /isQuotaError\(err\)\) \{\s*note\(res, '⏸ 할당량 소진 대기/.test(src) && /quotaWait: true/.test(src));
 ok('삭제·재생목록 생성은 없다', !/\.delete\(/.test(src) && !/createPlaylist/.test(src));
 
+console.log('\n[4] 판정에 필요한 열을 실제로 조회한다 (10/27 정정: 열 누락으로 [1]이 통과해도 운영에선 헛돌았다)');
+const colsMatch = src.match(/const cols = '([^']+)'/);
+const colList = colsMatch ? colsMatch[1].split(',').map((c) => c.trim()) : [];
+ok('cols 에 organize_error 포함', colList.includes('organize_error'));
+ok('cols 에 created_at 포함', colList.includes('created_at'));
+ok('todo·resync 조회가 같은 cols 를 쓴다', (src.match(/\.select\(cols\)/g) || []).length === 2);
+const fnSrc = require('../api/_lib/ytPlaylist').isDeadVideoRow.toString();
+const needed = ['organize_error', 'created_at'].filter((k) => fnSrc.includes('row.' + k));
+ok('isDeadVideoRow 가 읽는 모든 열이 cols 에 있다', needed.length === 2 && needed.every((k) => colList.includes(k)));
+
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);
