@@ -126,7 +126,7 @@ async function fetchPending(table, batch, cutoff) {
   const { data, error } = await applyScope(
     supabaseAdmin
       .from(table)
-      .select('id, faq')
+      .select('id, faq, title_en')
       .eq('status', 'published')
       .not('faq', 'is', null)
       .is('faq_en', null), cutoff)
@@ -137,7 +137,9 @@ async function fetchPending(table, batch, cutoff) {
   const out = [];
   for (const r of (data || [])) {
     const f = normalizeFaq(r.faq);
-    if (f) out.push({ id: r.id, faq: f });
+    /* en_title 을 같이 넘긴다 (2026-10-30). 고유명사 치환을 막는 유일한 '정답지'다 —
+       제목은 이미 영어로 발행돼 있어서 브랜드·인물 표기가 거기 확정돼 있다. */
+    if (f) out.push({ id: r.id, faq: f, en_title: r.title_en || '' });
   }
   return out;
 }
@@ -164,6 +166,22 @@ function buildPrompt(payload) {
     'Rules:',
     '- Translate every "q" and "a". Same count, same order, no new items, no dropped items.',
     '- Keep person names, brand names, agency names and @handles in their original spelling.',
+    /* 2026-10-30 — 고유명사 치환 사고. 한국어 FAQ 는 맞는데 영문에서 다른 실존
+       브랜드·인물로 바뀌어 나갔다: 마뗑킴→Maison Margiela, 비제로원→Serpenti Viper,
+       롤로 주아이→Rolo Tomassi. 심지어 "Maison Margiela is a fashion brand launched
+       in Seoul in 2011 by designer Kim Mateng" 라는 문장이 영문 페이지에 발행됐다.
+       원인: 한글 음차를 '원래 철자' 로 되돌리라고만 했더니 모델이 비슷하게 들리는
+       유명 브랜드로 매핑했다. 그래서 (a) 모르면 음차 그대로 두라고 명시하고,
+       (b) 이미 발행된 영문 제목을 정답 표기로 같이 넘긴다. */
+    '- The Korean text writes foreign names phonetically in Hangul. Romanize each one back',
+    '  to the real name of that exact entity — never swap in a different, better-known name.',
+    '  마뗑킴 is Matin Kim (NOT Maison Margiela). 비제로원 is B.zero1 (NOT Serpenti Viper).',
+    '  롤로 주아이 is Lolo Zouai (NOT Rolo Tomassi). These three actually shipped.',
+    '- If you are not certain which real-world entity a Hangul-written name refers to,',
+    '  transliterate it phonetically and leave it there. A clumsy romanization is harmless;',
+    '  naming the wrong real brand or person gets us a correction demand.',
+    '- "en_title" is this item title as already published in English. Any person, brand or',
+    '  product appearing there is the canonical English spelling — reuse it exactly.',
     '- Natural fashion-magazine English, not literal machine translation.',
     '- Each answer must stay self-contained and quotable on its own (20-60 words).',
     '- Do not add facts that are not in the Korean source.',
