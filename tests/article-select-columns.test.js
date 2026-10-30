@@ -31,7 +31,9 @@ console.log('\n=== 열 목록 ===');
 t('embedding 은 목록에 없다 (한 줄의 76%)', !ARTICLE_COLUMNS.includes('embedding'));
 t('제외 목록에 embedding 이 적혀 있다', ARTICLE_EXCLUDED.includes('embedding'));
 t('중복된 열이 없다', new Set(ARTICLE_COLUMNS).size === ARTICLE_COLUMNS.length);
-t('41개 열 (2026-09-14 스키마: 42개 중 embedding 제외)', ARTICLE_COLUMNS.length === 41, ARTICLE_COLUMNS.length);
+// 2026-10-30 마이그레이션 180: seo_title_en·seo_description_en 2개 추가 (커밋 060bc58, DB 열 존재 확인)
+t('43개 열 (2026-10-30 스키마: 44개 중 embedding 제외)', ARTICLE_COLUMNS.length === 43, ARTICLE_COLUMNS.length);
+t('영어판 검색 스니펫 열 포함', ARTICLE_COLUMNS.includes('seo_title_en') && ARTICLE_COLUMNS.includes('seo_description_en'));
 t('ARTICLE_SELECT 은 쉼표로 이은 문자열', /^[a-z_]+(, [a-z_]+)+$/.test(ARTICLE_SELECT));
 t('ARTICLE_SELECT 에 * 가 없다', !ARTICLE_SELECT.includes('*'));
 

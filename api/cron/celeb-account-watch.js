@@ -236,6 +236,21 @@ function briefChatId() {
   return process.env.TELEGRAM_PERSONAL_CHAT_ID || process.env.TELEGRAM_CHAT_ID || '';
 }
 
+/* 2026-10-30 도메니코: "PAP alerts 채팅창으로 전송되고 있는 아이돌 소식들도 PAP 셀럽 속보
+   채팅창으로 변경해줘." 감시 계정(celeb_watch_accounts)은 켜진 것이 전부 아이돌이다
+   (샤넬·디올·프라다는 꺼져 있음). 그래서 이 크론의 알림은 통째로 셀럽속보 방으로 보낸다.
+   셀럽속보 방 = celeb-watch(pushAlert)가 쓰는 TELEGRAM_CHAT_IDS 의 첫 번째 방
+   (10/30 로그 실측: -5490514666 한 곳).
+   우선순위: CELEB_ACCOUNT_CHAT_ID(직접 지정) → TELEGRAM_CHAT_IDS 첫 방 → 예전 방.
+   예전으로 되돌리기: CELEB_ACCOUNT_CHAT=personal */
+function alertChatId() {
+  if (String(process.env.CELEB_ACCOUNT_CHAT || '').toLowerCase() === 'personal') return briefChatId();
+  const direct = String(process.env.CELEB_ACCOUNT_CHAT_ID || '').trim();
+  if (direct) return direct;
+  const celeb = String(process.env.TELEGRAM_CHAT_IDS || '').split(',').map(x => x.trim()).filter(Boolean)[0];
+  return celeb || briefChatId();
+}
+
 module.exports = withCronGuard('celeb-account-watch', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
@@ -244,7 +259,7 @@ module.exports = withCronGuard('celeb-account-watch', async function handler(req
     if (!user) return;
   }
   const dry = String((req.query || {}).dry || '') === '1';
-  const chatId = briefChatId();
+  const chatId = alertChatId();
   if (!chatId) return res.status(200).json({ ok: false, error: 'TELEGRAM_CHAT_ID 미설정' });
 
   /* 목록 전체를 읽고 enabled 를 코드에서 가른다 (2026-09-10).

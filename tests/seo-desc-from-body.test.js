@@ -123,8 +123,9 @@ t('에디토리얼은 원래의 tr.description 을 그대로 쓴다', /ritratto 
 console.log('\n=== 폴백 순서가 코드에 그대로 있다 ===');
 t('tr.description 이 tr.body 보다 우선한다',
   /\(tr && tr\.description\) \|\| \(tr && tr\.body \? descFromBody\(tr\.body\) : ''\)/.test(SRC));
-t('meta 가 번역엔 _trDesc, 영어엔 _enDesc 를 쓴다',
-  /descMain = lang === 'ko' \? descKo : \(lang === 'en' \? _enDesc : \(_trDesc \|\| descEn\)\)/.test(SRC));
+// 2026-10-30 — 영어판은 seo_description_en 오버라이드가 먼저, 비면 _enDesc (커밋 060bc58, seo-en-override 테스트가 상세 검증)
+t('meta 가 번역엔 _trDesc, 영어엔 (오버라이드 ||) _enDesc 를 쓴다',
+  /descMain = lang === 'ko' \? descKo : \(lang === 'en' \? \(_seoDescEn \|\| _enDesc\) : \(_trDesc \|\| descEn\)\)/.test(SRC));
 t('화면 리드도 같은 두 갈래를 쓴다',
   /bodyMain = lang === 'ko' \? bodyKo : \(lang === 'en' \? _enDesc : \(_trDesc \|\| bodyEn\)\)/.test(SRC));
 t('한국어는 어느 쪽도 타지 않는다 (descKo 그대로)', /descMain = lang === 'ko' \? descKo/.test(SRC));
