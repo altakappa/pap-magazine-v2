@@ -560,7 +560,33 @@ async function generateArticleFromPost(post, opts){
     '}',
     '',
     'Article rules:',
-    '- DO NOT just translate the caption. Expand it into a proper magazine article.',
+    /* 2026-10-30 — 출처 한계를 규칙 맨 앞에 못 박는다.
+       사건: 스크림(@skreembeauty) 기사에서 캡션에 없는 "노스 웨스트를 할로윈에
+       핑크 괴물로 변신시켰다" 와 "도이치의 데이지 체인 필즈 무대 작업" 이
+       제목·본문·FAQ 에 모두 들어갔고, 당사자가 DM 으로 직접 정정을 요구했다.
+       둘 다 '아무 말이나 지어낸' 게 아니었다 — 실재하는 사건을 모델이 자기
+       사전지식에서 끌어와 엉뚱한 사람에게 붙인 것이다(둘 다 우리 매거진에
+       별도 기사가 있는 주제였다). 그래서 기존의 "Never invent" 로는 막히지
+       않았다. 막아야 하는 건 창작이 아니라 **캡션 밖 지식의 사용** 이다. */
+    '- SOURCE LIMIT — this is the hard rule. It outranks every other rule, length included.',
+    '  Everything you write may come from exactly two places: (1) the original caption',
+    '  below, and (2) text or imagery visible in the slides you were given.',
+    '  **Your own prior knowledge of the person, brand or event is NOT a source.**',
+    '  Do not add a fact because you believe it is true, because it is widely known,',
+    '  or because it fits. If it is not in the caption or on a slide, it does not exist.',
+    '  This applies hardest to things that feel adjacent and harmless: another project by',
+    '  the same person, a past collaboration, an award, a holiday or occasion the caption',
+    '  never names, a third party you associate with this subject. Those are exactly the',
+    '  ones that get published as fact and then get corrected by the subject.',
+    '  Never credit this subject with work by another person, and never place their work',
+    '  at an event, holiday or occasion that the caption does not name.',
+    '  A short fully-sourced body always beats a long one with one invented clause.',
+    '- 제목도 같은 규칙을 받는다 (title_ko · title_en · seo_title · seo_description).',
+    '  오히려 더 엄격하다 — 당사자와 독자가 가장 먼저, 가장 많이 보는 줄이기 때문이다.',
+    '  캡션·슬라이드에서 확인되지 않는 행위·사건·대상을 제목에 쓰지 않는다.',
+    '- DO NOT just translate the caption. Expand it into a proper magazine article —',
+    '  expand by restructuring, contextualising and writing better sentences,',
+    '  **never by adding facts the caption and slides do not carry.**',
     '- Body must read as standalone journalism. Never reference "this Instagram post".',
     '- Cite brand/designer names when visible in the images.',
     /* 2026-08-20 — 캐러셀 앞 4장을 넘긴다. 슬라이드마다 다른 사실이 찍혀 있는
