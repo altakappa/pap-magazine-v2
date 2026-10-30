@@ -36,6 +36,7 @@ const { buildHashtags } = require('../_lib/youtubeMeta');
 const { IG_HANDLE_URL } = require('../_lib/igFirstLink');
 const drive = require('../_lib/driveVideos');
 const buffer = require('../_lib/buffer');
+const breaker = require('../_lib/bufferBreaker');   // 2026-10-30 429 차단기
 const { matchArticle, groupUnmatched, fileCore } = require('../_lib/koMatch');
 const { loadSubPosts, findSubPost, subPostAsArticle, subPostUrl } = require('../_lib/igSubPosts');
 const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim');
@@ -152,6 +153,15 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
   }
   if (!drive.isConfigured()) {
     return res.status(200).json({ ok: true, note: note(res, 'YOUTUBE_CLIENT_ID/SECRET 미설정 — 드라이브 접근 불가') });
+  }
+  /* 2026-10-30 — Buffer 429 쿨다운 중이면 드라이브 조회·스토리지 업로드까지 가지 않는다.
+     10분마다 올렸다 거부당하는 왕복이 요청 상한을 갉아먹던 구조를 여기서 끊는다.
+     5xx 가 아니라 200 '보류' 다 — 연속 실패 알림 57회 같은 폭풍을 만들지 않는다.
+     (차단기가 켜질 때 텔레그램으로 한 번 알린다 — 아래 catch 참조) */
+  const cool = await breaker.check();
+  if (cool.cooling) {
+    return res.status(200).json({ ok: true, held: true, until: cool.until,
+      note: note(res, '⏸ Buffer 쿨다운 중 (429) — ' + cool.until + ' 까지 보류') });
   }
 
   try {
@@ -335,6 +345,14 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
         status = 'rejected';                       // 재시도 안 함 (doneIdsFrom 이 끝난 것으로 본다)
         await tellHuman('🎬 틱톡 드라이브 영상 거부 — 재시도 안 함\n' + file.name + '\n' + detail
           + '\n\n드라이브에서 이 파일을 온전한 것으로 바꾸거나(같은 이름이면 새 파일 id 로 다시 잡힌다) 폴더에서 빼세요.');
+      } else if (err && err.rateLimited) {
+        /* 2026-10-30 — 429 는 파일 탓이 아니다. 실패 횟수를 올리지 않는다(포기 금지).
+           차단기가 처음 켜진 순간만 사람에게 알린다. 이후 회차는 위 check 에서 보류된다. */
+        if (err.newlyTripped) {
+          await tellHuman('⏸ Buffer 레이트리밋(429) — 틱톡 게시 전부 ' + (err.until || '') + ' 까지 보류\n'
+            + '무료 플랜 상한(30일 3,000 / 24h 250 요청)일 가능성이 큽니다. publish.buffer.com 에서 플랜·사용량 확인.\n'
+            + '마지막 시도: ' + file.name);
+        }
       } else {
         const n = await bumpFailCount(file.id, detail);
         if (n >= GIVE_UP_AFTER) {
@@ -395,6 +413,12 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
       return res.status(500).json({ ok: false, error: 'record failed', publish_id: post && post.id, detail: msg });
     }
 
+    if (status === 'failed' && /429|쿨다운/.test(String(detail))) {
+      /* 레이트리밋은 다음 회차에 낫지 않는 종류 — 5xx 로 57번 우는 대신 200 '보류'.
+         기록은 failed 로 남아 쿨다운이 끝나면 같은 파일이 다시 후보가 된다. */
+      return res.status(200).json({ ok: true, held: true, file: file.name, detail,
+        note: note(res, '⏸ 틱톡 보류(Buffer 429): ' + file.name + ' — ' + String(detail).slice(0, 160)) });
+    }
     if (status === 'failed') {
       note(res, '틱톡 게시 실패: ' + file.name + ' — ' + detail);
       return res.status(502).json({ ok: false, error: 'tiktok post failed', file: file.name, detail });

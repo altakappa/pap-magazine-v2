@@ -54,6 +54,7 @@ const { requireAdmin } = require('../_lib/auth');
 const { verdictForMedia } = require('../_lib/igCredit');
 const { IG_HANDLE_URL } = require('../_lib/igFirstLink');
 const buffer = require('../_lib/buffer');
+const breaker = require('../_lib/bufferBreaker');   // 2026-10-30 429 차단기
 const tkd = require('../_lib/tiktokDrive');
 
 const CAPTION_MAX = 2200;          // Buffer 경유 상한 (TikTok 자체는 4000)
@@ -110,6 +111,12 @@ module.exports = withCronGuard('tiktok-reels', async function handler(req, res) 
 
   if (!buffer.isConfigured()) {
     return res.status(200).json({ ok: true, note: note(res, 'BUFFER_API_KEY 미설정 — 건너뜀') });
+  }
+  /* 2026-10-30 — Buffer 429 쿨다운 중이면 자리 찜(claiming)도 하지 않고 보류한다. */
+  const cool = await breaker.check();
+  if (cool.cooling) {
+    return res.status(200).json({ ok: true, held: true, until: cool.until,
+      note: note(res, '⏸ Buffer 쿨다운 중 (429) — ' + cool.until + ' 까지 보류') });
   }
 
   // ── 1. 이미 처리한 기사 (failed 는 제외해 재시도를 허용) ──────────
@@ -225,6 +232,11 @@ module.exports = withCronGuard('tiktok-reels', async function handler(req, res) 
     return res.status(500).json({ ok: false, error: 'record failed', posted: status === 'submitted', title: art.title });
   }
 
+  if (status === 'failed' && /429|쿨다운/.test(String(detail))) {
+    /* 2026-10-30 — 레이트리밋은 5xx 폭풍 대신 200 '보류'. failed 기록은 남아 쿨다운 뒤 재시도된다. */
+    return res.status(200).json({ ok: true, held: true, detail, title: art.title,
+      note: note(res, '⏸ 릴스 보류(Buffer 429): ' + String(detail).slice(0, 150)) });
+  }
   if (status === 'failed') {
     note(res, '틱톡 게시 실패 — ' + String(detail).slice(0, 150));
     return res.status(502).json({ ok: false, error: 'tiktok post failed', detail, title: art.title });

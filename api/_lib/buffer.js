@@ -27,6 +27,7 @@
  */
 
 const API = 'https://api.buffer.com';
+const breaker = require('./bufferBreaker');   // 2026-10-30 429 차단기
 
 // 워밍된 람다 안에서만 유효한 캐시 (조직/채널 ID는 거의 안 변한다).
 const CACHE_MS = 10 * 60 * 1000;
@@ -40,6 +41,14 @@ function apiKey() {
 
 /** Buffer GraphQL 호출. 성공 시 data 반환, 실패는 전부 throw. */
 async function graphql(query, variables, timeoutMs) {
+  /* 2026-10-30 — 쿨다운 중이면 Buffer 를 부르지 않는다. 30일 롤링 상한에 걸린
+     상태에서 10분마다 한 요청씩 더 태우면 윈도가 영원히 안 비워진다. */
+  const cool = await breaker.check();
+  if (cool.cooling) {
+    const e = new Error('Buffer 쿨다운 중 (429 이후) — ' + cool.until + ' 까지 호출 보류');
+    e.rateLimited = true; e.code = 'BUFFER_COOLDOWN'; e.until = cool.until;
+    throw e;
+  }
   const r = await fetch(API, {
     method: 'POST',
     headers: {
@@ -55,7 +64,12 @@ async function graphql(query, variables, timeoutMs) {
     throw new Error('Buffer 인증 실패 (HTTP ' + r.status + ') — API 키 만료/오타 의심');
   }
   if (r.status === 429) {
-    throw new Error('Buffer 레이트리밋 (429) — 잠시 후 재시도');
+    /* 2026-10-30 — "잠시 후 재시도" 는 틀린 진단이었다. 무료 플랜 30일 3,000 요청
+       상한에 걸리면 며칠을 가고, 재시도 자체가 상한을 갉아먹는다. 차단기를 올린다. */
+    const t = await breaker.trip('HTTP 429');
+    const e = new Error('Buffer 레이트리밋 (429) — ' + t.until + ' 까지 쿨다운 (호출 보류)');
+    e.rateLimited = true; e.code = 'BUFFER_429'; e.until = t.until; e.newlyTripped = !!t.newly;
+    throw e;
   }
   if (!r.ok) {
     throw new Error('Buffer HTTP ' + r.status + ': ' + JSON.stringify(j || {}).slice(0, 300));
