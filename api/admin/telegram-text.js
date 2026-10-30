@@ -7,14 +7,17 @@
  * 봇 토큰은 Vercel env 에만 있어 로컬·클로드에서 직접 못 보낸다.
  * 관리자 세션으로만 호출되는 얇은 라우트 하나로 해결한다. 저장·발행과 무관하다.
  *
- * Body: { text: string, personal?: boolean }
- *   personal=true 면 TELEGRAM_PERSONAL_CHAT_ID(도메니코 개인방), 아니면 운영 그룹(TELEGRAM_CHAT_ID).
+ * Body: { text: string, personal?: boolean, room?: 'celeb'|'group' }
+ *   personal=true 면 TELEGRAM_PERSONAL_CHAT_ID(도메니코 개인방).
+ *   2026-10-30 도메니코 "기사 관련된 내용은 전부 pap 셀럽속보 방으로" → 기본은 셀럽속보 방(_lib/celebChat).
+ *   room='group' 이면 예전 운영 그룹(TELEGRAM_CHAT_ID). 셀럽속보 설정이 없으면 운영 그룹으로 떨어진다.
  * 텔레그램 sendMessage 상한이 4096자라 4000자 단위로 잘라 순서대로 보낸다(캡션 한/영 합치면 2~3천자).
  */
 'use strict';
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
-const { sendTextToTelegramSafe, sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
+const { sendTextToTelegramSafe, sendTextToTelegramPersonalSafe, sendTextToChatSafe } = require('../_lib/telegram');
+const { celebChatId } = require('../_lib/celebChat');
 
 const CHUNK = 4000;
 const MAX_TOTAL = 16000;
@@ -42,7 +45,10 @@ module.exports = async function handler(req, res) {
   const text = typeof b.text === 'string' ? b.text.trim() : '';
   if (!text) return res.status(400).json({ error: 'text 가 비었다' });
   if (text.length > MAX_TOTAL) return res.status(413).json({ error: 'text 가 너무 길다 (' + MAX_TOTAL + '자 상한)' });
-  const send = b.personal ? sendTextToTelegramPersonalSafe : sendTextToTelegramSafe;
+  const celeb = celebChatId();
+  const send = b.personal ? sendTextToTelegramPersonalSafe
+    : (b.room === 'group' || !celeb) ? sendTextToTelegramSafe
+    : (p) => sendTextToChatSafe(celeb, p);
   const parts = splitChunks(text, CHUNK);
   const results = [];
   for (const p of parts) {

@@ -22,7 +22,8 @@ console.log('\n=== 가드 ===');
 t('관리자 세션 필수', /requireAdmin\(req, res\)/.test(src));
 t('POST 만', /req\.method !== 'POST'/.test(src));
 t('빈 텍스트 400', /text 가 비었다/.test(src));
-t('개인방·그룹 선택 (personal)', /b\.personal \? sendTextToTelegramPersonalSafe : sendTextToTelegramSafe/.test(src));
+// 2026-10-30 — 기본이 셀럽속보 방으로 바뀜 (도메니코 "기사 관련된 내용은 전부 pap 셀럽속보 방으로")
+t('개인방·운영그룹·셀럽속보 선택', /b\.personal \? sendTextToTelegramPersonalSafe/.test(src) && /b\.room === 'group' \|\| !celeb\) \? sendTextToTelegramSafe/.test(src) && /sendTextToChatSafe\(celeb, p\)/.test(src));
 t('조각을 직렬로 보낸다 (순서 보장)', /for \(const p of parts\) \{\s*const r = await send\(p\)/.test(src));
 
 console.log('\n=== 분할 ===');

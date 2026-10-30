@@ -67,7 +67,9 @@ module.exports = async function handler(req, res) {
     const files = await buildCarousel(pub, titleKo, titleEn);
     const tg = require('../_lib/telegram');
     const caption = String(b.caption || ('🖼 캐러셀 ' + files.length + '장 — 브리프 #' + row.id + ' · ' + titleKo));
-    const sent = await tg.sendDocumentsToTelegram(files, caption, row.chat_id);
+    // 2026-10-30 도메니코 "기사 관련된 내용은 전부 pap 셀럽속보 방으로" — 설정이 없으면 브리프 받은 방(row.chat_id)
+    const outChat = require('../_lib/celebChat').celebOr(row.chat_id);
+    const sent = await tg.sendDocumentsToTelegram(files, caption, outChat);
     if (b.titleKo || b.titleEn) {
       /* 게시용 제목도 같이 바꾼다 — "올려 N" 이 이 제목으로 커버를 다시 그린다. */
       const next = { ...row.result, publish: { ...pub, titleKo, titleEn } };

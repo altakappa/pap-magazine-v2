@@ -31,6 +31,7 @@ const { discoverAccount } = require('../_lib/igDiscovery');
 const { discoverChannel } = require('../_lib/ytDiscovery');
 const { collectSubPosts } = require('../_lib/igSubPosts');
 const { sendTextToChatSafe } = require('../_lib/telegram');
+const { celebOr } = require('../_lib/celebChat');
 
 const FRESH_MS = 24 * 3600 * 1000;   // ② 게시 24시간 이내만
 /* ③ 실행당 판정 상한. 한 배치(NEWS_BATCH)와 같게 둬서 **AI 콜은 실행당 1회**다.
@@ -237,18 +238,11 @@ function briefChatId() {
 }
 
 /* 2026-10-30 도메니코: "PAP alerts 채팅창으로 전송되고 있는 아이돌 소식들도 PAP 셀럽 속보
-   채팅창으로 변경해줘." 감시 계정(celeb_watch_accounts)은 켜진 것이 전부 아이돌이다
-   (샤넬·디올·프라다는 꺼져 있음). 그래서 이 크론의 알림은 통째로 셀럽속보 방으로 보낸다.
-   셀럽속보 방 = celeb-watch(pushAlert)가 쓰는 TELEGRAM_CHAT_IDS 의 첫 번째 방
-   (10/30 로그 실측: -5490514666 한 곳).
-   우선순위: CELEB_ACCOUNT_CHAT_ID(직접 지정) → TELEGRAM_CHAT_IDS 첫 방 → 예전 방.
-   예전으로 되돌리기: CELEB_ACCOUNT_CHAT=personal */
+   채팅창으로 변경해줘" → 이어서 "기사 관련된 내용은 전부 pap 셀럽속보 방으로".
+   켜진 감시 계정 99개는 전부 아이돌이라(샤넬·디올·프라다는 꺼짐) 통째로 셀럽속보 방으로.
+   방 결정은 _lib/celebChat 한 곳에서 한다. 되돌리기: CELEB_CHAT_ROUTE=old */
 function alertChatId() {
-  if (String(process.env.CELEB_ACCOUNT_CHAT || '').toLowerCase() === 'personal') return briefChatId();
-  const direct = String(process.env.CELEB_ACCOUNT_CHAT_ID || '').trim();
-  if (direct) return direct;
-  const celeb = String(process.env.TELEGRAM_CHAT_IDS || '').split(',').map(x => x.trim()).filter(Boolean)[0];
-  return celeb || briefChatId();
+  return celebOr(briefChatId());
 }
 
 module.exports = withCronGuard('celeb-account-watch', async function handler(req, res) {

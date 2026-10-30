@@ -68,7 +68,14 @@ async function fetchBuffer(url, timeoutMs) {
 
 async function tell(text) {
   try {
-    const { sendTextToTelegramPersonalSafe, sendTextToTelegramSafe } = require('../_lib/telegram');
+    const { sendTextToTelegramPersonalSafe, sendTextToTelegramSafe, sendTextToChatSafe } = require('../_lib/telegram');
+    /* 2026-10-30 도메니코 "기사 관련된 내용은 전부 pap 셀럽속보 방으로" — 웹·인스타 게시
+       결과도 기사 소식이다. 셀럽속보 방이 먼저, 실패하면 예전 길(개인방 → 운영방). */
+    const celeb = require('../_lib/celebChat').celebChatId();
+    if (celeb) {
+      const c = await sendTextToChatSafe(celeb, text);
+      if (c && c.ok) return;
+    }
     const r = await sendTextToTelegramPersonalSafe(text);
     if (!r.ok) await sendTextToTelegramSafe(text);
   } catch (e) {
@@ -683,8 +690,12 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
          ? ('\n\n※ 가로 사진 ' + droppedCut + '장은 비율을 맞추면 인물이 잘려서 뺐습니다.')
          : '');
     const split = celebBrief.splitCaptionForTelegram(capWithNote);
-    await tg.sendMediaToTelegram(media, split.caption, rows[0].chat_id);
-    if (split.overflow) await tg.sendTextToChatSafe(rows[0].chat_id, split.overflow);
+    /* 2026-10-30 도메니코 "기사 관련된 내용은 전부 pap 셀럽속보 방으로" — 브리프는 링크를 보낸
+       방(대개 개인방)이 아니라 셀럽속보 방으로 간다. 설정이 없으면 예전처럼 링크 보낸 방.
+       "올려 <번호>" 는 webhook 이 허용된 방 전부에서 브리프를 찾으므로 개인방에서 쳐도 된다. */
+    const outChat = require('../_lib/celebChat').celebOr(rows[0].chat_id);
+    await tg.sendMediaToTelegram(media, split.caption, outChat);
+    if (split.overflow) await tg.sendTextToChatSafe(outChat, split.overflow);
     /* 댓글·대댓글은 **검토용**으로 보여준다. 도메니코가 붙여넣는 게 아니라
        "올려" 하면 게시 직후 우리가 직접 단다(도메니코 2026-08-23 확인).
        그래서 라벨에 그 사실을 적는다 — 안 적으면 손으로 달아야 하는 줄 안다. */
@@ -693,11 +704,11 @@ module.exports = withCronGuard('celeb-brief', async function handler(req, res) {
         .concat(comments.comment ? ['', '💬 댓글', comments.comment] : [])
         .concat(comments.reply ? ['', '↳ 대댓글', comments.reply] : [])
         .join('\n');
-      await tg.sendTextToChatSafe(rows[0].chat_id, preview);
+      await tg.sendTextToChatSafe(outChat, preview);
     }
     /* 브리프 번호 — 여러 건이 동시에 대기할 때 "올려 <번호>" 로 고르게 한다
        (자동 감시 도입으로 동시 도착이 정상 상황이 됐다). */
-    await tg.sendTextToChatSafe(rows[0].chat_id,
+    await tg.sendTextToChatSafe(outChat,
       '✅ 브리프 #' + rows[0].id + ' — 게시: "올려 ' + rows[0].id + '" (대기가 이것뿐이면 그냥 "올려")');
 
     await supabaseAdmin.from('celeb_brief_queue').update({

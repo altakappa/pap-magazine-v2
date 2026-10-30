@@ -21,8 +21,9 @@ t('관리자 세션 필수 · POST 만', /requireAdmin\(req, res\)/.test(src) &&
 t('게시 경로와 같은 자르기(cropSlideToVariant)·같은 drop 규칙', /cropSlideToVariant\(/.test(src) && /if \(cropped\.drop\) continue;/.test(src));
 t('커버가 1번, 첫 장이 사진이면 원본은 다시 넣지 않는다', /01-cover\.jpg/.test(src) && /items\[0\]\.type === 'image' \? items\.slice\(1\) : items/.test(src));
 t('10장 상한 = igPublish 와 같다', mod.IG_CAROUSEL_MAX === 10 && /slice\(0, 10\)/.test(R('api/_lib/igPublish.js')));
-t('문서로 보낸다 (바이트 보존)', /sendDocumentsToTelegram\(files, caption, row\.chat_id\)/.test(src));
-t('브리프를 받은 방(row.chat_id)으로 보낸다', /row\.chat_id/.test(src));
+t('문서로 보낸다 (바이트 보존)', /sendDocumentsToTelegram\(files, caption, outChat\)/.test(src));
+// 2026-10-30 — 셀럽속보 방이 먼저, 설정이 없으면 브리프 받은 방 (도메니코 "기사 관련된 내용은 전부 pap 셀럽속보 방으로")
+t('셀럽속보 방, 없으면 브리프를 받은 방(row.chat_id)', /celebOr\(row\.chat_id\)/.test(src));
 t('제목을 주면 게시용 제목(publish.titleKo/En)도 갱신', /publish: \{ \.\.\.pub, titleKo, titleEn \}/.test(src));
 t('인스타 게시는 하지 않는다 (igPublish 를 require 하지 않는다)', !/require\(['"][^'"]*igPublish['"]\)/.test(src));
 const fn = vercel.functions['api/admin/celeb-carousel-telegram.js'];
