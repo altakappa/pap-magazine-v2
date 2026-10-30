@@ -66,6 +66,14 @@ function makeDb(rows) {
     igFirstLink: { IG_HANDLE_URL: 'instagram.com/pap_magazine' },
     driveVideos: { isConfigured: () => true, listVideos: async () => files, downloadVideo: async () => Buffer.from('v') },
     mp4Check: { mp4Readable: () => ({ ok: true, reason: '', boxes: [] }) },   // 2026-10-25 손상 검사는 여기선 통과시킨다 (가짜 버퍼)
+    /* 2026-10-30 — 429 차단기를 반드시 흉내 낸다.
+       빼놓았더니 진짜 bufferBreaker 가 로드됐고, 그 모듈은 `./supabase` 를 상대경로로
+       부르기 때문에 아래 _lib 가로채기(정규식이 `_lib/이름` 만 잡는다)를 빠져나가
+       **운영 DB 를 그대로 읽었다.** 운영에 429 쿨다운이 켜져 있던 10/30, 핸들러가
+       `cool.cooling === true` 로 조기 반환해 8건 중 5건이 깨졌고 배포 관문이 막혔다.
+       로컬은 쿨다운 행이 안 보여 초록이었다 — 환경에 따라 결과가 갈리는 시험이었다.
+       시험은 바깥 상태를 읽으면 안 된다. 여기서 끊는다. */
+    bufferBreaker: { check: async () => ({ cooling: false, until: null }), trip: async () => {}, _reset: () => {} },
     buffer: { isConfigured: () => true, findChannelId: async () => 'ch', createVideoPost: async (o) => { posts.push(o); return { id: 'P1', status: 'sending' }; } },
     koMatch: { matchArticle: (name) => { const f = files.find((x) => x.name === name); return { matched: arts[f.id], score: 0.9, reason: '' }; }, groupUnmatched: () => '', fileCore: (n) => n },
     igSubPosts: { loadSubPosts: async () => [], findSubPost: () => null, subPostAsArticle: () => null, subPostUrl: () => '' },
