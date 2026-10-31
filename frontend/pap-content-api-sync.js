@@ -773,6 +773,92 @@ window._papFilmAutoPlay = function(){
   // first paint stays as-is (no flash, no reorder). The card markup
   // mirrors the static cards in index.html so the same CSS + click
   // handler (openArticleFromCard) keeps working.
+  /* ── 2026-10-31 홈 캐러셀: 끝에 닿으면 이어 붙인다 ──────────────────────
+     증상(도메니코): "홈에서 기사를 넘기면서 보다보면 일부 기사만 뜬다."
+     실측: 캐러셀은 index.html 정적 카드 42장(2026-03-02 에서 멈춤) + API 최신 100편뿐.
+     발행 3,250편 중 그 사이 1,628편이 홈에서 아예 보이지 않았다.
+     상한을 푸는 것은 답이 아니다 — 2026-08-22 실측에서 2,424장을 그리자 캐러셀이
+     페이지 DOM 의 74%, 롱태스크 713ms 였다. 가로로 2,424장을 넘기는 사람은 없다.
+     그래서 '첫 100장 + 넘기는 만큼' 으로 바꾼다. 첫 페인트 비용은 그대로 0. */
+  function _escCard(v){
+    return String(v == null ? '' : v)
+      .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  /* 카드 한 장. 첫 배치와 이어붙이기가 같은 모양을 쓰도록 한 곳에 둔다. */
+  function _makeFashionCard(a, eager){
+    var card = document.createElement('a');
+    card.className = 'fashion-card';
+    card.setAttribute('data-dyn', '1');
+    var slugAttr = a.slug || '';
+    if(slugAttr){
+      card.setAttribute('data-slug', slugAttr);
+      card.setAttribute('href', '/article/' + encodeURIComponent(slugAttr));
+    } else {
+      card.setAttribute('href', '#');
+    }
+    card.setAttribute('onclick', 'event.preventDefault();openArticleFromCard(this)');
+    var img = a.th || a.img || '';
+    var meta = papFmtMeta(a.cat || '', a.d || a.published_date || '');
+    var _lt = (typeof _papLocTitle==='function' && a.ti18n) ? (_papLocTitle(a)||a.t||'') : (a.t||'');
+    var _enT = (a.ti18n && a.ti18n.en) ? a.ti18n.en : '';
+    if(a.t) card.setAttribute('data-title-ko', a.t);
+    if(_enT) card.setAttribute('data-title-en', _enT);
+    card.innerHTML =
+      '<div class="fashion-card-img"><img loading="' + (eager ? 'eager' : 'lazy') + '" decoding="async"' +
+        (eager ? ' fetchpriority="high"' : '') + ' src="' + _escCard(img) + '" alt="' + _escCard(_lt) + '"></div>' +
+      '<div class="fashion-card-info">' +
+        '<div class="fashion-card-cat">' + _escCard(meta) + '</div>' +
+        '<div class="fashion-card-title">' + _escCard(_lt) + '</div>' +
+      '</div>';
+    return card;
+  }
+  var HOME_CAROUSEL_MORE = 100;   // 끝에 닿을 때마다 이어 붙이는 장수
+  var _homeMoreBusy = false;
+  /* 지금 트랙에 붙어 있는 것 — slug 와 제목 둘 다로 본다(정적 카드엔 slug 가 없을 수 있다). */
+  function _homeCarouselHave(track){
+    var have = {};
+    var cards = track.querySelectorAll('.fashion-card');
+    for(var i = 0; i < cards.length; i++){
+      var sg = cards[i].getAttribute('data-slug');
+      if(sg) have[sg] = 1;
+      var tEl = cards[i].querySelector('.fashion-card-title');
+      var tt = tEl ? String(tEl.textContent || '').trim() : '';
+      if(tt) have['t:' + tt] = 1;
+    }
+    return have;
+  }
+  function _homeCarouselMore(track){
+    if(_homeMoreBusy) return 0;
+    var all = (typeof artData !== 'undefined' && Array.isArray(artData)) ? artData : [];
+    if(!all.length) return 0;          // 전량 카탈로그가 아직 안 왔다 — 다음 스크롤에 다시 온다
+    _homeMoreBusy = true;
+    var have = _homeCarouselHave(track);
+    var added = 0;
+    for(var i = 0; i < all.length && added < HOME_CAROUSEL_MORE; i++){
+      var a = all[i];
+      if(!a) continue;
+      var t = (a.t || '').trim();
+      if(!t) continue;
+      if((a.slug && have[a.slug]) || have['t:' + t]) continue;
+      track.appendChild(_makeFashionCard(a, false));
+      added++;
+    }
+    _homeMoreBusy = false;
+    return added;
+  }
+  function _wireHomeCarouselMore(track){
+    if(track.getAttribute('data-more-wired') === '1') return;
+    track.setAttribute('data-more-wired', '1');
+    track.addEventListener('scroll', function(){
+      /* 오른쪽 끝 600px 안에 들어왔을 때만. 왼쪽으로 되돌아올 땐 아무 일도 없다. */
+      if(track.scrollLeft + track.clientWidth < track.scrollWidth - 600) return;
+      /* 홈은 이 순간까지 전량 요청이 0건이다(2026-09-22 결정). 여기서 연다. */
+      try { if(typeof window.papEnsureFullCatalog === 'function') window.papEnsureFullCatalog(); } catch(_){}
+      _homeCarouselMore(track);
+    }, { passive: true });
+  }
+
   function _renderHomeFashionArticles(apiArticles){
     var track = document.getElementById('fashionTrack');
     if(!track || !Array.isArray(apiArticles) || !apiArticles.length) return;
@@ -851,8 +937,6 @@ window._papFilmAutoPlay = function(){
     candidates.reverse().forEach(function(a, idx){
       // reverse 이후 idx가 클수록 원래 배열의 앞쪽(=최신). 상위 3장은 eager.
       var isTop = idx >= _eagerCutoff;
-      var loadingAttr = isTop ? 'eager' : 'lazy';
-      var priorityAttr = isTop ? ' fetchpriority="high"' : '';
       // 버그수정 2026-07-16 — 이미 JS 로 생성돼 화면에 있는 dyn 카드는 새로 만들지
       // 않고 기존 요소를 맨 앞으로 이동(insertBefore 는 move)시켜 재정렬만 한다.
       // 이미지 재로드 없이 순서가 항상 apiArticles(최신순)를 따르게 된다.
@@ -862,41 +946,9 @@ window._papFilmAutoPlay = function(){
         track.insertBefore(existingDyn, track.firstChild);
         return;
       }
-      // SEO — 실제 <a href> 카드로 생성. 크롤러(구글 JS 렌더 포함)가
-      // 목록 → 상세(/article/<slug>) 링크 그래프를 따라갈 수 있게 한다.
-      // 클릭은 preventDefault 후 기존 SPA 오버레이 그대로.
-      var card = document.createElement('a');
-      card.className = 'fashion-card';
-      card.setAttribute('data-dyn', '1');
-      var slugAttr = a.slug || '';
-      if(slugAttr){
-        card.setAttribute('data-slug', slugAttr);
-        card.setAttribute('href', '/article/' + encodeURIComponent(slugAttr));
-      } else {
-        card.setAttribute('href', '#');
-      }
-      card.setAttribute('onclick', 'event.preventDefault();openArticleFromCard(this)');
-      var img = a.th || a.img || '';
-      // 2026-07-20 QA 표기통일 — 공통 papFmtMeta(pap-utils)로 단일화.
-      // (기존 로컬 Title-case + _fmt 조합과 동일 결과지만, 이제 전 페이지가
-      //  한 함수를 공유해 표기가 갈릴 여지를 없앤다.)
-      // 2026-07-21 QA(표기 재발) — 폴백을 없앴다. 폴백은 Title-case 를 안 해서
-      // 조용히 다른 표기를 만들었고, 그게 이 QA 가 반복된 방식이다.
-      // pap-utils.js 는 이 파일보다 먼저 로드된다(전 페이지 defer 순서 확인).
-      // 만에 하나 없으면 눈에 띄게 실패하는 편이 조용히 갈리는 것보다 낫다.
-      var meta = papFmtMeta(a.cat || '', a.d || a.published_date || '');
-      // 2026-07-26 — 카드 제목을 현재 언어로. ko/en 을 data 속성에 실어
-      // setLang→_applyArticleCardI18n 이 정적 JSON 없이도 즉시 전환하게 한다.
-      var _lt = (typeof _papLocTitle==='function' && a.ti18n) ? (_papLocTitle(a)||a.t||'') : (a.t||'');
-      var _enT = (a.ti18n && a.ti18n.en) ? a.ti18n.en : '';
-      if(a.t) card.setAttribute('data-title-ko', a.t);
-      if(_enT) card.setAttribute('data-title-en', _enT);
-      card.innerHTML =
-        '<div class="fashion-card-img"><img loading="' + loadingAttr + '" decoding="async"' + priorityAttr + ' src="' + _esc(img) + '" alt="' + _esc(_lt) + '"></div>' +
-        '<div class="fashion-card-info">' +
-          '<div class="fashion-card-cat">' + _esc(meta) + '</div>' +
-          '<div class="fashion-card-title">' + _esc(_lt) + '</div>' +
-        '</div>';
+      /* 2026-10-31 — 카드 만들기는 _makeFashionCard 하나로 모았다.
+         이어붙이기(끝에 닿았을 때)와 모양이 갈리지 않게 하려는 것. */
+      var card = _makeFashionCard(a, isTop);
       track.insertBefore(card, track.firstChild);
     });
     // QA #344 — 위 prepend가 끝난 뒤, 정적 HTML의 첫 3장도 eager로 강제 승격.
@@ -909,6 +961,19 @@ window._papFilmAutoPlay = function(){
         _allCards[i].setAttribute('decoding', 'async');
       }
     } catch(_){}
+    /* 2026-10-31 — 첫 배치가 붙었으면 2026-03-02 에서 멈춘 정적 카드를 걷는다.
+       날짜 순서가 '최신 100편 → 7개월 전' 으로 끊기던 자리가 여기다.
+       정적 카드는 JS 없는 첫 페인트용 폴백이지 목록이 아니다 — 크롤러에는 그대로 남는다.
+       API 가 아무것도 주지 못한 장애 상황에서는 걷지 않는다(빈 캐러셀보다 낫다). */
+    try {
+      if(track.querySelector('.fashion-card[data-dyn="1"]')){
+        var _stale = track.querySelectorAll('.fashion-card:not([data-dyn="1"])');
+        for(var _si = 0; _si < _stale.length; _si++){
+          if(_stale[_si].parentNode) _stale[_si].parentNode.removeChild(_stale[_si]);
+        }
+      }
+    } catch(_){}
+    _wireHomeCarouselMore(track);
   }
 
   // Convert Supabase editorial record → hardcoded edData format.
