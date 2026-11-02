@@ -4,7 +4,10 @@
  *
  *  · api/_lib/instaComposite.js 가 pap-admin.js _papInstaCompositeOne 의 좌표 규칙을 그대로 옮겼는지(순수 함수 layout)
  *  · telegram.js sendEditorialToTelegram 이 커버(바이트 그대로) + 갤러리 합성 PNG 를 **문서**로 보내는지
- *  · sharp 가 있으면 실제로 1080×1350 PNG 가 나오는지(픽셀 검사)
+ *  · sharp 가 있으면 실제로 기준 캔버스 크기의 PNG 가 나오는지(픽셀 검사)
+ *    ※ 2026-11-02 기준 캔버스가 1080×1350 → 2160×2700 으로 올라갔다. 기대값을
+ *      숫자로 박지 않고 resolveInstaOpts 가 돌려준 W·H 로 쓴다 — 규격이 또 바뀌어도
+ *      이 시험이 지키려는 것('ZIP 과 텔레그램이 같은 규칙')은 그대로 유지되도록.
  */
 'use strict';
 const fs = require('fs');
@@ -24,20 +27,20 @@ const ob = IC.resolveInstaOpts(S, 'https://x/b.jpg');
 const oz = IC.resolveInstaOpts(null, 'https://x/c.jpg');
 t('perImage 가 global 을 덮는다 (offsetY 3 · alpha 60 · 로고 끔 · 120%)', oa.offsetY === 3 && oa.logoAlpha === 60 && oa.logoEnabled === false && oa.imgScale === 120 && oa.logoPct === 15);
 t('perImage 없는 이미지는 global + 기본값', ob.offsetY === 0 && ob.logoAlpha === 85 && ob.logoEnabled === true && ob.imgScale === 100 && ob.padPct === 1);
-t('설정 자체가 없으면 관리자 기본값 (4:5 · 15% · 1% · 85% · 켜짐)', oz.W === 1080 && oz.H === 1350 && oz.logoPct === 15 && oz.padPct === 1 && oz.logoAlpha === 85 && oz.logoEnabled === true);
-t('1:1 이면 1080×1080', IC.resolveInstaOpts({ global: { aspect: '1:1' } }, 'u').H === 1080);
+t('설정 자체가 없으면 관리자 기본값 (4:5 · 15% · 1% · 85% · 켜짐)', oz.W === IC.CANVAS_W && oz.H === IC.CANVAS_H_45 && oz.logoPct === 15 && oz.padPct === 1 && oz.logoAlpha === 85 && oz.logoEnabled === true);
+t('1:1 이면 2160×2160 (2026-11-02 기준 상향)', IC.resolveInstaOpts({ global: { aspect: '1:1' } }, 'u').H === 2160);
 
 console.log('\n=== 좌표 규칙 = 클라이언트 캔버스 ===');
 // pap-admin.js: scale = max(W/iw, H/ih) * imgScale/100; dx = (W-dw)/2 + offsetX/100*W; dy = (H-dh)/2 + offsetY/100*H
 t('클라이언트 공식이 그대로 있다', /var scale = Math\.max\(W \/ iw, H \/ ih\) \* \(imgScale \/ 100\);/.test(admin) && /var dx = \(W - dw\) \/ 2 \+ \(offsetX \/ 100\) \* W;/.test(admin));
 const L1 = IC.layout(1600, 2000, oz);
-t('세로 4:5 원본 1600×2000 → 1080×1350 꽉 채움, 오프셋 0', L1.dw === 1080 && L1.dh === 1350 && L1.dx === 0 && L1.dy === 0 && L1.vw === 1080 && L1.vh === 1350);
+t('세로 4:5 원본은 캔버스를 꽉 채우고 오프셋 0', L1.dw === oa.W && L1.dh === oa.H && L1.dx === 0 && L1.dy === 0 && L1.vw === oa.W && L1.vh === oa.H);
 const L2 = IC.layout(3000, 2000, oz);
-t('가로 원본은 cover-fit 으로 좌우가 잘린다 (dx<0 → sx 만큼 extract)', L2.dh === 1350 && L2.dx < 0 && L2.sx === -L2.dx && L2.left === 0 && L2.vw === 1080);
+t('가로 원본은 cover-fit 으로 좌우가 잘린다 (dx<0 → sx 만큼 extract)', L2.dh === oa.H && L2.dx < 0 && L2.sx === -L2.dx && L2.left === 0 && L2.vw === oa.W);
 const L3 = IC.layout(1600, 2000, Object.assign({}, oz, { offsetY: 3 }));
-t('offsetY 3% → 아래로 40px(1350×0.03 반올림), 위가 비고 아래가 잘린다', L3.dy === 41 && L3.top === 41 && L3.vh === 1350 - 41);
+t('offsetY 3% → 캔버스 높이의 3% 만큼 아래로, 위가 비고 아래가 잘린다', (() => { const d = Math.round(oa.H * 0.03); return L3.dy === d && L3.top === d && L3.vh === oa.H - d; })());
 const L4 = IC.layout(1600, 2000, Object.assign({}, oz, { imgScale: 120 }));
-t('imgScale 120% → 1296×1620, 가운데 정렬로 사방 잘림', L4.dw === 1296 && L4.dh === 1620 && L4.dx === -108 && L4.dy === -135 && L4.vw === 1080 && L4.vh === 1350);
+t('imgScale 120% → 1.2배, 가운데 정렬로 사방 잘림', L4.dw === Math.round(oa.W * 1.2) && L4.dh === Math.round(oa.H * 1.2) && L4.dx === Math.round((oa.W - L4.dw) / 2) && L4.dy === Math.round((oa.H - L4.dh) / 2) && L4.vw === oa.W && L4.vh === oa.H);
 
 console.log('\n=== 로고: trim 안 한 원본 (클라이언트와 같은 비트맵) ===');
 t('instaComposite 는 getRawLogo(원본) 를 쓰고 trim 하지 않는다', /function getRawLogo\(/.test(R('api/_lib/instaComposite.js')) && !/\.trim\(\)/.test(R('api/_lib/instaComposite.js')));
@@ -65,7 +68,7 @@ t('캡션 전송은 await + 결과(captionSent)를 이미지 결과에 실어 �
 t('갤러리 합성은 mapPool(3) 로 겹쳐 돌리고 순번(01, 02…)은 보존', /await mapPool\(gallery, 3, async \(url, i\) =>/.test(_fnBody) && /String\(i \+ 1\)\.padStart\(2, '0'\) \+ '\.' \+ f\.ext/.test(_fnBody));
 t('sendTextToChatSafe 는 링크 미리보기 끄고 4000자 자름', /disable_web_page_preview: true/.test(tg) && /slice\(0, 4000\)/.test(tg));
 
-/* 2026-11-02 — 해상도는 갈라졌지만(ZIP 1080 · 텔레그램 2160) '구도' 는 같아야 한다.
+/* 2026-11-02 — 배율을 더 걸어도 '구도' 는 같아야 한다.
    이 시험의 본래 목적이 거기다. 배율을 바꿔도 비율 값이 그대로인지 직접 확인한다. */
 const _p1 = IC.resolveInstaOpts(S, 'https://x/a.jpg');
 const _p2 = IC.resolveInstaOpts(S, 'https://x/a.jpg', 2);
@@ -85,11 +88,15 @@ console.log('\n=== 픽셀 검사 (sharp 있을 때만) ===');
       const logo = await sharp({ create: { width: 200, height: 100, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } } }).png().toBuffer();
       const out = await IC.instaCompositeBuffer(src, logo, IC.resolveInstaOpts(null, 'u'));
       const m = await sharp(out).metadata();
-      t('출력은 1080×1350 PNG', m.width === 1080 && m.height === 1350 && m.format === 'png', JSON.stringify(m));
-      // 로고 위치: 폭 162(=1080×15%), 높이 81, 가운데, 아래 여백 13.5 → top ≈ 1350-81-14 = 1255. 그 자리 픽셀이 밝아야 한다.
-      const px = await sharp(out).extract({ left: 540, top: 1290, width: 1, height: 1 }).raw().toBuffer();
+      t('출력은 기준 캔버스 크기의 PNG', m.width === oa.W && m.height === oa.H && m.format === 'png', JSON.stringify(m));
+      /* 로고 자리를 캔버스 크기에서 계산한다 — 규격이 바뀌어도 따라간다.
+         폭 = W×logoPct(15%), 높이 = 폭×(로고 100/200), 가운데, 아래 여백 = H×padPct(1%). */
+      const lw = Math.round(oa.W * 0.15);
+      const lh = Math.round(lw * (100 / 200));
+      const ltop = Math.round(oa.H - lh - oa.H * 0.01);
+      const px = await sharp(out).extract({ left: Math.round(oa.W / 2), top: ltop + Math.round(lh / 2), width: 1, height: 1 }).raw().toBuffer();
       t('로고 자리(가운데 아래) 픽셀이 흰색 쪽 (알파 85% 합성)', px[0] > 200 && px[1] > 150, Array.from(px).join(','));
-      const px2 = await sharp(out).extract({ left: 540, top: 600, width: 1, height: 1 }).raw().toBuffer();
+      const px2 = await sharp(out).extract({ left: Math.round(oa.W / 2), top: Math.round(oa.H / 2), width: 1, height: 1 }).raw().toBuffer();
       t('이미지 가운데 픽셀은 원본 색(빨강)', px2[0] > 150 && px2[1] < 80, Array.from(px2).join(','));
       const off = await IC.instaCompositeBuffer(src, logo, Object.assign(IC.resolveInstaOpts(null, 'u'), { logoEnabled: false }));
       const px3 = await sharp(off).extract({ left: 540, top: 1290, width: 1, height: 1 }).raw().toBuffer();

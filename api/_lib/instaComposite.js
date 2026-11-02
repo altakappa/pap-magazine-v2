@@ -25,7 +25,13 @@ function sharp(...args) {
 
 const LOGO_URL_DEFAULT = 'https://www.pap-magazine.com/pap-logo-white.png';
 const DEFAULTS = { aspect: '4:5', logoPct: 15, padPct: 1, imgScale: 100, offsetX: 0, offsetY: 0, logoAlpha: 85, logoEnabled: true };
-const CANVAS_W = 1080;
+/* 2026-11-02 도메니코 "이미지 전부 2160x2700 으로" — 기준 캔버스를 2배로 올린다.
+   종전 1080×1350 은 인스타 업로드 규격이었는데, 그 결과물이 텔레그램·ZIP 으로
+   그대로 나가면서 원본(수천 px)보다 한참 작은 그림이 배포되고 있었다.
+   인스타는 2160 을 올려도 자기가 알아서 줄인다 — 작게 주는 쪽이 손해다.
+   구도 값(logoPct·padPct·offset)은 전부 W·H 비율이라 이 변경으로 그림이 달라지지 않는다. */
+const CANVAS_W = 2160;
+const CANVAS_H_45 = 2700;
 
 function num(v, fallback) { return (typeof v === 'number' && Number.isFinite(v)) ? v : fallback; }
 
@@ -51,7 +57,7 @@ function resolveInstaOpts(settings, url, scale) {
   const k = _scale(scale);
   return {
     W: CANVAS_W * k,
-    H: (aspect === '1:1' ? CANVAS_W : 1350) * k,
+    H: (aspect === '1:1' ? CANVAS_W : CANVAS_H_45) * k,
     logoPct:   num(ov.logoPct,   num(g.logoPct, DEFAULTS.logoPct)),
     padPct:    num(ov.padPct,    num(g.padPct,  DEFAULTS.padPct)),
     imgScale:  num(ov.imgScale,  DEFAULTS.imgScale),
@@ -172,4 +178,4 @@ async function instaCompositeFile(raw, logoRaw, o) {
   return { buffer: jpg, ext: 'jpg', mime: 'image/jpeg' };
 }
 
-module.exports = { resolveInstaOpts, instaCompositeBuffer, instaCompositeFile, coversCanvas, layout, getRawLogo, DEFAULTS, LOGO_URL_DEFAULT, JPEG_Q, MAX_SCALE };
+module.exports = { resolveInstaOpts, instaCompositeBuffer, instaCompositeFile, coversCanvas, layout, getRawLogo, DEFAULTS, LOGO_URL_DEFAULT, JPEG_Q, MAX_SCALE, CANVAS_W, CANVAS_H_45 };

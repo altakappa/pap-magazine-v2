@@ -30,16 +30,16 @@ function t(n, ok, x) { if (ok) { pass++; console.log('  ✓ ' + n); } else { fai
   /* ── 배율이 W·H 에만 걸린다 ── */
   const o1 = IC.resolveInstaOpts(null, 'https://x/a.jpg');
   const o2 = IC.resolveInstaOpts(null, 'https://x/a.jpg', 2);
-  t('배율을 안 주면 종전 그대로 1080×1350', o1.W === 1080 && o1.H === 1350);
-  t('배율 2 면 2160×2700', o2.W === 2160 && o2.H === 2700);
-  t('1:1 도 같은 규칙', IC.resolveInstaOpts({ global: { aspect: '1:1' } }, 'u', 2).H === 2160);
+  t('기준 캔버스가 2160×2700 이다 (2026-11-02 도메니코 "이미지 전부")', o1.W === 2160 && o1.H === 2700);
+  t('추가 배율 2 면 4320×5400', o2.W === 4320 && o2.H === 5400);
+  t('1:1 은 2160² (배율 2 면 4320²)', IC.resolveInstaOpts({ global: { aspect: '1:1' } }, 'u').H === 2160 && IC.resolveInstaOpts({ global: { aspect: '1:1' } }, 'u', 2).H === 4320);
   t('구도 값은 배율과 무관하다 (로고·여백·위치는 비율이라 그대로)',
     o1.logoPct === o2.logoPct && o1.padPct === o2.padPct &&
     o1.imgScale === o2.imgScale && o1.offsetX === o2.offsetX && o1.offsetY === o2.offsetY);
-  t('배율은 1 미만으로 못 내린다 (ZIP 규격보다 작아질 이유가 없다)',
-    IC.resolveInstaOpts(null, 'u', 0.25).W === 1080);
+  t('배율은 1 미만으로 못 내린다 (기준 아래로는 안 간다)',
+    IC.resolveInstaOpts(null, 'u', 0.25).W === 2160);
   t('배율 상한은 MAX_SCALE',
-    IC.resolveInstaOpts(null, 'u', 99).W === 1080 * IC.MAX_SCALE);
+    IC.resolveInstaOpts(null, 'u', 99).W === 2160 * IC.MAX_SCALE);
 
   /* ── 좌표가 정확히 2배인가 (구도 보존의 실제 증거) ── */
   const L1 = IC.layout(1600, 1000, o1);
@@ -60,20 +60,22 @@ function t(n, ok, x) { if (ok) { pass++; console.log('  ✓ ' + n); } else { fai
 
   const f1 = await IC.instaCompositeFile(src, null, o1);
   const m1 = await sharp(f1.buffer).metadata();
-  t('기본 배율 결과는 1080×1350', m1.width === 1080 && m1.height === 1350);
+  t('기본 결과가 2160×2700', m1.width === 2160 && m1.height === 2700);
 
   const f2 = await IC.instaCompositeFile(src, null, o2);
   const m2 = await sharp(f2.buffer).metadata();
-  t('배율 2 결과는 2160×2700 — 픽셀이 4배', m2.width === 2160 && m2.height === 2700);
+  t('추가 배율 2 면 4320×5400', m2.width === 4320 && m2.height === 5400);
 
   t('사진이 캔버스를 덮으면 JPEG 로 나간다', f2.ext === 'jpg' && f2.mime === 'image/jpeg' && m2.format === 'jpeg');
   t('크로마 서브샘플링을 쓰지 않는다 (4:4:4)', (await sharp(f2.buffer).metadata()).chromaSubsampling === '4:4:4');
 
   /* 핵심: 4배 픽셀인데 용량이 종전 PNG 보다 작아야 한다. 아니면 업로드가 상한을 넘는다. */
-  const pngOld = await IC.instaCompositeBuffer(src, null, o1);
-  t('2배 JPEG 가 종전 1배 PNG 보다 가볍다',
-    f2.buffer.length < pngOld.length,
-    '2x jpg=' + f2.buffer.length + 'B / 1x png=' + pngOld.length + 'B');
+  /* 종전 규격(1080×1350 PNG)과 비교한다 — 지금 기준은 2160 이므로 직접 만든다. */
+  const o1080 = Object.assign({}, o1, { W: 1080, H: 1350 });
+  const png1080 = await IC.instaCompositeBuffer(src, null, o1080);
+  t('2160 JPEG 가 종전 1080 PNG 보다 가볍다',
+    f1.buffer.length < png1080.length,
+    '2160 jpg=' + f1.buffer.length + 'B / 1080 png=' + png1080.length + 'B');
 
   /* ── 투명 가장자리가 생기는 경우엔 PNG 유지 ── */
   const shrunk = IC.resolveInstaOpts({ perImage: { 'https://x/a.jpg': { imgScale: 60 } } }, 'https://x/a.jpg', 2);
@@ -88,7 +90,7 @@ function t(n, ok, x) { if (ok) { pass++; console.log('  ✓ ' + n); } else { fai
   const fs = require('fs');
   const TG = fs.readFileSync(path.join(ROOT, 'api/_lib/telegram.js'), 'utf8');
   t('텔레그램이 배율을 넘겨준다', /resolveInstaOpts\(ed\.insta_logo_settings, url, TG_IMAGE_SCALE\)/.test(TG));
-  t('기본 배율 2', /parseFloat\(process\.env\.TELEGRAM_IMAGE_SCALE \|\| '2'\)/.test(TG));
+  t('추가 배율 기본값은 1 — 기준이 이미 2160 이다', /parseFloat\(process\.env\.TELEGRAM_IMAGE_SCALE \|\| '1'\)/.test(TG));
   t('확장자·MIME 을 합성 결과에서 받는다 (png 고정이 아니다)',
     /name: String\(i \+ 1\)\.padStart\(2, '0'\) \+ '\.' \+ f\.ext, mime: f\.mime/.test(TG));
   t('합성이 실패하면 원본을 그 원본의 확장자로 보낸다', /f = \{ buffer: raw, ext: ext0, mime: mimeFromExt\(ext0\) \}/.test(TG));

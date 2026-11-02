@@ -9837,16 +9837,18 @@ async function papInstaDownloadAll(){
   // 2026-07-28 (도메니코 요청) — 전체 ZIP 에 "매거진 커버 합성 PNG" 도 함께
   // 담는다. 커버 섹션 미리보기와 동일한 _papCoverComposite 로직을 재사용하며
   // (papCoverDownload 와 같은 1080×1350 풀 해상도), 커버는 인스타 폴더와 구분해
-  // ZIP 루트에 '<제목>-cover.png' 로 넣는다. 제목·커버 이미지가 갖춰진 경우에만
+  // ZIP 루트에 '<제목>-cover.jpg' 로 넣는다. 제목·커버 이미지가 갖춰진 경우에만
   // 넣고, 합성 실패는 조용히 스킵해 갤러리 이미지 ZIP 은 그대로 나가게 한다.
   try {
     var _cmeta = (typeof _papCoverReadFormMeta === 'function') ? _papCoverReadFormMeta() : null;
     if (_cmeta && _cmeta.title && _cmeta.coverUrl && typeof _papCoverComposite === 'function') {
       _papInstaSetStatus('커버 합성 중...');
       var _ccv = document.createElement('canvas');
-      _ccv.width = _PAP_COVER_W; _ccv.height = _PAP_COVER_H;
+      _ccv.width = _PAP_COVER_OUT_W; _ccv.height = _PAP_COVER_OUT_H;
       await _papCoverComposite(_ccv, _cmeta);
-      var _cblob = await new Promise(function(res){ _ccv.toBlob(function(b){ res(b); }, 'image/png', 1); });
+      /* 2026-11-02 — 2160×2700 PNG 은 장당 10MB 를 넘는다. 커버는 사진+글자라
+         투명도가 없으므로 JPEG q95 로 내보낸다(같은 그림에 용량 1/5~1/10). */
+      var _cblob = await new Promise(function(res){ _ccv.toBlob(function(b){ res(b); }, 'image/jpeg', 0.95); });
       if (_cblob) {
         var _cbase = (_cmeta.title || 'cover').toLowerCase()
           .replace(/[^a-z0-9가-힯 ]+/g, '').replace(/\s+/g, '-');
@@ -9983,9 +9985,11 @@ function _papInstaReadOpts(){
   // QA #254 v3 — image positioning defaults (identity transform — image
   // is cover-fit centered, no zoom-in, no offset). Per-image overrides
   // can shift these via the modal sliders.
+  /* 2026-11-02 — 2160×2700 (1:1 이면 2160²). 서버(api/_lib/instaComposite.js)와
+     같은 숫자를 쓴다. 두 쪽이 갈리면 ZIP 과 텔레그램 그림이 달라진다. */
   return {
-    W: 1080,
-    H: (aspect === '1:1' ? 1080 : 1350),
+    W: 2160,
+    H: (aspect === '1:1' ? 2160 : 2700),
     logoPct: logoPct, padPct: padPct,
     imgScale: 100, offsetX: 0, offsetY: 0,
     // QA #257 / #261 — default logo opacity 85% (was 100%).
@@ -10145,8 +10149,16 @@ async function _papInstaCompositeOne(url, canvas, opts){
 // anything else. Manual overrides live in the cover-gen section's three
 // optional inputs (Issue label, Year, Contributors).
 
+/* 커버 생성기의 **디자인 좌표계**. 슬라이더의 px 값(제목 크기·라벨 위치 등)이
+   전부 이 좌표 기준이라 여기는 건드리지 않는다. 2026-11-02 도메니코 "이미지 전부
+   2160x2700 으로" 는 _PAP_COVER_SCALE 로 처리한다 — 캔버스 백킹 버퍼만 2배로 잡고
+   컨텍스트를 그만큼 확대해두면, 글자·로고가 2배 해상도로 '다시 그려진다'.
+   px 리터럴을 하나하나 2배로 고치는 방식은 한 군데만 빠뜨려도 디자인이 틀어진다. */
 var _PAP_COVER_W = 1080;
 var _PAP_COVER_H = 1350;
+var _PAP_COVER_SCALE = 2;                       // 출력 2160×2700
+var _PAP_COVER_OUT_W = _PAP_COVER_W * _PAP_COVER_SCALE;
+var _PAP_COVER_OUT_H = _PAP_COVER_H * _PAP_COVER_SCALE;
 
 // Month name in English for "May Issue" etc.
 var _PAP_MONTHS = ['January','February','March','April','May','June',
@@ -10330,9 +10342,12 @@ function _papCoverWrap(ctx, text, maxWidth){
 
 async function _papCoverComposite(canvas, meta){
   var ctx = canvas.getContext('2d');
-  var W = _PAP_COVER_W, H = _PAP_COVER_H;
-  if (canvas.width !== W) canvas.width = W;
-  if (canvas.height !== H) canvas.height = H;
+  var W = _PAP_COVER_W, H = _PAP_COVER_H;        // 디자인 좌표계 — 아래 코드는 전부 이 좌표로 그린다
+  if (canvas.width !== _PAP_COVER_OUT_W) canvas.width = _PAP_COVER_OUT_W;
+  if (canvas.height !== _PAP_COVER_OUT_H) canvas.height = _PAP_COVER_OUT_H;
+  /* 백킹 버퍼는 2160×2700, 좌표계는 1080×1350. width 를 대입하면 컨텍스트가
+     초기화되므로 반드시 그 뒤에 건다. */
+  ctx.setTransform(_PAP_COVER_SCALE, 0, 0, _PAP_COVER_SCALE, 0, 0);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.clearRect(0, 0, W, H);
@@ -10605,10 +10620,10 @@ async function papCoverDownload(){
   }
   _papCoverSetStatus('PNG 변환 중…');
   try {
-    // Render at full 1080×1350 (canvas backing buffer = output resolution).
+    // Render at full 2160×2700 (canvas backing buffer = output resolution).
     var canvas = document.createElement('canvas');
-    canvas.width  = _PAP_COVER_W;
-    canvas.height = _PAP_COVER_H;
+    canvas.width  = _PAP_COVER_OUT_W;
+    canvas.height = _PAP_COVER_OUT_H;
     await _papCoverComposite(canvas, meta);
     var blob = await new Promise(function(res){
       canvas.toBlob(function(b){ res(b); }, 'image/png', 1);
@@ -10675,18 +10690,20 @@ var _papCoverTouched = false;
 function _papCoverAutoApplyWanted(){
   return !_papComposedCoverUrl && !!(_papCoverSourceUrl || _papCoverTouched);
 }
-/** 라이브 미리보기와 같은 규칙으로 1080×1350 합성 → PNG 업로드 → URL. 실패는 throw. */
+/** 라이브 미리보기와 같은 규칙으로 2160×2700 합성 → JPEG 업로드 → URL. 실패는 throw.
+    2026-11-02 — PNG 이던 것을 JPEG q95 로. 해상도를 2배로 올리면서 PNG 를 유지하면
+    커버 한 장이 10MB 를 넘어 사이트 로딩까지 끌어내린다. 커버는 투명도가 없다. */
 async function _papCoverComposeAndUpload(meta){
   var canvas = document.createElement('canvas');
-  canvas.width  = _PAP_COVER_W;
-  canvas.height = _PAP_COVER_H;
+  canvas.width  = _PAP_COVER_OUT_W;
+  canvas.height = _PAP_COVER_OUT_H;
   await _papCoverComposite(canvas, meta);
   var blob = await new Promise(function(res, rej){
-    canvas.toBlob(function(b){ b ? res(b) : rej(new Error('PNG 변환 실패 (CORS tainted?)')); }, 'image/png', 1);
+    canvas.toBlob(function(b){ b ? res(b) : rej(new Error('JPEG 변환 실패 (CORS tainted?)')); }, 'image/jpeg', 0.95);
   });
   var slug = (meta.title || 'cover').toLowerCase()
     .replace(/[^a-z0-9가-힯 ]+/g, '').replace(/\s+/g, '-');
-  var file = new File([blob], slug + '-cover.png', { type: 'image/png' });
+  var file = new File([blob], slug + '-cover.jpg', { type: 'image/jpeg' });
   return await uploadFile(file);
 }
 async function papCoverConfirmAsCover(){
@@ -10704,7 +10721,7 @@ async function papCoverConfirmAsCover(){
   if (btn) { btn.disabled = true; btn.textContent = '확정 중…'; }
   _papCoverSetStatus('커버 합성 + 업로드 중…');
   try {
-    // Render at full 1080×1350 then upload the PNG blob via the shared
+    // Render at full 2160×2700 then upload the JPEG blob via the shared
     // media upload endpoint (same path gallery/thumbnail uploads use).
     var url = await _papCoverComposeAndUpload(meta);
     _papComposedCoverUrl = url;

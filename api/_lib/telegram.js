@@ -24,12 +24,12 @@ const { brandImageBuffer, getTrimmedLogo } = require('./brandImage');
 const BOT_TOKEN = () => process.env.TELEGRAM_BOT_TOKEN || '';
 const CHAT_ID   = () => process.env.TELEGRAM_CHAT_ID || '';
 const BRAND_ON  = () => String(process.env.TELEGRAM_BRAND_LOGO || 'on').toLowerCase() !== 'off';
-/* 텔레그램으로 보낼 갤러리 컷의 출력 배율 (2026-11-02). 1 = 종전 1080×1350.
-   2 면 2160×2700. JPEG q95 4:4:4 로 나가므로 용량은 종전 PNG 보다 오히려 작다.
-   올리려면 env 로. 상한은 instaComposite.MAX_SCALE(4) 이 가둔다. */
+/* 텔레그램 갤러리 컷의 추가 배율 (2026-11-02).
+   기준 캔버스가 2160×2700 이 됐으므로 기본은 1 이다(= 2160×2700).
+   더 키우고 싶으면 env 로. 상한은 instaComposite.MAX_SCALE(4) 이 가둔다. */
 const TG_IMAGE_SCALE = (() => {
-  const n = parseFloat(process.env.TELEGRAM_IMAGE_SCALE || '2');
-  return (Number.isFinite(n) && n >= 1) ? n : 2;
+  const n = parseFloat(process.env.TELEGRAM_IMAGE_SCALE || '1');
+  return (Number.isFinite(n) && n >= 1) ? n : 1;
 })();
 const SITE      = 'https://www.pap-magazine.com';
 
@@ -243,9 +243,8 @@ async function sendEditorialToTelegram(ed) {
   const made = await mapPool(gallery, 3, async (url, i) => {
     try {
       const raw = await fetchImageBuffer(url);
-      /* 2026-11-02 — 텔레그램으로는 2배 해상도(2160×2700)로 보낸다. 도메니코 "화질이 떨어진다".
-         ZIP(인스타 업로드용)은 1080 규격 그대로다 — 배율은 여기서만 올린다.
-         구도는 배율과 무관하게 같다(logoPct·padPct·offset 이 전부 W·H 비율이라서). */
+      /* 2026-11-02 — 2160×2700 으로 나간다(기준 캔버스 자체가 그 크기다).
+         구도는 배율과 무관하게 같다 — logoPct·padPct·offset 이 전부 W·H 비율이라서. */
       const opts = resolveInstaOpts(ed.insta_logo_settings, url, TG_IMAGE_SCALE);
       if (!logo) opts.logoEnabled = false;
       let f;
