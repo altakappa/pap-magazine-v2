@@ -1030,15 +1030,15 @@ tr:hover td{background:rgba(0,0,0,.02)}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px">
               <!-- QA #269 — defaults locked in from the editor-approved
-                   sample: logoSize 27 / shadow 70 / topLabelSize 19 /
+                   sample: logoSize 22 (2026-11-02 도메니코) / shadow 70 / topLabelSize 19 /
                    bottomPad 52 / topLabelTop 42 / topLabelSide 52 /
                    sideLabelY 57 / titleBottom 10. Other values unchanged. -->
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                   <span>🏷️ 로고 크기</span>
-                  <strong id="coverLogoSizeLabel" style="color:var(--text)">27%</strong>
+                  <strong id="coverLogoSizeLabel" style="color:var(--text)">22%</strong>
                 </label>
-                <input type="range" id="coverLogoSize" min="14" max="40" step="0.5" value="27" style="width:100%" oninput="document.getElementById('coverLogoSizeLabel').textContent = this.value + '%'">
+                <input type="range" id="coverLogoSize" min="14" max="40" step="0.5" value="22" style="width:100%" oninput="document.getElementById('coverLogoSizeLabel').textContent = this.value + '%'">
               </div>
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
@@ -1050,9 +1050,33 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                   <span>📐 로고 상단 위치</span>
-                  <strong id="coverLogoTopLabel" style="color:var(--text)">6%</strong>
+                  <strong id="coverLogoTopLabel" style="color:var(--text)">2.5%</strong>
                 </label>
-                <input type="range" id="coverLogoTop" min="2" max="20" step="0.5" value="6" style="width:100%" oninput="document.getElementById('coverLogoTopLabel').textContent = this.value + '%'">
+                <input type="range" id="coverLogoTop" min="1" max="20" step="0.5" value="2.5" style="width:100%" oninput="document.getElementById('coverLogoTopLabel').textContent = this.value + '%'">
+              </div>
+              <!-- 2026-11-02 도메니코 — "커버에 들어갈 이미지의 크기조절과 위치조절".
+                   100/0/0 이 종전 동작(가운데 cover-fit)과 같다. 캔버스가 비지 않게
+                   합성 쪽에서 가두므로, 확대가 100%면 위치 슬라이더는 움직여도 제자리다. -->
+              <div>
+                <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
+                  <span>🔍 사진 크기</span>
+                  <strong id="coverImgScaleLabel" style="color:var(--text)">100%</strong>
+                </label>
+                <input type="range" id="coverImgScale" min="100" max="300" step="1" value="100" style="width:100%" oninput="document.getElementById('coverImgScaleLabel').textContent = this.value + '%'">
+              </div>
+              <div>
+                <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
+                  <span>↔️ 사진 가로 위치</span>
+                  <strong id="coverImgXLabel" style="color:var(--text)">0%</strong>
+                </label>
+                <input type="range" id="coverImgX" min="-50" max="50" step="1" value="0" style="width:100%" oninput="document.getElementById('coverImgXLabel').textContent = this.value + '%'">
+              </div>
+              <div>
+                <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
+                  <span>↕️ 사진 세로 위치</span>
+                  <strong id="coverImgYLabel" style="color:var(--text)">0%</strong>
+                </label>
+                <input type="range" id="coverImgY" min="-50" max="50" step="1" value="0" style="width:100%" oninput="document.getElementById('coverImgYLabel').textContent = this.value + '%'">
               </div>
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
@@ -3678,7 +3702,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=170" defer></script>
+<script src="/pap-admin.js?v=171" defer></script>
 <script src="/pap-admin-campaigns.js?v=5" defer></script>
 </body>
 </html>

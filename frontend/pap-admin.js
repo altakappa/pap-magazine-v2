@@ -10164,9 +10164,16 @@ function _papCoverReadStyleOpts(){
   // QA #269 — defaults locked in from the editor-approved sample
   // (June Issue 2026 "Where you end and I begin" cover).
   return {
-    logoSize:       _num('coverLogoSize', 27),       // % canvas width
+    /* 2026-11-02 도메니코 — 커버 기본값: 로고 크기 22%, 로고 상단 위치 2.5%.
+       종전 27/6 은 QA #269 의 6월호 샘플에서 뽑은 값이었다. */
+    logoSize:       _num('coverLogoSize', 22),       // % canvas width
     logoShadow:     _num('coverLogoShadow', 70),     // 0-100, shadow intensity
-    logoTop:        _num('coverLogoTop', 6),         // % canvas height from top
+    logoTop:        _num('coverLogoTop', 2.5),       // % canvas height from top
+    /* 2026-11-02 — 커버에 들어갈 사진 자체의 확대·이동. 100/0/0 이면 종전과 똑같다
+       (가운데 정렬 cover-fit). 100 미만은 두지 않는다 — 캔버스에 빈 자리가 생긴다. */
+    imgScale:       _num('coverImgScale', 100),      // % of cover-fit scale (100 = fill)
+    imgX:           _num('coverImgX', 0),            // % canvas width, + = 오른쪽
+    imgY:           _num('coverImgY', 0),            // % canvas height, + = 아래쪽
     titleSize:      _num('coverTitleSize', 48),      // px
     contribSize:    _num('coverContribSize', 24),    // px
     topLabelSize:   _num('coverTopLabelSize', 19),   // px
@@ -10185,9 +10192,12 @@ function papCoverResetSettings(){
   // QA #269 — defaults match the editor-approved sample (June Issue 2026
   // "Where you end and I begin"). Reset button restores all 12 to these.
   var pairs = [
-    ['coverLogoSize',      27, '%'],
+    ['coverLogoSize',      22, '%'],
     ['coverLogoShadow',    70, '%'],
-    ['coverLogoTop',        6, '%'],
+    ['coverLogoTop',      2.5, '%'],
+    ['coverImgScale',     100, '%'],
+    ['coverImgX',           0, '%'],
+    ['coverImgY',           0, '%'],
     ['coverTitleSize',     48, 'px'],
     ['coverContribSize',   24, 'px'],
     ['coverTopLabelSize',  19, 'px'],
@@ -10327,12 +10337,24 @@ async function _papCoverComposite(canvas, meta){
   ctx.imageSmoothingQuality = 'high';
   ctx.clearRect(0, 0, W, H);
 
+  // QA #266 — read fine-tune slider values once for this composite.
+  var sty = _papCoverReadStyleOpts();
+
   // 1) Cover-fit the source image to fill the canvas (4:5).
+  //    2026-11-02 — 여기에 확대(imgScale)와 이동(imgX/imgY)을 얹는다.
+  //    기본값 100/0/0 이면 종전과 픽셀 단위로 같은 결과다.
   var img = await _papCoverLoadImage(meta.coverUrl);
   var iw = img.naturalWidth, ih = img.naturalHeight;
-  var scale = Math.max(W / iw, H / ih);
+  var scale = Math.max(W / iw, H / ih) * (sty.imgScale / 100);
   var dw = iw * scale, dh = ih * scale;
-  ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  var dx = (W - dw) / 2 + W * (sty.imgX / 100);
+  var dy = (H - dh) / 2 + H * (sty.imgY / 100);
+  /* 캔버스가 비지 않게 가둔다. 사진이 캔버스보다 큰 만큼만 밀 수 있고,
+     여백이 생기는 방향으로는 더 가지 않는다. 확대가 100%(= 딱 맞음)면
+     밀 여유가 0 이라 슬라이더를 움직여도 제자리다 — 그게 맞는 동작이다. */
+  dx = Math.min(0, Math.max(W - dw, dx));
+  dy = Math.min(0, Math.max(H - dh, dy));
+  ctx.drawImage(img, dx, dy, dw, dh);
 
   // 2) Subtle bottom gradient so the title text reads cleanly even on
   //    bright covers. Quarter-canvas darkening; doesn't touch the top
@@ -10351,9 +10373,6 @@ async function _papCoverComposite(canvas, meta){
   gradTop.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = gradTop;
   ctx.fillRect(0, 0, W, H * 0.2);
-
-  // QA #266 — read fine-tune slider values once for this composite.
-  var sty = _papCoverReadStyleOpts();
 
   // 3) Top-left: Issue label (white sans). QA #267 — position from sliders.
   ctx.fillStyle = '#ffffff';
