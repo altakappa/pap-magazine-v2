@@ -106,16 +106,33 @@ function aggregateWeekly({ clicks, articles, fetches, nowMs, weeks, calendar }) 
 
 /* 기본 10주: 패션 성수기(9월 둘째 주~10월 첫 주, 4주)를 통째로 품고도 그 앞뒤 비수기 주가 남아야
    기준선이 한 주짜리가 되지 않는다. 7주면 10월 셋째 주 시점에 비수기 완결 주가 하나뿐이다. */
+/* 2026-11-02 — 한 번에 다 읽으면 안 된다. .limit(20000) 을 줘도 Supabase(PostgREST)가 한 응답을
+   5,000행에서 자른다. chatgpt 클릭이 10주에 6천 행을 넘자 오래된 행 5,000개만 왔고, 브리핑 표가
+   10/19주 665명(실제 795) · 10/26주 0명(실제 752)으로 찍혀 "ChatGPT 계측 장애" 라는 거짓 결론이 나왔다.
+   capped 판정도 20,000 기준이라 경고가 안 떴다. → 1,000행씩 순서를 정해 끝까지 읽는다.
+   PAGE 를 서버 상한(5,000)보다 작게 두면, 서버 상한이 바뀌어도 '덜 왔다 = 끝' 판정이 틀리지 않는다. */
+const PAGE = 1000;
+async function readAll(build) {
+  const rows = [];
+  for (let from = 0; from < ROW_CAP; from += PAGE) {
+    const { data, error } = await build().range(from, Math.min(from + PAGE, ROW_CAP) - 1);
+    if (error) return { data: rows, error };
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE) break;
+  }
+  return { data: rows, error: null };
+}
+
 async function buildTrendContext({ weeks = 10, nowMs = Date.now() } = {}) {
   const since = addDays(weekStartOf(kstDay(nowMs)), -7 * (weeks - 1));
   const sinceIso = since + 'T00:00:00+09:00';
   const [c, a, f] = await Promise.all([
-    supabaseAdmin.from('social_inclicks_human').select('clicked_at, ip_hash')
-      .eq('src', 'chatgpt').gte('clicked_at', sinceIso).limit(ROW_CAP),
-    supabaseAdmin.from('articles').select('published_date')
-      .eq('status', 'published').gte('published_date', since).limit(ROW_CAP),
-    supabaseAdmin.from('ai_crawl_daily').select('day, hits')
-      .eq('platform', 'chatgpt').eq('kind', 'live').gte('day', since).limit(ROW_CAP),
+    readAll(() => supabaseAdmin.from('social_inclicks_human').select('clicked_at, ip_hash')
+      .eq('src', 'chatgpt').gte('clicked_at', sinceIso).order('clicked_at').order('id')),
+    readAll(() => supabaseAdmin.from('articles').select('published_date')
+      .eq('status', 'published').gte('published_date', since).order('published_date').order('id')),
+    readAll(() => supabaseAdmin.from('ai_crawl_daily').select('day, hits')
+      .eq('platform', 'chatgpt').eq('kind', 'live').gte('day', since).order('day')),
   ]);
   const err = c.error || a.error || f.error;
   if (err) throw err;
@@ -147,4 +164,4 @@ function renderTrendMd(ctx) {
   return L.join('\n');
 }
 
-module.exports = { buildTrendContext, aggregateWeekly, renderTrendMd, eventsInWindow, weekStartOf, EVENT_CALENDAR, ROW_CAP };
+module.exports = { buildTrendContext, aggregateWeekly, renderTrendMd, eventsInWindow, weekStartOf, EVENT_CALENDAR, ROW_CAP, readAll, PAGE };

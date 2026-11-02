@@ -79,7 +79,11 @@ async function buildPublishLedger() {
     countTwoWeeks('웹 기사', 'articles', 'published_date',
       (q) => q.eq('status', 'published')),
     countTwoWeeks('스레드', 'threads_posts', 'created_at', null),
-    countTwoWeeks('X', 'x_posts', 'created_at', null),
+    /* 2026-11-02 — x_posts 는 실패도 적는다(시도 기록). 조건 없이 세면 '발행' 이 아니라 '시도' 다.
+       10/23~11/02 X 가 지출 한도로 140건을 전부 거부했는데 장부는 143건 '발행' 으로 적었고,
+       브리핑은 "발행은 유지됐는데 유입만 -70%" 라는 틀린 원인 분석을 냈다.
+       성공(ok=true)만, PAP 계정만 센다(페퍼릿은 따로 처리). */
+    countTwoWeeks('X', 'x_posts', 'created_at', (q) => q.eq('ok', true).eq('account', 'magazine')),
     /* ig_post_latest 의 게시 시각 칸은 posted_at 이다. timestamp 가 아니다 —
        내가 처음에 틀렸고, 실제 조회가 'column does not exist' 로 잡아냈다.
        이 파일이 error 를 0 으로 뭉개지 않는 이유가 바로 이것이다. */

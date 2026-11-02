@@ -138,6 +138,8 @@ async function postTweet(text, creds) {
     if (!r.ok) {
       const detail = JSON.stringify(j).slice(0, 200);
       await recordTweet({ ...base, ok: false, error: 'HTTP ' + r.status + ' ' + detail });
+      /* 2026-11-02 — 지출 한도 소진(403 spend-cap)은 10일 동안 아무도 몰랐다. 개인방으로 알린다(12시간 쿨다운). */
+      try { await require('./xSpendWatch').reportXFailure({ status: r.status, detail, account: base.account }); } catch (_) {}
       return { ok: false, status: r.status, detail };
     }
     const id = j.data && j.data.id;
