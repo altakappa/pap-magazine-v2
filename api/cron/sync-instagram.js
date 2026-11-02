@@ -402,6 +402,14 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                 /* 2026-10-03 (도메니코 "전부 적용해줘") — 같은 주제가 창 안에 이미
                    나갔으면 X 는 건너뛴다. 실측 10/2: 지효 루부탱 3건/70분.
                    스레드·웹은 그대로 — 억제는 X 타임라인 한 곳의 문제다. */
+                /* 2026-11-02 도메니코 "셀럽에 관련된 기사만 X에 올리는걸로" — 링크 글 1건 약 $0.20.
+                   셀럽이 아니면 X 만 건너뛴다(웹·스레드는 그대로). 끄기: X_SCOPE=all */
+                const xGate = await require('../_lib/xCelebGate').celebForX({ id: inserted.id, title: artForX.title, tags: generated.tags, category: generated.category });
+                if (!xGate.post) {
+                  console.log('[sync-ig] X 건너뜀(셀럽 아님: ' + xGate.why + ')');
+                  results.tweets = (results.tweets || []).concat(['건너뜀(셀럽아님:' + xGate.why + ')']);
+                  throw Object.assign(new Error('__x_topic_skip__'), { xTopicSkip: true });
+                }
                 const { recentClash } = require('../_lib/xTopicGuard');
                 const clash = await recentClash(generated.tags);
                 if (clash.clash) {

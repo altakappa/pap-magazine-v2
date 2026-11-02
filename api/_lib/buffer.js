@@ -66,7 +66,10 @@ async function graphql(query, variables, timeoutMs) {
   if (r.status === 429) {
     /* 2026-10-30 — "잠시 후 재시도" 는 틀린 진단이었다. 무료 플랜 30일 3,000 요청
        상한에 걸리면 며칠을 가고, 재시도 자체가 상한을 갉아먹는다. 차단기를 올린다. */
-    const t = await breaker.trip('HTTP 429');
+    /* 2026-11-02 — 어느 상한(15분 100 · 24시간 250 · 30일 3,000)에 걸렸는지 몰라 원인 판정을 못 했다.
+       기록이 'HTTP 429' 한 줄뿐이었다. 본문과 레이트리밋 헤더를 남기고, 서버가 풀리는 시각을
+       알려주면 그 시각까지 쉰다(모르면 기본 6시간). */
+    const t = await breaker.trip(rateLimitReason(r, j), { untilMs: rateLimitUntil(r) });
     const e = new Error('Buffer 레이트리밋 (429) — ' + t.until + ' 까지 쿨다운 (호출 보류)');
     e.rateLimited = true; e.code = 'BUFFER_429'; e.until = t.until; e.newlyTripped = !!t.newly;
     throw e;
@@ -79,6 +82,33 @@ async function graphql(query, variables, timeoutMs) {
   }
   if (!j || !j.data) throw new Error('Buffer 응답에 data 없음');
   return j.data;
+}
+
+/** 429 응답에서 사람이 읽을 사유 — 본문 + 레이트리밋 헤더 (비밀값 없음) */
+function rateLimitReason(r, j) {
+  const h = (k) => { try { return r.headers.get(k); } catch (_) { return null; } };
+  const parts = ['HTTP 429'];
+  ['retry-after', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'ratelimit-reset']
+    .forEach((k) => { const v = h(k); if (v) parts.push(k + '=' + v); });
+  if (j) parts.push(JSON.stringify(j).slice(0, 160));
+  return parts.join(' · ');
+}
+
+/** 서버가 알려준 해제 시각(ms). retry-after(초 또는 날짜) · x-ratelimit-reset(epoch 초) 중 하나. 없으면 null */
+function rateLimitUntil(r, nowMs) {
+  const now = nowMs || Date.now();
+  const h = (k) => { try { return r.headers.get(k); } catch (_) { return null; } };
+  const ra = h('retry-after');
+  if (ra) {
+    if (/^\d+$/.test(ra.trim())) return now + Number(ra) * 1000;
+    const d = Date.parse(ra); if (d) return d;
+  }
+  const reset = h('x-ratelimit-reset') || h('ratelimit-reset');
+  if (reset && /^\d+$/.test(reset.trim())) {
+    const n = Number(reset);
+    return n > 1e12 ? n : (n > 1e9 ? n * 1000 : now + n * 1000);   // epoch ms · epoch 초 · 남은 초
+  }
+  return null;
 }
 
 async function getOrganizationId() {
@@ -241,4 +271,5 @@ module.exports = {
   createImagePost,
   isConfigured,
   _norm,
+  rateLimitReason, rateLimitUntil,
 };

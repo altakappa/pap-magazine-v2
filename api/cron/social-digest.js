@@ -261,7 +261,10 @@ module.exports = withCronGuard('social-digest', async function handler(req, res)
     }
   }
 
-  const allowed = BUCKET_PLATFORMS[bucket] || PLATFORMS;
+  let allowed = BUCKET_PLATFORMS[bucket] || PLATFORMS;
+  /* 2026-11-02 도메니코 "셀럽에 관련된 기사만 X에 올리는걸로" — X 는 셀럽 갈래 다이제스트만.
+     끄기: X_SCOPE=all */
+  if (bucket !== 'celeb' && !require('../_lib/xCelebGate').xScopeAll()) allowed = allowed.filter((p) => p !== 'x');
   const wanted = q.platform ? [String(q.platform)] : allowed;
   const threadsAccountId = BUCKET_THREADS_ACCOUNT[bucket] || 1;
   const out = [];

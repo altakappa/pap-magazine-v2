@@ -59,9 +59,12 @@ async function check() {
  * 429 를 맞았을 때 호출. 쿨다운을 (재)설정한다.
  * @returns {Promise<{until:string, newly:boolean, n:number}>}
  */
-async function trip(reason) {
+async function trip(reason, opts) {
   const now = Date.now();
-  const until = now + COOLDOWN_MS;
+  /* 2026-11-02 — 서버가 해제 시각을 주면 그걸 따른다(기본 6시간보다 짧든 길든).
+     엉터리 값(과거 · 31일 넘음)은 버리고 기본값. */
+  const hinted = opts && Number(opts.untilMs);
+  const until = (hinted && hinted > now && hinted - now <= 31 * 86400000) ? hinted : now + COOLDOWN_MS;
   const wasCooling = _mem.until > now;
   _mem.until = until; _mem.at = now;
   const db = _db();

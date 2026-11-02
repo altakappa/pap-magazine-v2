@@ -279,8 +279,16 @@ async function maybeBoostPost(m, opts) {
 
     {
       const x = require('./xPost');
+      /* 2026-11-02 도메니코 "셀럽에 관련된 기사만 X에 올리는걸로" — 화보 부스트는 X 에 안 올린다.
+         그 밖(draft 등)은 캡션으로 셀럽인지 본다. 끄기: X_SCOPE=all */
+      const gateMod = require('./xCelebGate');
+      const xGate = gateMod.xScopeAll() ? { post: true, why: 'scope_all' }
+        : (o.kind === 'editorial' ? { post: false, why: 'editorial' }
+          : await gateMod.celebForX({ title: String(m.caption || '').slice(0, 200), tags: [] }));
       if (!x.isConfigured()) {
         xErr = '미설정';
+      } else if (!xGate.post) {
+        xErr = '셀럽 한정(' + xGate.why + ')';
       } else {
         const xt = boostTextX(m.permalink, m.id);  // 2026-10-15 CTA A/B — X 만 갈래
         const r = await postWithTransientRetry(async () => {

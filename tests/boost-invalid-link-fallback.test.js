@@ -73,6 +73,9 @@ const TRANSIENT = '게시 실패: {"error":{"message":"An unexpected error","is_
 const PERMA = 'https://www.instagram.com/p/Dd6ZyesPEH4/?igsh=abc';
 
 let seq = 0;
+/* 2026-11-02 — X 셀럽 한정(xCelebGate)은 x-celeb-only 테스트가 본다. 여기는 링크 모양만 보므로 전부 허용으로 둔다. */
+process.env.X_SCOPE = 'all';
+
 async function boost(plan) {
   threadsCalls.length = 0; xCalls.length = 0; threadsPlan = plan.slice();
   const now = Date.now();
