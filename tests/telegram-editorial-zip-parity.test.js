@@ -44,11 +44,14 @@ t('instaComposite 는 getRawLogo(원본) 를 쓰고 trim 하지 않는다', /fun
 t('클라이언트도 /pap-logo-white.png 원본을 naturalWidth 비율로 그린다', /logoW \* \(logo\.naturalHeight \/ logo\.naturalWidth\)/.test(admin));
 
 console.log('\n=== telegram.js 전송 내용물 ===');
-t('sendEditorialToTelegram 이 instaComposite 를 쓴다 (brandImage 아님)', /require\('\.\/instaComposite'\)/.test(tg) && /async function sendEditorialToTelegram\(ed\)[\s\S]{0,3000}instaCompositeBuffer\(raw, logo, opts\)/.test(tg));
+t('sendEditorialToTelegram 이 instaComposite 를 쓴다 (brandImage 아님)', /require\('\.\/instaComposite'\)/.test(tg) && /async function sendEditorialToTelegram\(ed\)[\s\S]{0,3000}instaCompositeFile\(raw, logo, opts\)/.test(tg));
 t('커버는 바이트 그대로 "<제목>-cover.<ext>" (로고 안 얹음)', /fileBase\(ed\.title\) \+ '-cover\.' \+ ext/.test(tg));
-t('갤러리는 01.png … 순번 PNG (ZIP 과 같은 이름)', /String\(i \+ 1\)\.padStart\(2, '0'\) \+ '\.png'/.test(tg));
+/* 2026-11-02 — 이름의 '순번' 은 ZIP 과 같게 유지하되, 확장자는 합성 결과가 정한다.
+   텔레그램은 2배 해상도로 내보내고 사진이 캔버스를 덮으면 JPEG 다(용량·화질 모두 유리).
+   덮지 못하는 경우엔 PNG 그대로 — 투명 가장자리를 지켜야 하기 때문이다. */
+t('갤러리 이름은 01, 02 … 순번 유지 (확장자는 합성 결과가 정한다)', /String\(i \+ 1\)\.padStart\(2, '0'\) \+ '\.' \+ f\.ext/.test(tg));
 t('문서(document)로 전송 — 사진 재압축(1280px) 회피', /async function sendDocumentsToTelegram\(/.test(tg) && /type: 'document', media: 'attach:\/\/' \+ key/.test(tg) && /sendEditorialToTelegram\(ed\)[\s\S]{0,4000}const r = await sendDocumentsToTelegram\(files, buildCaption\(ed\)\)/.test(tg));
-t('insta_logo_settings 를 이미지별로 해석한다', /resolveInstaOpts\(ed\.insta_logo_settings, url\)/.test(tg));
+t('insta_logo_settings 를 이미지별로 해석한다 (배율만 추가로 넘긴다)', /resolveInstaOpts\(ed\.insta_logo_settings, url, TG_IMAGE_SCALE\)/.test(tg));
 t('sharp 는 여전히 지연 로드 (크론 콜드스타트 보호)', /function sharp\([\s\S]{0,200}require\((['"])sharp\1\)/.test(R('api/_lib/instaComposite.js')));
 t('[id].js 는 .select() 전체 행을 넘긴다 (insta_logo_settings 포함)', /\.update\(updates\)\s*\.eq\('id', id\)\s*\.select\(\)\s*\.single\(\)/.test(R('api/editorials/[id].js')));
 t('module.exports 에 sendDocumentsToTelegram', /sendDocumentsToTelegram,/.test(tg.slice(tg.lastIndexOf('module.exports'))));
@@ -59,8 +62,17 @@ const _fnBody = tg.slice(tg.indexOf('async function sendEditorialToTelegram(ed)'
 t('instagram_caption 원문을 별도 텍스트로 보낸다 (비어 있으면 생략)', /const igCaption = \(ed && typeof ed\.instagram_caption === 'string'\) \? ed\.instagram_caption\.trim\(\) : '';\s*let captionSent = false;\s*if \(igCaption\) \{\s*const c = await sendTextToChatSafe\(CHAT_ID\(\), igCaption\);/.test(_fnBody));
 t('캡션이 파일 묶음보다 먼저 나간다 (2026-09-20 사고 후)', _fnBody.indexOf('await sendTextToChatSafe(CHAT_ID(), igCaption)') > 0 && _fnBody.indexOf('await sendTextToChatSafe(CHAT_ID(), igCaption)') < _fnBody.indexOf('await sendDocumentsToTelegram(files'));
 t('캡션 전송은 await + 결과(captionSent)를 이미지 결과에 실어 반환', /captionSent = !!\(c && c\.ok\);/.test(_fnBody) && /r\.captionSent = captionSent;\s*console\.log[^\n]*\n\s*return r;/.test(_fnBody));
-t('갤러리 합성은 mapPool(3) 로 겹쳐 돌리고 순번(01.png…)은 보존', /await mapPool\(gallery, 3, async \(url, i\) =>/.test(_fnBody) && /String\(i \+ 1\)\.padStart\(2, '0'\) \+ '\.png'/.test(_fnBody));
+t('갤러리 합성은 mapPool(3) 로 겹쳐 돌리고 순번(01, 02…)은 보존', /await mapPool\(gallery, 3, async \(url, i\) =>/.test(_fnBody) && /String\(i \+ 1\)\.padStart\(2, '0'\) \+ '\.' \+ f\.ext/.test(_fnBody));
 t('sendTextToChatSafe 는 링크 미리보기 끄고 4000자 자름', /disable_web_page_preview: true/.test(tg) && /slice\(0, 4000\)/.test(tg));
+
+/* 2026-11-02 — 해상도는 갈라졌지만(ZIP 1080 · 텔레그램 2160) '구도' 는 같아야 한다.
+   이 시험의 본래 목적이 거기다. 배율을 바꿔도 비율 값이 그대로인지 직접 확인한다. */
+const _p1 = IC.resolveInstaOpts(S, 'https://x/a.jpg');
+const _p2 = IC.resolveInstaOpts(S, 'https://x/a.jpg', 2);
+t('배율이 달라도 구도 값(logoPct·padPct·offset)은 같다',
+  _p1.logoPct === _p2.logoPct && _p1.padPct === _p2.padPct &&
+  _p1.offsetX === _p2.offsetX && _p1.offsetY === _p2.offsetY && _p1.imgScale === _p2.imgScale);
+t('배율은 캔버스 크기에만 걸린다', _p2.W === _p1.W * 2 && _p2.H === _p1.H * 2);
 
 console.log('\n=== 픽셀 검사 (sharp 있을 때만) ===');
 (async () => {

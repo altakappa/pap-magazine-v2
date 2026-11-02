@@ -24,6 +24,13 @@ const { brandImageBuffer, getTrimmedLogo } = require('./brandImage');
 const BOT_TOKEN = () => process.env.TELEGRAM_BOT_TOKEN || '';
 const CHAT_ID   = () => process.env.TELEGRAM_CHAT_ID || '';
 const BRAND_ON  = () => String(process.env.TELEGRAM_BRAND_LOGO || 'on').toLowerCase() !== 'off';
+/* 텔레그램으로 보낼 갤러리 컷의 출력 배율 (2026-11-02). 1 = 종전 1080×1350.
+   2 면 2160×2700. JPEG q95 4:4:4 로 나가므로 용량은 종전 PNG 보다 오히려 작다.
+   올리려면 env 로. 상한은 instaComposite.MAX_SCALE(4) 이 가둔다. */
+const TG_IMAGE_SCALE = (() => {
+  const n = parseFloat(process.env.TELEGRAM_IMAGE_SCALE || '2');
+  return (Number.isFinite(n) && n >= 1) ? n : 2;
+})();
 const SITE      = 'https://www.pap-magazine.com';
 
 function isConfigured() { return !!(BOT_TOKEN() && CHAT_ID()); }
@@ -199,7 +206,7 @@ function fileBase(title) {
  */
 async function sendEditorialToTelegram(ed) {
   if (!isConfigured()) return { sent: 0, skipped: 'not_configured' };
-  const { resolveInstaOpts, instaCompositeBuffer, getRawLogo } = require('./instaComposite');
+  const { resolveInstaOpts, instaCompositeFile, getRawLogo } = require('./instaComposite');
   const files = [];
   const isHttp = (u) => typeof u === 'string' && /^https?:\/\//i.test(u.trim());
 
@@ -236,12 +243,19 @@ async function sendEditorialToTelegram(ed) {
   const made = await mapPool(gallery, 3, async (url, i) => {
     try {
       const raw = await fetchImageBuffer(url);
-      const opts = resolveInstaOpts(ed.insta_logo_settings, url);
+      /* 2026-11-02 — 텔레그램으로는 2배 해상도(2160×2700)로 보낸다. 도메니코 "화질이 떨어진다".
+         ZIP(인스타 업로드용)은 1080 규격 그대로다 — 배율은 여기서만 올린다.
+         구도는 배율과 무관하게 같다(logoPct·padPct·offset 이 전부 W·H 비율이라서). */
+      const opts = resolveInstaOpts(ed.insta_logo_settings, url, TG_IMAGE_SCALE);
       if (!logo) opts.logoEnabled = false;
-      let buf;
-      try { buf = await instaCompositeBuffer(raw, logo, opts); }
-      catch (e) { console.warn('[telegram] 합성 실패 → 원본 사용:', url, e && e.message); buf = raw; }
-      return { buffer: buf, name: String(i + 1).padStart(2, '0') + '.png', mime: 'image/png' };
+      let f;
+      try { f = await instaCompositeFile(raw, logo, opts); }
+      catch (e) {
+        console.warn('[telegram] 합성 실패 → 원본 사용:', url, e && e.message);
+        const ext0 = extFromUrl(url);
+        f = { buffer: raw, ext: ext0, mime: mimeFromExt(ext0) };
+      }
+      return { buffer: f.buffer, name: String(i + 1).padStart(2, '0') + '.' + f.ext, mime: f.mime };
     } catch (e) {
       console.warn('[telegram] 이미지 스킵:', url, e && e.message);
       return null;

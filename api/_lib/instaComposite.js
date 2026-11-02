@@ -30,14 +30,28 @@ const CANVAS_W = 1080;
 function num(v, fallback) { return (typeof v === 'number' && Number.isFinite(v)) ? v : fallback; }
 
 /** insta_logo_settings + 이미지 URL → 그 이미지의 합성 옵션 (pap-admin.js _papInstaOptsForImage 와 동일 규칙). */
-function resolveInstaOpts(settings, url) {
+/* 2026-11-02 — 출력 배율. 1 이면 종전 그대로(1080×1350).
+   왜 필요한가: 텔레그램으로 가는 갤러리 컷이 전부 1080px 로 줄어 있었다.
+   원본은 서명 URL 로 바로 올라와 수천 px 인데, 인스타 규격(1080)으로 합성한
+   결과물을 그대로 보내고 있었다 — 도메니코 "화질이 떨어진다".
+   ZIP(인스타 업로드용)은 1080 이 맞으므로 기본값은 건드리지 않는다. */
+const MAX_SCALE = 4;
+function _scale(v) {
+  const n = (typeof v === 'number' && Number.isFinite(v)) ? v : 1;
+  return Math.max(1, Math.min(MAX_SCALE, n));
+}
+
+function resolveInstaOpts(settings, url, scale) {
   const g = (settings && typeof settings === 'object' && settings.global && typeof settings.global === 'object') ? settings.global : {};
   const per = (settings && typeof settings === 'object' && settings.perImage && typeof settings.perImage === 'object') ? settings.perImage : {};
   const ov = (url && per[url] && typeof per[url] === 'object') ? per[url] : {};
   const aspect = (g.aspect === '1:1') ? '1:1' : '4:5';
+  /* 배율은 W·H 에만 곱한다. 로고 크기(logoPct)·여백(padPct)·사진 위치(offset)는
+     전부 W·H 의 비율로 계산되므로, 구도는 배율과 무관하게 똑같이 나온다. */
+  const k = _scale(scale);
   return {
-    W: CANVAS_W,
-    H: aspect === '1:1' ? CANVAS_W : 1350,
+    W: CANVAS_W * k,
+    H: (aspect === '1:1' ? CANVAS_W : 1350) * k,
     logoPct:   num(ov.logoPct,   num(g.logoPct, DEFAULTS.logoPct)),
     padPct:    num(ov.padPct,    num(g.padPct,  DEFAULTS.padPct)),
     imgScale:  num(ov.imgScale,  DEFAULTS.imgScale),
@@ -120,4 +134,42 @@ async function instaCompositeBuffer(raw, logoRaw, o) {
   return base.png().toBuffer();
 }
 
-module.exports = { resolveInstaOpts, instaCompositeBuffer, layout, getRawLogo, DEFAULTS, LOGO_URL_DEFAULT };
+/* 사진이 캔버스를 빈틈없이 덮는가. 덮으면 알파가 쓸모없으므로 JPEG 로 내보내도
+   그림이 달라지지 않는다. 덮지 않으면(편집자가 일부러 축소한 경우) 투명 가장자리가
+   있으므로 PNG 를 유지한다 — JPEG 로 바꾸면 그 자리가 검게 칠해진다. */
+function coversCanvas(L) {
+  return L.left === 0 && L.top === 0 && L.vw >= L.W && L.vh >= L.H;
+}
+
+const JPEG_Q = (() => {
+  const n = parseInt(process.env.INSTA_JPEG_QUALITY || '95', 10);
+  return (Number.isFinite(n) && n >= 70 && n <= 100) ? n : 95;
+})();
+
+/**
+ * 합성 결과를 '파일'로 — 확장자·MIME 까지 정해서 돌려준다.
+ *
+ * PNG 고정이던 것을 바꾼 이유(2026-11-02):
+ *   1080×1350 PNG 는 장당 2~4MB 다. 해상도를 2배(2160×2700)로 올리면 PNG 는 10MB 를
+ *   넘겨 16장이면 업로드가 함수 상한을 그대로 넘긴다(실제로 300초 타임아웃이 찍혀 있다).
+ *   같은 2160×2700 을 JPEG q95 4:4:4 로 내보내면 2~3MB — 픽셀은 4배인데 용량은 오히려
+ *   지금보다 작다. 텔레그램에는 document 로 보내므로 재압축도 없다.
+ *   4:4:4 를 쓰는 이유: 기본값 4:2:0 은 색 경계를 뭉갠다. 패션 사진에서 가장 먼저 보인다.
+ *
+ * @returns {Promise<{buffer:Buffer, ext:string, mime:string}>}
+ */
+async function instaCompositeFile(raw, logoRaw, o) {
+  const oriented = await sharp(raw, { failOn: 'none' }).rotate().toBuffer();
+  const meta = await sharp(oriented).metadata();
+  if (!meta.width || !meta.height) throw new Error('bad image dimensions');
+  const L = layout(meta.width, meta.height, o);
+  const png = await instaCompositeBuffer(oriented, logoRaw, o);
+  if (!coversCanvas(L)) return { buffer: png, ext: 'png', mime: 'image/png' };
+  const jpg = await sharp(png)
+    .flatten({ background: '#000000' })           // 덮는 경우라 실제로 칠할 자리는 없다
+    .jpeg({ quality: JPEG_Q, chromaSubsampling: '4:4:4', mozjpeg: true })
+    .toBuffer();
+  return { buffer: jpg, ext: 'jpg', mime: 'image/jpeg' };
+}
+
+module.exports = { resolveInstaOpts, instaCompositeBuffer, instaCompositeFile, coversCanvas, layout, getRawLogo, DEFAULTS, LOGO_URL_DEFAULT, JPEG_Q, MAX_SCALE };
