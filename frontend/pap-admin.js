@@ -10259,13 +10259,17 @@ function _papCoverReadFormMeta(){
   // 4) Contributors: input > credits area names joined
   var contribEl = document.getElementById('coverContributors');
   var contributors = (contribEl && contribEl.value || '').trim();
+  /* contribUnits = 이름 '단위' 목록. 이게 있으면 줄바꿈을 이름 경계에서만 하고
+     양쪽 줄을 비슷한 폭으로 나눈다. 편집자가 입력칸에 직접 쓴 경우엔 어디가
+     이름 경계인지 알 수 없으므로 null 로 두고 종전 단어 줄바꿈을 쓴다. */
+  var contribUnits = null;
   if (!contributors) {
     var names = [];
     document.querySelectorAll('#creditsArea .pe-credit-row .pe-credit-name').forEach(function(el){
-      var v = (el.value || '').trim();
-      if (v) names.push(v);
+      names.push(el.value);
     });
-    contributors = names.join(' ');
+    contribUnits = _papDedupeNames(names);
+    contributors = contribUnits.join(' ');
   }
 
   // 5) Cover SOURCE image for the composite. Uses the decoupled cover
@@ -10284,6 +10288,7 @@ function _papCoverReadFormMeta(){
     yearLabel:  yearLabel,
     title:      title,
     contributors: contributors,
+    contribUnits: contribUnits,
     coverUrl:   coverUrl,
   };
 }
@@ -10319,6 +10324,53 @@ async function _papCoverLoadImage(url){
     };
     img.src = url;
   });
+}
+
+/* ── 2026-11-03 도메니코: 커버 스태프 크레딧 ─────────────────────────────
+   "첫째칸 6명 둘째칸 1명인데, 첫째칸 4명 둘째칸 3명 이런식으로"
+   "중복되는 사람의 이름은 하나만"
+
+   왜 6+1 이 나왔나: 기여자 줄은 이름들을 공백으로 이어 붙인 **한 문자열**이고,
+   줄바꿈은 일반 단어 줄바꿈(_papCoverWrap)이 했다. 그래서 (a) 한 줄에 최대한
+   채우고 넘치는 것만 다음 줄로 넘기는 탐욕적 방식이라 균형이 안 맞고,
+   (b) "Shin Haedeun" 처럼 두 단어인 이름은 가운데서 잘릴 수도 있었다.
+   이름을 '단위'로 들고 다니면 둘 다 해결된다. */
+
+/** 같은 사람이 여러 역할에 적혀도 한 번만. 대소문자·중복 공백 무시, 첫 표기를 남긴다. */
+function _papDedupeNames(list){
+  var out = [], seen = {};
+  (list || []).forEach(function(raw){
+    var v = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+    if (!v) return;
+    var k = v.toLowerCase();
+    if (seen[k]) return;
+    seen[k] = 1;
+    out.push(v);
+  });
+  return out;
+}
+
+/** 이름 목록을 최대 두 줄로, 양쪽 폭이 비슷하게 나눈다. 이름은 절대 쪼개지 않는다.
+ *  한 줄에 다 들어가면 한 줄. 어떻게 잘라도 한 줄이 maxWidth 를 넘으면 종전 단어
+ *  줄바꿈으로 되돌린다(바깥의 '글자 크기 줄이기' 루프가 그 다음을 받는다). */
+function _papCoverBalanceNames(ctx, units, maxWidth){
+  var list = (units || []).filter(function(u){ return u; });
+  if (!list.length) return [];
+  var all = list.join(' ');
+  if (list.length === 1 || ctx.measureText(all).width <= maxWidth) return [all];
+  var best = null;
+  for (var k = 1; k < list.length; k++){
+    var a = list.slice(0, k).join(' ');
+    var b = list.slice(k).join(' ');
+    var wa = ctx.measureText(a).width, wb = ctx.measureText(b).width;
+    if (wa > maxWidth || wb > maxWidth) continue;
+    var diff = Math.abs(wa - wb);
+    /* 같은 균형이면 **앞줄을 더 채운다** (<= 로 뒤쪽 k 가 이긴다).
+       도메니코의 예시가 "첫째칸 4명 둘째칸 3명" 이다. 7명을 폭이 같게 자르면
+       3+4 와 4+3 이 동점인데, 잡지 조판에서는 윗줄이 긴 쪽이 자연스럽다. */
+    if (!best || diff <= best.diff) best = { diff: diff, lines: [a, b] };
+  }
+  return best ? best.lines : _papCoverWrap(ctx, all, maxWidth);
 }
 
 // Word-wrap helper. Splits `text` into lines that fit within `maxWidth`
@@ -10463,12 +10515,18 @@ async function _papCoverComposite(canvas, meta){
   var contribSize = sty.contribSize;
   ctx.font = 'italic 400 ' + contribSize + 'px "Times New Roman", Georgia, serif';
   var contribMaxW = W - 100;
-  var contribLines = _papCoverWrap(ctx, meta.contributors || '', contribMaxW);
+  /* 2026-11-03 — 이름 단위가 있으면 이름 경계에서만, 양쪽 폭이 비슷하게 나눈다. */
+  var _contribSplit = function(){
+    return (meta.contribUnits && meta.contribUnits.length)
+      ? _papCoverBalanceNames(ctx, meta.contribUnits, contribMaxW)
+      : _papCoverWrap(ctx, meta.contributors || '', contribMaxW);
+  };
+  var contribLines = _contribSplit();
   if (contribLines.length > 2) {
     while (contribLines.length > 2 && contribSize > 16) {
       contribSize -= 2;
       ctx.font = 'italic 400 ' + contribSize + 'px "Times New Roman", Georgia, serif';
-      contribLines = _papCoverWrap(ctx, meta.contributors || '', contribMaxW);
+      contribLines = _contribSplit();
     }
   }
 
