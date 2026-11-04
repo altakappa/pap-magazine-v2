@@ -11,6 +11,8 @@
  */
 
 const { supabaseAdmin } = require('../../_lib/supabase');
+// 2026-11-04 — embedding(6KB, 한 줄의 50%)을 안 읽는다. 11/03 크롤 폭주 DB 다운 후속 (editorialCols.js 머리말)
+const { EDITORIAL_SELECT } = require('../../_lib/editorialCols');
 const { anyOutage, sendOutage } = require('../../_lib/dbOutage');
 const { handleCors } = require('../../_lib/cors');
 const { renderSeoHtml, renderNotFoundHtml } = require('../../_lib/seoRenderer');
@@ -45,13 +47,13 @@ module.exports = async function handler(req, res) {
     let data = null;
 
     /* 1) slug match */
-    let r = await supabaseAdmin.from('editorials').select('*')
+    let r = await supabaseAdmin.from('editorials').select(EDITORIAL_SELECT)
       .eq('slug', slug).eq('status', 'published').limit(1).maybeSingle();
     data = r.data;
 
     /* 2) decoded slug (handles URL-encoded slugs that contain spaces) */
     if (!data && decoded !== slug) {
-      r = await supabaseAdmin.from('editorials').select('*')
+      r = await supabaseAdmin.from('editorials').select(EDITORIAL_SELECT)
         .eq('slug', decoded).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
@@ -73,7 +75,7 @@ module.exports = async function handler(req, res) {
 
     /* 2b) slug match with hyphens stripped — QA #222 */
     if (!data && dehyphenated !== decoded) {
-      r = await supabaseAdmin.from('editorials').select('*')
+      r = await supabaseAdmin.from('editorials').select(EDITORIAL_SELECT)
         .eq('slug', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
@@ -103,14 +105,14 @@ module.exports = async function handler(req, res) {
          error 를 안 보면 '전송량 초과로 잠김' 과 '그런 글 없음' 이 같은 404 가 되고,
          구글은 그걸 '페이지가 사라졌다' 로 읽어 색인에서 뺀다. */
       if (anyOutage(r)) return sendOutage(res, 'editorial ' + slug);
-      r = await supabaseAdmin.from('editorials').select('*')
+      r = await supabaseAdmin.from('editorials').select(EDITORIAL_SELECT)
         .eq('title', decoded).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
 
     /* 3b) title with hyphens stripped — QA #222 */
     if (!data && dehyphenated !== decoded) {
-      r = await supabaseAdmin.from('editorials').select('*')
+      r = await supabaseAdmin.from('editorials').select(EDITORIAL_SELECT)
         .eq('title', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
@@ -118,14 +120,14 @@ module.exports = async function handler(req, res) {
     /* 3c) title ilike — QA #222 (forgiving of trailing punctuation) */
     if (!data && dehyphenated.length >= 3) {
       const safe = dehyphenated.replace(/[\\%_]/g, ch => '\\' + ch);
-      r = await supabaseAdmin.from('editorials').select('*')
+      r = await supabaseAdmin.from('editorials').select(EDITORIAL_SELECT)
         .ilike('title', safe).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
 
     /* 4) UUID id */
     if (!data && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
-      r = await supabaseAdmin.from('editorials').select('*')
+      r = await supabaseAdmin.from('editorials').select(EDITORIAL_SELECT)
         .eq('id', slug).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }

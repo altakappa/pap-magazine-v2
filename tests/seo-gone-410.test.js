@@ -78,7 +78,8 @@ console.log('\n[4] 공개 조회 필터는 느슨해지지 않았다');
   /* 410 작업이 공개 lookup 의 published 필터를 건드렸다면 draft 유출이다. */
   /* 2026-09-14 — 기사 SSR 은 select('*') 대신 ARTICLE_SELECT(embedding 뺀 열 목록)을 쓴다.
      세는 대상은 '열 목록이 무엇이냐' 가 아니라 '공개 필터가 붙어 있느냐' 다. */
-  const SEL = "select\\((?:'\\*'|ARTICLE_SELECT)\\)";
+  /* 2026-11-04 — 화보 SSR 도 같은 수술: EDITORIAL_SELECT (editorialCols.js). */
+  const SEL = "select\\((?:'\\*'|ARTICLE_SELECT|EDITORIAL_SELECT)\\)";
   const pubLookups = (s) => (s.match(new RegExp(SEL + "[\\s\\S]{0,120}?\\.eq\\('status', 'published'\\)", 'g')) || []).length;
   t('기사 공개 lookup 전부 published 필터 유지 (' + pubLookups(art) + '개)', pubLookups(art) >= 7);
   t('에디토리얼 공개 lookup 전부 published 필터 유지 (' + pubLookups(ed) + '개)', pubLookups(ed) >= 7);

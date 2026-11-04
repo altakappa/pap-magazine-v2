@@ -6,6 +6,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
+const { EDITORIAL_SELECT } = require('../_lib/editorialCols');   // 2026-11-04 embedding 제외 (화보 상세 API)
 const { resolveEmailLang } = require('../_lib/emailLocale');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin, verifyToken } = require('../_lib/auth');
@@ -210,7 +211,7 @@ module.exports = async function handler(req, res) {
       const _isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ''));
       let q = supabaseAdmin
         .from('editorials')
-        .select('*, related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)');
+        .select(EDITORIAL_SELECT + ', related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)');
       q = _isUuid ? q.eq('id', id) : q.eq('slug', String(id || '').toLowerCase()).eq('status', 'published');
       const { data, error } = await q.single();
 
