@@ -45,6 +45,7 @@ function notFound(res) {
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+  require('../../_lib/ssrUaLog').logSsrUa('brand', req);   // 2026-11-04 크롤 폭주 때 요청자 식별 (ssrUaLog.js 머리말)
   if (req.method !== 'GET') { res.setHeader('Allow', 'GET, OPTIONS'); return res.status(405).end(); }
 
   const { id } = req.query;

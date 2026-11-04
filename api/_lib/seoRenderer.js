@@ -441,12 +441,49 @@ function asArray(v) {
   return [];
 }
 
+/* 2026-11-04 — 옛 압축 크레딧 형식 {r, h:[{n, id}]} 를 읽는다.
+ * 실측: 게시 화보 2,292건 중 2,111건(92%)이 이 형식이다
+ *   예) [{"r":"Photography","h":[{"n":"Fredericelfeld","id":"@fredericelfeld"}]}, …]
+ * 아래 세 파서(이름 목록·Person 스키마·Credits 블록)는 새 형식(name/roles/instagram)과
+ * 역할별 객체만 읽어서, 서버 렌더(구글이 보는 HTML)에서 92% 화보의 크레딧이 통째로 빠졌다.
+ * 사이트 앱(SPA)은 이 형식을 읽으므로 사람 눈엔 멀쩡했고, 그래서 아무도 몰랐다. */
+function isCompactCredits(arr) {
+  return Array.isArray(arr) && arr.some((e) => e && typeof e === 'object' && Array.isArray(e.h));
+}
+/* 사람이 아닌 줄 — 브랜드·장소·감사 인사. Credits 블록에는 그대로 보이지만, 작성자(byline)·Person 스키마에는
+   넣지 않는다. 안 빼면 "By Nawi D, Weekday, Prada…" 처럼 브랜드가 저자가 된다.
+   실측 역할 상위: Fashion by 678 · 함께한 브랜드 46 · Studio 59 · Location 56 */
+const NON_PERSON_ROLE_RE = /fashion\s*by|brand|브랜드|wearing|착용|studio|스튜디오|location|장소|special\s*thanks|thanks\s*to|감사/i;
+
+/** 압축 형식 → 새 형식 항목 [{name, roles, instagram}] (사람 한 명당 한 항목). 다른 항목은 그대로.
+ *  peopleOnly 면 브랜드·장소·감사 줄은 뺀다(작성자·Person 용). */
+function expandCompactCredits(arr, peopleOnly) {
+  if (!Array.isArray(arr)) return arr;
+  const out = [];
+  arr.forEach((e) => {
+    if (e && typeof e === 'object' && Array.isArray(e.h)) {
+      if (peopleOnly && NON_PERSON_ROLE_RE.test(String(e.r || ''))) return;
+      e.h.forEach((p) => {
+        if (!p || typeof p !== 'object') return;
+        const name = String(p.n || '').trim();
+        const instagram = String(p.id || '').trim();
+        if (!name && !instagram) return;
+        out.push({ name: name || instagram.replace(/^@/, ''), roles: e.r ? [String(e.r).trim()] : [], instagram });
+      });
+    } else {
+      out.push(e);
+    }
+  });
+  return out;
+}
+
 function extractContributors(record) {
   const names = new Set();
   let c = record.credits;
   if (!c) return [];
   try {
-    const obj = typeof c === 'string' ? JSON.parse(c) : c;
+    let obj = typeof c === 'string' ? JSON.parse(c) : c;
+    obj = expandCompactCredits(obj, true);   // 2026-11-04 옛 압축 형식 (사람만)
     if (Array.isArray(obj)) {
       obj.forEach(entry => {
         if (entry && typeof entry === 'object' && entry.name) names.add(String(entry.name));
@@ -473,7 +510,7 @@ function extractPersonEntities(record) {
   const seen = new Map();
   try {
     const obj = typeof c === 'string' ? JSON.parse(c) : c;
-    const arr = Array.isArray(obj) ? obj : [];
+    const arr = Array.isArray(obj) ? expandCompactCredits(obj, true) : [];   // 2026-11-04 옛 압축 형식 (사람만)
     for (const entry of arr) {
       if (!entry || typeof entry !== 'object' || !entry.name) continue;
       const name = String(entry.name).trim();
@@ -547,6 +584,16 @@ function extractStructuredCredits(record) {
   try { obj = typeof c === 'string' ? JSON.parse(c) : c; } catch { return []; }
   if (!obj) return [];
   const rows = []; // {role, handles}
+  /* 2026-11-04 — 옛 압축 형식은 이미 역할별로 묶여 있다: 역할 한 줄에 핸들 여러 개 (앱 화면과 같은 모양) */
+  if (isCompactCredits(obj)) {
+    obj.forEach((e) => {
+      if (!e || typeof e !== 'object' || !Array.isArray(e.h)) return;
+      const handles = e.h.map((p) => (p && typeof p === 'object')
+        ? (normalizeHandle(p.id || '') || String(p.n || '').trim()) : '').filter(Boolean);
+      if (handles.length) rows.push({ role: humanizeRoleKey(e.r), handles });
+    });
+    return rows;
+  }
   if (Array.isArray(obj)) {
     obj.forEach((entry) => {
       if (!entry || typeof entry !== 'object') return;
@@ -2588,4 +2635,5 @@ function renderNotFoundHtml(kind, slug) {
    여기 하나뿐이어야 한다. AI 답변 점유율 프로브(aiVisibility.js)가 "답변에
    우리가 나왔나"를 이 별칭 목록으로 판정하는데, 목록을 거기 다시 적으면
    '팹매거진' 같은 표기를 한쪽만 추가하는 날이 반드시 온다 (교훈 2). */
-module.exports = { renderSeoHtml, renderNotFoundHtml, descFromBody, KIND, SITE, SITE_NAME, fmtDisplayDate, fmtTitleCat, ORG_PUBLISHER };
+module.exports = { renderSeoHtml, renderNotFoundHtml, descFromBody, KIND, SITE, SITE_NAME, fmtDisplayDate, fmtTitleCat, ORG_PUBLISHER,
+  _credits: { isCompactCredits, expandCompactCredits, extractStructuredCredits, extractContributors, extractPersonEntities, NON_PERSON_ROLE_RE } };

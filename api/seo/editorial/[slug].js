@@ -26,6 +26,7 @@ const { overlayRelatedTitles } = require('../../_lib/relatedI18n');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+  require('../../_lib/ssrUaLog').logSsrUa('editorial', req);   // 2026-11-04 크롤 폭주 때 요청자 식별 (ssrUaLog.js 머리말)
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET, OPTIONS');
     return res.status(405).end();
