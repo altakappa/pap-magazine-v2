@@ -1353,6 +1353,10 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="pe-actions">
           <button class="btn btn-primary" onclick="savePost()">저장</button>
           <button class="btn" onclick="savePost('draft')" title="공개 체크와 무관하게 임시저장으로 저장">임시저장</button>
+          <!-- 2026-11-06 — 텔레그램 재전송. 종전엔 /api/editorials/telegram-send?id=… 주소를
+               직접 쳐야 했는데, 모바일에서는 사실상 불가능했고 주소를 열어도 관리자 세션이
+               안 실리면 조용히 아무 일도 안 일어났다. 버튼은 이 페이지의 쿠키를 그대로 들고 간다. -->
+          <button class="btn" id="tgResendBtn" type="button" onclick="papResendTelegram()" title="이 화보의 캡션과 이미지를 텔레그램으로 다시 보낸다 (발행된 화보만)">📨 텔레그램 재전송</button>
           <button class="btn" onclick="alert('미리보기는 실제 운영 시 사이트에서 확인 가능합니다.')">미리보기</button>
           <button class="btn" onclick="go('editorials')">취소</button>
         </div>
@@ -3702,7 +3706,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=173" defer></script>
+<script src="/pap-admin.js?v=174" defer></script>
 <script src="/pap-admin-campaigns.js?v=5" defer></script>
 </body>
 </html>

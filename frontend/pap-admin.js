@@ -7785,6 +7785,32 @@ document.addEventListener('DOMContentLoaded', function(){
 // 공개 checkbox, so the "임시저장" button always saves as a draft no
 // matter what the publish toggle says. Default behaviour reads the
 // checkbox as before.
+/* ── 텔레그램 재전송 (2026-11-06) ────────────────────────────────────────
+   왜 버튼인가: 종전 유일한 재전송 방법은 /api/editorials/telegram-send?id=<uuid> 를
+   브라우저 주소창에 직접 치는 것이었다. 모바일에서는 사실상 불가능했고, 주소를
+   열어도 관리자 세션이 안 실리면 **아무 일도 일어나지 않고 화면도 말을 안 했다**
+   (11/06 실측: 도메니코가 링크를 열었는데 함수 호출 기록이 아예 없었다).
+   버튼은 같은 페이지의 쿠키를 그대로 들고 가고, 결과·실패 사유를 화면에 띄운다. */
+async function papResendTelegram(){
+  if(!editingEditorialId){ alert('먼저 화보를 저장한 뒤에 눌러주세요.'); return; }
+  var btn=document.getElementById('tgResendBtn');
+  var orig=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='보내는 중… (몇 분 걸립니다)'; }
+  try{
+    var r=await fetch('/api/editorials/telegram-send?id='+encodeURIComponent(editingEditorialId), { credentials:'include' });
+    var j=await r.json().catch(function(){ return {}; });
+    if(!r.ok) throw new Error((j && (j.error||j.message)) || ('HTTP '+r.status));
+    alert('텔레그램 전송 완료\n\n이미지 '+(j.sent!=null?j.sent:'?')+'장'
+      +(j.groups!=null?(' · '+j.groups+'묶음'):'')
+      +(j.captionSent?'\n캡션도 전송됨':'')
+      +(j.skipped?('\n건너뜀: '+j.skipped):''));
+  }catch(e){
+    alert('텔레그램 전송 실패\n\n'+((e&&e.message)||e)+'\n\n로그인이 풀렸거나 발행 상태가 아닐 수 있습니다.');
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=orig; }
+  }
+}
+
 async function savePost(mode){
   // Always start by clearing prior errors so re-clicks reflect current state.
   _peClearAllErrors();
