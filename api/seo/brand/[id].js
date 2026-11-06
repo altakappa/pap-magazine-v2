@@ -43,6 +43,66 @@ function notFound(res) {
     '<p>브랜드를 찾을 수 없습니다.</p><a href="/partners" style="color:#fff">← Brands &amp; Partners</a></body></html>');
 }
 
+/* 브랜드 → 화보 색인 — 인스턴스 메모리에 10분 보관 (2026-11-06)
+ *
+ * 왜: 이 페이지는 열릴 때마다 발행 화보 2,300여 건의 fashion 크레딧을 전부 읽어
+ * (1000행씩 3번) 메모리에서 거른다. 사람 한 명이면 괜찮지만, 11/05 10:00·11/06 09:44 KST
+ * 서울발 수집기(브라우저 이름을 매번 바꿔 위장, icn1)가 브랜드 페이지 수천 개를 초당 10개씩
+ * 열자 그대로 "페이지 수 × 2,300행" 이 DB 로 쏟아졌다(5분 2만 6천 건, 메모리 SEVERE·스왑).
+ * 페이지 캐시(1h)는 처음 여는 주소엔 소용없다 — 수집기는 모든 주소를 한 번씩만 연다.
+ * → 한 번 읽어 "브랜드 → 화보 목록" 표를 만들고 10분간 재사용한다. 동시에 몰려도
+ *   읽기는 한 번만(pending 공유). 결과는 예전과 같다: 발행분 · 최신순 · 브랜드당 300개.
+ * 대가: 새 화보가 브랜드 페이지에 뜨기까지 최대 10분 + 기존 페이지 캐시(1h) 지연. */
+const INDEX_TTL_MS = 10 * 60 * 1000;
+let _idx = { at: 0, map: null, pending: null };
+
+async function loadPublishedFashion() {
+  const rows = [];
+  const PAGE = 1000;
+  let complete = true;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from('editorials')
+      .select('title, slug, id, cover_image, og_image, thumbnail, published_date, fashion')
+      .eq('status', 'published')
+      .not('fashion', 'is', null)
+      .order('published_date', { ascending: false, nullsFirst: false })
+      .range(from, from + PAGE - 1);
+    if (error) { complete = false; break; }
+    if (!data || !data.length) break;
+    rows.push(...data);
+    if (data.length < PAGE) break;
+  }
+  return { rows, complete };
+}
+
+function buildBrandIndex(rows) {
+  const map = new Map();
+  for (const e of rows || []) {
+    if (!e || !e.title) continue;
+    const card = { title: e.title, slug: e.slug, id: e.id, cover_image: e.cover_image,
+      og_image: e.og_image, thumbnail: e.thumbnail, published_date: e.published_date };
+    for (const b of parseBrandCredits(e.fashion)) {
+      let list = map.get(b.id);
+      if (!list) map.set(b.id, (list = []));
+      if (list.length < 300) list.push(card);
+    }
+  }
+  return map;
+}
+
+async function brandIndex(now = Date.now()) {
+  if (_idx.map && now - _idx.at < INDEX_TTL_MS) return _idx.map;
+  if (_idx.pending) return _idx.pending;
+  _idx.pending = loadPublishedFashion().then(({ rows, complete }) => {
+    const map = buildBrandIndex(rows);
+    if (complete) _idx = { at: Date.now(), map, pending: null };
+    else _idx.pending = null;          // 덜 읽힌 표는 저장하지 않는다(다음 요청이 다시 읽음)
+    return (!complete && _idx.map) ? _idx.map : map;   // 실패 시 직전 표가 있으면 그걸 쓴다
+  }, (err) => { _idx.pending = null; if (_idx.map) return _idx.map; throw err; });
+  return _idx.pending;
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   require('../../_lib/ssrUaLog').logSsrUa('brand', req);   // 2026-11-04 크롤 폭주 때 요청자 식별 (ssrUaLog.js 머리말)
@@ -73,27 +133,7 @@ module.exports = async function handler(req, res) {
      *
      * 비용: 발행 기사의 fashion 만 읽어 메모리에서 필터한다. 브랜드당 전건
      * 스캔이라 페이지 캐시(1h edge + 24h SWR)가 이 비용을 흡수한다. */
-    let eds = [];
-    {
-      const rows = [];
-      const PAGE = 1000;
-      for (let from = 0; ; from += PAGE) {
-        const { data, error } = await supabaseAdmin
-          .from('editorials')
-          .select('title, slug, id, cover_image, og_image, thumbnail, published_date, fashion')
-          .eq('status', 'published')
-          .not('fashion', 'is', null)
-          .order('published_date', { ascending: false, nullsFirst: false })
-          .range(from, from + PAGE - 1);
-        if (error) break;
-        if (!data || !data.length) break;
-        rows.push(...data);
-        if (data.length < PAGE) break;
-      }
-      eds = rows
-        .filter((e) => e.title && parseBrandCredits(e.fashion).some((b) => b.id === brandId))
-        .slice(0, 300);
-    }
+    const eds = (await brandIndex()).get(brandId) || [];
 
     const name = esc(brand.display_name);
     const count = eds.length;
@@ -246,3 +286,4 @@ ${JSON.stringify(schema)}
     return res.status(500).send('brand page error');
   }
 };
+module.exports._brandIndex = { buildBrandIndex, brandIndex, reset() { _idx = { at: 0, map: null, pending: null }; } };
