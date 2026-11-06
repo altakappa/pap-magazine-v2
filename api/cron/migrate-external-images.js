@@ -197,6 +197,158 @@ async function remainingCount() {
   } catch (_) { return null; }
 }
 
+/* ─── 2단계: 기사·필름의 구 S3 이미지 (2026-11-06 신설) ─────────────────────
+ *
+ * 왜: AWS(월 약 $278)를 닫으려면 구 S3 버킷(pap-korea-bucket)을 아무도 안 불러야 한다.
+ * 화보는 이 크론이 이미 끝냈다(남은 24장은 영구 실패 · 초대형 GIF). 그런데 이 크론은
+ * 화보만 봤기 때문에 "완주 0건" 이라고 보고하면서 기사 317행 3,611장 · 필름 141장을
+ * 몰랐다(2026-11-04 실측). 화보 큐가 빌 때만 돈다 — 화보가 늘 우선이다.
+ *
+ * ⚠️ 행 안의 순서: 갤러리 먼저, 대표 이미지(thumbnail_url · hero_image_url)는 갤러리를
+ *    이번 회차에 다 훑은 뒤에만 바꾼다. 선별 조건이 대표 이미지라서, 대표를 먼저 바꾸면
+ *    갤러리가 남은 채로 큐에서 빠진다(기사 갤러리 최대 151장 — 한 회차에 다 못 옮긴다).
+ * ⚠️ 막힘 방지: 남은 구 S3 주소가 전부 실패 기록에 있는 행은 대상에서 뺀다
+ *    (2026-07 의 691회 진전 0 — 큐 맨 앞이 죽은 링크라 매 회차가 통째로 헛돌았다).
+ * 잔량 = 아직 안 옮긴(실패 기록 제외) 구 S3 주소 수. 0 이면 이 단계도 완주다. */
+const S3_RE = /pap-korea-bucket\.s3/;
+
+function pendingS3(url, failSet) {
+  return typeof url === 'string' && S3_RE.test(url) && !failSet.has(url);
+}
+
+/** 기사 한 행에서 이번에 옮길 주소 — [갤러리 고유값..., 대표 이미지...] 순서 */
+function articleS3Targets(a, failSet) {
+  const gal = Array.isArray(a.gallery) ? a.gallery : [];
+  const g = [...new Set(gal.filter(u => pendingS3(u, failSet)))];
+  const heads = [...new Set([a.thumbnail_url, a.hero_image_url].filter(u => pendingS3(u, failSet)))]
+    .filter(u => !g.includes(u));
+  return { gallery: g, heads };
+}
+
+async function moveOneImage(url, folder, ownerId, failSet, newFailures, stats) {
+  try {
+    const { buf, contentType, shrunkFrom } = await fetchImage(url);
+    if (shrunkFrom) { stats.shrunk++; stats.saved += (shrunkFrom - buf.length); }
+    const path = folder + Date.now() + '_' + (stats.seq++) + '.' + extFromContentType(contentType);
+    const { error: upErr } = await supabaseAdmin.storage.from('media')
+      .upload(path, buf, { contentType, upsert: true });
+    if (upErr) throw new Error('storage: ' + upErr.message);
+    const { data: pub } = supabaseAdmin.storage.from('media').getPublicUrl(path);
+    stats.images++;
+    stats.moved.add(url);
+    return pub.publicUrl;
+  } catch (e) {
+    const reason = ((e && e.message) || 'unknown').slice(0, 200);
+    newFailures.push({ url, editorial_id: ownerId, reason });
+    failSet.add(url);
+    return null;
+  }
+}
+
+async function migrateOtherS3(res, started, failSet) {
+  const over = () => Date.now() - started > TIME_BUDGET_MS;
+  const stats = { articles: 0, films: 0, images: 0, shrunk: 0, saved: 0, seq: 0, moved: new Set() };
+  const newFailures = [];
+
+  // 기사 — 대표 이미지가 구 S3 인 행 전부(갤러리만 S3 인 행은 0건 실측). 최신 발행분부터.
+  const { data: arts, error: aErr } = await supabaseAdmin.from('articles')
+    .select('id, status, published_date, thumbnail_url, hero_image_url, gallery')
+    .or('thumbnail_url.ilike.*pap-korea-bucket*,hero_image_url.ilike.*pap-korea-bucket*')
+    .order('published_date', { ascending: false, nullsFirst: false })
+    .limit(2000);
+  if (aErr) throw new Error('article selector failed: ' + aErr.message);
+  const artRows = (arts || [])
+    .sort((x, y) => (x.status === 'published' ? 0 : 1) - (y.status === 'published' ? 0 : 1));
+
+  for (const a of artRows) {
+    if (over()) break;
+    const { gallery, heads } = articleS3Targets(a, failSet);
+    if (!gallery.length && !heads.length) continue;      // 남은 게 전부 실패 기록 → 건너뜀(막힘 방지)
+    const map = {};
+    let cut = false;
+    for (const u of gallery) {
+      if (over()) { cut = true; break; }
+      const nu = await moveOneImage(u, 'migrated/articles/' + a.id + '/', a.id, failSet, newFailures, stats);
+      if (nu) map[u] = nu;
+    }
+    if (!cut) {
+      for (const u of heads) {
+        if (over()) { cut = true; break; }
+        const nu = await moveOneImage(u, 'migrated/articles/' + a.id + '/', a.id, failSet, newFailures, stats);
+        if (nu) map[u] = nu;
+      }
+    }
+    if (!Object.keys(map).length) continue;
+    const patch = {};
+    if (Array.isArray(a.gallery)) {
+      const ng = a.gallery.map(u => map[u] || u);
+      if (JSON.stringify(ng) !== JSON.stringify(a.gallery)) patch.gallery = ng;
+    }
+    if (!cut) {                                           // 갤러리를 다 훑었을 때만 대표 교체
+      if (map[a.thumbnail_url]) patch.thumbnail_url = map[a.thumbnail_url];
+      if (map[a.hero_image_url]) patch.hero_image_url = map[a.hero_image_url];
+    }
+    if (!Object.keys(patch).length) continue;
+    const { error: uErr } = await supabaseAdmin.from('articles').update(patch).eq('id', a.id);
+    if (uErr) console.error('[migrate-external-images] article update failed', a.id, uErr.message);
+    else stats.articles++;
+  }
+
+  // 필름 — 썸네일 한 장씩
+  let filmRows = [];
+  if (!over()) {
+    const { data: films, error: fErr } = await supabaseAdmin.from('films')
+      .select('id, thumbnail_url').ilike('thumbnail_url', '%pap-korea-bucket%').limit(2000);
+    if (fErr) throw new Error('film selector failed: ' + fErr.message);
+    filmRows = films || [];
+    for (const f of filmRows) {
+      if (over()) break;
+      if (!pendingS3(f.thumbnail_url, failSet)) continue;
+      const nu = await moveOneImage(f.thumbnail_url, 'migrated/films/' + f.id + '/', f.id, failSet, newFailures, stats);
+      if (!nu) continue;
+      const { error: uErr } = await supabaseAdmin.from('films').update({ thumbnail_url: nu }).eq('id', f.id);
+      if (uErr) console.error('[migrate-external-images] film update failed', f.id, uErr.message);
+      else stats.films++;
+    }
+  }
+
+  if (newFailures.length) {
+    await supabaseAdmin.from('image_migration_failures')
+      .upsert(newFailures, { onConflict: 'url' })
+      .then(() => {}, e => console.error('[migrate-external-images] failure log', e && e.message));
+    const byReason = {};
+    newFailures.forEach(f => { const k = String(f.reason).split(':')[0]; byReason[k] = (byReason[k] || 0) + 1; });
+    await sendTextToTelegramSafe('🖼 기사·필름 구 S3 이관 중 실패 ' + newFailures.length + '건 — '
+      + Object.entries(byReason).map(([k, n]) => k + ' ' + n).join(', ')
+      + '\n→ 일시적 사유는 1시간 뒤 자동 재시도. 404 는 원본이 S3 에 없다(AWS 정리 전에 확인).').catch(() => {});
+  }
+
+  // 잔량 — 아직 안 옮긴 구 S3 주소 수 (실패 기록 · 이번 회차에 옮긴 것 제외)
+  const still = (u) => pendingS3(u, failSet) && !stats.moved.has(u);
+  let left = 0;
+  for (const a of artRows) {
+    const g = Array.isArray(a.gallery) ? a.gallery.filter(still) : [];
+    const h = [a.thumbnail_url, a.hero_image_url].filter(still);
+    left += new Set([...g, ...h]).size;
+  }
+  for (const f of filmRows) if (still(f.thumbnail_url)) left++;
+  if (over() && !filmRows.length) left = null;            // 필름을 못 세었으면 잔량 미상
+
+  console.log('[migrate-external-images] s3-others', { articles: stats.articles, films: stats.films, images: stats.images, failures: newFailures.length, left, ms: Date.now() - started });
+  const done = left === 0 && stats.images === 0 && !newFailures.length;
+  return res.status(200).json({
+    ok: true, phase: 's3-others', done, articlesDone: stats.articles, filmsDone: stats.films,
+    imagesMoved: stats.images, failures: newFailures.length, remaining: left,
+    note: note(res, done
+      ? '완주 — 화보 외부 이미지 0건 + 기사·필름 구 S3 0건 (실패 기록분 제외)'
+      : '기사·필름 구 S3 이관: 기사 ' + stats.articles + '편 · 필름 ' + stats.films + '편 · 이미지 ' + stats.images + '장'
+        + (stats.shrunk ? ' · 축소 ' + Math.round(stats.saved / 1048576) + 'MB 절감' : '')
+        + (newFailures.length ? ' · 실패 ' + newFailures.length + '건' : '')
+        + (left === null ? '' : ' · 잔량 ' + left + '장')
+        + (stats.images === 0 && left ? ' ⚠️ 진전 0 — 큐가 막혔는지 확인' : '')),
+  });
+}
+
 module.exports = withCronGuard('migrate-external-images', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = bearerOk(auth, process.env.CRON_SECRET); // 2026-09-04 timing-safe
@@ -210,12 +362,6 @@ module.exports = withCronGuard('migrate-external-images', async function handler
 
   const { data: rows, error: selErr } = await supabaseAdmin.rpc('external_image_editorials', { lim });
   if (selErr) throw new Error('selector failed: ' + selErr.message);
-  if (!rows || rows.length === 0) {
-    return res.status(200).json({
-      ok: true, done: true, migrated: 0,
-      note: note(res, '완주 — 외부 호스트 이미지 0건 (드라이브·구 S3·wix)'),
-    });
-  }
 
   /* 우리 쪽 일시적 실패는 한 시간 뒤 자동으로 한 번 더 시도한다 (2026-08-12).
    *
@@ -247,6 +393,13 @@ module.exports = withCronGuard('migrate-external-images', async function handler
   // 이전 실패 URL 은 건너뛴다 (죽은 링크 재시도 금지)
   const { data: fails } = await supabaseAdmin.from('image_migration_failures').select('url');
   const failSet = new Set((fails || []).map(f => f.url));
+
+  /* 화보 큐가 비면 2단계(기사·필름의 구 S3)로 넘어간다 (2026-11-06).
+     예전엔 여기서 '완주 0건' 을 보고하고 끝났는데, 그 말은 화보만 센 것이었다 —
+     기사 317행 3,611장 · 필름 141장이 구 S3 에 그대로 남아 있었다(AWS 해지 전 마지막 의존). */
+  if (!rows || rows.length === 0) {
+    return migrateOtherS3(res, started, failSet);
+  }
 
   let editorialsDone = 0, imagesMoved = 0, imagesResized = 0;
   /* 2026-09-14 — 저장 전 축소로 아낀 바이트. 이 숫자가 0 이면 축소가 안 걸린 것이다. */
@@ -420,3 +573,4 @@ module.exports = withCronGuard('migrate-external-images', async function handler
       + (editorialsDone === 0 ? ' ⚠️ 진전 0 — 큐가 막혔는지 확인' : '')),
   });
 });
+module.exports._s3 = { articleS3Targets, pendingS3, S3_RE };
