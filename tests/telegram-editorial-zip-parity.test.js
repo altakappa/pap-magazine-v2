@@ -76,7 +76,17 @@ t('묶음 전송이 실패해도 다음 묶음을 계속 시도한다 (try/catch
   !/묶음[\s\S]{0,120}전송 실패[\s\S]{0,120}throw/.test(_fnBody));
 t('캡션(미디어 캡션)은 첫 묶음에만 붙는다', /bi === 0 \? buildCaption\(ed\) : ''/.test(_fnBody));
 t('동시 처리 기본값 2 (2160 에서 장당 raw 23MB)', /parseInt\(process\.env\.TELEGRAM_COMPOSITE_CONCURRENCY \|\| '2', 10\)/.test(tg));
-t('워커 메모리를 올렸다 (1024 → 3008)', /"api\/editorials\/telegram-send\.js": \{ "maxDuration": 300, "memory": 3008 \}/.test(require('fs').readFileSync(require('path').join(__dirname, '..', 'vercel.json'), 'utf8')));
+/* 2026-11-06 — 이 줄을 띄어쓰기까지 맞춘 정규식으로 보다가 배포 관문에서 깨졌다.
+   로컬은 통과, Vercel 빌드에서는 실패 — 빌드 쪽에서 vercel.json 이 다시 직렬화되면
+   공백이 달라지기 때문이다. 파일을 글자로 보지 말고 **값으로** 본다.
+   (614ac3e 와 같은 교훈: 시험이 바깥 표현에 기대면 환경 따라 결과가 갈린다.) */
+t('워커 메모리를 올렸다 (1024 → 최소 2048)', (() => {
+  try {
+    const v = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'vercel.json'), 'utf8'));
+    const fn = (v.functions || {})['api/editorials/telegram-send.js'] || {};
+    return Number(fn.memory) >= 2048 && Number(fn.maxDuration) === 300;
+  } catch (_) { return false; }
+})());
 t('합성에 PNG 왕복이 없다 (2160 에서 장당 10MB PNG 를 만들었다 풀던 것 제거)',
   /_composeBase/.test(require('fs').readFileSync(require('path').join(__dirname, '..', 'api/_lib/instaComposite.js'), 'utf8')) &&
   !/sharp\(png\)/.test(require('fs').readFileSync(require('path').join(__dirname, '..', 'api/_lib/instaComposite.js'), 'utf8')));
