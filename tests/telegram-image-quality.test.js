@@ -89,10 +89,10 @@ function t(n, ok, x) { if (ok) { pass++; console.log('  ✓ ' + n); } else { fai
   /* ── 텔레그램 쪽 배선 ── */
   const fs = require('fs');
   const TG = fs.readFileSync(path.join(ROOT, 'api/_lib/telegram.js'), 'utf8');
-  t('텔레그램이 배율을 넘겨준다', /resolveInstaOpts\(ed\.insta_logo_settings, url, TG_IMAGE_SCALE\)/.test(TG));
+  t('텔레그램이 배율을 넘겨준다', /resolveInstaOpts\(ed\.insta_logo_settings, job\.url, TG_IMAGE_SCALE\)/.test(TG));
   t('추가 배율 기본값은 1 — 기준이 이미 2160 이다', /parseFloat\(process\.env\.TELEGRAM_IMAGE_SCALE \|\| '1'\)/.test(TG));
   t('확장자·MIME 을 합성 결과에서 받는다 (png 고정이 아니다)',
-    /name: String\(i \+ 1\)\.padStart\(2, '0'\) \+ '\.' \+ f\.ext, mime: f\.mime/.test(TG));
+    /name: String\(job\.idx \+ 1\)\.padStart\(2, '0'\) \+ '\.' \+ f\.ext, mime: f\.mime/.test(TG));
   t('합성이 실패하면 원본을 그 원본의 확장자로 보낸다', /f = \{ buffer: raw, ext: ext0, mime: mimeFromExt\(ext0\) \}/.test(TG));
   t('커버는 여전히 바이트 그대로 (이미 표지 디자인 완성본)', /커버 — 바이트 그대로/.test(TG));
 

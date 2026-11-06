@@ -231,40 +231,73 @@ async function sendEditorialToTelegram(ed) {
     captionSent = !!(c && c.ok);
   }
 
-  // ② 갤러리 — ZIP 과 같은 인스타 합성. 다운로드·합성을 3장씩 겹쳐 돌린다(순서는 보존).
-  //    직렬로 16장이면 다운로드 대기가 그대로 쌓인다. sharp 는 자체 스레드를 쓰므로 3 이상은 이득이 작다.
+  /* ② 갤러리 — ZIP 과 같은 인스타 합성.
+   *
+   * 2026-11-06 — **묶음마다 바로 보낸다.** 종전엔 전부 합성한 뒤 한 번에 보냈다.
+   * 그래서 중간에 함수가 죽으면 한 장도 못 갔다 — 11/03 'Undercurrent Night'(14장)에서
+   * 실제로 그랬다(도메니코 "크레딧만 오고 이미지는 안 옴"). 2160×2700 으로 올린 뒤
+   * 장당 비용이 네 배가 되면서 상한에 걸린 것이다.
+   * 10장씩 끊어 만들고 바로 올리면, 뒤가 죽어도 앞 묶음은 이미 도착해 있다.
+   * 동시 처리도 3 → 2 로 낮춘다. 2160 에서는 장당 raw 버퍼가 23MB 라 메모리가 먼저 샌다.
+   */
   const gallery = (ed && Array.isArray(ed.gallery)) ? ed.gallery.filter(isHttp).map((u) => u.trim()) : [];
   let logo = null;
   if (BRAND_ON() && gallery.length) {
     try { logo = await getRawLogo(); }
     catch (e) { console.warn('[telegram] 로고 로드 실패 → 로고 없이 프레이밍만:', e && e.message); }
   }
-  const t0 = Date.now();
-  const made = await mapPool(gallery, 3, async (url, i) => {
-    try {
-      const raw = await fetchImageBuffer(url);
-      /* 2026-11-02 — 2160×2700 으로 나간다(기준 캔버스 자체가 그 크기다).
-         구도는 배율과 무관하게 같다 — logoPct·padPct·offset 이 전부 W·H 비율이라서. */
-      const opts = resolveInstaOpts(ed.insta_logo_settings, url, TG_IMAGE_SCALE);
-      if (!logo) opts.logoEnabled = false;
-      let f;
-      try { f = await instaCompositeFile(raw, logo, opts); }
-      catch (e) {
-        console.warn('[telegram] 합성 실패 → 원본 사용:', url, e && e.message);
-        const ext0 = extFromUrl(url);
-        f = { buffer: raw, ext: ext0, mime: mimeFromExt(ext0) };
-      }
-      return { buffer: f.buffer, name: String(i + 1).padStart(2, '0') + '.' + f.ext, mime: f.mime };
-    } catch (e) {
-      console.warn('[telegram] 이미지 스킵:', url, e && e.message);
-      return null;
-    }
-  });
-  made.forEach((f) => { if (f) files.push(f); });
-  console.log('[telegram] 합성 완료:', files.length + '파일', (Date.now() - t0) + 'ms');
-  if (!files.length) return { sent: 0, captionSent, skipped: (coverUrl || gallery.length) ? 'no_usable_images' : 'no_images' };
+  const CONC = (() => {
+    const n = parseInt(process.env.TELEGRAM_COMPOSITE_CONCURRENCY || '2', 10);
+    return (Number.isFinite(n) && n >= 1 && n <= 6) ? n : 2;
+  })();
+  const BATCH = 10;                       // 텔레그램 미디어그룹 한 묶음 상한
 
-  const r = await sendDocumentsToTelegram(files, buildCaption(ed));
+  /* 커버는 이미 만들어진 파일이라 첫 묶음 맨 앞에 그대로 끼운다. */
+  const jobs = files.map((f) => ({ ready: f }));
+  gallery.forEach((u, i) => jobs.push({ url: u, idx: i }));
+  const batches = [];
+  for (let i = 0; i < jobs.length; i += BATCH) batches.push(jobs.slice(i, i + BATCH));
+
+  const t0 = Date.now();
+  let sentTotal = 0, groupTotal = 0, madeTotal = 0;
+  for (let bi = 0; bi < batches.length; bi++) {
+    const made = await mapPool(batches[bi], CONC, async (job) => {
+      if (job.ready) return job.ready;
+      try {
+        const raw = await fetchImageBuffer(job.url);
+        /* 2026-11-02 — 2160×2700 으로 나간다(기준 캔버스 자체가 그 크기다).
+           구도는 배율과 무관하게 같다 — logoPct·padPct·offset 이 전부 W·H 비율이라서. */
+        const opts = resolveInstaOpts(ed.insta_logo_settings, job.url, TG_IMAGE_SCALE);
+        if (!logo) opts.logoEnabled = false;
+        let f;
+        try { f = await instaCompositeFile(raw, logo, opts); }
+        catch (e) {
+          console.warn('[telegram] 합성 실패 → 원본 사용:', job.url, e && e.message);
+          const ext0 = extFromUrl(job.url);
+          f = { buffer: raw, ext: ext0, mime: mimeFromExt(ext0) };
+        }
+        return { buffer: f.buffer, name: String(job.idx + 1).padStart(2, '0') + '.' + f.ext, mime: f.mime };
+      } catch (e) {
+        console.warn('[telegram] 이미지 스킵:', job.url, e && e.message);
+        return null;
+      }
+    });
+    const batchFiles = made.filter(Boolean);
+    madeTotal += batchFiles.length;
+    if (!batchFiles.length) continue;
+    const bytes = batchFiles.reduce((a, f) => a + f.buffer.length, 0);
+    try {
+      /* 묶음 전송이 실패해도 다음 묶음은 계속 시도한다 — 전부 아니면 전무는 피한다. */
+      const rr = await sendDocumentsToTelegram(batchFiles, bi === 0 ? buildCaption(ed) : '');
+      sentTotal += rr.sent; groupTotal += rr.groups;
+      console.log('[telegram] 묶음 ' + (bi + 1) + '/' + batches.length + ' 전송 ' + rr.sent + '장 ' +
+        Math.round(bytes / 1048576) + 'MB ' + (Date.now() - t0) + 'ms');
+    } catch (e) {
+      console.warn('[telegram] 묶음 ' + (bi + 1) + '/' + batches.length + ' 전송 실패:', e && e.message);
+    }
+  }
+  if (!madeTotal) return { sent: 0, captionSent, skipped: (coverUrl || gallery.length) ? 'no_usable_images' : 'no_images' };
+  const r = { sent: sentTotal, groups: groupTotal };
   r.captionSent = captionSent;
   console.log('[telegram] 업로드 완료:', r.sent + '파일', r.groups + '묶음', (Date.now() - t0) + 'ms');
   return r;

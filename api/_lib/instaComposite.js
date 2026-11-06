@@ -103,40 +103,64 @@ function layout(iw, ih, o) {
  * @param {object} o         resolveInstaOpts 결과
  * @returns {Promise<Buffer>} PNG
  */
-async function instaCompositeBuffer(raw, logoRaw, o) {
+/* 합성 파이프라인을 한 번만 세운다 (2026-11-06).
+   종전에는 사진 레이어를 PNG 로 인코딩했다가 다시 디코딩해 붙였다. 1080 때는
+   견딜 만했지만 2160×2700 에서는 장당 10MB 짜리 PNG 를 만들고 푸는 일이 되어
+   CPU·메모리가 네 배로 뛰었다 — 14장짜리 화보에서 워커가 상한을 넘겨 죽었고,
+   캡션만 가고 이미지는 한 장도 못 갔다(도메니코 2026-11-06 제보).
+   이제 resize→extract 를 한 파이프라인으로 묶고 **raw 픽셀**로 넘긴다.
+   압축을 한 번도 하지 않으므로 중간 인코딩 비용이 통째로 사라진다. */
+async function _composeBase(raw, logoRaw, o) {
   const oriented = await sharp(raw, { failOn: 'none' }).rotate().toBuffer();
   const meta = await sharp(oriented).metadata();
   if (!meta.width || !meta.height) throw new Error('bad image dimensions');
   const L = layout(meta.width, meta.height, o);
   const layers = [];
   if (L.vw > 0 && L.vh > 0) {
-    const resized = await sharp(oriented).resize(L.dw, L.dh, { fit: 'fill' }).png().toBuffer();
-    const visible = await sharp(resized).extract({ left: L.sx, top: L.sy, width: L.vw, height: L.vh }).png().toBuffer();
-    layers.push({ input: visible, left: L.left, top: L.top });
+    const { data, info } = await sharp(oriented)
+      .resize(L.dw, L.dh, { fit: 'fill' })
+      .extract({ left: L.sx, top: L.sy, width: L.vw, height: L.vh })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    layers.push({
+      input: data,
+      raw: { width: info.width, height: info.height, channels: info.channels },
+      left: L.left, top: L.top,
+    });
   }
   if (o.logoEnabled !== false && logoRaw && o.logoPct > 0) {
     const lm = await sharp(logoRaw).metadata();
     const logoW = Math.max(1, Math.round(L.W * (o.logoPct / 100)));
     const logoH = Math.max(1, Math.round(logoW * (lm.height / lm.width)));
     const alpha = Math.max(0, Math.min(100, num(o.logoAlpha, 100))) / 100;
-    let logoPng;
-    if (alpha < 1) {
-      const rawLogo = await sharp(logoRaw).resize(logoW, logoH, { fit: 'fill' }).ensureAlpha().raw().toBuffer();
-      for (let i = 3; i < rawLogo.length; i += 4) rawLogo[i] = Math.round(rawLogo[i] * alpha);
-      logoPng = await sharp(rawLogo, { raw: { width: logoW, height: logoH, channels: 4 } }).png().toBuffer();
-    } else {
-      logoPng = await sharp(logoRaw).resize(logoW, logoH, { fit: 'fill' }).png().toBuffer();
-    }
+    /* 로고는 작아서 raw 로 다뤄도 부담이 없고, 알파를 직접 건드려야 한다. */
+    const { data: lraw, info: linfo } = await sharp(logoRaw)
+      .resize(logoW, logoH, { fit: 'fill' }).ensureAlpha().raw()
+      .toBuffer({ resolveWithObject: true });
+    if (alpha < 1) for (let i = 3; i < lraw.length; i += 4) lraw[i] = Math.round(lraw[i] * alpha);
     const left = Math.round((L.W - logoW) / 2);
     const top = Math.round(L.H - logoH - L.H * (o.padPct / 100));
     layers.push({
-      input: logoPng,
+      input: lraw,
+      raw: { width: linfo.width, height: linfo.height, channels: linfo.channels },
       left: Math.max(0, Math.min(L.W - logoW, left)),
       top: Math.max(0, Math.min(L.H - logoH, top)),
     });
   }
   let base = sharp({ create: { width: L.W, height: L.H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
   if (layers.length) base = base.composite(layers);
+  return { base, L };
+}
+
+/**
+ * @param {Buffer} raw       원본 이미지 바이트
+ * @param {Buffer} logoRaw   trim 안 한 로고 PNG (getRawLogo)
+ * @param {object} o         resolveInstaOpts 결과
+ * @returns {Promise<Buffer>} PNG
+ */
+async function instaCompositeBuffer(raw, logoRaw, o) {
+  const { base } = await _composeBase(raw, logoRaw, o);
   return base.png().toBuffer();
 }
 
@@ -165,17 +189,14 @@ const JPEG_Q = (() => {
  * @returns {Promise<{buffer:Buffer, ext:string, mime:string}>}
  */
 async function instaCompositeFile(raw, logoRaw, o) {
-  const oriented = await sharp(raw, { failOn: 'none' }).rotate().toBuffer();
-  const meta = await sharp(oriented).metadata();
-  if (!meta.width || !meta.height) throw new Error('bad image dimensions');
-  const L = layout(meta.width, meta.height, o);
-  const png = await instaCompositeBuffer(oriented, logoRaw, o);
-  if (!coversCanvas(L)) return { buffer: png, ext: 'png', mime: 'image/png' };
-  const jpg = await sharp(png)
-    .flatten({ background: '#000000' })           // 덮는 경우라 실제로 칠할 자리는 없다
+  const { base, L } = await _composeBase(raw, logoRaw, o);
+  if (!coversCanvas(L)) return { buffer: await base.png().toBuffer(), ext: 'png', mime: 'image/png' };
+  /* 덮는 경우엔 알파가 쓸모없다 → JPEG 로 바로 뽑는다. PNG 를 거쳐 가지 않는다. */
+  const buffer = await base
+    .flatten({ background: '#000000' })
     .jpeg({ quality: JPEG_Q, chromaSubsampling: '4:4:4', mozjpeg: true })
     .toBuffer();
-  return { buffer: jpg, ext: 'jpg', mime: 'image/jpeg' };
+  return { buffer, ext: 'jpg', mime: 'image/jpeg' };
 }
 
 module.exports = { resolveInstaOpts, instaCompositeBuffer, instaCompositeFile, coversCanvas, layout, getRawLogo, DEFAULTS, LOGO_URL_DEFAULT, JPEG_Q, MAX_SCALE, CANVAS_W, CANVAS_H_45 };

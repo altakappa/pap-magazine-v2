@@ -2187,10 +2187,7 @@
       "memory": 1024,
       "includeFiles": "api/_assets/celeb/**"
     },
-    "api/editorials/telegram-send.js": {
-      "maxDuration": 300,
-      "memory": 1024
-    },
+    "api/editorials/telegram-send.js": { "maxDuration": 300, "memory": 3008 },
     "api/submissions/collab-telegram.js": {
       "maxDuration": 300,
       "memory": 1024
