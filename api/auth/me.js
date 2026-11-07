@@ -9,6 +9,7 @@ const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { countryFromRequest } = require('../_lib/emailLocale');
 const { normalizeHandle } = require('../_lib/collaborators');
+const { MAX, cleanText, safeHttpUrl } = require('../_lib/userHtml');
 const { normalizeCountryCode, normalizeCity } = require('../_lib/countries');   // 2026-09-12 자동 매치용 코드 저장
 const { alertInstagramClaim, countCreditedEditorials } = require('../_lib/instagramClaimAlert');       // 2026-10-03 가짜 아이디 걸러내기(알림)
 
@@ -37,10 +38,23 @@ module.exports = async function handler(req, res) {
       const updates = {};
       if (_country !== undefined) updates.activity_country = _country || null;
       if (_city !== undefined) updates.activity_city = _city || null;
-      if (name !== undefined) updates.name = name;
-      if (bio !== undefined) updates.bio = bio;
-      if (website !== undefined) updates.website = website;
-      if (location !== undefined) updates.location = location;
+      /* 2026-11-07 보안감사 H-2 — 예전엔 네 값을 길이 제한도 정제도 없이 저장했다.
+         이 값들은 커뮤니티 작성자 이름·프로필 패널로 렌더되고, website 는 `<a href>`
+         로 나간다(escHtml 만 걸려 있어 스킴 검사가 없었다 → javascript: 통과).
+         상한·정제는 _lib/userHtml.js 한 곳에만 둔다. */
+      if (name !== undefined) updates.name = cleanText(name, MAX.name);
+      if (bio !== undefined) updates.bio = cleanText(bio, MAX.bio);
+      if (website !== undefined) {
+        const _site = String(website || '').trim();
+        if (_site === '') {
+          updates.website = null;
+        } else {
+          const _safe = safeHttpUrl(_site);
+          if (!_safe) return res.status(400).json({ code: 'WEBSITE_INVALID', message: 'Website must start with http:// or https://' });
+          updates.website = _safe;
+        }
+      }
+      if (location !== undefined) updates.location = cleanText(location, MAX.location);
       // 2026-09-12 — 인스타그램 아이디는 공동작업자 지정의 열쇠다(도메니코: 프리미엄 회원만 지정 가능).
       // 정규화(소문자·@ 제거·URL 벗김)해서 저장하고, 다른 계정이 이미 쓰는 아이디는 거부한다 —
       // 한 아이디가 두 계정에 걸리면 누가 프리미엄인지 판정할 수 없다.

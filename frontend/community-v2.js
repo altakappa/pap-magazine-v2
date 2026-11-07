@@ -76,7 +76,11 @@ window.editPost = function(postId){
   if(!overlay) return;
   overlay.classList.add('active');
   document.getElementById('postTitle').value = typeof post.title==='object' ? tPost(post.title,post) : post.title;
-  document.getElementById('postContent').innerHTML = typeof post.content==='object' ? tPost(post.content,post) : post.content;
+  /* 2026-11-07 보안감사 — 편집창에 들어가는 본문도 살균한다. 자기 글이라 영향 범위는
+     작지만, 편집 후 다시 제출되면서 살균 안 된 HTML 이 되살아나는 경로를 막는다. */
+  document.getElementById('postContent').innerHTML = (typeof window.papSanitizeHtml === 'function')
+    ? window.papSanitizeHtml(typeof post.content==='object' ? tPost(post.content,post) : post.content)
+    : '';
   var catSel = document.getElementById('postCategory');
   if(catSel) catSel.value = post.cat || 'free';
 
@@ -99,7 +103,11 @@ window.submitPost = function(){
     // Edit mode
     if(!alertLogin()) return;
     var title = document.getElementById('postTitle').value.trim();
-    var content = document.getElementById('postContent').innerHTML.trim();
+  /* 2026-11-07 보안감사 H-1 — 제출 시점에도 한 번 살균한다. 출력 살균(papSanitizeHtml
+     호출부)이 진짜 보증이지만, 정상 흐름에서는 DB 에 애초에 깨끗한 HTML 만 들어가게
+     해 둔다. 프런트가 anon 키로 DB 에 직접 INSERT 하는 경로라 서버 검증을 건너뛴다. */
+    var content = (typeof window.papSanitizeHtml === 'function'
+      ? window.papSanitizeHtml(document.getElementById('postContent').innerHTML) : '').trim();
     var catSel = document.getElementById('postCategory');
     var category = catSel ? catSel.value : 'free';
     if(!title || !content){ alert(_cL('제목과 내용을 입력하세요','Please enter title and content')); return; }
@@ -817,7 +825,16 @@ function _renderMemberProfile(data){
     var links = [];
     if(p.location)  links.push('<span>📍 '+escHtml(p.location)+'</span>');
     if(p.instagram) links.push('<a href="https://instagram.com/'+escHtml(p.instagram.replace(/^@/,''))+'" target="_blank" rel="noopener noreferrer" style="color:var(--text3);text-decoration:none">'+escHtml(p.instagram)+'</a>');
-    if(p.website)   links.push('<a href="'+escHtml(p.website)+'" target="_blank" rel="noopener noreferrer" style="color:var(--text3);text-decoration:none">'+(_cL('웹사이트 ↗','Website ↗'))+'</a>');
+    /* 2026-11-07 보안감사 H-2 — escHtml 만으로는 부족하다. 따옴표는 막아 주지만
+       **스킴을 보지 않아** javascript: 가 그대로 href 에 들어간다(클릭하면 실행).
+       http/https 가 아니면 링크 대신 텍스트로 떨어뜨린다. */
+    if(p.website){
+      var _site = String(p.website||'').trim();
+      var _okSite = /^https?:\/\//i.test(_site) ? _site : '';
+      links.push(_okSite
+        ? '<a href="'+escHtml(_okSite)+'" target="_blank" rel="noopener noreferrer nofollow" style="color:var(--text3);text-decoration:none">'+(_cL('웹사이트 ↗','Website ↗'))+'</a>'
+        : '<span style="color:var(--text4)">'+escHtml(_site)+'</span>');
+    }
     if(links.length){
       extraHtml += '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:14px;font-size:12px;color:var(--text3);padding:0 32px 16px">'+links.join('<span style="color:var(--text4)">·</span>')+'</div>';
     }

@@ -10,6 +10,7 @@
 
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { requireAuth } = require('../../_lib/auth');
+const { MAX, hasDangerousHtml, cleanText } = require('../../_lib/userHtml');
 const { handleCors } = require('../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 const { getOrTranslate } = require('../../_lib/translate');
@@ -93,16 +94,34 @@ module.exports = async function handler(req, res) {
       const { title, content, tag } = req.body;
 
       if (!title || !content) {
-        return res.status(400).json({ message: 'Title and content are required' });
+        return res.status(400).json({ message: 'Title and content are required', code: 'POST_FIELDS_REQUIRED' });
       }
+
+      /* 2026-11-07 보안감사 H-1 — 예전엔 title·content 를 **그대로** INSERT 했다.
+         길이 제한도, 위험 패턴 검사도 없었다. 근거와 역할 분담은 _lib/userHtml.js 주석 참조:
+         여기는 거부 목록 트립와이어이고, 진짜 보증은 출력 단계의 papSanitizeHtml 이다. */
+      const _title = cleanText(title, MAX.title);
+      const _content = String(content).slice(0, MAX.content);
+      if (!_title || !_content.trim()) {
+        return res.status(400).json({ message: 'Title and content are required', code: 'POST_FIELDS_REQUIRED' });
+      }
+      if (String(title).length > MAX.title || String(content).length > MAX.content) {
+        return res.status(400).json({ message: 'Title or content is too long', code: 'POST_TOO_LONG' });
+      }
+      if (hasDangerousHtml(_title) || hasDangerousHtml(_content)) {
+        /* 조용히 깎아내지 않고 되돌린다 — '깎았지만 여전히 위험한' 중간 상태를 안 만든다. */
+        return res.status(400).json({ message: 'This content cannot be saved. Please remove embedded scripts or markup.', code: 'POST_UNSAFE_HTML' });
+      }
+      const ALLOWED_TAGS = ['discussion', 'notice', 'free', 'behind', 'qa', 'equipment', 'jobs', 'portfolio'];
+      const _tag = ALLOWED_TAGS.includes(String(tag || '')) ? String(tag) : 'discussion';
 
       const { data: post, error } = await supabaseAdmin
         .from('community_posts')
         .insert({
           user_id: user.id,
-          title,
-          content,
-          tag: tag || 'discussion',
+          title: _title,
+          content: _content,
+          tag: _tag,
         })
         .select()
         .single();

@@ -2222,6 +2222,123 @@ function escHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+/* ======== 속성·본문 안전 삽입 (2026-11-07 보안감사 H-1·H-2) ========
+ *
+ * escHtml 은 따옴표까지 엔티티화하므로 텍스트 노드와 속성값 **둘 다** 안전하다
+ * (pap-admin.js 의 esc() 와 다르다 — 그쪽은 textContent 직렬화라 따옴표가 남는다).
+ *
+ * escJsAttr 은 인라인 핸들러의 **JS 문자열 자리**에 쓴다.
+ *   onclick="openProfile('+escJsAttr(name)+',event)"
+ * escHtml 만 쓰면 O'Brien 같은 이름이 JS 구문 오류가 된다(주입은 아니지만 기능이 깨진다).
+ * JSON.stringify 로 JS 리터럴을 만든 뒤 escHtml 로 속성을 닫아 둘 다 해결한다.
+ */
+function escJsAttr(s){
+  try { return escHtml(JSON.stringify(String(s==null?'':s))); }
+  catch(e){ return '""'; }
+}
+
+/* ======== 게시글 본문 HTML 살균 ========
+ *
+ * 왜 이스케이프로 안 끝나는가 — 글쓰기 창이 contenteditable 이고 그 .innerHTML 을
+ * 그대로 제출한다. 본문은 **설계상 HTML** 이다. 전부 escHtml 하면 서식이 깨지고,
+ * 날것으로 넣으면 무료 회원 1명이 커뮤니티를 보는 모든 방문자(관리자 포함)
+ * 브라우저에서 스크립트를 돌릴 수 있다. CSP 에 'unsafe-inline' 이 있어 CSP 도
+ * 이걸 막지 못한다. 그래서 **허용 목록 살균**이 유일한 답이다.
+ *
+ * 정규식으로 HTML 을 파싱하는 살균기는 반드시 뚫린다. 파싱은 브라우저 파서
+ * (DOMParser, 스크립트가 실행되지 않는 inert 문서)에 맡기고 우리는 노드를 걸러낸다.
+ * DOMParser 가 없거나 파싱이 실패하면 서식을 버리고 텍스트로 떨어진다(fail-closed) —
+ * 서식이 깨지는 편이 스크립트가 도는 편보다 낫다.
+ *
+ * style 속성은 통째로 버린다. execCommand 글자색 같은 일부 서식이 함께 사라지지만,
+ * 속성 하나를 살리려고 CSS 주입 경로를 열어 둘 값이 아니다.
+ */
+var _PAP_OK_TAGS = {P:1,BR:1,DIV:1,SPAN:1,B:1,STRONG:1,I:1,EM:1,U:1,S:1,STRIKE:1,
+  H1:1,H2:1,H3:1,H4:1,H5:1,H6:1,UL:1,OL:1,LI:1,BLOCKQUOTE:1,PRE:1,CODE:1,
+  A:1,IMG:1,FIGURE:1,FIGCAPTION:1,HR:1,TABLE:1,THEAD:1,TBODY:1,TR:1,TD:1,TH:1};
+var _PAP_OK_ATTRS = {href:1,src:1,alt:1,title:1,colspan:1,rowspan:1};
+/* 내용까지 통째로 버릴 태그 — 텍스트만 살리면 안 되는 것들 */
+var _PAP_KILL_TAGS = {SCRIPT:1,STYLE:1,IFRAME:1,FRAME:1,FRAMESET:1,OBJECT:1,EMBED:1,
+  APPLET:1,SVG:1,MATH:1,LINK:1,META:1,BASE:1,TEMPLATE:1,NOSCRIPT:1,FORM:1,
+  INPUT:1,BUTTON:1,SELECT:1,TEXTAREA:1,AUDIO:1,VIDEO:1,SOURCE:1,TRACK:1,PORTAL:1};
+
+function _papSafeSrc(v){
+  var x=String(v==null?'':v).trim();
+  if(/^https?:\/\//i.test(x)) return x;
+  /* 편집기의 execCommand('insertImage') 가 FileReader data: URL 을 넣는다 —
+     이미지 MIME 만 허용한다(data:text/html 은 스크립트 실행 경로다). */
+  if(/^data:image\/(png|jpeg|jpg|gif|webp|avif);base64,[A-Za-z0-9+\/=\s]*$/i.test(x)) return x;
+  if(/^\/[^\/]/.test(x) || x==='/') return x;   // 사이트 내부 절대경로 (//evil.com 제외)
+  return '';
+}
+function _papSafeHref(v){
+  var x=String(v==null?'':v).trim();
+  if(/^https?:\/\//i.test(x)) return x;
+  if(/^mailto:[^\s<>"']+$/i.test(x)) return x;
+  if(/^\/[^\/]/.test(x) || x==='/') return x;
+  return '';
+}
+
+function papSanitizeHtml(html){
+  var src = (html==null) ? '' : String(html);
+  if(!src) return '';
+  if(typeof DOMParser !== 'function') return escHtml(src);
+  var doc, root;
+  try {
+    doc = new DOMParser().parseFromString('<div id="papSanRoot"></div>','text/html');
+    root = doc && doc.getElementById('papSanRoot');
+    if(!root) return escHtml(src);
+    root.innerHTML = src;   // inert 문서라 여기서 스크립트가 실행되지 않는다
+  } catch(e){ return escHtml(src); }
+
+  try {
+    var all = root.querySelectorAll('*');
+    /* 뒤에서 앞으로 — 노드를 지우거나 풀어헤쳐도 앞쪽 인덱스가 밀리지 않는다 */
+    for(var i=all.length-1; i>=0; i--){
+      var el = all[i];
+      if(!el || !el.tagName) continue;
+      var tag = String(el.tagName).toUpperCase();
+
+      if(_PAP_KILL_TAGS[tag]){
+        if(el.parentNode) el.parentNode.removeChild(el);
+        continue;
+      }
+      if(!_PAP_OK_TAGS[tag]){
+        /* 모르는 태그는 **텍스트만 살린다** — 통째로 지우면 글이 사라진다 */
+        if(el.parentNode){
+          while(el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
+          el.parentNode.removeChild(el);
+        }
+        continue;
+      }
+
+      /* 허용 태그라도 속성은 전수 검사한다 — on* 핸들러·style·srcset·formaction 전부 제거.
+         NamedNodeMap 은 live 라서 이름을 먼저 복사한 뒤 순회한다. */
+      var names = [], j;
+      for(j=0;j<el.attributes.length;j++) names.push(el.attributes[j].name);
+      for(j=0;j<names.length;j++){
+        var an = names[j], key = String(an||'').toLowerCase();
+        if(!_PAP_OK_ATTRS[key]){ el.removeAttribute(an); continue; }
+        var av = el.getAttribute(an);
+        if(key==='src'){
+          var sv=_papSafeSrc(av);
+          if(sv) el.setAttribute('src',sv); else el.removeAttribute(an);
+        } else if(key==='href'){
+          var hv=_papSafeHref(av);
+          if(hv){
+            el.setAttribute('href',hv);
+            el.setAttribute('rel','noopener noreferrer nofollow');
+            el.setAttribute('target','_blank');
+          } else el.removeAttribute(an);
+        }
+      }
+    }
+    return root.innerHTML;
+  } catch(e){
+    return escHtml(src);   // 살균 도중 실패하면 서식을 포기한다
+  }
+}
+
 // ======== TRANSLATION HELPER ========
 function t(obj){
   if(typeof obj==='string') return obj;
@@ -2551,15 +2668,15 @@ function updatePostTable(){
     var hotBadge=p.hot?'<span class="post-row-badge hot">🔥</span>':'';
     var newBadge=isNew?'<span class="post-row-badge new">NEW</span>':'';
     html+='<tr class="'+(p.pinned?'pinned':'')+'" onclick="openPost('+p.id+')">';
-    html+='<td class="post-row-category">'+p.cat.toUpperCase()+'</td>';
+    html+='<td class="post-row-category">'+escHtml(String(p.cat||'').toUpperCase())+'</td>';
     var origBtn='';
     if(p.originalLang && p.originalLang!==lang){
       var isOrig=showOriginal[p.id];
       origBtn='<span class="orig-toggle-mini" onclick="event.stopPropagation();toggleOriginal('+p.id+',this)">'+(isOrig?L[lang].viewTranslation:L[lang].viewOriginal)+'</span>';
     }
-    html+='<td class="post-row-title">'+pin+tPost(p.title,p)+' <span class="post-row-badge">['+p.comments+']</span> '+newBadge+hotBadge+origBtn+'</td>';
-    html+='<td class="post-row-author"><span onclick="event.stopPropagation();openProfile(\''+p.author+'\',event)">'+p.author+'</span><span class="post-author-badge '+p.level+'">●</span></td>';
-    html+='<td class="post-row-date">'+p.time+'</td>';
+    html+='<td class="post-row-title">'+pin+escHtml(tPost(p.title,p))+' <span class="post-row-badge">['+escHtml(String(p.comments))+']</span> '+newBadge+hotBadge+origBtn+'</td>';
+    html+='<td class="post-row-author"><span onclick="event.stopPropagation();openProfile('+escJsAttr(p.author)+',event)">'+escHtml(p.author)+'</span><span class="post-author-badge '+escHtml(p.level)+'">●</span></td>';
+    html+='<td class="post-row-date">'+escHtml(p.time)+'</td>';
     html+='<td class="post-row-views">'+p.views+'</td>';
     html+='<td class="post-row-likes">'+p.likes+'</td>';
     html+='</tr>';
@@ -2586,7 +2703,7 @@ function openPost(id){
   var commentTexts={ko:['정말 좋은 글이네요! 많은 도움이 됐습니다.','이것이 정확히 제가 필요했던 것입니다. 공유해주셔서 감사합니다!','@Marco 동의합니다! 이 접근법이 제 작업 흐름을 바꿔놨어요.'],en:['Great post! This was really helpful.','This is exactly what I needed. Thank you for sharing!','@Marco I agree! This approach changed my workflow.'],it:['Ottimo post! Mi è stato davvero utile.','Questo è esattamente ciò di cui avevo bisogno. Grazie per la condivisione!','@Marco Sono d\'accordo! Questo approccio ha cambiato il mio flusso di lavoro.'],fr:['Super article ! Vraiment utile.','C\'est exactement ce dont j\'avais besoin. Merci pour le partage !','@Marco Je suis d\'accord ! Cette approche a changé mon workflow.'],es:['¡Gran publicación! Fue muy útil.','Esto es exactamente lo que necesitaba. ¡Gracias por compartir!','@Marco ¡Estoy de acuerdo! Este enfoque cambió mi flujo de trabajo.'],ja:['素晴らしい投稿ですね！とても参考になりました。','まさに必要としていた情報です。共有ありがとうございます！','@Marco 同意です！このアプローチでワークフローが変わりました。'],zh:['很棒的帖子！非常有帮助。','这正是我需要的。感谢分享！','@Marco 我同意！这个方法改变了我的工作流程。'],ru:['Отличный пост! Очень полезно.','Это именно то, что мне было нужно. Спасибо за информацию!','@Marco Согласен! Этот подход изменил мой рабочий процесс.'],
   de: ['Wirklich toller Beitrag! Das hat sehr geholfen.','Genau das habe ich gebraucht. Danke fürs Teilen!','@Marco Stimme zu! Dieser Ansatz hat meinen Workflow völlig verändert.']};
   var ct=commentTexts[lang]||commentTexts['en'];
-  var html='<div class="detail-tag">'+post.cat.toUpperCase()+'</div><h1 class="detail-title">'+tPost(post.title,post)+'</h1>'+(post.originalLang && post.originalLang!==lang?'<div class="orig-toggle-wrap"><button class="orig-toggle-btn" onclick="toggleOriginal('+post.id+',this)">'+(showOriginal[post.id]?L[lang].viewTranslation:L[lang].viewOriginal)+'</button><span class="orig-lang-label">'+(showOriginal[post.id]?'('+post.originalLang.toUpperCase()+')':'')+'</span></div>':'')+'<div class="detail-meta"><div class="detail-author-av">'+post.avatar+'</div><div><div class="detail-author-name" onclick="openProfile(\''+post.author+'\',event);event.stopPropagation()">'+post.author+'<span class="post-author-badge '+post.level+'">●</span></div><div class="detail-author-role">'+post.role+'</div></div><div class="detail-author-time">'+post.time+'</div></div><div class="detail-content">'+tPost(post.content,post)+'</div><div class="detail-stats"><span>💬 '+post.comments+'</span><span>▲ '+post.likes+'</span><span>👁 '+post.views+'</span></div><div class="detail-action-bar"><button onclick="toggleLikePost(\''+post.id+'\')">▲ '+L[lang].btnScrap+'</button><button onclick="alertLogin()">'+L[lang].btnShare+'</button><button onclick="alertLogin()">'+L[lang].btnReport+'</button></div><div class="comments-section"><div class="comments-title">'+L[lang].commentPlaceholder+' '+post.comments+'</div><div class="comment"><div class="comment-av">SP</div><div class="comment-body"><div class="comment-name">Sergi Padial <span class="post-author-badge silver">●</span> <span class="comment-time">30m ago</span></div><div class="comment-text">'+ct[0]+'</div><div class="comment-action" onclick="alertLogin()">'+(L[lang]&&L[lang].replyBtn||'Reply')+'</div></div></div><div class="comment"><div class="comment-av">MB</div><div class="comment-body"><div class="comment-name">Marco Bellini <span class="post-author-badge gold">●</span> <span class="comment-time">1h ago</span></div><div class="comment-text">'+ct[1]+'</div><div class="comment-action" onclick="alertLogin()">'+(L[lang]&&L[lang].replyBtn||'Reply')+'</div></div></div><div class="comment nested"><div class="comment-av">LP</div><div class="comment-body"><div class="comment-name">Lena Park <span class="post-author-badge gold">●</span> <span class="comment-time">45m ago</span></div><div class="comment-text">'+ct[2]+'</div><div class="comment-action" onclick="alertLogin()">'+(L[lang]&&L[lang].replyBtn||'Reply')+'</div></div></div><div class="comment-input-wrap" style="margin-top:20px"><input class="comment-input" placeholder="'+L[lang].commentPlaceholder+'" oninput=""><button class="comment-send" onclick="submitComment('+post.id+')">'+L[lang].commentSubmit+'</button></div></div>';
+  var html='<div class="detail-tag">'+escHtml(String(post.cat||'').toUpperCase())+'</div><h1 class="detail-title">'+escHtml(tPost(post.title,post))+'</h1>'+(post.originalLang && post.originalLang!==lang?'<div class="orig-toggle-wrap"><button class="orig-toggle-btn" onclick="toggleOriginal('+post.id+',this)">'+(showOriginal[post.id]?L[lang].viewTranslation:L[lang].viewOriginal)+'</button><span class="orig-lang-label">'+(showOriginal[post.id]?'('+post.originalLang.toUpperCase()+')':'')+'</span></div>':'')+'<div class="detail-meta"><div class="detail-author-av">'+escHtml(post.avatar)+'</div><div><div class="detail-author-name" onclick="openProfile('+escJsAttr(post.author)+',event);event.stopPropagation()">'+escHtml(post.author)+'<span class="post-author-badge '+escHtml(post.level)+'">●</span></div><div class="detail-author-role">'+escHtml(post.role)+'</div></div><div class="detail-author-time">'+escHtml(post.time)+'</div></div><div class="detail-content">'+papSanitizeHtml(tPost(post.content,post))+'</div><div class="detail-stats"><span>💬 '+post.comments+'</span><span>▲ '+post.likes+'</span><span>👁 '+post.views+'</span></div><div class="detail-action-bar"><button onclick="toggleLikePost(\''+post.id+'\')">▲ '+L[lang].btnScrap+'</button><button onclick="alertLogin()">'+L[lang].btnShare+'</button><button onclick="alertLogin()">'+L[lang].btnReport+'</button></div><div class="comments-section"><div class="comments-title">'+L[lang].commentPlaceholder+' '+post.comments+'</div><div class="comment"><div class="comment-av">SP</div><div class="comment-body"><div class="comment-name">Sergi Padial <span class="post-author-badge silver">●</span> <span class="comment-time">30m ago</span></div><div class="comment-text">'+ct[0]+'</div><div class="comment-action" onclick="alertLogin()">'+(L[lang]&&L[lang].replyBtn||'Reply')+'</div></div></div><div class="comment"><div class="comment-av">MB</div><div class="comment-body"><div class="comment-name">Marco Bellini <span class="post-author-badge gold">●</span> <span class="comment-time">1h ago</span></div><div class="comment-text">'+ct[1]+'</div><div class="comment-action" onclick="alertLogin()">'+(L[lang]&&L[lang].replyBtn||'Reply')+'</div></div></div><div class="comment nested"><div class="comment-av">LP</div><div class="comment-body"><div class="comment-name">Lena Park <span class="post-author-badge gold">●</span> <span class="comment-time">45m ago</span></div><div class="comment-text">'+ct[2]+'</div><div class="comment-action" onclick="alertLogin()">'+(L[lang]&&L[lang].replyBtn||'Reply')+'</div></div></div><div class="comment-input-wrap" style="margin-top:20px"><input class="comment-input" placeholder="'+L[lang].commentPlaceholder+'" oninput=""><button class="comment-send" onclick="submitComment('+post.id+')">'+L[lang].commentSubmit+'</button></div></div>';
   document.getElementById('detailContent').innerHTML=html;
   document.getElementById('detailOverlay').classList.add('active');
 }
@@ -2649,7 +2766,7 @@ var projects=[];
 function renderProjects(){
   var html='';
   projects.forEach(function(p){
-    html+='<div class="proj"><div class="proj-top"><div class="proj-title">'+escHtml(p.title)+'</div><div class="proj-badge '+escHtml(p.status)+'">'+escHtml(p.status).toUpperCase()+'</div></div><div class="proj-desc">'+escHtml(p.desc)+'</div><div class="proj-roles"><span class="proj-role">Photographer</span><span class="proj-role">Stylist</span><span class="proj-role">Makeup Artist</span></div><div class="proj-bottom"><div class="proj-loc">📍 '+p.location+'</div><button class="proj-apply" onclick="alertLogin()">'+(p.status==='open'?'APPLY':'CLOSED')+'</button></div></div>';
+    html+='<div class="proj"><div class="proj-top"><div class="proj-title">'+escHtml(p.title)+'</div><div class="proj-badge '+escHtml(p.status)+'">'+escHtml(p.status).toUpperCase()+'</div></div><div class="proj-desc">'+escHtml(p.desc)+'</div><div class="proj-roles"><span class="proj-role">Photographer</span><span class="proj-role">Stylist</span><span class="proj-role">Makeup Artist</span></div><div class="proj-bottom"><div class="proj-loc">📍 '+escHtml(p.location)+'</div><button class="proj-apply" onclick="alertLogin()">'+(p.status==='open'?'APPLY':'CLOSED')+'</button></div></div>';
   });
   document.getElementById('projectsList').innerHTML=html;
 }
@@ -2662,7 +2779,7 @@ function runMatch(){
     document.getElementById('aiLoad').style.display='none';
     var matches=[];
     var h='<div class="ai-res-title">Top Matches</div>';
-    matches.forEach(function(m){h+='<div class="ai-card"><div class="ai-score '+(m.s>85?'hi':'md')+'">'+m.s+'%</div><div class="ai-info"><div class="ai-info-name">'+m.d.n+'</div><div class="ai-info-role">'+m.d.r+' · '+m.d.l+'</div><div class="ai-info-why">Shared aesthetics & location match</div><div class="ai-info-tags">'+m.d.a.map(function(x){return '<span>'+x+'</span>';}).join('')+'</div></div><button class="ai-connect" onclick="alertLogin()">CONNECT</button></div>';});
+    matches.forEach(function(m){h+='<div class="ai-card"><div class="ai-score '+(m.s>85?'hi':'md')+'">'+escHtml(String(m.s))+'%</div><div class="ai-info"><div class="ai-info-name">'+escHtml(m.d.n)+'</div><div class="ai-info-role">'+escHtml(m.d.r)+' · '+escHtml(m.d.l)+'</div><div class="ai-info-why">Shared aesthetics & location match</div><div class="ai-info-tags">'+(m.d.a||[]).map(function(x){return '<span>'+escHtml(x)+'</span>';}).join('')+'</div></div><button class="ai-connect" onclick="alertLogin()">CONNECT</button></div>';});
     h+='<div style="text-align:center;margin-top:24px"><button class="ai-go" style="max-width:200px" onclick="resetAi()">SEARCH AGAIN</button></div>';
     document.getElementById('aiRes').innerHTML=h;
     document.getElementById('aiRes').style.display='block';
@@ -2678,7 +2795,7 @@ function fDir(){
   var q=document.getElementById('ds').value.toLowerCase();
   var d=DD.filter(function(x){if(dCurFilter!=='all'&&x.r!==dCurFilter)return false;if(q&&!x.n.toLowerCase().includes(q)&&!x.l.toLowerCase().includes(q)&&!x.a.join(' ').toLowerCase().includes(q))return false;return true;});
   var h='';
-  d.forEach(function(x){h+='<div class="dir-card" onclick="openProfile(\''+x.n+'\',event)"><div class="dir-av">'+x.n.split(' ').map(function(w){return w[0];}).join('').substring(0,2)+'</div><div class="dir-nm">'+x.n+'</div><div class="dir-rl">'+x.r.toUpperCase()+'</div><div class="dir-loc">📍 '+x.l+'</div><div class="dir-tags">'+x.a.map(function(t){return '<span>'+t+'</span>';}).join('')+'</div><div class="dir-ed">'+x.c+' posts</div></div>';});
+  d.forEach(function(x){h+='<div class="dir-card" onclick="openProfile('+escJsAttr(x.n)+',event)"><div class="dir-av">'+escHtml(String(x.n||'').split(' ').map(function(w){return w[0];}).join('').substring(0,2))+'</div><div class="dir-nm">'+escHtml(x.n)+'</div><div class="dir-rl">'+escHtml(String(x.r||'').toUpperCase())+'</div><div class="dir-loc">📍 '+escHtml(x.l)+'</div><div class="dir-tags">'+(x.a||[]).map(function(t){return '<span>'+escHtml(t)+'</span>';}).join('')+'</div><div class="dir-ed">'+escHtml(String(x.c))+' posts</div></div>';});
   document.getElementById('dg').innerHTML=h;
 }
 
@@ -2686,14 +2803,14 @@ function fDir(){
 function renderSidebars(){
   var topPosts=allPosts.slice().sort(function(a,b){return b.likes-a.likes;}).slice(0,5);
   var h='';
-  topPosts.forEach(function(p,i){h+='<div class="sw-item" onclick="openPost('+p.id+')"><div class="sw-rank">'+(i+1)+'</div><div style="flex:1"><div class="sw-nm">'+t(p.title)+'</div><div class="sw-sub">'+p.author+'</div></div></div>';});
+  topPosts.forEach(function(p,i){h+='<div class="sw-item" onclick="openPost('+p.id+')"><div class="sw-rank">'+(i+1)+'</div><div style="flex:1"><div class="sw-nm">'+escHtml(t(p.title))+'</div><div class="sw-sub">'+escHtml(p.author)+'</div></div></div>';});
   document.getElementById('topPosts').innerHTML=h;
 
   var creators=[];
   h='';creators.forEach(function(c){h+='<div class="sw-item" onclick="openProfile(\''+c.n+'\',event)"><div class="sw-av">'+c.n.split(' ').map(function(w){return w[0];}).join('').substring(0,2)+'</div><div style="flex:1"><div class="sw-nm">'+c.n+'</div><div class="sw-sub">'+c.r+'</div></div><div class="sw-sub">'+c.f+'</div></div>';});
   document.getElementById('trendingCreators').innerHTML=h;
 
-  h='';projects.filter(function(p){return p.status==='open';}).slice(0,4).forEach(function(p){h+='<div class="sw-item" onclick="goTab(\'projects\',document.querySelector(\'[onclick*=\\\"projects\\\"]\'));event.stopPropagation()"><div style="flex:1"><div class="sw-nm" style="font-size:10px">'+p.title+'</div><div class="sw-sub">'+p.location+'</div></div></div>';});
+  h='';projects.filter(function(p){return p.status==='open';}).slice(0,4).forEach(function(p){h+='<div class="sw-item" onclick="goTab(\'projects\',document.querySelector(\'[onclick*=\\\"projects\\\"]\'));event.stopPropagation()"><div style="flex:1"><div class="sw-nm" style="font-size:10px">'+escHtml(p.title)+'</div><div class="sw-sub">'+escHtml(p.location)+'</div></div></div>';});
   document.getElementById('openProjects').innerHTML=h;
 
   var tags=['Minimal','Editorial','Surreal','Avant-Garde','Dark','Romantic','Street','Ethereal'];
@@ -2855,12 +2972,20 @@ var SB = {
   },
 
   // ---- VIEWS ----
+  /* 2026-11-07 보안감사 M-6 — 예전엔 공개 anon 키로 community_post_views 에
+     직접 INSERT 했다. 정책이 with_check:true 라 로그인 없이 누구나 조회수를
+     무한히 넣을 수 있었다. 서버(service_role)로 옮기고 anon 그랜트는 회수한다
+     (마이그레이션 181). 실패해도 글 열기를 막지 않는다 — fire-and-forget. */
   recordView: async function(postId){
-    if(!this.client) return;
-    await this.client.from('community_post_views').insert({
-      post_id: postId,
-      viewer_id: this.user ? this.user.id : null
-    });
+    if(!postId) return;
+    try {
+      await fetch('/api/community/posts/' + encodeURIComponent(postId) + '/view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: '{}'
+      });
+    } catch(e){ /* 조회 기록은 실패해도 조용히 넘어간다 */ }
   },
 
   // ---- PROJECTS ----
@@ -2942,7 +3067,10 @@ var SB = {
 function submitPost(){
   if(!alertLogin()) return;
   var title = document.getElementById('postTitle').value.trim();
-  var content = document.getElementById('postContent').innerHTML.trim();
+  /* 2026-11-07 보안감사 H-1 — 제출 시점에도 한 번 살균한다. 출력 살균(papSanitizeHtml
+     호출부)이 진짜 보증이지만, 정상 흐름에서는 DB 에 애초에 깨끗한 HTML 만 들어가게
+     해 둔다. 프런트가 anon 키로 DB 에 직접 INSERT 하는 경로라 서버 검증을 건너뛴다. */
+  var content = papSanitizeHtml(document.getElementById('postContent').innerHTML).trim();
   var catSel = document.getElementById('postCategory');
   var category = catSel ? catSel.value : 'free';
   if(!title || !content){ alert(_papUIL('제목과 내용을 입력하세요','Please enter title and content')); return; }
@@ -3248,7 +3376,7 @@ PAP COMMUNITY<br>
     <span data-i18n="tabScrapbook">스크랩북</span>
   </a>
 </nav>
-<script src="/community-v2.js?v=5" defer></script>
+<script src="/community-v2.js?v=6" defer></script>
 <script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29"></script><script src="/pap-inclick.js?v=4" defer></script>
 <script src="/pap-auth-link.js?v=3" defer></script>
 </body>
