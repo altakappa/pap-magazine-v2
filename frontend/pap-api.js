@@ -886,15 +886,15 @@ const PAP = (function() {
   // 브라우저가 말하는 "결제됐다"를 신뢰하면 위조가 가능하다.
 
   var _PP_I18N = {
-    ko:{title:'구독 결제', wait:'결제를 확인하는 중입니다… 창을 닫지 말아 주세요.', close:'닫기', fail:'결제창을 여는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.', scheduled:'새 플랜은 {date}부터 시작되고 그날 첫 결제가 됩니다. 그때까지는 지금 플랜을 그대로 이용합니다.', scheduledDone:'플랜 변경이 예약되었습니다. {date}부터 새 플랜이 시작됩니다.', pending:'이미 {date}부터 시작하는 플랜 변경이 예약되어 있습니다.', samePlan:'지금 이용 중인 플랜입니다.'},
-    en:{title:'Complete your subscription', wait:'Confirming your payment… please keep this window open.', close:'Close', fail:'Something went wrong opening the checkout. Please try again shortly.', scheduled:'Your new plan starts on {date} and the first payment is taken that day. Until then you keep your current plan.', scheduledDone:'Your plan change is scheduled. The new plan starts on {date}.', pending:'A plan change starting on {date} is already scheduled.', samePlan:'You are already on this plan.'},
-    de:{title:'Abonnement abschließen', wait:'Zahlung wird bestätigt… bitte dieses Fenster geöffnet lassen.', close:'Schließen', fail:'Beim Öffnen des Checkouts ist ein Fehler aufgetreten. Bitte erneut versuchen.', scheduled:'Ihr neuer Tarif beginnt am {date}; die erste Zahlung erfolgt an diesem Tag. Bis dahin behalten Sie Ihren aktuellen Tarif.', scheduledDone:'Der Tarifwechsel ist vorgemerkt. Der neue Tarif beginnt am {date}.', pending:'Ein Tarifwechsel ab {date} ist bereits vorgemerkt.', samePlan:'Diesen Tarif nutzen Sie bereits.'},
-    it:{title:'Completa l\'abbonamento', wait:'Conferma del pagamento… tieni aperta questa finestra.', close:'Chiudi', fail:'Si è verificato un errore nell\'apertura del checkout. Riprova a breve.', scheduled:'Il nuovo piano inizia il {date} e il primo addebito avviene quel giorno. Fino ad allora mantieni il piano attuale.', scheduledDone:'Il cambio di piano è programmato. Il nuovo piano inizia il {date}.', pending:'Un cambio di piano a partire dal {date} è già programmato.', samePlan:'Stai già usando questo piano.'},
-    fr:{title:'Finaliser votre abonnement', wait:'Confirmation du paiement… veuillez garder cette fenêtre ouverte.', close:'Fermer', fail:'Une erreur est survenue à l\'ouverture du paiement. Veuillez réessayer.', scheduled:'Votre nouveau plan commence le {date} et le premier paiement est prélevé ce jour-là. D\'ici là, vous gardez votre plan actuel.', scheduledDone:'Le changement de plan est programmé. Le nouveau plan commence le {date}.', pending:'Un changement de plan à partir du {date} est déjà programmé.', samePlan:'Vous utilisez déjà ce plan.'},
-    es:{title:'Completar la suscripción', wait:'Confirmando el pago… mantenga esta ventana abierta.', close:'Cerrar', fail:'Ocurrió un error al abrir el pago. Inténtelo de nuevo pronto.', scheduled:'Tu nuevo plan empieza el {date} y el primer cobro se hace ese día. Hasta entonces conservas tu plan actual.', scheduledDone:'El cambio de plan está programado. El nuevo plan empieza el {date}.', pending:'Ya hay un cambio de plan programado a partir del {date}.', samePlan:'Ya estás en este plan.'},
-    ja:{title:'購読のお支払い', wait:'お支払いを確認しています… この画面を閉じないでください。', close:'閉じる', fail:'決済画面を開く際に問題が発生しました。しばらくしてから再度お試しください。', scheduled:'新しいプランは{date}から始まり、その日に初回のお支払いが行われます。それまでは現在のプランをそのまま利用できます。', scheduledDone:'プラン変更を予約しました。{date}から新しいプランが始まります。', pending:'{date}開始のプラン変更がすでに予約されています。', samePlan:'現在ご利用中のプランです。'},
-    zh:{title:'完成订阅', wait:'正在确认付款… 请勿关闭此窗口。', close:'关闭', fail:'打开支付时出错。请稍后重试。', scheduled:'新方案将于{date}开始，并在当天首次扣款。在此之前继续使用当前方案。', scheduledDone:'方案变更已预约。新方案将于{date}开始。', pending:'已预约了自{date}起的方案变更。', samePlan:'您当前正在使用此方案。'},
-    ru:{title:'Оформление подписки', wait:'Подтверждаем платёж… не закрывайте это окно.', close:'Закрыть', fail:'Произошла ошибка при открытии оплаты. Повторите попытку позже.', scheduled:'Новый тариф начнётся {date}, в этот день будет списан первый платёж. До тех пор действует текущий тариф.', scheduledDone:'Смена тарифа запланирована. Новый тариф начнётся {date}.', pending:'Смена тарифа с {date} уже запланирована.', samePlan:'Этот тариф у вас уже подключён.'}
+    ko:{title:'구독 결제', wait:'결제를 확인하는 중입니다… 창을 닫지 말아 주세요.', close:'닫기', fail:'결제창을 여는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.', scheduled:'새 플랜은 {date}부터 시작되고 그날 첫 결제가 됩니다. 그때까지는 지금 플랜을 그대로 이용합니다.', scheduledDone:'플랜 변경이 예약되었습니다. {date}부터 새 플랜이 시작됩니다.', pending:'이미 {date}부터 시작하는 플랜 변경이 예약되어 있습니다.', samePlan:'지금 이용 중인 플랜입니다.', notYet:'결제는 접수되었지만 등급 반영이 아직 확인되지 않았습니다. 보통 1~2분 안에 반영됩니다. 다시 결제하지 마세요 — 중복 청구됩니다. 몇 분 뒤에도 그대로면 contact@pap-magazine.com 으로 알려주세요.', otherAccount:'결제는 정상 완료되었습니다. 다만 PayPal 계정 이메일과 연결된 다른 PAP 계정에 적용되었습니다. 그 이메일로 로그인하시면 바로 이용하실 수 있습니다. 다시 결제하지 마세요 — 중복 청구됩니다. 도움이 필요하면 contact@pap-magazine.com 으로 알려주세요.'},
+    en:{title:'Complete your subscription', wait:'Confirming your payment… please keep this window open.', close:'Close', fail:'Something went wrong opening the checkout. Please try again shortly.', scheduled:'Your new plan starts on {date} and the first payment is taken that day. Until then you keep your current plan.', scheduledDone:'Your plan change is scheduled. The new plan starts on {date}.', pending:'A plan change starting on {date} is already scheduled.', samePlan:'You are already on this plan.', notYet:'Your payment went through, but we have not seen your plan activate yet. It usually takes a minute or two. Please do not pay again — that would charge you twice. If nothing changes in a few minutes, email contact@pap-magazine.com.', otherAccount:'Your payment went through, but it was applied to a different PAP account — the one matching your PayPal email address. Sign in with that email and your plan will be there. Please do not pay again — that would charge you twice. Need help? Email contact@pap-magazine.com.'},
+    de:{title:'Abonnement abschließen', wait:'Zahlung wird bestätigt… bitte dieses Fenster geöffnet lassen.', close:'Schließen', fail:'Beim Öffnen des Checkouts ist ein Fehler aufgetreten. Bitte erneut versuchen.', scheduled:'Ihr neuer Tarif beginnt am {date}; die erste Zahlung erfolgt an diesem Tag. Bis dahin behalten Sie Ihren aktuellen Tarif.', scheduledDone:'Der Tarifwechsel ist vorgemerkt. Der neue Tarif beginnt am {date}.', pending:'Ein Tarifwechsel ab {date} ist bereits vorgemerkt.', samePlan:'Diesen Tarif nutzen Sie bereits.', notYet:'Ihre Zahlung war erfolgreich, aber die Freischaltung ist noch nicht bestätigt. Das dauert meist ein bis zwei Minuten. Bitte zahlen Sie nicht erneut — sonst werden Sie doppelt belastet. Falls sich nichts ändert, schreiben Sie an contact@pap-magazine.com.', otherAccount:'Ihre Zahlung war erfolgreich, wurde aber einem anderen PAP-Konto zugeordnet — dem mit Ihrer PayPal-E-Mail-Adresse. Melden Sie sich mit dieser Adresse an, dann ist Ihr Tarif dort. Bitte zahlen Sie nicht erneut — sonst werden Sie doppelt belastet. Hilfe: contact@pap-magazine.com.'},
+    it:{title:'Completa l\'abbonamento', wait:'Conferma del pagamento… tieni aperta questa finestra.', close:'Chiudi', fail:'Si è verificato un errore nell\'apertura del checkout. Riprova a breve.', scheduled:'Il nuovo piano inizia il {date} e il primo addebito avviene quel giorno. Fino ad allora mantieni il piano attuale.', scheduledDone:'Il cambio di piano è programmato. Il nuovo piano inizia il {date}.', pending:'Un cambio di piano a partire dal {date} è già programmato.', samePlan:'Stai già usando questo piano.', notYet:'Il pagamento è andato a buon fine, ma l\'attivazione del piano non risulta ancora. Di solito richiede uno o due minuti. Non pagare di nuovo: verresti addebitato due volte. Se dopo qualche minuto non cambia nulla, scrivi a contact@pap-magazine.com.', otherAccount:'Il pagamento è andato a buon fine, ma è stato applicato a un altro account PAP: quello associato all\'email del tuo conto PayPal. Accedi con quell\'email e troverai il tuo piano. Non pagare di nuovo: verresti addebitato due volte. Per assistenza scrivi a contact@pap-magazine.com.'},
+    fr:{title:'Finaliser votre abonnement', wait:'Confirmation du paiement… veuillez garder cette fenêtre ouverte.', close:'Fermer', fail:'Une erreur est survenue à l\'ouverture du paiement. Veuillez réessayer.', scheduled:'Votre nouveau plan commence le {date} et le premier paiement est prélevé ce jour-là. D\'ici là, vous gardez votre plan actuel.', scheduledDone:'Le changement de plan est programmé. Le nouveau plan commence le {date}.', pending:'Un changement de plan à partir du {date} est déjà programmé.', samePlan:'Vous utilisez déjà ce plan.', notYet:'Votre paiement a été accepté, mais l\'activation de votre offre n\'est pas encore confirmée. Cela prend généralement une à deux minutes. Ne payez pas une seconde fois — vous seriez débité deux fois. Si rien ne change, écrivez à contact@pap-magazine.com.', otherAccount:'Votre paiement a été accepté, mais il a été appliqué à un autre compte PAP — celui correspondant à l\'adresse e-mail de votre compte PayPal. Connectez-vous avec cette adresse pour retrouver votre offre. Ne payez pas une seconde fois — vous seriez débité deux fois. Aide : contact@pap-magazine.com.'},
+    es:{title:'Completar la suscripción', wait:'Confirmando el pago… mantenga esta ventana abierta.', close:'Cerrar', fail:'Ocurrió un error al abrir el pago. Inténtelo de nuevo pronto.', scheduled:'Tu nuevo plan empieza el {date} y el primer cobro se hace ese día. Hasta entonces conservas tu plan actual.', scheduledDone:'El cambio de plan está programado. El nuevo plan empieza el {date}.', pending:'Ya hay un cambio de plan programado a partir del {date}.', samePlan:'Ya estás en este plan.', notYet:'Tu pago se ha realizado, pero aún no vemos tu plan activado. Suele tardar uno o dos minutos. No vuelvas a pagar: se te cobraría dos veces. Si no cambia nada en unos minutos, escribe a contact@pap-magazine.com.', otherAccount:'Tu pago se ha realizado, pero se aplicó a otra cuenta de PAP: la que coincide con el correo de tu cuenta de PayPal. Inicia sesión con ese correo y encontrarás tu plan. No vuelvas a pagar: se te cobraría dos veces. ¿Necesitas ayuda? Escribe a contact@pap-magazine.com.'},
+    ja:{title:'購読のお支払い', wait:'お支払いを確認しています… この画面を閉じないでください。', close:'閉じる', fail:'決済画面を開く際に問題が発生しました。しばらくしてから再度お試しください。', scheduled:'新しいプランは{date}から始まり、その日に初回のお支払いが行われます。それまでは現在のプランをそのまま利用できます。', scheduledDone:'プラン変更を予約しました。{date}から新しいプランが始まります。', pending:'{date}開始のプラン変更がすでに予約されています。', samePlan:'現在ご利用中のプランです。', notYet:'お支払いは完了しましたが、プランの反映がまだ確認できていません。通常は1〜2分で反映されます。重複して課金されますので、再度お支払いはなさらないでください。数分たっても変わらない場合は contact@pap-magazine.com までご連絡ください。', otherAccount:'お支払いは完了しましたが、PayPalアカウントのメールアドレスに紐づく別のPAPアカウントに適用されました。そのメールアドレスでログインするとご利用いただけます。重複して課金されますので、再度お支払いはなさらないでください。お困りの場合は contact@pap-magazine.com までご連絡ください。'},
+    zh:{title:'完成订阅', wait:'正在确认付款… 请勿关闭此窗口。', close:'关闭', fail:'打开支付时出错。请稍后重试。', scheduled:'新方案将于{date}开始，并在当天首次扣款。在此之前继续使用当前方案。', scheduledDone:'方案变更已预约。新方案将于{date}开始。', pending:'已预约了自{date}起的方案变更。', samePlan:'您当前正在使用此方案。', notYet:'付款已完成，但尚未确认方案生效。通常需要一到两分钟。请勿重复付款，否则会被扣款两次。若几分钟后仍无变化，请联系 contact@pap-magazine.com。', otherAccount:'付款已完成，但被应用到了另一个 PAP 账户——与您 PayPal 邮箱相符的那个。请用该邮箱登录即可使用。请勿重复付款，否则会被扣款两次。如需帮助请联系 contact@pap-magazine.com。'},
+    ru:{title:'Оформление подписки', wait:'Подтверждаем платёж… не закрывайте это окно.', close:'Закрыть', fail:'Произошла ошибка при открытии оплаты. Повторите попытку позже.', scheduled:'Новый тариф начнётся {date}, в этот день будет списан первый платёж. До тех пор действует текущий тариф.', scheduledDone:'Смена тарифа запланирована. Новый тариф начнётся {date}.', pending:'Смена тарифа с {date} уже запланирована.', samePlan:'Этот тариф у вас уже подключён.', notYet:'Платёж прошёл, но активация тарифа пока не подтверждена. Обычно это занимает одну-две минуты. Не оплачивайте повторно — с вас спишут дважды. Если через несколько минут ничего не изменится, напишите на contact@pap-magazine.com.', otherAccount:'Платёж прошёл, но был применён к другому аккаунту PAP — тому, что совпадает с адресом вашей почты в PayPal. Войдите с этим адресом, и тариф будет там. Не оплачивайте повторно — с вас спишут дважды. Нужна помощь: contact@pap-magazine.com.'}
   };
   function _ppT(k){
     var l; try{ l = localStorage.getItem('pap-lang') || 'en'; }catch(_){ l='en'; }
@@ -933,18 +933,62 @@ const PAP = (function() {
 
   /** 결제 후 등급 반영을 짧게 기다렸다가 마이페이지로 보낸다.
    *  곧바로 이동하면 웹훅이 아직 안 와서 '무료 회원'으로 보인다(2026-07-11 사고). */
-  function _waitUpgradeThenGo() {
+  /* 2026-11-08 — 반영이 안 됐을 때 **그 사실을 말한다.**
+   *
+   * 종전: 1.5초 × 8번(12초) 기다린 뒤 **성공이든 아니든 똑같이** /mypage 로 보냈다.
+   * 결제한 사람 입장에서는 "돈은 나갔는데 아무 일도 안 일어남" 이다. 그러면 다시 낸다.
+   * 실측(2026-11-08): 한 회원이 37분 동안 구독을 네 번 만들었다. 사기도 버그도 아니고,
+   * 화면이 아무 말을 안 해서였다. 그 회원은 PAP 계정이 둘이었고 PayPal 이메일이
+   * 로그인한 계정과 달라, 웹훅이 결제를 **다른 계정**에 붙이고 있었다
+   * (api/paypal-webhook.js resolveUserId — custom_id 는 위조 가능해서 일부러 안 믿는다).
+   *
+   * 그래서 12초가 지나도 등급이 안 올라갔으면 조용히 보내지 않고 이유를 확인해 알린다.
+   * 가장 중요한 한 줄은 **"다시 결제하지 마세요"** 다 — 중복 청구가 실제 피해다. */
+  function _waitUpgradeThenGo(subId) {
     var tries = 0;
     (function loop() {
       auth.refreshUser().then(function (u) {
         var up = u && (u.subscription === 'standard' || u.subscription === 'premium');
-        if (up || tries >= 8) { window.location.href = '/mypage'; return; }
+        if (up) { window.location.href = '/mypage'; return; }
+        if (tries >= 8) { _explainNoUpgrade(subId); return; }
         tries++; setTimeout(loop, 1500);
       }).catch(function () {
-        if (tries >= 8) { window.location.href = '/mypage'; return; }
+        if (tries >= 8) { _explainNoUpgrade(subId); return; }
         tries++; setTimeout(loop, 1500);
       });
     })();
+  }
+
+  /** 등급이 안 올라간 이유를 묻고, 회원이 읽을 문장으로 바꿔 보여준다. */
+  function _explainNoUpgrade(subId) {
+    function show(msg) {
+      var w = document.getElementById('pap-pp-wait');
+      if (!w) {   // 오버레이가 이미 닫혔으면 최소한 말은 하고 보낸다
+        try { alert(msg); } catch (_) {}
+        window.location.href = '/mypage';
+        return;
+      }
+      w.textContent = msg;                  // textContent — 문구를 HTML 로 해석하지 않는다
+      w.style.color = '#891717';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = _ppT('close');
+      btn.style.cssText = 'margin-top:14px;padding:9px 18px;font-size:12px;letter-spacing:.06em;'
+        + 'background:#111;color:#fff;border:none;cursor:pointer';
+      btn.addEventListener('click', function () {
+        window._papCheckoutBusy = false;
+        window.location.href = '/mypage';
+      });
+      w.appendChild(document.createElement('br'));
+      w.appendChild(btn);
+    }
+
+    if (!subId) { show(_ppT('notYet')); return; }
+    request('GET', '/subscriptions/paypal-claim-check?subscription_id=' + encodeURIComponent(subId))
+      .then(function (r) {
+        show(_ppT(r && r.status === 'other_account' ? 'otherAccount' : 'notYet'));
+      })
+      .catch(function () { show(_ppT('notYet')); });
   }
 
   function _openPayPalOverlay(planId, planKey, user, startTime) {
@@ -989,8 +1033,10 @@ const PAP = (function() {
           if (startTime) req.start_time = startTime;
           return actions.subscription.create(req);
         },
-        onApprove: function () {
+        onApprove: function (data) {
           // 확정은 웹훅 몫. 여기서는 안내만 하고 등급 반영을 기다린다.
+          // data.subscriptionID 를 쥐고 간다 — 반영이 안 됐을 때 이유를 물어볼 열쇠다.
+          var _subId = (data && data.subscriptionID) || '';
           var b = document.getElementById('pap-pp-buttons');
           var w = document.getElementById('pap-pp-wait');
           if (b) b.style.display = 'none';
@@ -1001,7 +1047,7 @@ const PAP = (function() {
             setTimeout(function () { window.location.href = '/mypage'; }, 2500);
             return;
           }
-          _waitUpgradeThenGo();
+          _waitUpgradeThenGo(_subId);
         },
         onCancel: function () { close(); },
         onError: function (err) {
