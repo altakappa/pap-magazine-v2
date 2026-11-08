@@ -20,6 +20,7 @@
  *   PAYMENT.SALE.COMPLETED                — 갱신 결제(기간 연장)
  *   PAYMENT.CAPTURE.COMPLETED             — 서브미션 게재료·애드온 결제 확정 (복구 그물)
  *   PAYMENT.CAPTURE.REFUNDED / .REVERSED  — 환불·역전 → payment_status 되돌림
+ *   PAYMENT.SALE.REFUNDED / .REVERSED     — 구독 결제 환불 → 보고만(등급 유지)
  *   CUSTOMER.DISPUTE.CREATED              — 분쟁 발생 알림
  *
  * ── 🔴 2026-08-12 — Orders(일회성 결제) 이벤트를 받는 이유 ────────────
@@ -486,6 +487,46 @@ module.exports = async function handler(req, res) {
       case 'PAYMENT.CAPTURE.REVERSED': {
         const r = await handleCaptureRefunded(supabaseAdmin, resource, type);
         return res.status(200).json({ received: true, ...r });
+      }
+
+      /* 2026-11-09 — 구독 결제의 환불. 종전에는 default 로 떨어져 **아무 기록도
+         남지 않았다.**
+         CAPTURE 쪽(위)은 Orders = 서브미션 게재료의 환불이다. 구독 결제는
+         Sales 라서 PAYMENT.SALE.REFUNDED 로 온다. 8월에 일회성 결제용으로
+         깔아 둔 그물에 구독 쪽 구멍이 그대로 남아 있었다.
+
+         실측(2026-11-09): 한 회원이 계정 두 개 문제로 €5.49 를 일곱 번 냈고
+         여섯 건을 환불했는데, 우리 DB 와 알림에는 **그 사실이 한 줄도 남지
+         않았다.** 환불은 돈이 움직이는 사건이다. 안 보이면 안 된다.
+
+         ⚠️ 등급은 건드리지 않는다. 2026-08-07 lia.line 사고의 교훈 그대로다 —
+         중복분을 환불·해지했다고 멀쩡한 접근권을 끊으면 안 된다. 어느 결제가
+         어느 기간에 대응하는지는 사람이 봐야 안다. 그래서 여기서는 **보고만**
+         하고, 회수가 필요하면 사람이 한다(거버넌스: 혜택 회수는 사람이). */
+      case 'PAYMENT.SALE.REFUNDED':
+      case 'PAYMENT.SALE.REVERSED': {
+        const subId = resource.billing_agreement_id || null;
+        const amt = ((resource.amount || {}).total || (resource.amount || {}).value || '')
+          + ' ' + ((resource.amount || {}).currency || (resource.amount || {}).currency_code || '');
+        let who = null;
+        let isCurrent = false;
+        if (subId) {
+          try {
+            const { data: row } = await supabaseAdmin.from('subscriptions')
+              .select('user_id, plan, status, paypal_subscription_id')
+              .eq('paypal_subscription_id', subId).maybeSingle();
+            if (row) { who = row.user_id; isCurrent = true; }
+          } catch (e2) {
+            console.warn('[paypal-webhook] 환불 대상 구독 조회 실패:', e2.message);
+          }
+        }
+        console.error('[paypal-webhook] 구독 결제 환불', type, 'sale:', resource.id,
+          'sub:', subId, 'amount:', amt, 'user:', who);
+        await sendTextToTelegramSafe('↩️ PayPal 구독 결제 환불 ' + amt.trim()
+          + '\nsale=' + (resource.id || '?') + ' sub=' + (subId || '?')
+          + (who ? ('\nuser=' + who + (isCurrent ? ' (지금 들고 있는 구독)' : '')) : '\n회원 미상 — 수동 확인 필요')
+          + '\n등급은 자동으로 내리지 않습니다. 회수가 필요하면 직접 처리해 주세요.');
+        return res.status(200).json({ received: true, refund: true, subscription: subId, matched: isCurrent });
       }
 
       case 'CUSTOMER.DISPUTE.CREATED':
