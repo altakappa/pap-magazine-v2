@@ -658,11 +658,61 @@ function openMemberModal(memberId){
     document.getElementById('memberSuspendBtn').style.display = 'none';
     document.getElementById('memberDeleteBtn').style.display  = 'none';
   }
+  /* 2026-11-09 — 메일 입력칸은 열 때마다 비운다. 앞 회원에게 쓰던 문장이 남아
+     있으면 엉뚱한 사람에게 보내는 사고가 난다. */
+  var _ms=document.getElementById('memberMailSubject'); if(_ms) _ms.value='';
+  var _mb=document.getElementById('memberMailBody');    if(_mb) _mb.value='';
+  var _mh=document.getElementById('memberMailHint');    if(_mh) _mh.textContent='';
   document.getElementById('memberModal').classList.add('show');
 }
 
 function closeMemberModal(){
   document.getElementById('memberModal').classList.remove('show');
+}
+
+/* 2026-11-09 — 회원에게 바로 메일 보내기.
+ *
+ * 왜: 결제 중복 건으로 회원에게 사과 메일을 보내야 했는데 관리자 화면에 수단이
+ * 없어 Gmail 을 따로 열어야 했고, 그래서 발송 기록도 안 남았다. 보내는 자리와
+ * 남는 자리를 함께 만든다(서버가 admin_member_emails 에 적는다).
+ *
+ * 되돌릴 수 없는 동작이라 반드시 한 번 묻는다 — 메일은 회수할 수 없다.
+ * 본문은 평문으로 보낸다. 서버가 이스케이프하고 줄바꿈만 살린다. */
+async function papSendMemberEmail(){
+  var id = (document.getElementById('memberEditId')||{}).value || '';
+  var subjEl = document.getElementById('memberMailSubject');
+  var bodyEl = document.getElementById('memberMailBody');
+  var btn = document.getElementById('memberMailBtn');
+  var hint = document.getElementById('memberMailHint');
+  if(!id || !subjEl || !bodyEl) return;
+
+  var subject = String(subjEl.value||'').trim();
+  var body = String(bodyEl.value||'').trim();
+  if(!subject){ alert('제목을 입력하세요.'); subjEl.focus(); return; }
+  if(!body){ alert('본문을 입력하세요.'); bodyEl.focus(); return; }
+
+  var to = (document.getElementById('memberEditEmail')||{}).textContent || '회원';
+  if(!confirm(to + ' 님에게 메일을 보냅니다.\n\n제목: ' + subject
+    + '\n\n보낸 메일은 되돌릴 수 없습니다. 진행할까요?')) return;
+
+  if(btn){ btn.disabled = true; btn.textContent = '보내는 중…'; }
+  if(hint) hint.textContent = '';
+  try{
+    var r = await apiPost('/admin/member-email', { memberId: id, subject: subject, body: body });
+    if(r && r.sent){
+      if(hint){ hint.style.color='#2ecc71'; hint.textContent = '발송 완료 → ' + (r.to||'') + ' (' + (r.lang||'') + ')'; }
+      subjEl.value=''; bodyEl.value='';
+    }else{
+      /* 보냈다고 생각했는데 안 간 상태를 만들지 않는다 — 사유를 그대로 보여준다. */
+      if(hint){ hint.style.color='#ff6b6b'; hint.textContent = (r && (r.message||r.reason)) || '발송되지 않았습니다.'; }
+      alert((r && (r.message||r.reason)) || '발송되지 않았습니다.');
+    }
+  }catch(e){
+    if(hint){ hint.style.color='#ff6b6b'; hint.textContent='발송 실패'; }
+    alert('발송 실패: ' + ((e && e.message) || e));
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '메일 발송'; }
+  }
 }
 
 async function saveMemberEdit(){

@@ -1307,6 +1307,36 @@ const templates = {
   },
 
   // 8. Subscription confirmation
+  /* 2026-11-09 — 관리자가 회원 **한 사람**에게 직접 보내는 메일 (문의 응대·사과·안내).
+   *
+   * 왜 생겼나: 결제 중복 건으로 회원에게 사과 메일을 보내야 했는데 관리자 화면에
+   * 그 수단이 아예 없었다. 도메니코가 Gmail 을 따로 열어 손으로 보내야 했고,
+   * 그래서 **발송 기록도 남지 않았다.** 다음에 같은 회원이 문의하면 뭘 보냈는지
+   * 아무도 모른다.
+   *
+   * 본문은 평문으로 받아 **이스케이프한다.** 관리자가 HTML 을 쓸 일은 없고,
+   * 어디선가 복사해 붙인 텍스트에 꺾쇠가 섞여 메일 틀이 깨지거나 링크가 주입되는
+   * 쪽이 훨씬 흔하고 위험하다. 줄바꿈만 <br> 로 살린다.
+   * 받는 사람 언어로 메일 틀(머리말·꼬리말)이 맞춰진다 — 본문은 관리자가 쓴 그대로.
+   */
+  adminMessage(user, msg, lang) {
+    const subject = String((msg && msg.subject) || '').trim() || 'PAP Magazine';
+    const name = (user && (user.name || user.display_name)) || '';
+    const bodyHtml = escapeHtml(String((msg && msg.body) || ''))
+      .replace(/\r\n/g, '\n')
+      .replace(/\n/g, '<br>');
+    const greeting = name
+      ? `<p style="color:#fff;font-size:15px;margin:0 0 18px;">${escapeHtml(name)},</p>`
+      : '';
+    return {
+      subject,
+      html: wrapHtml(
+        `${greeting}<div style="color:#ccc;font-size:14px;line-height:1.8;">${bodyHtml}</div>`,
+        lang
+      ),
+    };
+  },
+
   subscriptionConfirmed(user, plan, lang) {
     const planLabels = {
       standard_monthly: 'Standard (Monthly)',

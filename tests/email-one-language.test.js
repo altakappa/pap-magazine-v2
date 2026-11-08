@@ -44,6 +44,10 @@ const CALLS = {
   yearlyOffer: (l) => templates.yearlyOffer(user, { url: 'https://www.pap-magazine.com/subscribe?billing=yearly', date: '2026-11-01' }, l),
   castingCall: (l) => templates.castingCall(user, { title: 'Winter knits', body: 'Rough textures, daylight.', deadline: '2026-11-15', publicAt: '2026-10-09', url: 'https://www.pap-magazine.com/submission' }, l),
   subscriptionConfirmed: (l) => templates.subscriptionConfirmed(user, 'standard', l),
+  /* 2026-11-09 — 관리자가 쓴 1:1 메일. **본문은 관리자가 쓴 언어 그대로**이고
+     번역 대상이 아니다. 다만 메일 틀(머리말·꼬리말·IG CTA)은 받는 사람 언어로
+     맞춰져야 하므로 여기 검사에 포함한다. 본문은 중립적인 문장을 넣어 틀만 잰다. */
+  adminMessage: (l) => templates.adminMessage(user, { subject: 'Notice', body: 'Line one.\nLine two.' }, l),
   trialEndingSoon: (l) => templates.trialEndingSoon(user, { lang: l, language: l, endsAt: '2026-10-01' }),
   weeklyEditorial: (l) => templates.weeklyEditorial(camp, U(l), 'tok'),
   weeklyNews: (l) => templates.weeklyNews(camp, U(l), 'tok'),

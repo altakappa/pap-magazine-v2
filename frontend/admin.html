@@ -1579,6 +1579,22 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="modal-label">가입일</div>
         <div class="modal-val" id="memberEditJoined">—</div>
       </div>
+
+      <!-- 2026-11-09 — 회원에게 바로 메일. 종전엔 수단이 없어 Gmail 을 따로 열었고
+           발송 기록도 안 남았다. 본문은 평문이며 서버가 이스케이프한다. -->
+      <div class="modal-section" style="border-top:1px solid #222;padding-top:14px;margin-top:6px">
+        <div class="modal-label">메일 보내기</div>
+        <input type="text" id="memberMailSubject" placeholder="제목"
+               maxlength="150"
+               style="width:100%;margin:6px 0;padding:8px 10px;background:#111;border:1px solid #333;color:#eee;font-size:13px">
+        <textarea id="memberMailBody" rows="7" placeholder="본문 (평문. 줄바꿈은 그대로 유지됩니다)"
+               maxlength="5000"
+               style="width:100%;margin:2px 0 6px;padding:8px 10px;background:#111;border:1px solid #333;color:#eee;font-size:13px;line-height:1.6;resize:vertical"></textarea>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button type="button" class="btn btn-primary" id="memberMailBtn" onclick="papSendMemberEmail()">메일 발송</button>
+          <span id="memberMailHint" style="font-size:11px;color:#888"></span>
+        </div>
+      </div>
       <div class="modal-section">
         <div class="modal-label">투고 / Pull-Letter</div>
         <div class="modal-val" id="memberEditCounts">—</div>
@@ -3706,7 +3722,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=174" defer></script>
+<script src="/pap-admin.js?v=175" defer></script>
 <script src="/pap-admin-campaigns.js?v=5" defer></script>
 </body>
 </html>
