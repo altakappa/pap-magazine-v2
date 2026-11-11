@@ -15,9 +15,10 @@
  *  2) 에디토리얼 폼의 **정본 주소(canonical/og:url)가 새 경로**를 가리킨다.
  *     옛 주소를 그대로 두면 구글이 "폼 페이지가 갈림길을 정본이라 주장한다" 로 읽는다.
  *  3) 라우팅 3종(갈림길 rewrite · 폼 rewrite · 옛 파일 301)이 전부 있다.
- *  4) 갈림길에 **한글이 없다.** pap-ui-i18n 은 한글 원문을 사전으로 번역하는 구조라,
- *     한글을 두려면 /i18n/ui/ 사전 8개 언어를 함께 만들어야 한다. 사전 없이 한글을
- *     두면 어떤 언어를 골라도 한글로 남는다(프런트 언어 정책 위반).
+ *  4) **마크업 리터럴에 한글이 없다.** JS 가 죽으면 리터럴이 그대로 화면에 남는다.
+ *     한글 리터럴을 두면 영어 사용자에게 한글이 보인다(프런트 언어 정책 위반).
+ *     번역은 인라인 L 사전(9개 언어)이 담당하므로, 사전 블록과 주석은 제외하고
+ *     마크업만 검사한다. 9개 언어 정합 자체는 lang-consistency.test.js 가 본다.
  */
 'use strict';
 const fs = require('fs');
@@ -55,13 +56,16 @@ t('세 트랙 이름이 다 보인다',
 t('안내 페이지로 돌아가는 길이 있다', /href="\/submissions"/.test(PAGE));
 t('소셜 필수 게재를 알린다', /social channels/i.test(PAGE));
 
-console.log('=== 2. 한글 없음 (사전 없이 두면 번역 안 됨) ===');
+console.log('=== 2. 마크업 리터럴에 한글 없음 (JS 죽으면 그대로 보인다) ===');
 /* HTML 주석은 제외한다 — 렌더되지도 번역되지도 않으므로 사전이 필요 없다.
    이 저장소는 주석을 한국어로 쓰는 것이 관례다. 검사 대상은 **보이는 글자**다. */
-const VISIBLE = PAGE.replace(/<!--[\s\S]*?-->/g, '');
+const VISIBLE = PAGE
+  .replace(/<!--[\s\S]*?-->/g, '')          // HTML 주석
+  .replace(/<script[\s\S]*?<\/script>/gi, '') // 인라인 L 사전 + JS 주석 (번역이 사는 곳)
+  .replace(/<style[\s\S]*?<\/style>/gi, '');
 const hangul = VISIBLE.match(/[가-힣]/g) || [];
-t('갈림길의 보이는 글자에 한글이 0자', hangul.length === 0,
-  '발견: ' + hangul.slice(0, 20).join('') + ' — 한글을 두려면 /i18n/ui/ 사전 8개 언어가 함께 필요하다');
+t('마크업 리터럴에 한글이 0자', hangul.length === 0,
+  '발견: ' + hangul.slice(0, 20).join('') + ' — 리터럴은 영어로 두고 번역은 L 사전이 한다');
 
 console.log('=== 3. 폼의 정본 주소가 새 경로 ===');
 t('canonical 2곳 모두 /submission/editorial',

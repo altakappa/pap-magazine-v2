@@ -68,68 +68,126 @@
 <div class="wrap">
   <div class="top">
     <a class="logo" href="/">PAP MAGAZINE</a>
-    <a class="back" href="/submissions">Submission Guide</a>
+    <div style="display:flex;align-items:center;gap:18px"><a class="back" href="/submissions" data-i18n="navGuide">Submission Guide</a><select id="langSelect" onchange="setLang(this.value)" aria-label="Language" style="background:#000;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.2);font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.15em;padding:7px 9px;cursor:pointer"><option value="ko">KO</option><option value="en">EN</option><option value="de">DE</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
   </div>
 
-  <div class="eyebrow">Submissions</div>
-  <h1>Three ways to contribute</h1>
-  <p class="lede">PAP Magazine is an art-driven fashion, beauty and culture magazine published from Seoul, with a Milan desk. Choose the track that fits your work. Everything published also goes out on PAP's official social channels.</p>
+  <div class="eyebrow" data-i18n="eyebrow">Submissions</div>
+  <h1 data-i18n="h1">Three ways to contribute</h1>
+  <p class="lede" data-i18n="lede">PAP Magazine is an art-driven fashion, beauty and culture magazine published from Seoul, with a Milan desk. Choose the track that fits your work. Everything published also goes out on PAP's official social channels.</p>
 
   <div class="cards">
 
     <!-- ── 1. 에디토리얼 (기존 폼) ── -->
     <a class="card live" href="/submission/editorial">
-      <div class="kicker">01 — Editorial</div>
-      <h2>Submit an Editorial</h2>
-      <p>A finished fashion, beauty or art story — looks, credits and high-resolution images. For photographers, stylists and creative teams.</p>
+      <div class="kicker" data-i18n="k1">01 — Editorial</div>
+      <h2 data-i18n="t1">Submit an Editorial</h2>
+      <p data-i18n="d1">A finished fashion, beauty or art story — looks, credits and high-resolution images. For photographers, stylists and creative teams.</p>
       <div class="meta">
         <dl>
-          <dt>Fee</dt><dd>Free with 3+ looks &amp; 3+ clothing brands</dd>
-          <dt>Review</dt><dd>7 business days (Premium: 2)</dd>
-          <dt>Language</dt><dd>English</dd>
+          <dt data-i18n="lFee">Fee</dt><dd data-i18n="f1">Free with 3+ looks &amp; 3+ clothing brands</dd>
+          <dt data-i18n="lReview">Review</dt><dd data-i18n="r1">7 business days (Premium: 2)</dd>
+          <dt data-i18n="lLang">Language</dt><dd data-i18n="g1">English</dd>
         </dl>
       </div>
-      <span class="go">Start →</span>
+      <span class="go" data-i18n="start">Start →</span>
     </a>
 
     <!-- ── 2. 아티클 (2단계에서 연결) ── -->
     <div class="card soon">
-      <span class="badge">Coming soon</span>
-      <div class="kicker">02 — Article</div>
-      <h2>Write an Article</h2>
-      <p>Long-form writing on fashion, beauty, trends, lifestyle, tech or sport. Essays and reporting with a point of view — not brand announcements.</p>
+      <span class="badge" data-i18n="soon">Coming soon</span>
+      <div class="kicker" data-i18n="k2">02 — Article</div>
+      <h2 data-i18n="t2">Write an Article</h2>
+      <p data-i18n="d2">Long-form writing on fashion, beauty, trends, lifestyle, tech or sport. Essays and reporting with a point of view — not brand announcements.</p>
       <div class="meta">
         <dl>
-          <dt>Fee</dt><dd>Free (promotional pieces: €790)</dd>
-          <dt>Review</dt><dd>7 business days (Premium: 2)</dd>
-          <dt>Language</dt><dd>English or Korean</dd>
+          <dt data-i18n="lFee">Fee</dt><dd data-i18n="f2">Free (promotional pieces: €790)</dd>
+          <dt data-i18n="lReview">Review</dt><dd data-i18n="r1">7 business days (Premium: 2)</dd>
+          <dt data-i18n="lLang">Language</dt><dd data-i18n="g2">English or Korean</dd>
         </dl>
       </div>
-      <span class="soon-note">Opening soon</span>
+      <span class="soon-note" data-i18n="opening">Opening soon</span>
     </div>
 
     <!-- ── 3. 제보 (3단계에서 연결) ── -->
     <div class="card soon">
-      <span class="badge">Coming soon</span>
-      <div class="kicker">03 — News Tip</div>
-      <h2>Send a News Tip</h2>
-      <p>Witnessed something newsworthy and filmed it yourself? Send us your footage. Tips reach the editorial desk immediately.</p>
+      <span class="badge" data-i18n="soon">Coming soon</span>
+      <div class="kicker" data-i18n="k3">03 — News Tip</div>
+      <h2 data-i18n="t3">Send a News Tip</h2>
+      <p data-i18n="d3">Witnessed something newsworthy and filmed it yourself? Send us your footage. Tips reach the editorial desk immediately.</p>
       <div class="meta">
         <dl>
-          <dt>Fee</dt><dd>None — credited if used</dd>
-          <dt>Review</dt><dd>Immediate</dd>
-          <dt>Required</dt><dd>Your own photo or video</dd>
+          <dt data-i18n="lFee">Fee</dt><dd data-i18n="f3">None — credited if used</dd>
+          <dt data-i18n="lReview">Review</dt><dd data-i18n="r3">Immediate</dd>
+          <dt data-i18n="lReq">Required</dt><dd data-i18n="q3">Your own photo or video</dd>
         </dl>
       </div>
-      <span class="soon-note">Opening soon</span>
+      <span class="soon-note" data-i18n="opening">Opening soon</span>
     </div>
 
   </div>
 
   <div class="foot">
-    <p>New to PAP? Read the <a href="/submissions">submission guide</a> first — requirements, fees and what published contributors get.<br>
-    ALTAKAPPA Co., Ltd. · <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p>
+    <p data-i18n="footNote">New to PAP? Read the submission guide first — requirements, fees and what published contributors get.</p>
+    <p><a href="/submissions" data-i18n="navGuide">Submission Guide</a> &nbsp;·&nbsp; ALTAKAPPA Co., Ltd. &nbsp;·&nbsp; <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p>
   </div>
 </div>
+
+<script>
+/* ── 9개 언어 (2026-11-11) ────────────────────────────────────────────
+ * 마크업 리터럴은 영어로 둔다 — JS 가 죽어도 영어가 보이는 쪽이 안전하다
+ * (.claude/rules/frontend.md: 마크업에 한글을 남기지 않는다).
+ * 폴백은 반드시 영어이고, 키 단위로도 영어로 떨어진다.
+ */
+var L = {
+ko:{navGuide:'서브미션 안내',eyebrow:'서브미션',h1:'세 가지 참여 방법',lede:'PAP 매거진은 서울에서 발행하고 밀라노에 데스크를 둔, 아트 기반의 패션·뷰티·컬처 매거진입니다. 작업에 맞는 트랙을 선택하세요. 게재된 콘텐츠는 PAP 공식 소셜 채널에도 함께 올라갑니다.',k1:'01 — 에디토리얼',t1:'에디토리얼 제출',d1:'완성된 패션·뷰티·아트 화보 — 룩, 크레딧, 고해상도 이미지. 포토그래퍼·스타일리스트·크리에이티브 팀을 위한 트랙입니다.',lFee:'게재료',lReview:'심사',lLang:'언어',lReq:'필수',f1:'룩 3개 이상 + 의상 브랜드 3종 이상이면 무료',r1:'7영업일 (프리미엄 2영업일)',g1:'영어',start:'시작하기 →',soon:'준비 중',opening:'곧 공개',k2:'02 — 아티클',t2:'아티클 기고',d2:'패션·뷰티·트렌드·라이프스타일·IT·스포츠에 대한 긴 글. 관점이 있는 에세이와 리포팅 — 브랜드 홍보가 아닙니다.',f2:'무료 (홍보성 글은 €790)',g2:'영어 또는 한국어',k3:'03 — 제보',t3:'제보하기',d3:'화제가 될 만한 장면을 직접 목격하고 촬영하셨나요? 영상을 보내주세요. 제보는 즉시 편집 데스크로 전달됩니다.',f3:'없음 — 채택 시 크레딧',r3:'즉시',q3:'직접 촬영한 사진 또는 영상',footNote:'PAP 이 처음이신가요? 서브미션 안내를 먼저 읽어보세요 — 요건, 게재료, 게재 시 제공되는 것들을 담았습니다.'},
+en:{navGuide:'Submission Guide',eyebrow:'Submissions',h1:'Three ways to contribute',lede:"PAP Magazine is an art-driven fashion, beauty and culture magazine published from Seoul, with a Milan desk. Choose the track that fits your work. Everything published also goes out on PAP's official social channels.",k1:'01 — Editorial',t1:'Submit an Editorial',d1:'A finished fashion, beauty or art story — looks, credits and high-resolution images. For photographers, stylists and creative teams.',lFee:'Fee',lReview:'Review',lLang:'Language',lReq:'Required',f1:'Free with 3+ looks & 3+ clothing brands',r1:'7 business days (Premium: 2)',g1:'English',start:'Start →',soon:'Coming soon',opening:'Opening soon',k2:'02 — Article',t2:'Write an Article',d2:'Long-form writing on fashion, beauty, trends, lifestyle, tech or sport. Essays and reporting with a point of view — not brand announcements.',f2:'Free (promotional pieces: €790)',g2:'English or Korean',k3:'03 — News Tip',t3:'Send a News Tip',d3:'Witnessed something newsworthy and filmed it yourself? Send us your footage. Tips reach the editorial desk immediately.',f3:'None — credited if used',r3:'Immediate',q3:'Your own photo or video',footNote:'New to PAP? Read the submission guide first — requirements, fees and what published contributors get.'},
+de:{navGuide:'Einreichungs-Guide',eyebrow:'Einreichungen',h1:'Drei Wege mitzuwirken',lede:'PAP Magazine ist ein kunstgetriebenes Mode-, Beauty- und Kulturmagazin aus Seoul mit einem Desk in Mailand. Wählen Sie den Weg, der zu Ihrer Arbeit passt. Alles Veröffentlichte erscheint auch auf den offiziellen Social-Kanälen von PAP.',k1:'01 — Editorial',t1:'Editorial einreichen',d1:'Eine fertige Mode-, Beauty- oder Kunststrecke — Looks, Credits und hochauflösende Bilder. Für Fotograf:innen, Stylist:innen und Kreativteams.',lFee:'Gebühr',lReview:'Prüfung',lLang:'Sprache',lReq:'Erforderlich',f1:'Kostenlos ab 3 Looks & 3 Modemarken',r1:'7 Werktage (Premium: 2)',g1:'Englisch',start:'Starten →',soon:'Demnächst',opening:'Öffnet bald',k2:'02 — Artikel',t2:'Artikel schreiben',d2:'Lange Texte zu Mode, Beauty, Trends, Lifestyle, Technik oder Sport. Essays und Reportagen mit Haltung — keine Markenankündigungen.',f2:'Kostenlos (werbliche Beiträge: 790 €)',g2:'Englisch oder Koreanisch',k3:'03 — Hinweis',t3:'Einen Hinweis senden',d3:'Etwas Berichtenswertes selbst gesehen und gefilmt? Senden Sie uns Ihr Material. Hinweise erreichen die Redaktion sofort.',f3:'Keine — Nennung bei Verwendung',r3:'Sofort',q3:'Eigenes Foto oder Video',footNote:'Neu bei PAP? Lesen Sie zuerst den Einreichungs-Guide — Anforderungen, Gebühren und was veröffentlichte Beitragende erhalten.'},
+it:{navGuide:'Guida alle submission',eyebrow:'Submission',h1:'Tre modi per contribuire',lede:"PAP Magazine è una rivista di moda, beauty e cultura a matrice artistica, pubblicata da Seoul con un desk a Milano. Scegli il percorso adatto al tuo lavoro. Tutto ciò che viene pubblicato esce anche sui canali social ufficiali di PAP.",k1:'01 — Editoriale',t1:'Invia un editoriale',d1:'Un servizio di moda, beauty o arte già completo — look, credits e immagini ad alta risoluzione. Per fotografi, stylist e team creativi.',lFee:'Costo',lReview:'Revisione',lLang:'Lingua',lReq:'Richiesto',f1:'Gratis con 3+ look e 3+ brand di abbigliamento',r1:'7 giorni lavorativi (Premium: 2)',g1:'Inglese',start:'Inizia →',soon:'In arrivo',opening:'Apre presto',k2:'02 — Articolo',t2:'Scrivi un articolo',d2:'Testi lunghi su moda, beauty, tendenze, lifestyle, tecnologia o sport. Saggi e reportage con un punto di vista — non annunci di brand.',f2:'Gratis (contenuti promozionali: €790)',g2:'Inglese o coreano',k3:'03 — Segnalazione',t3:'Invia una segnalazione',d3:'Hai visto di persona qualcosa di notiziabile e lo hai filmato? Inviaci il tuo materiale. Le segnalazioni arrivano subito alla redazione.',f3:'Nessuno — credito se utilizzata',r3:'Immediata',q3:'Foto o video girati da te',footNote:'Nuovo su PAP? Leggi prima la guida alle submission — requisiti, costi e cosa ricevono i collaboratori pubblicati.'},
+fr:{navGuide:'Guide des soumissions',eyebrow:'Soumissions',h1:'Trois façons de contribuer',lede:"PAP Magazine est un magazine de mode, beauté et culture à démarche artistique, publié depuis Séoul avec un bureau à Milan. Choisissez la voie qui correspond à votre travail. Tout ce qui est publié paraît aussi sur les canaux sociaux officiels de PAP.",k1:'01 — Éditorial',t1:'Soumettre un éditorial',d1:'Une série mode, beauté ou art aboutie — looks, crédits et images haute résolution. Pour photographes, stylistes et équipes créatives.',lFee:'Frais',lReview:'Examen',lLang:'Langue',lReq:'Requis',f1:'Gratuit avec 3+ looks et 3+ marques de vêtements',r1:'7 jours ouvrés (Premium : 2)',g1:'Anglais',start:'Commencer →',soon:'Bientôt',opening:'Ouverture prochaine',k2:'02 — Article',t2:'Écrire un article',d2:'Textes longs sur la mode, la beauté, les tendances, le lifestyle, la tech ou le sport. Essais et reportages avec un point de vue — pas des annonces de marque.',f2:'Gratuit (contenus promotionnels : 790 €)',g2:'Anglais ou coréen',k3:'03 — Signalement',t3:'Envoyer un signalement',d3:"Vous avez vous-même vu et filmé un fait marquant ? Envoyez-nous vos images. Les signalements arrivent immédiatement à la rédaction.",f3:'Aucun — crédité si utilisé',r3:'Immédiat',q3:'Votre propre photo ou vidéo',footNote:"Nouveau sur PAP ? Lisez d'abord le guide des soumissions — exigences, frais et ce que reçoivent les contributeurs publiés."},
+es:{navGuide:'Guía de envíos',eyebrow:'Envíos',h1:'Tres formas de colaborar',lede:'PAP Magazine es una revista de moda, belleza y cultura con enfoque artístico, publicada desde Seúl y con mesa en Milán. Elige la vía que encaje con tu trabajo. Todo lo publicado sale también en los canales sociales oficiales de PAP.',k1:'01 — Editorial',t1:'Enviar un editorial',d1:'Una historia de moda, belleza o arte terminada — looks, créditos e imágenes en alta resolución. Para fotógrafos, estilistas y equipos creativos.',lFee:'Tarifa',lReview:'Revisión',lLang:'Idioma',lReq:'Obligatorio',f1:'Gratis con 3+ looks y 3+ marcas de ropa',r1:'7 días hábiles (Premium: 2)',g1:'Inglés',start:'Empezar →',soon:'Próximamente',opening:'Abre pronto',k2:'02 — Artículo',t2:'Escribir un artículo',d2:'Textos largos sobre moda, belleza, tendencias, estilo de vida, tecnología o deporte. Ensayos y reportajes con punto de vista — no anuncios de marca.',f2:'Gratis (piezas promocionales: 790 €)',g2:'Inglés o coreano',k3:'03 — Aviso',t3:'Enviar un aviso',d3:'¿Presenciaste algo noticioso y lo grabaste tú mismo? Envíanos tu material. Los avisos llegan de inmediato a la redacción.',f3:'Ninguna — con crédito si se usa',r3:'Inmediata',q3:'Tu propia foto o vídeo',footNote:'¿Nuevo en PAP? Lee primero la guía de envíos — requisitos, tarifas y qué reciben los colaboradores publicados.'},
+ja:{navGuide:'サブミッション案内',eyebrow:'サブミッション',h1:'参加する3つの方法',lede:'PAP Magazine はソウルで発行し、ミラノにデスクを置くアート主導のファッション・ビューティー・カルチャー誌です。ご自身の作品に合ったトラックをお選びください。掲載されたコンテンツは PAP の公式ソーシャルチャンネルにも掲載されます。',k1:'01 — エディトリアル',t1:'エディトリアルを提出',d1:'完成したファッション・ビューティー・アート作品 — ルック、クレジット、高解像度画像。フォトグラファー・スタイリスト・クリエイティブチーム向けです。',lFee:'掲載料',lReview:'審査',lLang:'言語',lReq:'必須',f1:'ルック3点以上かつ衣装ブランド3社以上で無料',r1:'7営業日（プレミアム: 2営業日）',g1:'英語',start:'はじめる →',soon:'準備中',opening:'まもなく公開',k2:'02 — 記事',t2:'記事を書く',d2:'ファッション・ビューティー・トレンド・ライフスタイル・テック・スポーツに関する長文。視点のあるエッセイやレポート — ブランドの告知ではありません。',f2:'無料（宣伝目的の記事は €790）',g2:'英語または韓国語',k3:'03 — 情報提供',t3:'情報を提供する',d3:'話題になりそうな場面をご自身で目撃し撮影されましたか？映像をお送りください。情報は直ちに編集デスクへ届きます。',f3:'なし — 採用時にクレジット',r3:'即時',q3:'ご自身で撮影した写真または動画',footNote:'PAP は初めてですか？まずサブミッション案内をお読みください — 要件、掲載料、掲載された寄稿者が得られるものをまとめています。'},
+zh:{navGuide:'投稿指南',eyebrow:'投稿',h1:'三种参与方式',lede:'PAP Magazine 是一本以艺术为驱动的时尚、美妆与文化杂志，于首尔出版，并在米兰设有编辑部。请选择适合您作品的方式。所有刊发内容也会同步发布至 PAP 官方社交渠道。',k1:'01 — 时尚大片',t1:'提交时尚大片',d1:'已完成的时尚、美妆或艺术作品 — 造型、制作名单与高分辨率图片。面向摄影师、造型师与创意团队。',lFee:'费用',lReview:'审核',lLang:'语言',lReq:'必需',f1:'3 套以上造型且 3 个以上服装品牌即免费',r1:'7 个工作日（高级会员：2 个）',g1:'英语',start:'开始 →',soon:'即将推出',opening:'即将开放',k2:'02 — 文章',t2:'撰写文章',d2:'关于时尚、美妆、趋势、生活方式、科技或体育的长文。有观点的随笔与报道 — 而非品牌公告。',f2:'免费（推广性内容：€790）',g2:'英语或韩语',k3:'03 — 线索',t3:'提供线索',d3:'您亲眼目睹并拍下了值得报道的场景吗？请把素材发给我们。线索会立即送达编辑部。',f3:'无 — 采用时署名',r3:'即时',q3:'您本人拍摄的照片或视频',footNote:'初次接触 PAP？请先阅读投稿指南 — 其中包含要求、费用，以及刊发作者可获得的内容。'},
+ru:{navGuide:'Руководство по подаче',eyebrow:'Приём работ',h1:'Три способа участвовать',lede:'PAP Magazine — журнал о моде, красоте и культуре с художественным подходом, издаётся в Сеуле, редакция также есть в Милане. Выберите путь, который подходит вашей работе. Всё опубликованное выходит и в официальных соцсетях PAP.',k1:'01 — Съёмка',t1:'Подать съёмку',d1:'Готовая история о моде, красоте или искусстве — образы, титры и изображения высокого разрешения. Для фотографов, стилистов и креативных команд.',lFee:'Стоимость',lReview:'Рассмотрение',lLang:'Язык',lReq:'Обязательно',f1:'Бесплатно при 3+ образах и 3+ брендах одежды',r1:'7 рабочих дней (Premium: 2)',g1:'Английский',start:'Начать →',soon:'Скоро',opening:'Скоро откроется',k2:'02 — Статья',t2:'Написать статью',d2:'Большие тексты о моде, красоте, трендах, стиле жизни, технологиях или спорте. Эссе и репортажи с точкой зрения — не анонсы брендов.',f2:'Бесплатно (рекламные материалы: 790 €)',g2:'Английский или корейский',k3:'03 — Сообщить новость',t3:'Отправить новость',d3:'Сами стали свидетелем события и сняли его? Пришлите нам материал. Сообщения сразу попадают в редакцию.',f3:'Нет — упоминание при публикации',r3:'Немедленно',q3:'Ваши собственные фото или видео',footNote:'Впервые на PAP? Сначала прочитайте руководство по подаче — требования, стоимость и что получают опубликованные авторы.'}
+};
+
+function setLang(l){
+  /* 폴백은 반드시 영어. 키 단위로도 영어로 떨어뜨린다
+     (사전에 없는 언어가 통째로 한국어로 뜨는 함정 방지 — frontend.md) */
+  var d = L[l] || L.en;
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n');
+    var v = d[k] || (L.en && L.en[k]);
+    if (v) el.textContent = v;
+  });
+  document.documentElement.lang = l;
+  var sel = document.getElementById('langSelect'); if (sel) sel.value = l;
+  try { localStorage.setItem('pap-lang', l); } catch(e){}
+}
+
+/* pap-i18n.js 가 defer 로 전역 setLang 을 덮어쓴다. 덮어쓰이기 전에 참조를
+   잡아 두고 이어서 적용한다 (frontend.md 의 전역 setLang 충돌 함정). */
+var _papPageSetLang = setLang;
+document.addEventListener('DOMContentLoaded', function(){
+  var g = window.setLang;
+  if (typeof g !== 'function'){ window.setLang = _papPageSetLang; return; }
+  if (g === _papPageSetLang || g._papPageChained) return;
+  var chained = function(l){
+    try { g.apply(this, arguments); } catch(e){}
+    try { _papPageSetLang(l); } catch(e){}
+  };
+  chained._papPageChained = true;
+  window.setLang = chained;
+});
+
+(function(){
+  var l; try { l = localStorage.getItem('pap-lang'); } catch(e){}
+  if (!l) { var n = (navigator.language || 'en').slice(0,2).toLowerCase();
+            l = L[n] ? n : 'en'; }
+  _papPageSetLang(l);
+})();
+document.addEventListener('pap-lang-changed', function(ev){
+  try { var nl = (ev && ev.detail && ev.detail.lang) || localStorage.getItem('pap-lang'); if (nl) _papPageSetLang(nl); } catch(e){}
+});
+</script>
 </body>
 </html>
