@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-11 — 서브미션 선택 화면.
+     /submission 은 원래 에디토리얼 폼이었다. 트랙이 셋(에디토리얼·아티클·제보)으로
+     늘면서 이 자리를 갈림길로 바꾸고, 폼은 /submission/editorial 로 옮겼다.
+     사이트 곳곳의 기존 링크가 전부 /submission 을 가리키므로 그 링크들은 그대로 두고
+     여기 도착하게 한다.
+     ※ 이 페이지에는 한글을 두지 않는다. pap-ui-i18n 은 한글 원문을 사전으로 번역하는
+       구조라, 한글을 넣으려면 /i18n/ui/ 사전 8개 언어를 함께 만들어야 한다.
+       (CSS·JS 주석도 마찬가지로 비워 둔다 — 회귀 테스트가 보이는 글자만 세도록
+        엄격하게 유지하기 위해서다. 설명은 전부 이 주석에 모은다.)
+     · .card.soon 의 opacity 는 .62 — 준비 중 표시는 badge 가 하고, 요금·언어는
+       읽고 판단할 정보라 너무 어둡게 두지 않는다. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Submit to PAP Magazine — Editorial, Article or News Tip</title>
+<meta name="description" content="Three ways to contribute to PAP Magazine: submit a fashion or beauty editorial, write a long-form article, or send a news tip with your own footage. Reviewed by our editorial team in Seoul and Milan.">
+<link rel="canonical" href="https://www.pap-magazine.com/submission">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Submit to PAP Magazine — Editorial, Article or News Tip">
+<meta property="og:description" content="Three ways to contribute: editorial, long-form article, or a news tip with your own footage.">
+<meta property="og:url" content="https://www.pap-magazine.com/submission">
+<meta property="og:image" content="https://www.pap-magazine.com/pap-logo.png">
+<meta property="og:site_name" content="PAP MAGAZINE">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Montserrat','Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#000;color:#fff;min-height:100vh;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:980px;margin:0 auto;padding:88px 24px 120px}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:56px;gap:16px;flex-wrap:wrap}
+  .logo{font-size:12px;font-weight:800;letter-spacing:.35em;text-transform:uppercase}
+  .back{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);border-bottom:1px solid rgba(255,255,255,.2);padding-bottom:3px}
+  .back:hover{color:#fff;border-color:#fff}
+  .eyebrow{font-size:10px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;color:#c33b3b;margin-bottom:18px}
+  .eyebrow::before{content:'';display:inline-block;width:26px;height:2px;background:#891717;vertical-align:middle;margin-right:12px}
+  h1{font-size:clamp(26px,4.4vw,40px);font-weight:800;line-height:1.25;letter-spacing:-.01em;margin-bottom:18px}
+  .lede{font-size:14.5px;color:rgba(255,255,255,.6);line-height:1.95;max-width:620px;margin-bottom:54px}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px}
+  .card{position:relative;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,.16);padding:34px 28px 28px;transition:border-color .3s,background .3s;min-height:330px}
+  .card.live:hover{border-color:#891717;background:rgba(137,23,23,.07)}
+  .card .kicker{font-size:9.5px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#c33b3b;margin-bottom:16px}
+  .card h2{font-size:20px;font-weight:800;letter-spacing:-.01em;margin-bottom:12px;line-height:1.3}
+  .card p{font-size:13.5px;line-height:1.95;color:rgba(255,255,255,.64);margin-bottom:20px}
+  .meta{margin-top:auto;border-top:1px solid rgba(255,255,255,.12);padding-top:16px}
+  .meta dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:11.5px;line-height:1.7}
+  .meta dt{color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.14em;font-size:9.5px;font-weight:700;padding-top:2px}
+  .meta dd{color:rgba(255,255,255,.78)}
+  .go{display:inline-block;margin-top:20px;background:#891717;color:#fff;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:13px 22px;transition:background .3s;align-self:flex-start}
+  .card.live:hover .go{background:#a51c1c}
+  .card.soon{opacity:.62}
+  .badge{position:absolute;top:14px;right:14px;font-size:8.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.22);padding:5px 9px}
+  .soon-note{display:inline-block;margin-top:20px;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.42);border:1px solid rgba(255,255,255,.18);padding:13px 22px;align-self:flex-start}
+
+  .foot{margin-top:72px;font-size:11.5px;color:rgba(255,255,255,.34);line-height:2}
+  .foot a{color:rgba(255,255,255,.55);border-bottom:1px solid rgba(255,255,255,.22)}
+  @media(max-width:600px){ .wrap{padding:64px 18px 88px} .card{min-height:0;padding:28px 22px 24px} }
+</style>
+<script src="/pap-profile-prompt.js?v=1" defer></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="logo" href="/">PAP MAGAZINE</a>
+    <a class="back" href="/submissions">Submission Guide</a>
+  </div>
+
+  <div class="eyebrow">Submissions</div>
+  <h1>Three ways to contribute</h1>
+  <p class="lede">PAP Magazine is an art-driven fashion, beauty and culture magazine published from Seoul, with a Milan desk. Choose the track that fits your work. Everything published also goes out on PAP's official social channels.</p>
+
+  <div class="cards">
+
+    <!-- ── 1. 에디토리얼 (기존 폼) ── -->
+    <a class="card live" href="/submission/editorial">
+      <div class="kicker">01 — Editorial</div>
+      <h2>Submit an Editorial</h2>
+      <p>A finished fashion, beauty or art story — looks, credits and high-resolution images. For photographers, stylists and creative teams.</p>
+      <div class="meta">
+        <dl>
+          <dt>Fee</dt><dd>Free with 3+ looks &amp; 3+ clothing brands</dd>
+          <dt>Review</dt><dd>7 business days (Premium: 2)</dd>
+          <dt>Language</dt><dd>English</dd>
+        </dl>
+      </div>
+      <span class="go">Start →</span>
+    </a>
+
+    <!-- ── 2. 아티클 (2단계에서 연결) ── -->
+    <div class="card soon">
+      <span class="badge">Coming soon</span>
+      <div class="kicker">02 — Article</div>
+      <h2>Write an Article</h2>
+      <p>Long-form writing on fashion, beauty, trends, lifestyle, tech or sport. Essays and reporting with a point of view — not brand announcements.</p>
+      <div class="meta">
+        <dl>
+          <dt>Fee</dt><dd>Free (promotional pieces: €790)</dd>
+          <dt>Review</dt><dd>7 business days (Premium: 2)</dd>
+          <dt>Language</dt><dd>English or Korean</dd>
+        </dl>
+      </div>
+      <span class="soon-note">Opening soon</span>
+    </div>
+
+    <!-- ── 3. 제보 (3단계에서 연결) ── -->
+    <div class="card soon">
+      <span class="badge">Coming soon</span>
+      <div class="kicker">03 — News Tip</div>
+      <h2>Send a News Tip</h2>
+      <p>Witnessed something newsworthy and filmed it yourself? Send us your footage. Tips reach the editorial desk immediately.</p>
+      <div class="meta">
+        <dl>
+          <dt>Fee</dt><dd>None — credited if used</dd>
+          <dt>Review</dt><dd>Immediate</dd>
+          <dt>Required</dt><dd>Your own photo or video</dd>
+        </dl>
+      </div>
+      <span class="soon-note">Opening soon</span>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    <p>New to PAP? Read the <a href="/submissions">submission guide</a> first — requirements, fees and what published contributors get.<br>
+    ALTAKAPPA Co., Ltd. · <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p>
+  </div>
+</div>
+</body>
+</html>

@@ -691,6 +691,10 @@
     },
     {
       "source": "/submission",
+      "destination": "/submission-select.html"
+    },
+    {
+      "source": "/submission/editorial",
       "destination": "/submission.html"
     },
     {
@@ -925,7 +929,7 @@
     },
     {
       "source": "/submission.html",
-      "destination": "/submission",
+      "destination": "/submission/editorial",
       "statusCode": 301
     },
     {
