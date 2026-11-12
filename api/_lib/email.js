@@ -889,7 +889,165 @@ const PULLLETTER_REVISION_I18N = {
   de: { subject: '[PAP Magazine] Pull-Letter: Überarbeitung erbeten', heading: 'Überarbeitung erbeten', body1: 'Wir haben Ihre Pull-Letter-Anfrage geprüft. Vor der Ausstellung benötigt das Moodboard folgende Überarbeitungen.', noteLabel: 'Feedback der Redaktion', body2: 'Laden Sie das überarbeitete Moodboard in Ihrer Meine Seite hoch — wir prüfen erneut und stellen die Letter aus.', cta: 'Überarbeitung hochladen' },
 };
 
+
+/* ── 아티클 기고 메일 4종 (2026-11-12) ───────────────────────────────────
+ * 도메니코 2026-11-11: 아티클 트랙 신설. 접수 · €790 유료 안내 · 승인 · 거절.
+ *
+ * ■ €790 안내는 **심사 후**에 간다 (도메니코 결정 2026-11-12)
+ * 제출 단계에서는 청구가 없다. 관리자가 홍보성으로 판정한 건에만 이 메일이
+ * 나간다. 그래서 문구는 "이미 내셔야 합니다" 가 아니라 "이 글은 홍보성으로
+ * 분류되었고, 게재를 원하시면 게재료가 적용됩니다" 여야 한다 — 거절하고
+ * 철회할 선택지가 제출자에게 있다.
+ *
+ * ■ 셋 다 소셜 필수 게재를 알린다
+ * 도메니코 2026-11-11: "에디토리얼과 아티클 제보 셋다 게재시 소셜미디어에도
+ * 필수로 올라감." 승인 메일에 그 사실을 다시 적는다.
+ *
+ * ■ 영어 틀 문구 금지
+ * tests/email-one-language.test.js 가 en 이 아닌 메일에서 'My Page',
+ * 'MY SUBMISSIONS' 같은 영어 틀 문구를 잡는다. CTA 는 언어별로 쓴다.
+ */
+const ARTICLE_RECEIVED_I18N = {
+  ko: { subject: '아티클 기고 접수: {title}', heading: '기고가 접수되었습니다', body1: '보내주신 아티클 {title}이(가) 접수되었습니다.', statusLabel: '상태', statusValue: '심사 중', etaLabel: '예상 회신', etaValue: '최대 7영업일', body2: '에디토리얼 팀이 글을 읽고 결과를 이메일로 알려드립니다. 게재가 확정되면 PAP 웹사이트와 공식 소셜 채널에 함께 게시됩니다.', body3: '특정 브랜드나 아티스트를 알리는 홍보성 글로 분류되면 게재료 790유로가 적용되며, 그 경우 미리 안내드립니다. 심사에서 게재되지 않으면 어떤 비용도 청구되지 않습니다.', cta: '내 기고 보기' },
+  en: { subject: 'Article submission received: {title}', heading: 'Your article has been received', body1: 'We have received your article {title}.', statusLabel: 'Status', statusValue: 'Under review', etaLabel: 'Expected response', etaValue: 'Up to 7 business days', body2: 'Our editorial team will read your piece and email you the outcome. Anything we publish also goes out on the PAP website and our official social channels.', body3: 'If the piece is classified as promotional — written to present one specific brand or artist — a 790 euro publication fee applies, and we will tell you before anything happens. If your piece is not accepted, you are charged nothing.', cta: 'View my submissions' },
+  it: { subject: 'Articolo ricevuto: {title}', heading: 'Abbiamo ricevuto il tuo articolo', body1: 'Abbiamo ricevuto il tuo articolo {title}.', statusLabel: 'Stato', statusValue: 'In revisione', etaLabel: 'Risposta prevista', etaValue: 'Fino a 7 giorni lavorativi', body2: 'Il team editoriale leggera il testo e ti comunichera l esito via email. Tutto cio che pubblichiamo esce anche sul sito PAP e sui canali social ufficiali.', body3: 'Se il testo viene classificato come promozionale, cioe scritto per presentare un singolo brand o artista, si applica un costo di pubblicazione di 790 euro, e te lo comunicheremo prima di procedere. Se il testo non viene accettato, non ti viene addebitato nulla.', cta: 'I miei invii' },
+  fr: { subject: 'Article recu : {title}', heading: 'Nous avons recu votre article', body1: 'Nous avons bien recu votre article {title}.', statusLabel: 'Statut', statusValue: 'En cours d examen', etaLabel: 'Reponse prevue', etaValue: 'Jusqu a 7 jours ouvres', body2: 'Notre equipe editoriale lira votre texte et vous enverra le resultat par e-mail. Tout ce que nous publions parait aussi sur le site PAP et sur nos canaux sociaux officiels.', body3: 'Si le texte est classe comme promotionnel, ecrit pour presenter une marque ou un artiste en particulier, des frais de publication de 790 euros s appliquent, et nous vous en informerons avant toute suite. Si votre texte n est pas retenu, rien ne vous est facture.', cta: 'Mes soumissions' },
+  es: { subject: 'Articulo recibido: {title}', heading: 'Hemos recibido tu articulo', body1: 'Hemos recibido tu articulo {title}.', statusLabel: 'Estado', statusValue: 'En revision', etaLabel: 'Respuesta prevista', etaValue: 'Hasta 7 dias habiles', body2: 'Nuestro equipo editorial leera tu texto y te enviara el resultado por correo. Todo lo que publicamos sale tambien en el sitio de PAP y en nuestros canales sociales oficiales.', body3: 'Si el texto se clasifica como promocional, escrito para presentar una marca o un artista concretos, se aplica una tarifa de publicacion de 790 euros, y te lo diremos antes de seguir adelante. Si tu texto no se acepta, no se te cobra nada.', cta: 'Mis envios' },
+  ja: { subject: '記事のご投稿を受け付けました: {title}', heading: 'ご投稿を受け付けました', body1: 'お送りいただいた記事 {title} を受け付けました。', statusLabel: 'ステータス', statusValue: '審査中', etaLabel: '回答目安', etaValue: '最長7営業日', body2: '編集チームが原稿を読み、結果をメールでお知らせします。掲載されたものはPAPのウェブサイトと公式ソーシャルチャンネルにも掲載されます。', body3: '特定のブランドやアーティストを紹介する宣伝目的の記事と判断された場合は掲載料790ユーロが適用され、その際は事前にご案内します。掲載に至らなかった場合、費用は一切かかりません。', cta: '投稿の確認' },
+  zh: { subject: '已收到您的文章投稿：{title}', heading: '已收到您的投稿', body1: '我们已收到您的文章 {title}。', statusLabel: '状态', statusValue: '审核中', etaLabel: '预计回复', etaValue: '最长 7 个工作日', body2: '编辑团队会阅读您的文稿并通过邮件告知结果。所有刊发内容也会同步发布至 PAP 网站与官方社交渠道。', body3: '若文稿被判定为推广性内容，即为介绍某一特定品牌或艺术家而写，将适用 790 欧元刊发费用，我们会在处理前先行告知。若文稿未被采用，不会产生任何费用。', cta: '查看我的投稿' },
+  ru: { subject: 'Статья получена: {title}', heading: 'Мы получили вашу статью', body1: 'Мы получили вашу статью {title}.', statusLabel: 'Статус', statusValue: 'На рассмотрении', etaLabel: 'Ожидаемый ответ', etaValue: 'До 7 рабочих дней', body2: 'Редакция прочитает текст и сообщит результат по почте. Всё, что мы публикуем, выходит и на сайте PAP, и в официальных соцсетях.', body3: 'Если текст будет отнесён к рекламным, то есть написанным, чтобы представить один конкретный бренд или артиста, применяется плата за публикацию 790 евро, и мы сообщим об этом заранее. Если текст не примут, с вас ничего не возьмут.', cta: 'Мои заявки' },
+  de: { subject: 'Artikel eingegangen: {title}', heading: 'Ihr Artikel ist eingegangen', body1: 'Wir haben Ihren Artikel {title} erhalten.', statusLabel: 'Status', statusValue: 'In Prüfung', etaLabel: 'Erwartete Antwort', etaValue: 'Bis zu 7 Werktage', body2: 'Unsere Redaktion liest Ihren Text und teilt Ihnen das Ergebnis per E-Mail mit. Alles, was wir veröffentlichen, erscheint auch auf der PAP-Website und auf unseren offiziellen Social-Kanälen.', body3: 'Wird der Text als werblich eingeordnet, also geschrieben, um eine bestimmte Marke oder einen Künstler vorzustellen, fällt eine Veröffentlichungsgebühr von 790 Euro an; wir sagen es Ihnen vorher. Wird Ihr Text nicht angenommen, entstehen keine Kosten.', cta: 'Meine Einreichungen' },
+};
+
+const ARTICLE_FEE_I18N = {
+  ko: { subject: '아티클 게재료 안내: {title}', heading: '홍보성 글로 분류되었습니다', body1: '보내주신 아티클 {title}을(를) 검토했습니다. 이 글은 특정 브랜드 또는 아티스트를 알리는 것이 목적인 글로 판단되어, 게재료가 적용됩니다.', feeLabel: '게재료', body2: '가르는 기준은 브랜드가 몇 개 나오는지가 아니라 글의 목적입니다. 사회 현상이나 흐름을 다루면서 여러 브랜드가 자연스럽게 언급되는 글은 무료로 게재됩니다. 반면 한 대상을 소개하거나 알리는 것이 글의 목적이면 홍보성 글입니다.', body3: '게재를 원하시면 결제 안내를 따로 보내드립니다. 원하지 않으시면 아무것도 하지 않으셔도 됩니다. 청구되는 금액은 없고, 글은 게재되지 않은 채로 남습니다. 판단에 이견이 있으시면 이 메일에 회신해 주세요.', cta: '내 기고 보기' },
+  en: { subject: 'Publication fee for your article: {title}', heading: 'Classified as a promotional piece', body1: 'We have reviewed your article {title}. We read it as a piece whose purpose is to present a specific brand or artist, so a publication fee applies.', feeLabel: 'Publication fee', body2: 'The deciding question is not how many brands appear, but what the piece is for. Writing that examines a phenomenon or a trend, with brands appearing along the way, is published free. Writing whose purpose is to introduce or promote one subject is a promotional piece.', body3: 'If you would like it published, we will send you payment details separately. If not, you need do nothing — nothing is charged, and the piece simply stays unpublished. If you think we have read it wrong, reply to this email.', cta: 'View my submissions' },
+  it: { subject: 'Costo di pubblicazione per il tuo articolo: {title}', heading: 'Classificato come contenuto promozionale', body1: 'Abbiamo esaminato il tuo articolo {title}. Lo leggiamo come un testo il cui scopo e presentare un brand o un artista specifico, quindi si applica un costo di pubblicazione.', feeLabel: 'Costo di pubblicazione', body2: 'La domanda decisiva non e quanti brand compaiono, ma a cosa serve il testo. Un testo che analizza un fenomeno o una tendenza, con brand che emergono per strada, viene pubblicato gratis. Un testo il cui scopo e presentare o promuovere un soggetto e promozionale.', body3: 'Se desideri pubblicarlo, ti invieremo le istruzioni di pagamento separatamente. Se no, non devi fare nulla: non viene addebitato niente e il testo resta non pubblicato. Se pensi che l abbiamo letto male, rispondi a questa email.', cta: 'I miei invii' },
+  fr: { subject: 'Frais de publication pour votre article : {title}', heading: 'Classe comme contenu promotionnel', body1: 'Nous avons examine votre article {title}. Nous le lisons comme un texte dont l objet est de presenter une marque ou un artiste en particulier ; des frais de publication s appliquent donc.', feeLabel: 'Frais de publication', body2: 'La question decisive n est pas le nombre de marques citees, mais la finalite du texte. Un texte qui examine un phenomene ou une tendance, ou des marques apparaissent en chemin, est publie gratuitement. Un texte dont la finalite est de presenter ou promouvoir un sujet est promotionnel.', body3: 'Si vous souhaitez le publier, nous vous enverrons les modalites de paiement separement. Sinon, vous n avez rien a faire : rien n est facture et le texte reste non publie. Si vous estimez que nous l avons mal lu, repondez a cet e-mail.', cta: 'Mes soumissions' },
+  es: { subject: 'Tarifa de publicacion de tu articulo: {title}', heading: 'Clasificado como contenido promocional', body1: 'Hemos revisado tu articulo {title}. Lo leemos como un texto cuyo proposito es presentar una marca o un artista concretos, asi que se aplica una tarifa de publicacion.', feeLabel: 'Tarifa de publicacion', body2: 'La pregunta decisiva no es cuantas marcas aparecen, sino para que sirve el texto. Un texto que examina un fenomeno o una tendencia, con marcas que aparecen por el camino, se publica gratis. Un texto cuyo proposito es presentar o promocionar un sujeto es promocional.', body3: 'Si quieres publicarlo, te enviaremos los datos de pago por separado. Si no, no tienes que hacer nada: no se cobra nada y el texto queda sin publicar. Si crees que lo hemos leido mal, responde a este correo.', cta: 'Mis envios' },
+  ja: { subject: '記事の掲載料のご案内: {title}', heading: '宣伝目的の記事と判断されました', body1: 'お送りいただいた記事 {title} を検討しました。特定のブランドまたはアーティストを紹介することが目的の記事と判断されるため、掲載料が適用されます。', feeLabel: '掲載料', body2: '分かれ目はブランドが何社出てくるかではなく、その記事が何のために書かれたかです。社会的な現象や流れを論じるなかで複数のブランドが自然に登場する記事は無料で掲載します。一方、一つの対象を紹介・宣伝することが目的の記事は宣伝目的です。', body3: '掲載をご希望の場合は、お支払いのご案内を別途お送りします。ご希望でなければ何もなさらなくて構いません。請求は発生せず、記事は未掲載のままになります。判断にご意見がある場合はこのメールにご返信ください。', cta: '投稿の確認' },
+  zh: { subject: '关于您文章的刊发费用：{title}', heading: '已判定为推广性内容', body1: '我们已审阅您的文章 {title}。我们认为这是一篇以介绍某一特定品牌或艺术家为目的的文稿，因此适用刊发费用。', feeLabel: '刊发费用', body2: '判定的关键不是文中出现了多少品牌，而是这篇文稿为何而写。探讨某种社会现象或趋势、其间自然提及多个品牌的文稿，免费刊发；而以介绍或推广某一对象为目的的文稿，属于推广性内容。', body3: '若您希望刊发，我们会另行发送付款说明。若不希望，您无需做任何事，不会产生任何费用，文稿保持未刊发状态。若您认为我们判断有误，请直接回复此邮件。', cta: '查看我的投稿' },
+  ru: { subject: 'Плата за публикацию вашей статьи: {title}', heading: 'Отнесено к рекламным материалам', body1: 'Мы рассмотрели вашу статью {title}. Мы прочитали её как текст, цель которого представить конкретный бренд или артиста, поэтому применяется плата за публикацию.', feeLabel: 'Плата за публикацию', body2: 'Решает не то, сколько брендов упомянуто, а то, зачем написан текст. Текст, который разбирает явление или тенденцию и попутно называет бренды, публикуется бесплатно. Текст, цель которого представить или продвинуть один объект, является рекламным.', body3: 'Если хотите опубликовать, мы отдельно пришлём реквизиты для оплаты. Если нет, делать ничего не нужно: ничего не списывается, текст просто остаётся неопубликованным. Если считаете, что мы поняли текст неверно, ответьте на это письмо.', cta: 'Мои заявки' },
+  de: { subject: 'Veröffentlichungsgebühr für Ihren Artikel: {title}', heading: 'Als werblicher Beitrag eingeordnet', body1: 'Wir haben Ihren Artikel {title} geprüft. Wir lesen ihn als Text, dessen Zweck es ist, eine bestimmte Marke oder einen Künstler vorzustellen, daher fällt eine Veröffentlichungsgebühr an.', feeLabel: 'Veröffentlichungsgebühr', body2: 'Entscheidend ist nicht, wie viele Marken vorkommen, sondern wozu der Text da ist. Ein Text, der ein Phänomen oder einen Trend untersucht und dabei Marken nennt, wird kostenlos veröffentlicht. Ein Text, dessen Zweck es ist, ein Subjekt vorzustellen oder zu bewerben, ist werblich.', body3: 'Wenn Sie veröffentlichen möchten, senden wir Ihnen die Zahlungsdaten separat. Wenn nicht, müssen Sie nichts tun — es wird nichts berechnet, und der Text bleibt unveröffentlicht. Wenn Sie meinen, wir hätten ihn falsch gelesen, antworten Sie auf diese E-Mail.', cta: 'Meine Einreichungen' },
+};
+
+const ARTICLE_APPROVED_I18N = {
+  ko: { subject: '아티클 게재 확정: {title}', heading: '기고가 게재로 확정되었습니다', body1: '보내주신 아티클 {title}이(가) 게재로 확정되었습니다. 축하합니다.', body2: '편집 과정을 거쳐 PAP 웹사이트에 올라가며, 공식 소셜 채널(Instagram · Threads · X · TikTok · YouTube · Pinterest)에도 함께 게시됩니다.', body3: '게재 시점은 편집 일정에 따릅니다. 게재되면 회원 페이지에서 기사 링크를 확인하실 수 있습니다.', cta: '내 기고 보기' },
+  en: { subject: 'Your article will be published: {title}', heading: 'Your article has been accepted', body1: 'Your article {title} has been accepted for publication. Congratulations.', body2: 'It goes through our editing process and then onto the PAP website, and it is also posted across our official social channels (Instagram · Threads · X · TikTok · YouTube · Pinterest).', body3: 'The publication date follows our editorial schedule. Once it is live, the link appears in your account.', cta: 'View my submissions' },
+  it: { subject: 'Il tuo articolo sara pubblicato: {title}', heading: 'Il tuo articolo e stato accettato', body1: 'Il tuo articolo {title} e stato accettato per la pubblicazione. Congratulazioni.', body2: 'Passera per la nostra revisione editoriale e poi sul sito PAP, e verra pubblicato anche sui canali social ufficiali (Instagram · Threads · X · TikTok · YouTube · Pinterest).', body3: 'La data di pubblicazione segue il nostro calendario editoriale. Quando sara online, trovera il link nel tuo account.', cta: 'I miei invii' },
+  fr: { subject: 'Votre article sera publie : {title}', heading: 'Votre article est accepte', body1: 'Votre article {title} est accepte pour publication. Felicitations.', body2: 'Il passe par notre travail editorial puis sur le site PAP, et il est egalement publie sur nos canaux sociaux officiels (Instagram · Threads · X · TikTok · YouTube · Pinterest).', body3: 'La date de parution suit notre calendrier editorial. Des qu il est en ligne, le lien apparait dans votre compte.', cta: 'Mes soumissions' },
+  es: { subject: 'Tu articulo se publicara: {title}', heading: 'Tu articulo ha sido aceptado', body1: 'Tu articulo {title} ha sido aceptado para su publicacion. Enhorabuena.', body2: 'Pasa por nuestro proceso de edicion y luego al sitio de PAP, y tambien se publica en nuestros canales sociales oficiales (Instagram · Threads · X · TikTok · YouTube · Pinterest).', body3: 'La fecha de publicacion sigue nuestro calendario editorial. Cuando este publicado, el enlace aparecera en tu cuenta.', cta: 'Mis envios' },
+  ja: { subject: '記事の掲載が決まりました: {title}', heading: 'ご投稿の掲載が決まりました', body1: 'お送りいただいた記事 {title} の掲載が決まりました。おめでとうございます。', body2: '編集を経てPAPのウェブサイトに掲載され、公式ソーシャルチャンネル（Instagram · Threads · X · TikTok · YouTube · Pinterest）にも併せて掲載されます。', body3: '掲載時期は編集スケジュールによります。掲載後はアカウントから記事のリンクをご確認いただけます。', cta: '投稿の確認' },
+  zh: { subject: '您的文章将刊发：{title}', heading: '您的投稿已被采用', body1: '您的文章 {title} 已被采用刊发。恭喜您。', body2: '文稿将经过我们的编辑流程后发布于 PAP 网站，并同步发布至官方社交渠道（Instagram · Threads · X · TikTok · YouTube · Pinterest）。', body3: '刊发时间依编辑排期而定。上线后，您可在账户中查看文章链接。', cta: '查看我的投稿' },
+  ru: { subject: 'Ваша статья будет опубликована: {title}', heading: 'Ваша статья принята', body1: 'Ваша статья {title} принята к публикации. Поздравляем.', body2: 'Она пройдёт редакционную подготовку и выйдет на сайте PAP, а также будет опубликована в наших официальных соцсетях (Instagram · Threads · X · TikTok · YouTube · Pinterest).', body3: 'Дата публикации зависит от редакционного плана. Когда статья выйдет, ссылка появится в вашем кабинете.', cta: 'Мои заявки' },
+  de: { subject: 'Ihr Artikel wird veröffentlicht: {title}', heading: 'Ihr Artikel wurde angenommen', body1: 'Ihr Artikel {title} wurde zur Veröffentlichung angenommen. Herzlichen Glückwunsch.', body2: 'Er geht durch unsere redaktionelle Bearbeitung und dann auf die PAP-Website; zusätzlich erscheint er auf unseren offiziellen Social-Kanälen (Instagram · Threads · X · TikTok · YouTube · Pinterest).', body3: 'Der Veröffentlichungstermin richtet sich nach unserem Redaktionsplan. Sobald er online ist, erscheint der Link in Ihrem Konto.', cta: 'Meine Einreichungen' },
+};
+
+const ARTICLE_REJECTED_I18N = {
+  ko: { subject: '아티클 심사 결과: {title}', heading: '이번에는 게재하지 못했습니다', body1: '보내주신 아티클 {title}을(를) 꼼꼼히 읽었습니다. 아쉽게도 이번에는 게재하지 못하게 되었습니다.', fbLabel: '에디터 피드백', body2: '게재되지 않았으므로 어떤 비용도 청구되지 않습니다. 이번 결과가 글의 가치를 말하는 것은 아닙니다. 매호의 지면과 흐름에 따라 선택이 갈립니다. 다른 글로 다시 보내주시면 반갑게 읽겠습니다.', cta: '다시 기고하기' },
+  en: { subject: 'Decision on your article: {title}', heading: 'We are not able to publish this one', body1: 'We read your article {title} carefully. Unfortunately we are not able to publish it this time.', fbLabel: 'Editor feedback', body2: 'Because it was not published, you are charged nothing. A decline is not a verdict on the writing — what fits depends on the issue and what sits around it. We would be glad to read another piece from you.', cta: 'Submit another article' },
+  it: { subject: 'Esito del tuo articolo: {title}', heading: 'Questa volta non possiamo pubblicarlo', body1: 'Abbiamo letto con attenzione il tuo articolo {title}. Purtroppo questa volta non possiamo pubblicarlo.', fbLabel: 'Feedback editoriale', body2: 'Poiche non e stato pubblicato, non ti viene addebitato nulla. Un no non e un giudizio sulla scrittura: cio che entra dipende dal numero e da cosa gli sta intorno. Saremo contenti di leggere un altro tuo testo.', cta: 'Invia un altro articolo' },
+  fr: { subject: 'Decision sur votre article : {title}', heading: 'Nous ne pouvons pas le publier cette fois', body1: 'Nous avons lu votre article {title} avec attention. Malheureusement, nous ne pouvons pas le publier cette fois.', fbLabel: 'Retour de l editeur', body2: 'Comme il n a pas ete publie, rien ne vous est facture. Un refus n est pas un jugement sur l ecriture : ce qui trouve sa place depend du numero et de ce qui l entoure. Nous serions heureux de lire un autre texte de vous.', cta: 'Proposer un autre article' },
+  es: { subject: 'Resolucion sobre tu articulo: {title}', heading: 'Esta vez no podemos publicarlo', body1: 'Hemos leido tu articulo {title} con atencion. Lamentablemente, esta vez no podemos publicarlo.', fbLabel: 'Comentarios del editor', body2: 'Como no se publico, no se te cobra nada. Un no no es un juicio sobre tu escritura: lo que encaja depende del numero y de lo que lo rodea. Nos alegrara leer otro texto tuyo.', cta: 'Enviar otro articulo' },
+  ja: { subject: '記事の審査結果: {title}', heading: '今回は掲載に至りませんでした', body1: 'お送りいただいた記事 {title} を丁寧に読みました。残念ながら今回は掲載に至りませんでした。', fbLabel: 'エディターフィードバック', body2: '掲載に至らなかったため、費用は一切かかりません。今回の結果は文章の価値を定めるものではありません。号ごとの構成と流れによって選択が分かれます。別の原稿をお送りいただければ、喜んで読みます。', cta: '別の記事を投稿' },
+  zh: { subject: '文章审核结果：{title}', heading: '这次未能刊发', body1: '我们仔细阅读了您的文章 {title}。很遗憾，这次未能刊发。', fbLabel: '编辑反馈', body2: '因未刊发，不会产生任何费用。这次的结果并不代表对文稿价值的评判，能否入选取决于该期的版面与整体编排。期待读到您的其他文稿。', cta: '投稿其他文章' },
+  ru: { subject: 'Решение по вашей статье: {title}', heading: 'На этот раз мы не можем её опубликовать', body1: 'Мы внимательно прочитали вашу статью {title}. К сожалению, на этот раз опубликовать её мы не можем.', fbLabel: 'Комментарий редактора', body2: 'Поскольку публикации не было, с вас ничего не взимается. Отказ не приговор тексту: что подойдёт, зависит от выпуска и его окружения. Будем рады прочитать другой ваш материал.', cta: 'Отправить другую статью' },
+  de: { subject: 'Entscheidung zu Ihrem Artikel: {title}', heading: 'Diesen Text können wir nicht veröffentlichen', body1: 'Wir haben Ihren Artikel {title} aufmerksam gelesen. Leider können wir ihn diesmal nicht veröffentlichen.', fbLabel: 'Feedback der Redaktion', body2: 'Da er nicht veröffentlicht wurde, entstehen Ihnen keine Kosten. Eine Ablehnung ist kein Urteil über das Schreiben — was passt, hängt von der Ausgabe und ihrem Umfeld ab. Wir lesen gern einen weiteren Text von Ihnen.', cta: 'Weiteren Artikel einsenden' },
+};
+
 const templates = {
+  /* ── 아티클 기고 4종 (2026-11-12) ──────────────────────────────────
+     사전은 ARTICLE_*_I18N (위). CTA 링크는 회원 페이지 — 상태와 게재 링크가
+     거기 모인다. 거절만 다시 쓰러 가는 폼으로 보낸다. */
+  articleSubmissionReceived(user, submission, lang) {
+    const L = ARTICLE_RECEIVED_I18N[lang] || ARTICLE_RECEIVED_I18N.en;
+    const greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
+    const t = `<strong style="color:#fff;">"${escapeHtml((submission && submission.title) || '-')}"</strong>`;
+    return {
+      subject: L.subject.replace('{title}', (submission && submission.title) || '-'),
+      html: wrapHtml(`
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <p>${greet}</p>
+        <p>${L.body1.replace('{title}', t)}</p>
+        <table style="margin:20px 0;width:100%;">
+          <tr><td style="padding:12px 16px;background:#1a1a1a;border-left:3px solid #fff;">
+            <span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.statusLabel}</span><br>
+            <span style="color:#fff;font-size:14px;font-weight:600;">${L.statusValue}</span>
+          </td></tr>
+          <tr><td style="padding:12px 16px;background:#1a1a1a;border-left:3px solid #333;">
+            <span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.etaLabel}</span><br>
+            <span style="color:#fff;font-size:14px;">${L.etaValue}</span>
+          </td></tr>
+        </table>
+        <p>${L.body2}</p>
+        <p style="color:#999;font-size:13px;line-height:1.8;">${L.body3}</p>
+        <a href="${FRONTEND_URL}/mypage" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+      `, lang),
+    };
+  },
+
+  articleSubmissionFee(user, submission, lang) {
+    const L = ARTICLE_FEE_I18N[lang] || ARTICLE_FEE_I18N.en;
+    const greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
+    const t = `<strong style="color:#fff;">"${escapeHtml((submission && submission.title) || '-')}"</strong>`;
+    const cents = Number((submission && submission.feeCents) || 79000);
+    const fee = '€' + String(Math.round(cents / 100));
+    return {
+      subject: L.subject.replace('{title}', (submission && submission.title) || '-'),
+      html: wrapHtml(`
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <p>${greet}</p>
+        <p>${L.body1.replace('{title}', t)}</p>
+        <table style="margin:20px 0;width:100%;">
+          <tr><td style="padding:12px 16px;background:#1a1a1a;border-left:3px solid #891717;">
+            <span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.feeLabel}</span><br>
+            <span style="color:#fff;font-size:18px;font-weight:700;">${fee}</span>
+          </td></tr>
+        </table>
+        <p>${L.body2}</p>
+        <p style="color:#999;font-size:13px;line-height:1.8;">${L.body3}</p>
+        <a href="${FRONTEND_URL}/mypage" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+      `, lang),
+    };
+  },
+
+  articleSubmissionApproved(user, submission, lang) {
+    const L = ARTICLE_APPROVED_I18N[lang] || ARTICLE_APPROVED_I18N.en;
+    const greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
+    const t = `<strong style="color:#fff;">"${escapeHtml((submission && submission.title) || '-')}"</strong>`;
+    return {
+      subject: L.subject.replace('{title}', (submission && submission.title) || '-'),
+      html: wrapHtml(`
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <p>${greet}</p>
+        <p>${L.body1.replace('{title}', t)}</p>
+        <p>${L.body2}</p>
+        <p style="color:#999;font-size:13px;line-height:1.8;">${L.body3}</p>
+        <a href="${FRONTEND_URL}/mypage" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+      `, lang),
+    };
+  },
+
+  articleSubmissionRejected(user, submission, lang) {
+    const L = ARTICLE_REJECTED_I18N[lang] || ARTICLE_REJECTED_I18N.en;
+    const greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
+    const t = `<strong style="color:#fff;">"${escapeHtml((submission && submission.title) || '-')}"</strong>`;
+    const fb = String((submission && submission.feedback) || '').trim();
+    return {
+      subject: L.subject.replace('{title}', (submission && submission.title) || '-'),
+      html: wrapHtml(`
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <p>${greet}</p>
+        <p>${L.body1.replace('{title}', t)}</p>
+        ${fb ? `<table style="margin:20px 0;width:100%;"><tr><td style="padding:12px 16px;background:#1a1a1a;border-left:3px solid #666;">
+          <span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.fbLabel}</span><br>
+          <span style="color:#ddd;font-size:14px;line-height:1.8;">${escapeHtml(fb).replace(/\n/g, '<br>')}</span>
+        </td></tr></table>` : ''}
+        <p>${L.body2}</p>
+        <a href="${FRONTEND_URL}/submission/article" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+      `, lang),
+    };
+  },
   // 1. Welcome email after signup
   welcome(user, lang) {
     const L = WELCOME_I18N[lang] || WELCOME_I18N.en;

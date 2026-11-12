@@ -48,6 +48,12 @@ const CALLS = {
      번역 대상이 아니다. 다만 메일 틀(머리말·꼬리말·IG CTA)은 받는 사람 언어로
      맞춰져야 하므로 여기 검사에 포함한다. 본문은 중립적인 문장을 넣어 틀만 잰다. */
   adminMessage: (l) => templates.adminMessage(user, { subject: 'Notice', body: 'Line one.\nLine two.' }, l),
+  /* 2026-11-12 — 아티클 기고 4종. 접수·€790 유료 안내·승인·거절.
+     €790 안내는 심사 후에만 나가므로 feeCents 를 넣어 틀을 잰다. */
+  articleSubmissionReceived: (l) => templates.articleSubmissionReceived(user, sub, l),
+  articleSubmissionFee: (l) => templates.articleSubmissionFee(user, { title: sub.title, feeCents: 79000 }, l),
+  articleSubmissionApproved: (l) => templates.articleSubmissionApproved(user, sub, l),
+  articleSubmissionRejected: (l) => templates.articleSubmissionRejected(user, { title: sub.title, feedback: 'Needs a clearer argument.' }, l),
   trialEndingSoon: (l) => templates.trialEndingSoon(user, { lang: l, language: l, endsAt: '2026-10-01' }),
   weeklyEditorial: (l) => templates.weeklyEditorial(camp, U(l), 'tok'),
   weeklyNews: (l) => templates.weeklyNews(camp, U(l), 'tok'),

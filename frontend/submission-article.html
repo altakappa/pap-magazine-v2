@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-12 — 아티클 기고 폼 (서브미션 2단계).
+     도메니코 2026-11-11: "아티클 서브미션은 기사보다 좀더 전문화된 긴글을 쓰는거지.
+     패션, 뷰티, 트렌드, 라이프스타일, IT, 스포츠 등등 모든 카테고리에 대한 글을
+     쓸수있고 이미지도 같이 싣을수있어."
+
+     ※ 마크업 리터럴은 영어로 둔다. JS 가 죽으면 리터럴이 그대로 화면에 남으므로,
+       한글 리터럴을 두면 영어 사용자에게 한글이 보인다 (.claude/rules/frontend.md).
+       번역은 이 파일 맨 아래 인라인 L 사전(9개 언어)이 한다.
+       문구를 고칠 때는 리터럴(영어)과 L.en 을 같이 고쳐야 한다.
+
+     ※ 이미지는 에디토리얼과 같은 길을 쓴다 — POST /api/submissions/upload-url 로
+       서명 URL 을 받아 브라우저가 스토리지에 직접 PUT 한다. 새 버킷을 만들지
+       않은 이유는 앱 화이트리스트와 버킷 allowed_mime_types 가 어긋나면 조용한
+       실패가 되기 때문이다(api 규칙). 이미 맞춰진 버킷을 쓴다.
+
+     ※ 게재료: 제출은 무료. 홍보성으로 판정되면 €790 안내가 **심사 후에** 간다
+       (도메니코 결정 2026-11-12). 그래서 이 폼에는 결제 단계가 없다. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Write an Article for PAP Magazine</title>
+<meta name="description" content="Submit long-form writing to PAP Magazine — fashion, beauty, trends, lifestyle, tech and sport. Essays and reporting with a point of view, in English or Korean. Free to publish; promotional pieces carry a fee.">
+<link rel="canonical" href="https://www.pap-magazine.com/submission/article">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Write an Article for PAP Magazine">
+<meta property="og:description" content="Long-form writing on fashion, beauty, trends, lifestyle, tech and sport. English or Korean.">
+<meta property="og:url" content="https://www.pap-magazine.com/submission/article">
+<meta property="og:image" content="https://www.pap-magazine.com/pap-logo.png">
+<meta property="og:site_name" content="PAP MAGAZINE">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Montserrat','Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#000;color:#fff;min-height:100vh;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:820px;margin:0 auto;padding:72px 24px 120px}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:44px;gap:16px;flex-wrap:wrap}
+  .logo{font-size:12px;font-weight:800;letter-spacing:.35em;text-transform:uppercase}
+  .topright{display:flex;align-items:center;gap:16px}
+  .back{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);border-bottom:1px solid rgba(255,255,255,.2);padding-bottom:3px}
+  .back:hover{color:#fff;border-color:#fff}
+  select#langSelect{background:#000;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.2);font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.15em;padding:7px 9px;cursor:pointer}
+  .eyebrow{font-size:10px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;color:#c33b3b;margin-bottom:18px}
+  .eyebrow::before{content:'';display:inline-block;width:26px;height:2px;background:#891717;vertical-align:middle;margin-right:12px}
+  h1{font-size:clamp(25px,4.2vw,37px);font-weight:800;line-height:1.25;letter-spacing:-.01em;margin-bottom:16px}
+  .lede{font-size:14.5px;color:rgba(255,255,255,.6);line-height:1.95;margin-bottom:44px}
+
+  .panel{border:1px solid rgba(255,255,255,.16);padding:30px 26px;margin-bottom:26px}
+  .panel h2{font-size:11px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#c33b3b;margin-bottom:20px}
+  .panel h3{font-size:14px;font-weight:700;margin:22px 0 8px}
+  .panel h3:first-of-type{margin-top:0}
+  .panel p{font-size:13.5px;line-height:1.95;color:rgba(255,255,255,.66);margin-bottom:10px}
+  .panel ul{margin:0 0 10px 18px}
+  .panel li{font-size:13.5px;line-height:1.9;color:rgba(255,255,255,.66);margin-bottom:5px}
+  .rule{border-left:3px solid #891717;padding:12px 16px;background:rgba(137,23,23,.08);margin:14px 0}
+  .rule p{margin:0;color:rgba(255,255,255,.8)}
+
+  .field{margin-bottom:24px}
+  label.lbl{display:block;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:9px}
+  .req{color:#c33b3b;margin-left:4px}
+  input[type=text],input[type=url],textarea,select.sel{width:100%;background:#0d0d0d;border:1px solid rgba(255,255,255,.18);color:#fff;font-family:inherit;font-size:14px;padding:13px 14px;line-height:1.7}
+  input[type=text]:focus,input[type=url]:focus,textarea:focus,select.sel:focus{outline:none;border-color:#891717}
+  textarea{resize:vertical;min-height:120px}
+  textarea#body{min-height:420px;font-size:14.5px;line-height:1.95}
+  .hint{font-size:11.5px;color:rgba(255,255,255,.38);line-height:1.75;margin-top:7px}
+  .counter{font-size:11.5px;color:rgba(255,255,255,.5);margin-top:7px;font-variant-numeric:tabular-nums}
+  .counter.ok{color:#5fbf7f}
+  .counter.low{color:#c9893b}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.72);font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:10px 14px;cursor:pointer}
+  .chip[aria-pressed="true"]{border-color:#891717;background:rgba(137,23,23,.22);color:#fff}
+
+  .drop{border:1px dashed rgba(255,255,255,.26);padding:26px;text-align:center;cursor:pointer}
+  .drop:hover{border-color:#891717}
+  .drop span{font-size:12.5px;color:rgba(255,255,255,.55)}
+  .thumbs{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+  .thumb{position:relative;width:84px;height:106px;background:#111;border:1px solid rgba(255,255,255,.12);overflow:hidden}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb button{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.72);border:none;color:#fff;font-size:12px;line-height:1;width:20px;height:20px;cursor:pointer}
+
+  .check{display:flex;gap:11px;align-items:flex-start;margin-bottom:14px}
+  .check input{margin-top:3px;width:16px;height:16px;flex:0 0 auto;accent-color:#891717}
+  .check span{font-size:13px;line-height:1.85;color:rgba(255,255,255,.72)}
+  .radios{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+  .radios label{display:flex;gap:8px;align-items:center;border:1px solid rgba(255,255,255,.2);padding:11px 15px;cursor:pointer;font-size:13px;color:rgba(255,255,255,.78)}
+  .radios input{accent-color:#891717}
+
+  button.primary{background:#891717;color:#fff;border:none;font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:16px 34px;cursor:pointer;transition:background .25s}
+  button.primary:hover{background:#a51c1c}
+  button.primary:disabled{opacity:.45;cursor:not-allowed}
+
+  .gate{border:1px solid rgba(255,255,255,.16);padding:52px 26px;text-align:center}
+  .gate h2{font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#c33b3b;margin-bottom:14px}
+  .gate p{font-size:13.5px;color:rgba(255,255,255,.6);line-height:1.95;margin-bottom:22px;white-space:pre-line}
+
+  .msg{font-size:12.5px;line-height:1.8;padding:13px 15px;margin-bottom:18px;display:none}
+  .msg.err{display:block;border-left:3px solid #c33b3b;background:rgba(195,59,59,.1);color:#ffb3b3}
+  .ov{position:fixed;inset:0;background:rgba(0,0,0,.93);display:none;align-items:center;justify-content:center;z-index:90;padding:24px}
+  .ov.on{display:flex}
+  .ov .box{max-width:400px;text-align:center}
+  .ov h3{font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin-bottom:12px}
+  .ov p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.9;margin-bottom:18px}
+
+  .done{display:none;border:1px solid #891717;background:rgba(137,23,23,.1);padding:44px 26px;text-align:center}
+  .done.on{display:block}
+  .done h2{font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#c33b3b;margin-bottom:14px}
+  .done p{font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.95;margin-bottom:22px}
+
+  .foot{margin-top:60px;font-size:11.5px;color:rgba(255,255,255,.3);line-height:2}
+  .foot a{color:rgba(255,255,255,.5);border-bottom:1px solid rgba(255,255,255,.2)}
+  @media(max-width:600px){ .wrap{padding:56px 18px 88px} .panel{padding:24px 18px} textarea#body{min-height:320px} }
+</style>
+<script src="/pap-geo-lang.js?v=2"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="logo" href="/">PAP MAGAZINE</a>
+    <div class="topright">
+      <a class="back" href="/submission" data-i18n="navBack">All submission tracks</a>
+      <select id="langSelect" onchange="setLang(this.value)" aria-label="Language">
+        <option value="ko">KO</option><option value="en">EN</option><option value="de">DE</option>
+        <option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option>
+        <option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="eyebrow" data-i18n="eyebrow">Article submission</div>
+  <h1 data-i18n="h1">Write an article for PAP</h1>
+  <p class="lede" data-i18n="lede">Long-form writing on fashion, beauty, trends, lifestyle, tech or sport. We are looking for essays and reporting with a point of view — a piece that examines something, not a piece that announces something.</p>
+
+  <!-- 로그인 관문 -->
+  <div id="gate" class="gate" style="display:none">
+    <h2 data-i18n="gateTitle">Members only</h2>
+    <p data-i18n="gateDesc">Article submissions are open to all PAP members, including free accounts.
+Log in or sign up to continue.</p>
+    <a href="/auth?mode=login" class="primary" style="display:inline-block;background:#891717;color:#fff;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:16px 34px" data-i18n="gateLogin">Log in / Sign up</a>
+  </div>
+
+  <!-- 가이드라인 -->
+  <div id="guide" class="panel" style="display:none">
+    <h2 data-i18n="glTitle">Before you write</h2>
+
+    <h3 data-i18n="glWhat">What we publish</h3>
+    <p data-i18n="glWhatBody">A piece that examines a phenomenon, a shift, an industry or an idea, and argues something about it. Reporting is welcome. Reviews and criticism are welcome. Brands and names may appear as evidence — that is normal.</p>
+
+    <h3 data-i18n="glFreeTitle">Free to publish</h3>
+    <p data-i18n="glFreeBody">Example: a piece on why quiet luxury ended, in which several labels appear along the way. The subject is the shift, not any one house.</p>
+
+    <h3 data-i18n="glPaidTitle">Promotional pieces — 790 EUR</h3>
+    <p data-i18n="glPaidBody">Example: a piece centred on one brand or artist, introducing a launch, a collection or an event. If the purpose of the text is to present that subject, it is a promotional piece.</p>
+
+    <div class="rule"><p data-i18n="glRuleNote">The deciding question is not how many brands appear, but what the piece is for. Many brands with one being elevated is promotional. One brand examined critically is editorial. The final call is made by our editors during review — nothing is charged when you submit, and if your piece is not published you are charged nothing.</p></div>
+
+    <h3 data-i18n="glReqTitle">Requirements</h3>
+    <ul>
+      <li data-i18n="glReq1">English (800 words minimum) or Korean (1,600 characters minimum)</li>
+      <li data-i18n="glReq2">Plain text only — no HTML. Leave a blank line between paragraphs.</li>
+      <li data-i18n="glReq3">One cover image, plus up to 9 images for the body. JPG, PNG or WebP, 25MB each.</li>
+      <li data-i18n="glReq4">You must hold the rights to every image you upload.</li>
+      <li data-i18n="glReq5">Cite your sources where you quote or use figures.</li>
+      <li data-i18n="glReq6">Review takes up to 7 business days.</li>
+    </ul>
+
+    <h3 data-i18n="glSocialTitle">Published also means social</h3>
+    <p data-i18n="glSocialBody">Everything PAP publishes goes out on our official social channels as well — Instagram, Threads, X, TikTok, YouTube and Pinterest. Submitting means you agree to that.</p>
+
+    <div class="check" style="margin-top:22px">
+      <input type="checkbox" id="glAgree">
+      <span data-i18n="glAgree">I have read the guidelines above and I agree to them.</span>
+    </div>
+    <button class="primary" id="glStart" disabled data-i18n="glStart">Start writing →</button>
+  </div>
+
+  <!-- 폼 -->
+  <form id="form" style="display:none" autocomplete="off">
+    <div id="err" class="msg"></div>
+
+    <div class="panel">
+      <h2 data-i18n="secWriting">The piece</h2>
+
+      <div class="field">
+        <label class="lbl" for="title"><span data-i18n="lTitle">Title</span><span class="req">*</span></label>
+        <input type="text" id="title" maxlength="150">
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="subtitle" data-i18n="lSubtitle">Standfirst / subtitle</label>
+        <input type="text" id="subtitle" maxlength="200">
+      </div>
+
+      <div class="field">
+        <label class="lbl"><span data-i18n="lTopic">Topic</span><span class="req">*</span></label>
+        <div class="chips" id="topics">
+          <button type="button" class="chip" data-topic="fashion" aria-pressed="false" data-i18n="tFashion">Fashion</button>
+          <button type="button" class="chip" data-topic="beauty" aria-pressed="false" data-i18n="tBeauty">Beauty</button>
+          <button type="button" class="chip" data-topic="trend" aria-pressed="false" data-i18n="tTrend">Trends</button>
+          <button type="button" class="chip" data-topic="lifestyle" aria-pressed="false" data-i18n="tLifestyle">Lifestyle</button>
+          <button type="button" class="chip" data-topic="tech" aria-pressed="false" data-i18n="tTech">Tech</button>
+          <button type="button" class="chip" data-topic="sport" aria-pressed="false" data-i18n="tSport">Sport</button>
+          <button type="button" class="chip" data-topic="art" aria-pressed="false" data-i18n="tArt">Art</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl"><span data-i18n="lLang">Language of the piece</span><span class="req">*</span></label>
+        <div class="radios" id="langs">
+          <label><input type="radio" name="bodyLang" value="en"><span data-i18n="langEn">English</span></label>
+          <label><input type="radio" name="bodyLang" value="ko"><span data-i18n="langKo">Korean</span></label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="body"><span data-i18n="lBody">Body</span><span class="req">*</span></label>
+        <textarea id="body"></textarea>
+        <div class="counter" id="counter">—</div>
+        <div class="hint" data-i18n="bodyHint">Plain text. Leave a blank line between paragraphs. HTML tags are not accepted.</div>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="sources" data-i18n="lSources">Sources</label>
+        <textarea id="sources" maxlength="2000" style="min-height:90px"></textarea>
+        <div class="hint" data-i18n="sourcesHint">Where you quote, cite figures or rely on reporting by others, list it here.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 data-i18n="secImages">Images</h2>
+
+      <div class="field">
+        <label class="lbl"><span data-i18n="lCover">Cover image</span><span class="req">*</span></label>
+        <div class="drop" id="coverDrop"><span data-i18n="coverHint">Click to choose one cover image — JPG, PNG or WebP, up to 25MB</span></div>
+        <div class="thumbs" id="coverThumb"></div>
+      </div>
+
+      <div class="field">
+        <label class="lbl" data-i18n="lImages">Body images</label>
+        <div class="drop" id="imgDrop"><span data-i18n="imagesHint">Click to add up to 9 images that run with the text</span></div>
+        <div class="thumbs" id="imgThumbs"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 data-i18n="secAuthor">Byline</h2>
+
+      <div class="field">
+        <label class="lbl" for="authorName" data-i18n="lAuthorName">Name as it should appear</label>
+        <input type="text" id="authorName" maxlength="60">
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="authorBio"><span data-i18n="lAuthorBio">About you</span><span class="req">*</span></label>
+        <textarea id="authorBio" maxlength="300" style="min-height:90px"></textarea>
+        <div class="hint" data-i18n="authorBioHint">A few lines for the byline — what you write about, where you are based. Up to 300 characters.</div>
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="authorInstagram" data-i18n="lInsta">Instagram</label>
+        <input type="text" id="authorInstagram" maxlength="31" placeholder="@handle">
+      </div>
+
+      <div class="field">
+        <label class="lbl" for="authorWebsite" data-i18n="lWebsite">Website</label>
+        <input type="url" id="authorWebsite" maxlength="300" placeholder="https://">
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 data-i18n="secDeclare">Declarations</h2>
+
+      <div class="field">
+        <label class="lbl"><span data-i18n="lPromo">Is this a promotional piece?</span><span class="req">*</span></label>
+        <div class="hint" style="margin:0 0 10px" data-i18n="promoDesc">Does this piece exist to present one specific brand, artist, product or event? Answer honestly — we ask so that nobody is surprised by a fee later. Our editors make the final call either way.</div>
+        <div class="radios" id="promo">
+          <label><input type="radio" name="promo" value="no"><span data-i18n="promoNo">No — it examines a subject</span></label>
+          <label><input type="radio" name="promo" value="yes"><span data-i18n="promoYes">Yes — 790 EUR applies</span></label>
+        </div>
+      </div>
+
+      <div class="check">
+        <input type="checkbox" id="social">
+        <span data-i18n="socialText">I agree that if this piece is published, PAP may publish it on the PAP website and on its official social channels (Instagram, Threads, X, TikTok, YouTube, Pinterest), and I grant PAP the right to use the text and images for that purpose.</span>
+      </div>
+
+      <div class="check">
+        <input type="checkbox" id="terms">
+        <span data-i18n="termsText">This is my own work, I hold the rights to the text and every image, and the piece is not published elsewhere. I agree to the submission terms.</span>
+      </div>
+    </div>
+
+    <button type="submit" class="primary" id="submitBtn" data-i18n="btnSubmit">Submit article</button>
+  </form>
+
+  <!-- 완료 -->
+  <div id="done" class="done">
+    <h2 data-i18n="okTitle">Submitted</h2>
+    <p data-i18n="okBody">Your article is with our editorial team. We review within 7 business days and email you the outcome. You can follow the status in your account.</p>
+    <a href="/mypage" class="primary" style="display:inline-block;background:#891717;color:#fff;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:16px 34px" data-i18n="okCta">Go to my account</a>
+  </div>
+
+  <div class="foot">
+    <p><a href="/submission" data-i18n="navBack">All submission tracks</a> &nbsp;·&nbsp; <a href="/submissions" data-i18n="navGuide">Submission Guide</a> &nbsp;·&nbsp; ALTAKAPPA Co., Ltd. &nbsp;·&nbsp; <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p>
+  </div>
+</div>
+
+<div class="ov" id="ov">
+  <div class="box">
+    <h3 id="ovTitle" data-i18n="ovPrep">Preparing</h3>
+    <p id="ovMsg" data-i18n="ovPrepMsg">Generating secure upload links…</p>
+    <button class="primary" id="ovClose" style="display:none" data-i18n="ovClose">Close</button>
+  </div>
+</div>
+
+<script>
+/* ── 상태 ────────────────────────────────────────────────────────────── */
+var ST = { topic: '', cover: null, images: [] };
+var MAX_IMAGES = 9;
+var MAX_BYTES = 25 * 1024 * 1024;
+var OK_MIME = { 'image/jpeg': 1, 'image/jpg': 1, 'image/png': 1, 'image/webp': 1 };
+
+function $(id) { return document.getElementById(id); }
+function token() { try { return localStorage.getItem('pap-token'); } catch (e) { return null; } }
+function tr(k) { var d = L[_lang] || L.en; return d[k] || (L.en && L.en[k]) || ''; }
+
+/* ── 분량 세기 — 서버(api/_lib/articleSubmission.js)와 같은 규칙 ──────
+   영문은 공백으로 나눈 토큰, 국문은 공백을 뺀 글자 수. 두 벌로 두면 한쪽만
+   고쳐지므로 규칙을 그대로 옮겨 적고, 숫자도 같이 둔다. */
+var MIN_EN_WORDS = 800, MIN_KO_CHARS = 1600;
+function measure(text, lang) {
+  if (lang === 'ko') {
+    var c = String(text || '').replace(/\s+/g, '').length;
+    return { unit: 'chars', count: c, min: MIN_KO_CHARS, ok: c >= MIN_KO_CHARS };
+  }
+  var w = String(text || '').trim().split(/\s+/).filter(Boolean).length;
+  return { unit: 'words', count: w, min: MIN_EN_WORDS, ok: w >= MIN_EN_WORDS };
+}
+function bodyLang() {
+  var r = document.querySelector('input[name="bodyLang"]:checked');
+  return r ? r.value : '';
+}
+function refreshCounter() {
+  var el = $('counter'); if (!el) return;
+  var bl = bodyLang();
+  if (!bl) { el.textContent = tr('cntPickLang'); el.className = 'counter'; return; }
+  var m = measure($('body').value, bl);
+  var key = m.unit === 'chars' ? 'cntChars' : 'cntWords';
+  el.textContent = tr(key).replace('{count}', m.count).replace('{min}', m.min);
+  el.className = 'counter ' + (m.ok ? 'ok' : 'low');
+}
+
+/* ── 오류 표시 ───────────────────────────────────────────────────────── */
+function showErr(msg) {
+  var e = $('err');
+  e.textContent = msg;
+  e.className = 'msg err';
+  try { e.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) { window.scrollTo(0, 0); }
+}
+function clearErr() { var e = $('err'); e.textContent = ''; e.className = 'msg'; }
+
+/* 서버가 주는 code → 화면 문구. api 규칙대로 서버는 code 를 주고 문구는
+   프런트가 9개 언어로 고른다. 모르는 code 는 일반 문구로 떨어진다. */
+function msgForCode(code, data) {
+  var m = {
+    TITLE_REQUIRED: 'errTitle', TOPIC_INVALID: 'errTopic', BODY_LANG_INVALID: 'errLang',
+    BODY_REQUIRED: 'errBody', BODY_HTML_REJECTED: 'errBodyHtml', BODY_TOO_SHORT: 'errShort',
+    AUTHOR_BIO_REQUIRED: 'errBio', COVER_REQUIRED: 'errCover', TOO_MANY_IMAGES: 'errTooMany',
+    URL_NOT_OWNED: 'errUpload', SOCIAL_CONSENT_REQUIRED: 'errSocial', TERMS_REQUIRED: 'errTerms',
+    PROMO_DECLARATION_REQUIRED: 'errPromo', INSTAGRAM_INVALID: 'errInsta', WEBSITE_INVALID: 'errWebsite',
+    SOURCES_HTML_REJECTED: 'errSourcesHtml', FIELD_HTML_REJECTED: 'errFieldHtml',
+    too_many_files: 'errTooMany', no_files: 'errCover', invalid_type: 'errType', file_too_large: 'errSize'
+  };
+  var k = m[code];
+  var s = k ? tr(k) : tr('errGeneric');
+  if (code === 'BODY_TOO_SHORT' && data) {
+    s = s.replace('{min}', data.min).replace('{count}', data.count)
+         .replace('{unit}', tr(data.unit === 'chars' ? 'unitChars' : 'unitWords'));
+  }
+  return s || tr('errGeneric');
+}
+
+/* ── 이미지 고르기 ───────────────────────────────────────────────────── */
+function pickFiles(multiple, cb) {
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/jpeg,image/png,image/webp';
+  if (multiple) inp.multiple = true;
+  inp.onchange = function () { cb(Array.prototype.slice.call(inp.files || [])); };
+  inp.click();
+}
+function validFile(f) {
+  if (!OK_MIME[String(f.type || '').toLowerCase()]) { showErr(tr('errType').replace('{name}', f.name)); return false; }
+  if (f.size > MAX_BYTES) { showErr(tr('errSize').replace('{name}', f.name)); return false; }
+  return true;
+}
+function renderThumbs() {
+  var ct = $('coverThumb'); ct.innerHTML = '';
+  if (ST.cover) ct.appendChild(thumbEl(ST.cover, function () { ST.cover = null; renderThumbs(); }));
+  var it = $('imgThumbs'); it.innerHTML = '';
+  ST.images.forEach(function (f, i) {
+    it.appendChild(thumbEl(f, function () { ST.images.splice(i, 1); renderThumbs(); }));
+  });
+}
+function thumbEl(file, onRemove) {
+  var d = document.createElement('div'); d.className = 'thumb';
+  var img = document.createElement('img');
+  try { img.src = URL.createObjectURL(file); } catch (_) {}
+  img.alt = '';
+  var b = document.createElement('button'); b.type = 'button'; b.textContent = '×';
+  b.setAttribute('aria-label', 'Remove');
+  b.onclick = onRemove;
+  d.appendChild(img); d.appendChild(b);
+  return d;
+}
+
+/* ── 업로드 (2단계 직접 업로드 — 에디토리얼과 같은 길) ──────────────── */
+function overlay(on, titleKey, msgKey, showClose) {
+  var ov = $('ov');
+  if (!on) { ov.className = 'ov'; return; }
+  ov.className = 'ov on';
+  $('ovTitle').setAttribute('data-i18n', titleKey); $('ovTitle').textContent = tr(titleKey);
+  $('ovMsg').setAttribute('data-i18n', msgKey); $('ovMsg').textContent = tr(msgKey);
+  $('ovClose').style.display = showClose ? '' : 'none';
+}
+function overlayMsg(text) { $('ovMsg').removeAttribute('data-i18n'); $('ovMsg').textContent = text; }
+
+async function uploadAll(files) {
+  var t = token();
+  var r = await fetch('/api/submissions/upload-url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
+    body: JSON.stringify({ files: files.map(function (f) { return { name: f.name, type: f.type, size: f.size, category: 'article' }; }) }),
+  });
+  var j = await r.json().catch(function () { return {}; });
+  if (!r.ok) { var e = new Error('upload-url'); e.code = j.code; throw e; }
+  var ups = j.uploads || [];
+  if (ups.length !== files.length) { var e2 = new Error('upload-count'); e2.code = 'errUpload'; throw e2; }
+
+  var urls = [];
+  for (var i = 0; i < files.length; i++) {
+    overlayMsg(tr('ovUploadingMsg').replace('{done}', i + 1).replace('{total}', files.length));
+    var u = ups[i];
+    var put = await fetch(u.signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': u.contentType || files[i].type },
+      body: files[i],
+    });
+    if (!put.ok) { var e3 = new Error('put'); e3.code = 'errUpload'; throw e3; }
+    urls.push(u.publicUrl);
+  }
+  return urls;
+}
+
+/* ── 제출 ────────────────────────────────────────────────────────────── */
+async function submit(ev) {
+  ev.preventDefault();
+  clearErr();
+
+  if (!$('title').value.trim()) return showErr(tr('errTitle'));
+  if (!ST.topic) return showErr(tr('errTopic'));
+  var bl = bodyLang();
+  if (!bl) return showErr(tr('errLang'));
+  var text = $('body').value;
+  if (!text.trim()) return showErr(tr('errBody'));
+  if (/<\s*\/?\s*[a-zA-Z][^>]*>/.test(text)) return showErr(tr('errBodyHtml'));
+  var m = measure(text, bl);
+  if (!m.ok) {
+    return showErr(tr('errShort').replace('{min}', m.min).replace('{count}', m.count)
+      .replace('{unit}', tr(m.unit === 'chars' ? 'unitChars' : 'unitWords')));
+  }
+  if (!ST.cover) return showErr(tr('errCover'));
+  if (!$('authorBio').value.trim()) return showErr(tr('errBio'));
+  var promoEl = document.querySelector('input[name="promo"]:checked');
+  if (!promoEl) return showErr(tr('errPromo'));
+  if (!$('social').checked) return showErr(tr('errSocial'));
+  if (!$('terms').checked) return showErr(tr('errTerms'));
+
+  $('submitBtn').disabled = true;
+  overlay(true, 'ovPrep', 'ovPrepMsg', false);
+
+  try {
+    overlay(true, 'ovUploading', 'ovUploadingMsg', false);
+    var all = [ST.cover].concat(ST.images);
+    var urls = await uploadAll(all);
+    var coverUrl = urls[0];
+    var imageUrls = urls.slice(1);
+
+    overlay(true, 'ovSaving', 'ovSavingMsg', false);
+    var payload = {
+      data: {
+        title: $('title').value, subtitle: $('subtitle').value,
+        topic: ST.topic, bodyLang: bl, body: text,
+        sources: $('sources').value,
+        authorName: $('authorName').value, authorBio: $('authorBio').value,
+        authorInstagram: $('authorInstagram').value, authorWebsite: $('authorWebsite').value,
+        coverUrl: coverUrl, imageUrls: imageUrls,
+        promoSelfDeclared: promoEl.value === 'yes',
+        socialConsent: true, termsAgreed: true,
+      },
+    };
+    var r = await fetch('/api/article-submissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() },
+      body: JSON.stringify(payload),
+    });
+    var j = await r.json().catch(function () { return {}; });
+    if (!r.ok) { var e = new Error('post'); e.code = j.code; e.data = j; throw e; }
+
+    overlay(false);
+    $('form').style.display = 'none';
+    $('guide').style.display = 'none';
+    $('done').className = 'done on';
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0, 0); }
+  } catch (err) {
+    overlay(false);
+    $('submitBtn').disabled = false;
+    showErr(msgForCode(err && (err.code || ''), err && err.data));
+    try { console.error('[article-submission]', err); } catch (_) {}
+  }
+}
+
+/* ── 붙이기 ──────────────────────────────────────────────────────────── */
+function wire() {
+  $('topics').addEventListener('click', function (e) {
+    var b = e.target.closest('.chip'); if (!b) return;
+    ST.topic = b.getAttribute('data-topic');
+    Array.prototype.forEach.call($('topics').querySelectorAll('.chip'), function (c) {
+      c.setAttribute('aria-pressed', c === b ? 'true' : 'false');
+    });
+  });
+  $('langs').addEventListener('change', refreshCounter);
+  $('body').addEventListener('input', refreshCounter);
+  $('coverDrop').addEventListener('click', function () {
+    pickFiles(false, function (fs) {
+      if (!fs.length) return;
+      if (!validFile(fs[0])) return;
+      clearErr(); ST.cover = fs[0]; renderThumbs();
+    });
+  });
+  $('imgDrop').addEventListener('click', function () {
+    pickFiles(true, function (fs) {
+      var room = MAX_IMAGES - ST.images.length;
+      if (room <= 0) return showErr(tr('errTooMany').replace('{max}', MAX_IMAGES));
+      var taken = 0;
+      fs.forEach(function (f) {
+        if (taken >= room) return;
+        if (!validFile(f)) return;
+        ST.images.push(f); taken++;
+      });
+      if (fs.length > room) showErr(tr('errTooMany').replace('{max}', MAX_IMAGES));
+      else clearErr();
+      renderThumbs();
+    });
+  });
+  $('glAgree').addEventListener('change', function () { $('glStart').disabled = !this.checked; });
+  $('glStart').addEventListener('click', function () {
+    $('guide').style.display = 'none';
+    $('form').style.display = '';
+    refreshCounter();
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) {}
+  });
+  $('form').addEventListener('submit', submit);
+  $('ovClose').addEventListener('click', function () { overlay(false); });
+}
+
+function boot() {
+  if (!token()) { $('gate').style.display = ''; return; }
+  $('guide').style.display = '';
+  wire();
+}
+</script>
+
+<script>
+/* ── 9개 언어 ────────────────────────────────────────────────────────── */
+var _lang = 'en';
+var L = {
+ko:{navBack:'서브미션 전체',navGuide:'서브미션 안내',eyebrow:'아티클 기고',h1:'PAP 에 아티클을 기고하세요',lede:'패션·뷰티·트렌드·라이프스타일·IT·스포츠에 대한 긴 글을 받습니다. 찾는 것은 관점이 있는 에세이와 리포팅입니다 — 무언가를 들여다보는 글이지, 무언가를 알리는 글이 아닙니다.',gateTitle:'회원 전용',gateDesc:'아티클 기고는 무료 회원을 포함한 모든 PAP 회원에게 열려 있습니다.\n로그인하거나 가입하고 계속하세요.',gateLogin:'로그인 / 가입',glTitle:'쓰기 전에',glWhat:'우리가 싣는 글',glWhatBody:'어떤 현상·변화·산업·생각을 들여다보고 그에 대해 무언가를 주장하는 글입니다. 취재도 환영합니다. 리뷰와 비평도 환영합니다. 브랜드와 이름은 근거로 등장할 수 있습니다 — 그건 정상입니다.',glFreeTitle:'무료 게재',glFreeBody:'예: "조용한 럭셔리는 왜 끝났나" 를 쓰면서 여러 브랜드가 자연스럽게 등장하는 글. 주제는 그 변화이지 어느 한 브랜드가 아닙니다.',glPaidTitle:'홍보성 글 — 790유로',glPaidBody:'예: 한 브랜드나 아티스트를 중심에 두고 출시·컬렉션·행사를 알리는 글. 그 대상을 소개하는 것이 글의 목적이라면 홍보성 글입니다.',glRuleNote:'가르는 기준은 브랜드가 몇 개 나오는지가 아니라 글의 목적입니다. 여러 브랜드가 나와도 한 브랜드를 띄우는 글이면 홍보성이고, 한 브랜드만 나와도 비평이면 일반 기고입니다. 최종 판단은 심사에서 에디터가 합니다 — 제출할 때는 아무것도 청구되지 않고, 게재되지 않으면 어떤 비용도 청구되지 않습니다.',glReqTitle:'요건',glReq1:'영어(800단어 이상) 또는 한국어(1,600자 이상)',glReq2:'평문만 — HTML 금지. 문단 사이는 빈 줄로 띄우세요.',glReq3:'대표 이미지 1장, 본문 이미지 최대 9장. JPG·PNG·WebP, 장당 25MB 이내.',glReq4:'올리는 모든 이미지의 권리를 본인이 갖고 있어야 합니다.',glReq5:'인용하거나 수치를 쓸 때는 출처를 적어 주세요.',glReq6:'심사는 최대 7영업일이 걸립니다.',glSocialTitle:'게재는 소셜 게시를 포함합니다',glSocialBody:'PAP 이 게재하는 모든 것은 공식 소셜 채널(Instagram · Threads · X · TikTok · YouTube · Pinterest)에도 함께 올라갑니다. 제출은 그에 동의한다는 뜻입니다.',glAgree:'위 가이드라인을 읽고 이에 동의합니다.',glStart:'글쓰기 시작 →',secWriting:'본문',lTitle:'제목',lSubtitle:'부제',lTopic:'분류',tFashion:'패션',tBeauty:'뷰티',tTrend:'트렌드',tLifestyle:'라이프스타일',tTech:'IT·테크',tSport:'스포츠',tArt:'아트',lLang:'작성 언어',langEn:'영어',langKo:'한국어',lBody:'본문',bodyHint:'평문으로 적어 주세요. 문단 사이는 빈 줄로 띄우고, HTML 태그는 받지 않습니다.',lSources:'참고 출처',sourcesHint:'인용하거나 수치를 쓰거나 다른 사람의 취재에 기댄 부분이 있으면 여기 적어 주세요.',secImages:'이미지',lCover:'대표 이미지',coverHint:'대표 이미지 1장을 고르세요 — JPG·PNG·WebP, 25MB 이내',lImages:'본문 이미지',imagesHint:'본문과 함께 실릴 이미지를 최대 9장까지 추가하세요',secAuthor:'바이라인',lAuthorName:'표기할 이름',lAuthorBio:'필자 소개',authorBioHint:'바이라인에 들어갈 몇 줄 — 어떤 주제를 쓰는지, 어디에 기반을 두는지. 300자 이내.',lInsta:'인스타그램',lWebsite:'웹사이트',secDeclare:'확인 사항',lPromo:'이 글은 홍보성 글입니까?',promoDesc:'이 글이 특정 브랜드·아티스트·제품·행사를 알리기 위해 존재합니까? 솔직하게 답해 주세요 — 나중에 게재료로 놀라는 일이 없도록 묻는 것입니다. 어느 쪽이든 최종 판단은 에디터가 합니다.',promoNo:'아니오 — 어떤 주제를 들여다보는 글입니다',promoYes:'예 — 790유로가 적용됩니다',socialText:'이 글이 게재되면 PAP 이 PAP 웹사이트와 공식 소셜 채널(Instagram · Threads · X · TikTok · YouTube · Pinterest)에 게시하는 것에 동의하며, 그 목적으로 글과 이미지를 사용할 권리를 PAP 에 허락합니다.',termsText:'이 글은 본인의 저작물이며, 글과 모든 이미지의 권리를 본인이 갖고 있고, 다른 곳에 게재되지 않았습니다. 제출 약관에 동의합니다.',btnSubmit:'아티클 제출',cntPickLang:'작성 언어를 먼저 고르세요',cntWords:'{count} 단어 · 최소 {min} 단어',cntChars:'{count}자 · 최소 {min}자',unitWords:'단어',unitChars:'자',errTitle:'제목을 입력해 주세요.',errTopic:'분류를 하나 골라 주세요.',errLang:'작성 언어를 골라 주세요.',errBody:'본문을 입력해 주세요.',errBodyHtml:'본문은 평문으로만 받습니다 — HTML 태그는 받지 않습니다.',errShort:'글이 너무 짧습니다. 최소 {min}{unit} 이고 지금은 {count}{unit} 입니다.',errBio:'바이라인용 필자 소개를 입력해 주세요.',errCover:'대표 이미지 1장이 필요합니다.',errTooMany:'본문 이미지는 최대 {max}장입니다.',errType:'JPG·PNG·WebP 만 올릴 수 있습니다: {name}',errSize:'파일이 25MB 를 넘습니다: {name}',errInsta:'인스타그램 아이디는 영문·숫자·점·밑줄만 쓸 수 있습니다.',errWebsite:'웹사이트는 http(s) 로 시작하는 올바른 주소여야 합니다.',errSourcesHtml:'참고 출처에 허용되지 않는 마크업이 있습니다.',errFieldHtml:'입력란 중 하나에 허용되지 않는 마크업이 있습니다.',errPromo:'홍보성 글인지 골라 주세요.',errSocial:'소셜 채널 게시 동의가 필요합니다.',errTerms:'제출 약관에 동의해 주세요.',errUpload:'이미지 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요.',errGeneric:'요청을 처리하지 못했습니다. 계속되면 contact@pap-magazine.com 으로 알려 주세요.',ovPrep:'준비 중',ovPrepMsg:'안전한 업로드 링크를 만들고 있습니다…',ovUploading:'이미지 업로드',ovUploadingMsg:'이미지 {done} / {total}',ovSaving:'저장 중',ovSavingMsg:'기고를 저장하고 있습니다…',ovClose:'닫기',okTitle:'제출 완료',okBody:'아티클이 에디토리얼 팀에 전달되었습니다. 7영업일 안에 심사하고 결과를 이메일로 알려드립니다. 진행 상태는 회원 페이지에서 확인하실 수 있습니다.',okCta:'회원 페이지로'},
+en:{navBack:'All submission tracks',navGuide:'Submission Guide',eyebrow:'Article submission',h1:'Write an article for PAP',lede:'Long-form writing on fashion, beauty, trends, lifestyle, tech or sport. We are looking for essays and reporting with a point of view — a piece that examines something, not a piece that announces something.',gateTitle:'Members only',gateDesc:'Article submissions are open to all PAP members, including free accounts.\nLog in or sign up to continue.',gateLogin:'Log in / Sign up',glTitle:'Before you write',glWhat:'What we publish',glWhatBody:'A piece that examines a phenomenon, a shift, an industry or an idea, and argues something about it. Reporting is welcome. Reviews and criticism are welcome. Brands and names may appear as evidence — that is normal.',glFreeTitle:'Free to publish',glFreeBody:'Example: a piece on why quiet luxury ended, in which several labels appear along the way. The subject is the shift, not any one house.',glPaidTitle:'Promotional pieces — 790 EUR',glPaidBody:'Example: a piece centred on one brand or artist, introducing a launch, a collection or an event. If the purpose of the text is to present that subject, it is a promotional piece.',glRuleNote:'The deciding question is not how many brands appear, but what the piece is for. Many brands with one being elevated is promotional. One brand examined critically is editorial. The final call is made by our editors during review — nothing is charged when you submit, and if your piece is not published you are charged nothing.',glReqTitle:'Requirements',glReq1:'English (800 words minimum) or Korean (1,600 characters minimum)',glReq2:'Plain text only — no HTML. Leave a blank line between paragraphs.',glReq3:'One cover image, plus up to 9 images for the body. JPG, PNG or WebP, 25MB each.',glReq4:'You must hold the rights to every image you upload.',glReq5:'Cite your sources where you quote or use figures.',glReq6:'Review takes up to 7 business days.',glSocialTitle:'Published also means social',glSocialBody:'Everything PAP publishes goes out on our official social channels as well — Instagram, Threads, X, TikTok, YouTube and Pinterest. Submitting means you agree to that.',glAgree:'I have read the guidelines above and I agree to them.',glStart:'Start writing →',secWriting:'The piece',lTitle:'Title',lSubtitle:'Standfirst / subtitle',lTopic:'Topic',tFashion:'Fashion',tBeauty:'Beauty',tTrend:'Trends',tLifestyle:'Lifestyle',tTech:'Tech',tSport:'Sport',tArt:'Art',lLang:'Language of the piece',langEn:'English',langKo:'Korean',lBody:'Body',bodyHint:'Plain text. Leave a blank line between paragraphs. HTML tags are not accepted.',lSources:'Sources',sourcesHint:'Where you quote, cite figures or rely on reporting by others, list it here.',secImages:'Images',lCover:'Cover image',coverHint:'Click to choose one cover image — JPG, PNG or WebP, up to 25MB',lImages:'Body images',imagesHint:'Click to add up to 9 images that run with the text',secAuthor:'Byline',lAuthorName:'Name as it should appear',lAuthorBio:'About you',authorBioHint:'A few lines for the byline — what you write about, where you are based. Up to 300 characters.',lInsta:'Instagram',lWebsite:'Website',secDeclare:'Declarations',lPromo:'Is this a promotional piece?',promoDesc:'Does this piece exist to present one specific brand, artist, product or event? Answer honestly — we ask so that nobody is surprised by a fee later. Our editors make the final call either way.',promoNo:'No — it examines a subject',promoYes:'Yes — 790 EUR applies',socialText:'I agree that if this piece is published, PAP may publish it on the PAP website and on its official social channels (Instagram, Threads, X, TikTok, YouTube, Pinterest), and I grant PAP the right to use the text and images for that purpose.',termsText:'This is my own work, I hold the rights to the text and every image, and the piece is not published elsewhere. I agree to the submission terms.',btnSubmit:'Submit article',cntPickLang:'Choose the language of the piece first',cntWords:'{count} words · {min} minimum',cntChars:'{count} characters · {min} minimum',unitWords:' words',unitChars:' characters',errTitle:'Please enter a title.',errTopic:'Please choose a topic.',errLang:'Please choose the language of the piece.',errBody:'Please write the body of the article.',errBodyHtml:'The body must be plain text — HTML tags are not accepted.',errShort:'The article is too short. Minimum {min}{unit}; you have {count}{unit}.',errBio:'Please add a short author bio for the byline.',errCover:'A cover image is required.',errTooMany:'Up to {max} body images.',errType:'Only JPG, PNG and WebP are accepted: {name}',errSize:'File exceeds 25MB: {name}',errInsta:'Instagram handles may contain letters, numbers, dots and underscores only.',errWebsite:'The website must be a valid http(s) address.',errSourcesHtml:'The sources field contains markup that is not allowed.',errFieldHtml:'One of the fields contains markup that is not allowed.',errPromo:'Please state whether this is a promotional piece.',errSocial:'Consent to publication on social channels is required.',errTerms:'Please agree to the submission terms.',errUpload:'Image upload failed. Please try again in a moment.',errGeneric:'We could not process the request. If this keeps happening, write to contact@pap-magazine.com.',ovPrep:'Preparing',ovPrepMsg:'Generating secure upload links…',ovUploading:'Uploading images',ovUploadingMsg:'Image {done} / {total}',ovSaving:'Saving',ovSavingMsg:'Saving your submission…',ovClose:'Close',okTitle:'Submitted',okBody:'Your article is with our editorial team. We review within 7 business days and email you the outcome. You can follow the status in your account.',okCta:'Go to my account'},
+de:{navBack:'Alle Einreichungswege',navGuide:'Einreichungs-Guide',eyebrow:'Artikel einreichen',h1:'Schreiben Sie einen Artikel für PAP',lede:'Lange Texte zu Mode, Beauty, Trends, Lifestyle, Technik oder Sport. Wir suchen Essays und Reportagen mit Haltung — einen Text, der etwas untersucht, nicht einen, der etwas ankündigt.',gateTitle:'Nur für Mitglieder',gateDesc:'Artikel können alle PAP-Mitglieder einreichen, auch mit kostenlosem Konto.\nMelden Sie sich an oder registrieren Sie sich.',gateLogin:'Anmelden / Registrieren',glTitle:'Bevor Sie schreiben',glWhat:'Was wir veröffentlichen',glWhatBody:'Einen Text, der ein Phänomen, einen Wandel, eine Branche oder eine Idee untersucht und etwas darüber behauptet. Reportagen sind willkommen. Kritiken sind willkommen. Marken und Namen dürfen als Belege auftauchen — das ist normal.',glFreeTitle:'Kostenlose Veröffentlichung',glFreeBody:'Beispiel: ein Text darüber, warum Quiet Luxury vorbei ist, in dem mehrere Labels auftauchen. Thema ist der Wandel, nicht ein einzelnes Haus.',glPaidTitle:'Werbliche Beiträge — 790 Euro',glPaidBody:'Beispiel: ein Text, der eine Marke oder einen Künstler ins Zentrum stellt und einen Launch, eine Kollektion oder ein Event ankündigt. Wenn der Zweck des Textes ist, dieses Subjekt vorzustellen, ist er werblich.',glRuleNote:'Entscheidend ist nicht, wie viele Marken vorkommen, sondern wozu der Text da ist. Viele Marken, von denen eine herausgehoben wird: werblich. Eine Marke, kritisch untersucht: redaktionell. Die endgültige Entscheidung trifft unsere Redaktion bei der Prüfung — bei der Einreichung wird nichts berechnet, und wird Ihr Text nicht veröffentlicht, entstehen keine Kosten.',glReqTitle:'Anforderungen',glReq1:'Englisch (mindestens 800 Wörter) oder Koreanisch (mindestens 1.600 Zeichen)',glReq2:'Nur Klartext — kein HTML. Lassen Sie zwischen Absätzen eine Leerzeile.',glReq3:'Ein Titelbild plus bis zu 9 Bilder für den Text. JPG, PNG oder WebP, je 25 MB.',glReq4:'Sie müssen die Rechte an jedem hochgeladenen Bild besitzen.',glReq5:'Nennen Sie Quellen, wo Sie zitieren oder Zahlen verwenden.',glReq6:'Die Prüfung dauert bis zu 7 Werktage.',glSocialTitle:'Veröffentlicht heißt auch Social',glSocialBody:'Alles, was PAP veröffentlicht, erscheint auch auf unseren offiziellen Social-Kanälen — Instagram, Threads, X, TikTok, YouTube und Pinterest. Mit der Einreichung stimmen Sie dem zu.',glAgree:'Ich habe die Hinweise gelesen und stimme ihnen zu.',glStart:'Schreiben beginnen →',secWriting:'Der Text',lTitle:'Titel',lSubtitle:'Vorspann / Untertitel',lTopic:'Thema',tFashion:'Mode',tBeauty:'Beauty',tTrend:'Trends',tLifestyle:'Lifestyle',tTech:'Technik',tSport:'Sport',tArt:'Kunst',lLang:'Sprache des Textes',langEn:'Englisch',langKo:'Koreanisch',lBody:'Text',bodyHint:'Klartext. Lassen Sie zwischen Absätzen eine Leerzeile. HTML-Tags werden nicht angenommen.',lSources:'Quellen',sourcesHint:'Wo Sie zitieren, Zahlen nennen oder sich auf Recherchen anderer stützen, führen Sie es hier auf.',secImages:'Bilder',lCover:'Titelbild',coverHint:'Klicken, um ein Titelbild zu wählen — JPG, PNG oder WebP, bis 25 MB',lImages:'Bilder im Text',imagesHint:'Klicken, um bis zu 9 Bilder hinzuzufügen, die mit dem Text laufen',secAuthor:'Autorenzeile',lAuthorName:'Name, wie er erscheinen soll',lAuthorBio:'Über Sie',authorBioHint:'Ein paar Zeilen für die Autorenzeile — worüber Sie schreiben, wo Sie arbeiten. Bis 300 Zeichen.',lInsta:'Instagram',lWebsite:'Website',secDeclare:'Erklärungen',lPromo:'Ist dies ein werblicher Beitrag?',promoDesc:'Existiert dieser Text, um eine bestimmte Marke, einen Künstler, ein Produkt oder ein Event vorzustellen? Antworten Sie ehrlich — wir fragen, damit niemand später von einer Gebühr überrascht wird. Die endgültige Entscheidung trifft in jedem Fall unsere Redaktion.',promoNo:'Nein — er untersucht ein Thema',promoYes:'Ja — 790 Euro fallen an',socialText:'Ich stimme zu, dass PAP diesen Text, wenn er veröffentlicht wird, auf der PAP-Website und auf den offiziellen Social-Kanälen (Instagram, Threads, X, TikTok, YouTube, Pinterest) veröffentlichen darf, und räume PAP das Recht ein, Text und Bilder zu diesem Zweck zu nutzen.',termsText:'Dies ist mein eigenes Werk, ich habe die Rechte am Text und an allen Bildern, und der Text ist nicht anderweitig veröffentlicht. Ich stimme den Einreichungsbedingungen zu.',btnSubmit:'Artikel einreichen',cntPickLang:'Wählen Sie zuerst die Sprache des Textes',cntWords:'{count} Wörter · mindestens {min}',cntChars:'{count} Zeichen · mindestens {min}',unitWords:' Wörter',unitChars:' Zeichen',errTitle:'Bitte geben Sie einen Titel ein.',errTopic:'Bitte wählen Sie ein Thema.',errLang:'Bitte wählen Sie die Sprache des Textes.',errBody:'Bitte schreiben Sie den Text des Artikels.',errBodyHtml:'Der Text muss Klartext sein — HTML-Tags werden nicht angenommen.',errShort:'Der Artikel ist zu kurz. Mindestens {min}{unit}; Sie haben {count}{unit}.',errBio:'Bitte fügen Sie eine kurze Autorenbiografie hinzu.',errCover:'Ein Titelbild ist erforderlich.',errTooMany:'Bis zu {max} Bilder im Text.',errType:'Nur JPG, PNG und WebP werden angenommen: {name}',errSize:'Datei über 25 MB: {name}',errInsta:'Instagram-Namen dürfen nur Buchstaben, Zahlen, Punkte und Unterstriche enthalten.',errWebsite:'Die Website muss eine gültige http(s)-Adresse sein.',errSourcesHtml:'Das Quellenfeld enthält nicht erlaubtes Markup.',errFieldHtml:'Eines der Felder enthält nicht erlaubtes Markup.',errPromo:'Bitte geben Sie an, ob dies ein werblicher Beitrag ist.',errSocial:'Die Zustimmung zur Veröffentlichung auf Social-Kanälen ist erforderlich.',errTerms:'Bitte stimmen Sie den Einreichungsbedingungen zu.',errUpload:'Bild-Upload fehlgeschlagen. Bitte versuchen Sie es in einem Moment erneut.',errGeneric:'Die Anfrage konnte nicht verarbeitet werden. Wenn das weiter passiert, schreiben Sie an contact@pap-magazine.com.',ovPrep:'Vorbereitung',ovPrepMsg:'Sichere Upload-Links werden erstellt…',ovUploading:'Bilder werden geladen',ovUploadingMsg:'Bild {done} / {total}',ovSaving:'Wird gespeichert',ovSavingMsg:'Ihre Einreichung wird gespeichert…',ovClose:'Schließen',okTitle:'Eingereicht',okBody:'Ihr Artikel liegt bei unserer Redaktion. Wir prüfen innerhalb von 7 Werktagen und melden uns per E-Mail. Den Status sehen Sie in Ihrem Konto.',okCta:'Zu meinem Konto'},
+it:{navBack:'Tutti i percorsi',navGuide:'Guida alle submission',eyebrow:'Invio articolo',h1:'Scrivi un articolo per PAP',lede:'Testi lunghi su moda, beauty, tendenze, lifestyle, tecnologia o sport. Cerchiamo saggi e reportage con un punto di vista — un testo che indaga qualcosa, non un testo che annuncia qualcosa.',gateTitle:'Solo membri',gateDesc:'Gli articoli possono essere inviati da tutti i membri PAP, anche con account gratuito.\nAccedi o registrati per continuare.',gateLogin:'Accedi / Registrati',glTitle:'Prima di scrivere',glWhat:'Cosa pubblichiamo',glWhatBody:'Un testo che indaga un fenomeno, un cambiamento, un settore o un idea, e sostiene qualcosa al riguardo. I reportage sono benvenuti. Recensioni e critica sono benvenute. Brand e nomi possono comparire come prove: e normale.',glFreeTitle:'Pubblicazione gratuita',glFreeBody:'Esempio: un testo su perche il quiet luxury e finito, in cui compaiono diverse maison lungo il percorso. Il soggetto e il cambiamento, non una singola maison.',glPaidTitle:'Contenuti promozionali — 790 euro',glPaidBody:'Esempio: un testo incentrato su un brand o un artista, che presenta un lancio, una collezione o un evento. Se lo scopo del testo e presentare quel soggetto, e un contenuto promozionale.',glRuleNote:'La domanda decisiva non e quanti brand compaiono, ma a cosa serve il testo. Molti brand di cui uno viene elevato: promozionale. Un brand esaminato criticamente: editoriale. La decisione finale spetta ai nostri editor in revisione: all invio non viene addebitato nulla, e se il testo non viene pubblicato non ti viene addebitato niente.',glReqTitle:'Requisiti',glReq1:'Inglese (minimo 800 parole) o coreano (minimo 1.600 caratteri)',glReq2:'Solo testo semplice — niente HTML. Lascia una riga vuota tra i paragrafi.',glReq3:'Una immagine di copertina piu fino a 9 immagini per il testo. JPG, PNG o WebP, 25MB ciascuna.',glReq4:'Devi detenere i diritti su ogni immagine che carichi.',glReq5:'Cita le fonti dove riporti citazioni o dati.',glReq6:'La revisione richiede fino a 7 giorni lavorativi.',glSocialTitle:'Pubblicato significa anche social',glSocialBody:'Tutto cio che PAP pubblica esce anche sui nostri canali social ufficiali — Instagram, Threads, X, TikTok, YouTube e Pinterest. Inviando, accetti questo.',glAgree:'Ho letto le indicazioni sopra e le accetto.',glStart:'Inizia a scrivere →',secWriting:'Il testo',lTitle:'Titolo',lSubtitle:'Sottotitolo',lTopic:'Argomento',tFashion:'Moda',tBeauty:'Beauty',tTrend:'Tendenze',tLifestyle:'Lifestyle',tTech:'Tecnologia',tSport:'Sport',tArt:'Arte',lLang:'Lingua del testo',langEn:'Inglese',langKo:'Coreano',lBody:'Testo',bodyHint:'Testo semplice. Lascia una riga vuota tra i paragrafi. I tag HTML non sono accettati.',lSources:'Fonti',sourcesHint:'Dove citi, riporti dati o ti appoggi al lavoro di altri, elencalo qui.',secImages:'Immagini',lCover:'Immagine di copertina',coverHint:'Clicca per scegliere una immagine di copertina — JPG, PNG o WebP, fino a 25MB',lImages:'Immagini nel testo',imagesHint:'Clicca per aggiungere fino a 9 immagini che accompagnano il testo',secAuthor:'Firma',lAuthorName:'Nome come deve apparire',lAuthorBio:'Su di te',authorBioHint:'Qualche riga per la firma: di cosa scrivi, dove lavori. Fino a 300 caratteri.',lInsta:'Instagram',lWebsite:'Sito web',secDeclare:'Dichiarazioni',lPromo:'E un contenuto promozionale?',promoDesc:'Questo testo esiste per presentare un brand, un artista, un prodotto o un evento specifico? Rispondi con sincerita: lo chiediamo perche nessuno sia sorpreso da un costo dopo. La decisione finale spetta comunque ai nostri editor.',promoNo:'No — indaga un soggetto',promoYes:'Si — si applicano 790 euro',socialText:'Accetto che, se questo testo viene pubblicato, PAP possa pubblicarlo sul sito PAP e sui suoi canali social ufficiali (Instagram, Threads, X, TikTok, YouTube, Pinterest), e concedo a PAP il diritto di usare testo e immagini a tale scopo.',termsText:'Questo e un mio lavoro originale, detengo i diritti sul testo e su ogni immagine, e il testo non e pubblicato altrove. Accetto i termini di invio.',btnSubmit:'Invia articolo',cntPickLang:'Scegli prima la lingua del testo',cntWords:'{count} parole · minimo {min}',cntChars:'{count} caratteri · minimo {min}',unitWords:' parole',unitChars:' caratteri',errTitle:'Inserisci un titolo.',errTopic:'Scegli un argomento.',errLang:'Scegli la lingua del testo.',errBody:'Scrivi il testo dell articolo.',errBodyHtml:'Il testo deve essere semplice — i tag HTML non sono accettati.',errShort:'L articolo e troppo corto. Minimo {min}{unit}; hai {count}{unit}.',errBio:'Aggiungi una breve biografia per la firma.',errCover:'Serve una immagine di copertina.',errTooMany:'Fino a {max} immagini nel testo.',errType:'Sono accettati solo JPG, PNG e WebP: {name}',errSize:'Il file supera 25MB: {name}',errInsta:'Gli handle Instagram possono contenere solo lettere, numeri, punti e trattini bassi.',errWebsite:'Il sito deve essere un indirizzo http(s) valido.',errSourcesHtml:'Il campo fonti contiene markup non consentito.',errFieldHtml:'Uno dei campi contiene markup non consentito.',errPromo:'Indica se si tratta di un contenuto promozionale.',errSocial:'Il consenso alla pubblicazione sui canali social e obbligatorio.',errTerms:'Accetta i termini di invio.',errUpload:'Caricamento immagini non riuscito. Riprova tra un momento.',errGeneric:'Non abbiamo potuto elaborare la richiesta. Se continua, scrivi a contact@pap-magazine.com.',ovPrep:'Preparazione',ovPrepMsg:'Creazione dei link di caricamento sicuri…',ovUploading:'Caricamento immagini',ovUploadingMsg:'Immagine {done} / {total}',ovSaving:'Salvataggio',ovSavingMsg:'Stiamo salvando il tuo invio…',ovClose:'Chiudi',okTitle:'Inviato',okBody:'Il tuo articolo e al nostro team editoriale. Lo esaminiamo entro 7 giorni lavorativi e ti scriviamo l esito. Puoi seguire lo stato nel tuo account.',okCta:'Vai al mio account'},
+fr:{navBack:'Tous les parcours',navGuide:'Guide des soumissions',eyebrow:'Soumission d article',h1:'Ecrivez un article pour PAP',lede:'Textes longs sur la mode, la beaute, les tendances, le lifestyle, la tech ou le sport. Nous cherchons des essais et des reportages avec un point de vue — un texte qui examine quelque chose, pas un texte qui annonce quelque chose.',gateTitle:'Reserve aux membres',gateDesc:'Les articles sont ouverts a tous les membres PAP, comptes gratuits compris.\nConnectez-vous ou inscrivez-vous pour continuer.',gateLogin:'Connexion / Inscription',glTitle:'Avant d ecrire',glWhat:'Ce que nous publions',glWhatBody:'Un texte qui examine un phenomene, une bascule, un secteur ou une idee, et avance quelque chose a son sujet. Les reportages sont bienvenus. La critique est bienvenue. Les marques et les noms peuvent apparaitre comme preuves : c est normal.',glFreeTitle:'Publication gratuite',glFreeBody:'Exemple : un texte sur la fin du quiet luxury, ou plusieurs maisons apparaissent en chemin. Le sujet est la bascule, pas une maison en particulier.',glPaidTitle:'Contenus promotionnels — 790 euros',glPaidBody:'Exemple : un texte centre sur une marque ou un artiste, presentant un lancement, une collection ou un evenement. Si la finalite du texte est de presenter ce sujet, il est promotionnel.',glRuleNote:'La question decisive n est pas le nombre de marques citees, mais la finalite du texte. Beaucoup de marques dont une est mise en avant : promotionnel. Une marque examinee de facon critique : editorial. La decision finale appartient a nos editeurs lors de l examen — rien n est facture a la soumission, et si votre texte n est pas publie, rien ne vous est facture.',glReqTitle:'Exigences',glReq1:'Anglais (800 mots minimum) ou coreen (1 600 caracteres minimum)',glReq2:'Texte brut uniquement — pas de HTML. Laissez une ligne vide entre les paragraphes.',glReq3:'Une image de couverture, plus jusqu a 9 images pour le texte. JPG, PNG ou WebP, 25 Mo chacune.',glReq4:'Vous devez detenir les droits sur chaque image televersee.',glReq5:'Citez vos sources lorsque vous citez ou utilisez des chiffres.',glReq6:'L examen prend jusqu a 7 jours ouvres.',glSocialTitle:'Publie veut dire aussi social',glSocialBody:'Tout ce que PAP publie parait aussi sur nos canaux sociaux officiels — Instagram, Threads, X, TikTok, YouTube et Pinterest. Soumettre signifie que vous l acceptez.',glAgree:'J ai lu les indications ci-dessus et je les accepte.',glStart:'Commencer a ecrire →',secWriting:'Le texte',lTitle:'Titre',lSubtitle:'Chapeau / sous-titre',lTopic:'Sujet',tFashion:'Mode',tBeauty:'Beaute',tTrend:'Tendances',tLifestyle:'Lifestyle',tTech:'Tech',tSport:'Sport',tArt:'Art',lLang:'Langue du texte',langEn:'Anglais',langKo:'Coreen',lBody:'Texte',bodyHint:'Texte brut. Laissez une ligne vide entre les paragraphes. Les balises HTML ne sont pas acceptees.',lSources:'Sources',sourcesHint:'La ou vous citez, donnez des chiffres ou vous appuyez sur le travail d autrui, indiquez-le ici.',secImages:'Images',lCover:'Image de couverture',coverHint:'Cliquez pour choisir une image de couverture — JPG, PNG ou WebP, jusqu a 25 Mo',lImages:'Images du texte',imagesHint:'Cliquez pour ajouter jusqu a 9 images qui accompagnent le texte',secAuthor:'Signature',lAuthorName:'Nom tel qu il doit apparaitre',lAuthorBio:'A propos de vous',authorBioHint:'Quelques lignes pour la signature : ce dont vous ecrivez, ou vous etes base. Jusqu a 300 caracteres.',lInsta:'Instagram',lWebsite:'Site web',secDeclare:'Declarations',lPromo:'S agit-il d un contenu promotionnel ?',promoDesc:'Ce texte existe-t-il pour presenter une marque, un artiste, un produit ou un evenement precis ? Repondez honnetement : nous demandons pour que personne ne soit surpris par des frais ensuite. La decision finale revient de toute facon a nos editeurs.',promoNo:'Non — il examine un sujet',promoYes:'Oui — 790 euros s appliquent',socialText:'J accepte que, si ce texte est publie, PAP puisse le publier sur le site PAP et sur ses canaux sociaux officiels (Instagram, Threads, X, TikTok, YouTube, Pinterest), et j accorde a PAP le droit d utiliser le texte et les images a cette fin.',termsText:'C est mon propre travail, je detiens les droits sur le texte et sur chaque image, et le texte n est pas publie ailleurs. J accepte les conditions de soumission.',btnSubmit:'Envoyer l article',cntPickLang:'Choisissez d abord la langue du texte',cntWords:'{count} mots · minimum {min}',cntChars:'{count} caracteres · minimum {min}',unitWords:' mots',unitChars:' caracteres',errTitle:'Veuillez saisir un titre.',errTopic:'Veuillez choisir un sujet.',errLang:'Veuillez choisir la langue du texte.',errBody:'Veuillez ecrire le texte de l article.',errBodyHtml:'Le texte doit etre brut — les balises HTML ne sont pas acceptees.',errShort:'L article est trop court. Minimum {min}{unit} ; vous avez {count}{unit}.',errBio:'Veuillez ajouter une courte biographie pour la signature.',errCover:'Une image de couverture est requise.',errTooMany:'Jusqu a {max} images dans le texte.',errType:'Seuls JPG, PNG et WebP sont acceptes : {name}',errSize:'Le fichier depasse 25 Mo : {name}',errInsta:'Les identifiants Instagram ne peuvent contenir que lettres, chiffres, points et tirets bas.',errWebsite:'Le site doit etre une adresse http(s) valide.',errSourcesHtml:'Le champ sources contient du balisage non autorise.',errFieldHtml:'Un des champs contient du balisage non autorise.',errPromo:'Veuillez indiquer s il s agit d un contenu promotionnel.',errSocial:'Le consentement a la publication sur les canaux sociaux est requis.',errTerms:'Veuillez accepter les conditions de soumission.',errUpload:'Le televersement des images a echoue. Reessayez dans un instant.',errGeneric:'Nous n avons pas pu traiter la demande. Si cela persiste, ecrivez a contact@pap-magazine.com.',ovPrep:'Preparation',ovPrepMsg:'Creation des liens de televersement securises…',ovUploading:'Televersement des images',ovUploadingMsg:'Image {done} / {total}',ovSaving:'Enregistrement',ovSavingMsg:'Enregistrement de votre soumission…',ovClose:'Fermer',okTitle:'Envoye',okBody:'Votre article est entre les mains de notre equipe editoriale. Nous l examinons sous 7 jours ouvres et vous ecrivons le resultat. Vous pouvez suivre son statut dans votre compte.',okCta:'Aller a mon compte'},
+es:{navBack:'Todas las vias',navGuide:'Guia de envios',eyebrow:'Envio de articulo',h1:'Escribe un articulo para PAP',lede:'Textos largos sobre moda, belleza, tendencias, estilo de vida, tecnologia o deporte. Buscamos ensayos y reportajes con punto de vista: un texto que examina algo, no un texto que anuncia algo.',gateTitle:'Solo miembros',gateDesc:'Los articulos estan abiertos a todos los miembros de PAP, incluidas las cuentas gratuitas.\nInicia sesion o registrate para continuar.',gateLogin:'Iniciar sesion / Registrarse',glTitle:'Antes de escribir',glWhat:'Que publicamos',glWhatBody:'Un texto que examina un fenomeno, un cambio, un sector o una idea, y sostiene algo al respecto. Los reportajes son bienvenidos. La critica es bienvenida. Las marcas y los nombres pueden aparecer como pruebas: es normal.',glFreeTitle:'Publicacion gratuita',glFreeBody:'Ejemplo: un texto sobre por que acabo el quiet luxury, en el que aparecen varias firmas por el camino. El sujeto es el cambio, no una firma concreta.',glPaidTitle:'Contenidos promocionales — 790 euros',glPaidBody:'Ejemplo: un texto centrado en una marca o un artista, que presenta un lanzamiento, una coleccion o un evento. Si el proposito del texto es presentar ese sujeto, es promocional.',glRuleNote:'La pregunta decisiva no es cuantas marcas aparecen, sino para que sirve el texto. Muchas marcas con una de ellas realzada: promocional. Una marca examinada con criterio: editorial. La decision final la toman nuestros editores en la revision: al enviar no se cobra nada, y si tu texto no se publica no se te cobra nada.',glReqTitle:'Requisitos',glReq1:'Ingles (minimo 800 palabras) o coreano (minimo 1.600 caracteres)',glReq2:'Solo texto plano — sin HTML. Deja una linea en blanco entre parrafos.',glReq3:'Una imagen de portada mas hasta 9 imagenes para el texto. JPG, PNG o WebP, 25MB cada una.',glReq4:'Debes tener los derechos de cada imagen que subas.',glReq5:'Cita tus fuentes cuando cites o uses cifras.',glReq6:'La revision tarda hasta 7 dias habiles.',glSocialTitle:'Publicado tambien significa social',glSocialBody:'Todo lo que PAP publica sale tambien en nuestros canales sociales oficiales: Instagram, Threads, X, TikTok, YouTube y Pinterest. Enviar significa que lo aceptas.',glAgree:'He leido las indicaciones anteriores y las acepto.',glStart:'Empezar a escribir →',secWriting:'El texto',lTitle:'Titulo',lSubtitle:'Entradilla / subtitulo',lTopic:'Tema',tFashion:'Moda',tBeauty:'Belleza',tTrend:'Tendencias',tLifestyle:'Estilo de vida',tTech:'Tecnologia',tSport:'Deporte',tArt:'Arte',lLang:'Idioma del texto',langEn:'Ingles',langKo:'Coreano',lBody:'Texto',bodyHint:'Texto plano. Deja una linea en blanco entre parrafos. No se aceptan etiquetas HTML.',lSources:'Fuentes',sourcesHint:'Donde cites, uses cifras o te apoyes en el trabajo de otros, indicalo aqui.',secImages:'Imagenes',lCover:'Imagen de portada',coverHint:'Haz clic para elegir una imagen de portada — JPG, PNG o WebP, hasta 25MB',lImages:'Imagenes del texto',imagesHint:'Haz clic para anadir hasta 9 imagenes que acompanen al texto',secAuthor:'Firma',lAuthorName:'Nombre tal como debe aparecer',lAuthorBio:'Sobre ti',authorBioHint:'Unas lineas para la firma: sobre que escribes, donde te ubicas. Hasta 300 caracteres.',lInsta:'Instagram',lWebsite:'Sitio web',secDeclare:'Declaraciones',lPromo:'Es un contenido promocional?',promoDesc:'Existe este texto para presentar una marca, un artista, un producto o un evento concretos? Responde con sinceridad: lo preguntamos para que nadie se sorprenda por una tarifa despues. La decision final la toman nuestros editores en cualquier caso.',promoNo:'No — examina un sujeto',promoYes:'Si — se aplican 790 euros',socialText:'Acepto que, si este texto se publica, PAP pueda publicarlo en el sitio de PAP y en sus canales sociales oficiales (Instagram, Threads, X, TikTok, YouTube, Pinterest), y concedo a PAP el derecho de usar el texto y las imagenes con ese fin.',termsText:'Este es mi propio trabajo, tengo los derechos del texto y de cada imagen, y el texto no esta publicado en otro sitio. Acepto los terminos de envio.',btnSubmit:'Enviar articulo',cntPickLang:'Elige primero el idioma del texto',cntWords:'{count} palabras · minimo {min}',cntChars:'{count} caracteres · minimo {min}',unitWords:' palabras',unitChars:' caracteres',errTitle:'Introduce un titulo.',errTopic:'Elige un tema.',errLang:'Elige el idioma del texto.',errBody:'Escribe el texto del articulo.',errBodyHtml:'El texto debe ser plano — no se aceptan etiquetas HTML.',errShort:'El articulo es demasiado corto. Minimo {min}{unit}; tienes {count}{unit}.',errBio:'Anade una breve biografia para la firma.',errCover:'Se necesita una imagen de portada.',errTooMany:'Hasta {max} imagenes en el texto.',errType:'Solo se aceptan JPG, PNG y WebP: {name}',errSize:'El archivo supera 25MB: {name}',errInsta:'Los usuarios de Instagram solo pueden contener letras, numeros, puntos y guiones bajos.',errWebsite:'El sitio debe ser una direccion http(s) valida.',errSourcesHtml:'El campo de fuentes contiene marcado no permitido.',errFieldHtml:'Uno de los campos contiene marcado no permitido.',errPromo:'Indica si es un contenido promocional.',errSocial:'Se requiere el consentimiento para la publicacion en canales sociales.',errTerms:'Acepta los terminos de envio.',errUpload:'La subida de imagenes fallo. Intentalo de nuevo en un momento.',errGeneric:'No pudimos procesar la solicitud. Si sigue ocurriendo, escribe a contact@pap-magazine.com.',ovPrep:'Preparando',ovPrepMsg:'Generando enlaces de subida seguros…',ovUploading:'Subiendo imagenes',ovUploadingMsg:'Imagen {done} / {total}',ovSaving:'Guardando',ovSavingMsg:'Guardando tu envio…',ovClose:'Cerrar',okTitle:'Enviado',okBody:'Tu articulo esta con nuestro equipo editorial. Lo revisamos en un plazo de 7 dias habiles y te escribimos el resultado. Puedes seguir el estado en tu cuenta.',okCta:'Ir a mi cuenta'},
+ja:{navBack:'サブミッション一覧',navGuide:'サブミッション案内',eyebrow:'記事の投稿',h1:'PAPに記事を書く',lede:'ファッション・ビューティー・トレンド・ライフスタイル・テック・スポーツに関する長文を受け付けます。求めているのは視点のあるエッセイやレポートです — 何かを掘り下げる文章であって、何かを告知する文章ではありません。',gateTitle:'会員限定',gateDesc:'記事の投稿は無料会員を含むすべてのPAP会員に開かれています。\nログインまたは登録して続けてください。',gateLogin:'ログイン / 登録',glTitle:'書く前に',glWhat:'掲載する記事',glWhatBody:'ある現象・変化・産業・考えを掘り下げ、それについて何かを主張する文章です。取材も歓迎します。レビューや批評も歓迎します。ブランドや名前が根拠として登場するのは正常です。',glFreeTitle:'無料掲載',glFreeBody:'例：「クワイエット・ラグジュアリーはなぜ終わったのか」を論じる中で複数のブランドが登場する記事。主題はその変化であり、特定の一社ではありません。',glPaidTitle:'宣伝目的の記事 — 790ユーロ',glPaidBody:'例：一つのブランドやアーティストを中心に据え、発売・コレクション・イベントを告知する記事。その対象を紹介することが記事の目的なら、宣伝目的の記事です。',glRuleNote:'分かれ目はブランドが何社出てくるかではなく、その記事が何のためにあるかです。複数のブランドが出ても一社を持ち上げる記事なら宣伝目的、一社だけでも批評なら一般記事です。最終判断は審査でエディターが行います — 投稿時には何も請求されず、掲載に至らなかった場合も費用は一切かかりません。',glReqTitle:'要件',glReq1:'英語（800単語以上）または韓国語（1,600字以上）',glReq2:'平文のみ — HTMLは不可。段落の間は空行で区切ってください。',glReq3:'メイン画像1点と本文用画像を最大9点。JPG・PNG・WebP、1点25MBまで。',glReq4:'アップロードするすべての画像の権利をご本人が保有していること。',glReq5:'引用や数値を用いる箇所では出典を記してください。',glReq6:'審査には最長7営業日かかります。',glSocialTitle:'掲載はソーシャル掲載を含みます',glSocialBody:'PAPが掲載するものはすべて公式ソーシャルチャンネル（Instagram・Threads・X・TikTok・YouTube・Pinterest）にも掲載されます。投稿はそれに同意することを意味します。',glAgree:'上記のガイドラインを読み、同意します。',glStart:'書き始める →',secWriting:'本文',lTitle:'タイトル',lSubtitle:'サブタイトル',lTopic:'分類',tFashion:'ファッション',tBeauty:'ビューティー',tTrend:'トレンド',tLifestyle:'ライフスタイル',tTech:'テック',tSport:'スポーツ',tArt:'アート',lLang:'執筆言語',langEn:'英語',langKo:'韓国語',lBody:'本文',bodyHint:'平文でお書きください。段落の間は空行で区切り、HTMLタグは受け付けません。',lSources:'参考出典',sourcesHint:'引用・数値・他者の取材に依拠した箇所があれば、ここに記してください。',secImages:'画像',lCover:'メイン画像',coverHint:'メイン画像を1点選んでください — JPG・PNG・WebP、25MBまで',lImages:'本文画像',imagesHint:'本文と一緒に掲載する画像を最大9点まで追加できます',secAuthor:'署名',lAuthorName:'表記するお名前',lAuthorBio:'ご自身について',authorBioHint:'署名に入れる数行 — どんな主題を書くか、どこを拠点にしているか。300字以内。',lInsta:'Instagram',lWebsite:'ウェブサイト',secDeclare:'確認事項',lPromo:'この記事は宣伝目的ですか？',promoDesc:'この記事は特定のブランド・アーティスト・製品・イベントを紹介するために存在しますか？正直にお答えください — あとで掲載料に驚くことがないようお尋ねしています。いずれの場合も最終判断はエディターが行います。',promoNo:'いいえ — ある主題を掘り下げる記事です',promoYes:'はい — 790ユーロが適用されます',socialText:'この記事が掲載される場合、PAPがPAPのウェブサイトおよび公式ソーシャルチャンネル（Instagram・Threads・X・TikTok・YouTube・Pinterest）に掲載することに同意し、その目的で文章と画像を使用する権利をPAPに許諾します。',termsText:'これは私自身の著作物であり、文章とすべての画像の権利を私が保有し、他所に掲載されていません。投稿規約に同意します。',btnSubmit:'記事を投稿',cntPickLang:'先に執筆言語を選んでください',cntWords:'{count} 単語 · 最低 {min} 単語',cntChars:'{count}字 · 最低 {min}字',unitWords:' 単語',unitChars:'字',errTitle:'タイトルを入力してください。',errTopic:'分類を一つ選んでください。',errLang:'執筆言語を選んでください。',errBody:'本文を入力してください。',errBodyHtml:'本文は平文のみです — HTMLタグは受け付けません。',errShort:'記事が短すぎます。最低 {min}{unit} で、現在 {count}{unit} です。',errBio:'署名用のご自身の紹介を入力してください。',errCover:'メイン画像が1点必要です。',errTooMany:'本文画像は最大 {max} 点です。',errType:'JPG・PNG・WebPのみアップロードできます: {name}',errSize:'ファイルが25MBを超えています: {name}',errInsta:'Instagram IDは英数字・ピリオド・アンダースコアのみ使用できます。',errWebsite:'ウェブサイトはhttp(s)で始まる有効なアドレスである必要があります。',errSourcesHtml:'参考出典に許可されていないマークアップがあります。',errFieldHtml:'入力欄のいずれかに許可されていないマークアップがあります。',errPromo:'宣伝目的かどうかをお選びください。',errSocial:'ソーシャルチャンネル掲載への同意が必要です。',errTerms:'投稿規約に同意してください。',errUpload:'画像のアップロードに失敗しました。しばらくしてからもう一度お試しください。',errGeneric:'リクエストを処理できませんでした。続く場合は contact@pap-magazine.com までご連絡ください。',ovPrep:'準備中',ovPrepMsg:'安全なアップロードリンクを作成しています…',ovUploading:'画像アップロード',ovUploadingMsg:'画像 {done} / {total}',ovSaving:'保存中',ovSavingMsg:'投稿を保存しています…',ovClose:'閉じる',okTitle:'送信完了',okBody:'記事は編集チームに届きました。7営業日以内に審査し、結果をメールでお知らせします。進行状況はアカウントでご確認いただけます。',okCta:'アカウントへ'},
+zh:{navBack:'全部投稿方式',navGuide:'投稿指南',eyebrow:'文章投稿',h1:'为 PAP 撰写文章',lede:'我们接受关于时尚、美妆、趋势、生活方式、科技或体育的长文。我们寻找的是有观点的随笔与报道——一篇深入探讨某事的文稿，而不是公告某事的文稿。',gateTitle:'仅限会员',gateDesc:'文章投稿面向所有 PAP 会员开放，包括免费账户。\n请登录或注册后继续。',gateLogin:'登录 / 注册',glTitle:'写作之前',glWhat:'我们刊发什么',glWhatBody:'一篇深入探讨某种现象、转变、行业或观念，并就此提出主张的文稿。欢迎报道，欢迎评论与批评。品牌与人名可以作为论据出现——这是正常的。',glFreeTitle:'免费刊发',glFreeBody:'例如：一篇探讨"静奢风为何终结"的文稿，其间自然提及多个品牌。主题是那场转变，而非其中任何一家。',glPaidTitle:'推广性内容 — 790 欧元',glPaidBody:'例如：一篇以某个品牌或艺术家为中心、介绍新品、系列或活动的文稿。若文稿的目的是介绍该对象，即属推广性内容。',glRuleNote:'判定的关键不是文中出现了多少品牌，而是这篇文稿为何而写。即便出现多个品牌，若意在抬高其中一家，便属推广；即便只提一个品牌，若为批评性探讨，便属一般投稿。最终判断由我们的编辑在审核时作出——投稿时不收取任何费用，若文稿未获刊发，也不会产生任何费用。',glReqTitle:'要求',glReq1:'英语（不少于 800 词）或韩语（不少于 1,600 字）',glReq2:'仅接受纯文本——不支持 HTML。段落之间请空一行。',glReq3:'一张封面图，另可附最多 9 张正文配图。JPG、PNG 或 WebP，每张不超过 25MB。',glReq4:'您必须拥有所上传每一张图片的权利。',glReq5:'凡引用或使用数据之处，请注明出处。',glReq6:'审核最长需 7 个工作日。',glSocialTitle:'刊发同时包含社交发布',glSocialBody:'PAP 刊发的所有内容也会发布至官方社交渠道——Instagram、Threads、X、TikTok、YouTube 与 Pinterest。投稿即表示您同意这一点。',glAgree:'我已阅读以上说明并同意。',glStart:'开始撰写 →',secWriting:'文稿',lTitle:'标题',lSubtitle:'副标题',lTopic:'分类',tFashion:'时尚',tBeauty:'美妆',tTrend:'趋势',tLifestyle:'生活方式',tTech:'科技',tSport:'体育',tArt:'艺术',lLang:'写作语言',langEn:'英语',langKo:'韩语',lBody:'正文',bodyHint:'请使用纯文本。段落之间空一行，不接受 HTML 标签。',lSources:'参考出处',sourcesHint:'凡引用、使用数据或依据他人报道之处，请在此列出。',secImages:'图片',lCover:'封面图',coverHint:'点击选择一张封面图 — JPG、PNG 或 WebP，不超过 25MB',lImages:'正文配图',imagesHint:'点击添加最多 9 张随文刊出的图片',secAuthor:'署名',lAuthorName:'希望显示的姓名',lAuthorBio:'关于您',authorBioHint:'用于署名的几行介绍——您写什么领域、身在何处。不超过 300 字。',lInsta:'Instagram',lWebsite:'网站',secDeclare:'声明事项',lPromo:'这是推广性内容吗？',promoDesc:'这篇文稿是否为介绍某一特定品牌、艺术家、产品或活动而写？请如实回答——我们这样问，是为了避免日后因费用而让任何人感到意外。无论如何，最终判断由我们的编辑作出。',promoNo:'不是——这是探讨某一主题的文稿',promoYes:'是——适用 790 欧元',socialText:'我同意：若本文稿获得刊发，PAP 可在 PAP 网站及其官方社交渠道（Instagram、Threads、X、TikTok、YouTube、Pinterest）发布，并授予 PAP 为此目的使用文字与图片的权利。',termsText:'本文为我本人原创，文字与全部图片的权利归我所有，且未在他处刊发。我同意投稿条款。',btnSubmit:'提交文章',cntPickLang:'请先选择写作语言',cntWords:'{count} 词 · 最少 {min} 词',cntChars:'{count} 字 · 最少 {min} 字',unitWords:' 词',unitChars:' 字',errTitle:'请填写标题。',errTopic:'请选择一个分类。',errLang:'请选择写作语言。',errBody:'请填写文章正文。',errBodyHtml:'正文仅接受纯文本——不接受 HTML 标签。',errShort:'文章过短。最少 {min}{unit}，当前为 {count}{unit}。',errBio:'请填写用于署名的作者简介。',errCover:'需要一张封面图。',errTooMany:'正文配图最多 {max} 张。',errType:'仅可上传 JPG、PNG 和 WebP：{name}',errSize:'文件超过 25MB：{name}',errInsta:'Instagram 账号仅可包含字母、数字、点和下划线。',errWebsite:'网站须为有效的 http(s) 地址。',errSourcesHtml:'参考出处中含有不允许的标记。',errFieldHtml:'某个填写栏中含有不允许的标记。',errPromo:'请选择是否为推广性内容。',errSocial:'需要同意在社交渠道发布。',errTerms:'请同意投稿条款。',errUpload:'图片上传失败。请稍后重试。',errGeneric:'未能处理该请求。若持续出现，请联系 contact@pap-magazine.com。',ovPrep:'准备中',ovPrepMsg:'正在生成安全上传链接…',ovUploading:'上传图片',ovUploadingMsg:'图片 {done} / {total}',ovSaving:'保存中',ovSavingMsg:'正在保存您的投稿…',ovClose:'关闭',okTitle:'已提交',okBody:'您的文章已送达编辑团队。我们会在 7 个工作日内完成审核，并通过邮件告知结果。您可在账户中跟踪进度。',okCta:'前往我的账户'},
+ru:{navBack:'Все способы подачи',navGuide:'Руководство по подаче',eyebrow:'Подача статьи',h1:'Напишите статью для PAP',lede:'Большие тексты о моде, красоте, трендах, стиле жизни, технологиях или спорте. Мы ищем эссе и репортажи с точкой зрения — текст, который разбирается в чём-то, а не текст, который о чём-то объявляет.',gateTitle:'Только для участников',gateDesc:'Статьи могут присылать все участники PAP, включая бесплатные аккаунты.\nВойдите или зарегистрируйтесь, чтобы продолжить.',gateLogin:'Войти / Регистрация',glTitle:'Прежде чем писать',glWhat:'Что мы публикуем',glWhatBody:'Текст, который разбирает явление, сдвиг, отрасль или идею и что-то о них утверждает. Репортажи приветствуются. Рецензии и критика приветствуются. Бренды и имена могут появляться как доводы — это нормально.',glFreeTitle:'Бесплатная публикация',glFreeBody:'Пример: текст о том, почему закончился quiet luxury, в котором по ходу появляется несколько марок. Предмет — сам сдвиг, а не какой-то один дом.',glPaidTitle:'Рекламные материалы — 790 евро',glPaidBody:'Пример: текст, построенный вокруг одного бренда или артиста и представляющий запуск, коллекцию или событие. Если цель текста — представить этот предмет, это рекламный материал.',glRuleNote:'Решает не то, сколько брендов упомянуто, а то, зачем написан текст. Много брендов, но один из них возвышается — реклама. Один бренд, разобранный критически — редакционный материал. Окончательное решение принимает редакция при рассмотрении: при подаче ничего не списывается, и если текст не опубликуют, с вас ничего не возьмут.',glReqTitle:'Требования',glReq1:'Английский (не менее 800 слов) или корейский (не менее 1 600 знаков)',glReq2:'Только простой текст — без HTML. Между абзацами оставляйте пустую строку.',glReq3:'Одна обложка плюс до 9 изображений для текста. JPG, PNG или WebP, до 25 МБ каждое.',glReq4:'Вы должны владеть правами на каждое загруженное изображение.',glReq5:'Указывайте источники там, где цитируете или приводите цифры.',glReq6:'Рассмотрение занимает до 7 рабочих дней.',glSocialTitle:'Публикация включает соцсети',glSocialBody:'Всё, что публикует PAP, выходит и в наших официальных соцсетях — Instagram, Threads, X, TikTok, YouTube и Pinterest. Подавая текст, вы с этим соглашаетесь.',glAgree:'Я прочитал(а) указания выше и согласен(на) с ними.',glStart:'Начать писать →',secWriting:'Текст',lTitle:'Заголовок',lSubtitle:'Подзаголовок',lTopic:'Тема',tFashion:'Мода',tBeauty:'Красота',tTrend:'Тренды',tLifestyle:'Стиль жизни',tTech:'Технологии',tSport:'Спорт',tArt:'Искусство',lLang:'Язык текста',langEn:'Английский',langKo:'Корейский',lBody:'Текст',bodyHint:'Простой текст. Между абзацами оставляйте пустую строку. HTML-теги не принимаются.',lSources:'Источники',sourcesHint:'Там, где вы цитируете, приводите цифры или опираетесь на чужую работу, укажите это здесь.',secImages:'Изображения',lCover:'Обложка',coverHint:'Нажмите, чтобы выбрать одну обложку — JPG, PNG или WebP, до 25 МБ',lImages:'Изображения в тексте',imagesHint:'Нажмите, чтобы добавить до 9 изображений, идущих с текстом',secAuthor:'Подпись автора',lAuthorName:'Имя, как оно должно выглядеть',lAuthorBio:'О вас',authorBioHint:'Несколько строк для подписи — о чём вы пишете, где находитесь. До 300 знаков.',lInsta:'Instagram',lWebsite:'Сайт',secDeclare:'Заявления',lPromo:'Это рекламный материал?',promoDesc:'Существует ли этот текст, чтобы представить конкретный бренд, артиста, продукт или событие? Ответьте честно — мы спрашиваем, чтобы никого потом не удивила плата. Окончательное решение в любом случае принимает редакция.',promoNo:'Нет — он разбирает предмет',promoYes:'Да — применяется 790 евро',socialText:'Я согласен(на), что в случае публикации PAP может опубликовать этот текст на сайте PAP и в своих официальных соцсетях (Instagram, Threads, X, TikTok, YouTube, Pinterest), и предоставляю PAP право использовать текст и изображения для этой цели.',termsText:'Это моя собственная работа, права на текст и каждое изображение принадлежат мне, и текст не опубликован где-либо ещё. Я согласен(на) с условиями подачи.',btnSubmit:'Отправить статью',cntPickLang:'Сначала выберите язык текста',cntWords:'{count} слов · минимум {min}',cntChars:'{count} знаков · минимум {min}',unitWords:' слов',unitChars:' знаков',errTitle:'Введите заголовок.',errTopic:'Выберите тему.',errLang:'Выберите язык текста.',errBody:'Напишите текст статьи.',errBodyHtml:'Текст должен быть простым — HTML-теги не принимаются.',errShort:'Статья слишком короткая. Минимум {min}{unit}; у вас {count}{unit}.',errBio:'Добавьте короткую биографию для подписи.',errCover:'Нужна обложка.',errTooMany:'До {max} изображений в тексте.',errType:'Принимаются только JPG, PNG и WebP: {name}',errSize:'Файл превышает 25 МБ: {name}',errInsta:'В Instagram-имени допустимы только буквы, цифры, точки и подчёркивания.',errWebsite:'Сайт должен быть корректным адресом http(s).',errSourcesHtml:'Поле источников содержит недопустимую разметку.',errFieldHtml:'Одно из полей содержит недопустимую разметку.',errPromo:'Укажите, является ли это рекламным материалом.',errSocial:'Требуется согласие на публикацию в соцсетях.',errTerms:'Согласитесь с условиями подачи.',errUpload:'Не удалось загрузить изображения. Попробуйте ещё раз через минуту.',errGeneric:'Не удалось обработать запрос. Если это повторяется, напишите на contact@pap-magazine.com.',ovPrep:'Подготовка',ovPrepMsg:'Создаём защищённые ссылки для загрузки…',ovUploading:'Загрузка изображений',ovUploadingMsg:'Изображение {done} / {total}',ovSaving:'Сохранение',ovSavingMsg:'Сохраняем вашу заявку…',ovClose:'Закрыть',okTitle:'Отправлено',okBody:'Ваша статья у нашей редакции. Мы рассмотрим её в течение 7 рабочих дней и напишем результат. Следить за статусом можно в личном кабинете.',okCta:'В личный кабинет'}
+};
+
+function setLang(l){
+  /* 폴백은 반드시 영어. 키 단위로도 영어로 떨어뜨린다
+     (사전에 없는 언어가 통째로 한국어로 뜨는 함정 방지 — frontend.md) */
+  var d = L[l] || L.en;
+  _lang = L[l] ? l : 'en';
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n');
+    var v = d[k] || (L.en && L.en[k]);
+    if (v) el.textContent = v;
+  });
+  document.documentElement.lang = l;
+  var sel = document.getElementById('langSelect'); if (sel) sel.value = l;
+  try { localStorage.setItem('pap-lang', l); } catch(e){}
+  try { refreshCounter(); } catch(e){}
+}
+
+/* pap-i18n.js 가 defer 로 전역 setLang 을 덮어쓴다. 덮어쓰이기 전에 참조를
+   잡아 두고 이어서 적용한다 (frontend.md 의 전역 setLang 충돌 함정). */
+var _papPageSetLang = setLang;
+document.addEventListener('DOMContentLoaded', function(){
+  var g = window.setLang;
+  if (typeof g !== 'function'){ window.setLang = _papPageSetLang; return; }
+  if (g === _papPageSetLang || g._papPageChained) return;
+  var chained = function(l){
+    try { g.apply(this, arguments); } catch(e){}
+    try { _papPageSetLang(l); } catch(e){}
+  };
+  chained._papPageChained = true;
+  window.setLang = chained;
+});
+
+(function(){
+  var l; try { l = localStorage.getItem('pap-lang'); } catch(e){}
+  if (!l) { var n = (navigator.language || 'en').slice(0,2).toLowerCase();
+            l = L[n] ? n : 'en'; }
+  _papPageSetLang(l);
+  boot();
+})();
+document.addEventListener('pap-lang-changed', function(ev){
+  try { var nl = (ev && ev.detail && ev.detail.lang) || localStorage.getItem('pap-lang'); if (nl) _papPageSetLang(nl); } catch(e){}
+});
+</script>
+</body>
+</html>

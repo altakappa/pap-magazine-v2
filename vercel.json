@@ -698,6 +698,10 @@
       "destination": "/submission.html"
     },
     {
+      "source": "/submission/article",
+      "destination": "/submission-article.html"
+    },
+    {
       "source": "/subscribe",
       "destination": "/subscribe.html"
     },
