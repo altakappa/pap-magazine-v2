@@ -190,6 +190,16 @@ function _loadPayPalSdkOnce(clientId, intent){
  * 전역 노출 — submission.html 의 애드온 버튼도 이 함수를 쓴다.
  */
 async function papPayOneTime(opts){
+  /* 2026-11-12 — 엔드포인트를 옵션으로 뺐다. 기본값은 종전 그대로이므로
+     에디토리얼 결제 동작은 바뀌지 않는다.
+     아티클 기고 게재료(€790)가 같은 버튼을 쓴다 — 결제 버튼을 두 벌로 만들면
+     "SDK intent 와 주문 intent 가 같아야 한다" 같은 규칙이 한쪽에서만 지켜진다
+     (2026-08-13 에 그래서 결제창이 아예 열리지 않았다). 한 벌로 둔다. */
+  var _EP = opts.endpoints || {};
+  var _epOrder     = _EP.order     || '/api/submissions/paypal-order';
+  var _epAuthorize = _EP.authorize || '/api/submissions/paypal-authorize';
+  var _epCapture   = _EP.capture   || '/api/submissions/paypal-capture';
+
   function fail(msgKey){ try{ if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_payT(msgKey||'payGenericError'),'error'); }catch(_){ } }
 
   // 이중 제출 방지 — 2026-08-07 lia.line 이 2분 간격 중복 결제로 €17.98 을 냈다.
@@ -233,7 +243,7 @@ async function papPayOneTime(opts){
     _pp.Buttons({
       style:{ layout:'vertical', shape:'rect' },
       createOrder: function(){
-        return fetch('/api/submissions/paypal-order',{
+        return fetch(_epOrder,{
           method:'POST',
           headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
           credentials:'same-origin',
@@ -251,7 +261,7 @@ async function papPayOneTime(opts){
         // 돈은 묶이기만 하고, 심사를 통과할 때 review.js 가 캡처한다.
         // _isAuth 는 SDK 로딩 시점에 이미 정해졌다 (위쪽 선언을 그대로 쓴다).
         // 확정은 서버가 한다 — 여기서 성공을 선언하지 않는다.
-        return fetch(_isAuth ? '/api/submissions/paypal-authorize' : '/api/submissions/paypal-capture',{
+        return fetch(_isAuth ? _epAuthorize : _epCapture,{
           method:'POST',
           headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
           credentials:'same-origin',

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2026-11-12 — 내 아티클 기고 현황 + €790 결제.
+     €790 안내 메일의 CTA 가 여기로 온다. 홍보성으로 판정된 건에만 결제 버튼이 뜬다.
+
+     ※ 결제 버튼은 pap-submission-fee.js 의 papPayOneTime 을 그대로 쓴다.
+       엔드포인트만 아티클 쪽으로 바꿔 넘긴다. 결제 버튼을 두 벌로 만들면
+       "SDK intent 와 주문 intent 가 같아야 한다" 같은 규칙이 한쪽에서만
+       지켜진다 — 2026-08-13 에 그래서 €790·€380 결제창이 아예 열리지 않았다.
+
+     ※ 금액은 이 파일에 없다. 서버가 article_submissions.fee_type 으로 산출한다.
+       브라우저는 "어느 기고" 만 말하고 "얼마" 는 말하지 못한다.
+
+     ※ 마크업 리터럴은 영어로 둔다 — JS 가 죽으면 리터럴이 그대로 남으므로,
+       한글 리터럴을 두면 영어 사용자에게 한글이 보인다 (.claude/rules/frontend.md).
+       번역은 맨 아래 인라인 L 사전(9개 언어)이 한다. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Article Submissions — PAP Magazine</title>
+<meta name="description" content="Track the status of your article submissions to PAP Magazine and settle the publication fee for promotional pieces.">
+<link rel="canonical" href="https://www.pap-magazine.com/submission/article/status">
+<meta name="robots" content="noindex,follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Montserrat','Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#000;color:#fff;min-height:100vh;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:820px;margin:0 auto;padding:72px 24px 120px}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:44px;gap:16px;flex-wrap:wrap}
+  .logo{font-size:12px;font-weight:800;letter-spacing:.35em;text-transform:uppercase}
+  .topright{display:flex;align-items:center;gap:16px}
+  .back{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);border-bottom:1px solid rgba(255,255,255,.2);padding-bottom:3px}
+  .back:hover{color:#fff;border-color:#fff}
+  select#langSelect{background:#000;color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.2);font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.15em;padding:7px 9px;cursor:pointer}
+  .eyebrow{font-size:10px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;color:#c33b3b;margin-bottom:18px}
+  .eyebrow::before{content:'';display:inline-block;width:26px;height:2px;background:#891717;vertical-align:middle;margin-right:12px}
+  h1{font-size:clamp(24px,4vw,34px);font-weight:800;line-height:1.25;letter-spacing:-.01em;margin-bottom:14px}
+  .lede{font-size:14px;color:rgba(255,255,255,.6);line-height:1.9;margin-bottom:40px}
+
+  .row{border:1px solid rgba(255,255,255,.16);padding:24px 22px;margin-bottom:14px}
+  .row h2{font-size:17px;font-weight:800;line-height:1.35;margin-bottom:6px}
+  .row .sub{font-size:13px;color:rgba(255,255,255,.55);line-height:1.7;margin-bottom:12px}
+  .meta{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:rgba(255,255,255,.5);margin-bottom:4px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+  .fb{margin-top:14px;border-left:3px solid rgba(255,255,255,.3);padding:10px 14px;background:rgba(255,255,255,.04)}
+  .fb .fbl{font-size:9.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:5px}
+  .fb .fbt{font-size:13px;line-height:1.85;color:rgba(255,255,255,.8);white-space:pre-wrap}
+  .due{margin-top:16px;border:1px solid #891717;background:rgba(137,23,23,.12);padding:16px}
+  .due p{font-size:12.5px;line-height:1.85;color:rgba(255,255,255,.82);margin-bottom:12px}
+  button.primary{background:#891717;color:#fff;border:none;font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:14px 28px;cursor:pointer;transition:background .25s}
+  button.primary:hover{background:#a51c1c}
+  .pub{margin-top:12px;font-size:12px}
+  .pub a{border-bottom:1px solid rgba(255,255,255,.3)}
+
+  .gate,.empty{border:1px solid rgba(255,255,255,.16);padding:52px 26px;text-align:center}
+  .gate h2,.empty h2{font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#c33b3b;margin-bottom:14px}
+  .gate p,.empty p{font-size:13.5px;color:rgba(255,255,255,.6);line-height:1.95;margin-bottom:22px;white-space:pre-line}
+  .cta{display:inline-block;background:#891717;color:#fff;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:16px 34px}
+  .loading{color:rgba(255,255,255,.4);font-size:13px;padding:40px 0;text-align:center}
+  .foot{margin-top:56px;font-size:11.5px;color:rgba(255,255,255,.3);line-height:2}
+  .foot a{color:rgba(255,255,255,.5);border-bottom:1px solid rgba(255,255,255,.2)}
+  @media(max-width:600px){ .wrap{padding:56px 18px 88px} .row{padding:20px 16px} }
+</style>
+<script src="/pap-geo-lang.js?v=2"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="logo" href="/">PAP MAGAZINE</a>
+    <div class="topright">
+      <a class="back" href="/submission/article" data-i18n="navNew">Write another</a>
+      <select id="langSelect" onchange="setLang(this.value)" aria-label="Language">
+        <option value="ko">KO</option><option value="en">EN</option><option value="de">DE</option>
+        <option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option>
+        <option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="eyebrow" data-i18n="eyebrow">Article submissions</div>
+  <h1 data-i18n="h1">My article submissions</h1>
+  <p class="lede" data-i18n="lede">Where each piece stands, and the publication fee when one applies. Nothing is charged unless we accept your piece.</p>
+
+  <div id="gate" class="gate" style="display:none">
+    <h2 data-i18n="gateTitle">Members only</h2>
+    <p data-i18n="gateDesc">Log in to see your article submissions.</p>
+    <a href="/auth?mode=login" class="cta" data-i18n="gateLogin">Log in / Sign up</a>
+  </div>
+
+  <div id="loading" class="loading" data-i18n="loading">Loading…</div>
+  <div id="list"></div>
+
+  <div id="empty" class="empty" style="display:none">
+    <h2 data-i18n="emptyTitle">Nothing here yet</h2>
+    <p data-i18n="emptyDesc">You have not sent us an article yet.</p>
+    <a href="/submission/article" class="cta" data-i18n="emptyCta">Write an article</a>
+  </div>
+
+  <div class="foot">
+    <p><a href="/submission" data-i18n="navBack">All submission tracks</a> &nbsp;·&nbsp; <a href="/submissions" data-i18n="navGuide">Submission Guide</a> &nbsp;·&nbsp; <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p>
+  </div>
+</div>
+
+<script src="/pap-api.js?v=20" defer></script>
+<script src="/pap-submission-fee.js?v=11" defer></script>
+<script>
+/* ── 화면 그리기 ───────────────────────────────────────────────────────
+ * 렌더 안전: 텍스트는 esc(), 링크는 스킴을 확인한다. 회원이 적은 제목·피드백이
+ * 그대로 innerHTML 에 들어가는 자리이므로 이스케이프가 필수다.
+ */
+function $(id){ return document.getElementById(id); }
+function token(){ try{ return localStorage.getItem('pap-token'); }catch(e){ return null; } }
+function tr(k){ var d = L[_lang] || L.en; return d[k] || (L.en && L.en[k]) || ''; }
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+/* 발행된 기사 주소만 만든다 — 서버가 준 slug/custom_url 에서 경로에 쓸 수 있는
+   글자만 남긴다. 그대로 href 에 넣으면 저장된 값이 링크가 되는 자리가 된다. */
+function articleHref(a){
+  var raw = String((a && (a.custom_url || a.slug)) || '');
+  var slug = raw.replace(/^\/+/, '').split(/[?#]/)[0];
+  if (!/^[A-Za-z0-9가-힣._~-]+$/.test(slug)) return '';
+  return '/article/' + slug;
+}
+
+var STATUS_COLOR = { pending:'#ca8a04', approved:'#16a34a', rejected:'#dc2626', withdrawn:'#64748b' };
+function statusChip(s){
+  var key = { pending:'stPending', approved:'stApproved', rejected:'stRejected', withdrawn:'stWithdrawn' }[s];
+  var c = STATUS_COLOR[s] || '#64748b';
+  return '<span class="chip"><span class="dot" style="background:' + c + '"></span>'
+    + esc(key ? tr(key) : String(s || '')) + '</span>';
+}
+function feeChip(s){
+  if (s.fee_type !== 'branded') return '<span class="chip" style="color:rgba(255,255,255,.5)">' + esc(tr('feeFree')) + '</span>';
+  if (s.payment_status === 'paid') return '<span class="chip" style="color:#5fbf7f">' + esc(tr('feePaid')) + '</span>';
+  if (s.payment_status === 'waived') return '<span class="chip" style="color:#5fbf7f">' + esc(tr('feeWaived')) + '</span>';
+  return '<span class="chip" style="color:#e08b8b">' + esc(tr('feeDue')) + '</span>';
+}
+/* 결제 버튼을 띄울 조건: 홍보성 판정 · 아직 미결제 · 거절/철회된 건이 아님.
+   서버도 같은 조건을 다시 본다(api/article-submissions/paypal-order.js) —
+   화면은 안내일 뿐이고 판정은 서버가 한다. */
+function needsPayment(s){
+  return s.fee_type === 'branded'
+    && s.payment_status !== 'paid' && s.payment_status !== 'waived'
+    && s.status !== 'rejected' && s.status !== 'withdrawn';
+}
+
+function render(rows){
+  /* 언어를 바꾸면 상태 칩·안내문까지 다시 그려야 한다 — 마지막 목록을 기억해 둔다. */
+  try { window._papArtRows = rows; } catch(e){}
+  var box = $('list');
+  if (!rows.length){ box.innerHTML = ''; $('empty').style.display = ''; return; }
+  $('empty').style.display = 'none';
+  box.innerHTML = rows.map(function(s){
+    var unit = s.body_lang === 'ko' ? tr('unitChars') : tr('unitWords');
+    var when = String(s.created_at || '').slice(0, 10);
+    var art = s.linked_article;
+    var href = art ? articleHref(art) : '';
+    return '<div class="row">'
+      + '<h2>' + esc(s.title || '—') + '</h2>'
+      + (s.subtitle ? '<div class="sub">' + esc(s.subtitle) + '</div>' : '')
+      + '<div class="meta">'
+      +   statusChip(s.status) + feeChip(s)
+      +   '<span>' + esc(String(s.word_count || 0)) + esc(unit) + '</span>'
+      +   '<span>' + esc(String(s.category || '')) + '</span>'
+      +   '<span>' + esc(when) + '</span>'
+      + '</div>'
+      + (s.feedback
+        ? '<div class="fb"><div class="fbl">' + esc(tr('fbLabel')) + '</div><div class="fbt">' + esc(s.feedback) + '</div></div>'
+        : '')
+      + (needsPayment(s)
+        ? '<div class="due"><p>' + esc(tr('payNote')) + '</p>'
+          + '<button class="primary" data-pay="' + esc(s.id) + '">' + esc(tr('payBtn')) + '</button></div>'
+        : '')
+      + (href
+        ? '<div class="pub">' + esc(tr('published')) + ' <a href="' + esc(href) + '">' + esc(href) + '</a></div>'
+        : (s.status === 'approved' ? '<div class="pub" style="color:rgba(255,255,255,.45)">' + esc(tr('approvedWait')) + '</div>' : ''))
+      + '</div>';
+  }).join('');
+}
+
+async function load(){
+  $('loading').style.display = '';
+  try{
+    var r = await fetch('/api/article-submissions/mine', {
+      headers: { 'Authorization': 'Bearer ' + token(), 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+    });
+    var j = await r.json().catch(function(){ return {}; });
+    $('loading').style.display = 'none';
+    if (!r.ok) { $('list').innerHTML = '<div class="loading">' + esc(tr('loadFail')) + '</div>'; return; }
+    render((j && j.submissions) || []);
+  }catch(e){
+    $('loading').style.display = 'none';
+    $('list').innerHTML = '<div class="loading">' + esc(tr('loadFail')) + '</div>';
+    try{ console.error('[article-status]', e); }catch(_){}
+  }
+}
+
+/* 결제 — pap-submission-fee.js 의 공용 버튼을 아티클 엔드포인트로 돌린다.
+   금액은 넘기지 않는다. 서버가 fee_type 으로 산출한다. */
+document.addEventListener('click', function(e){
+  var t = e.target;
+  if (!t || !t.getAttribute) return;
+  var id = t.getAttribute('data-pay');
+  if (!id) return;
+  if (typeof window.papPayOneTime !== 'function'){
+    alert(tr('payUnavailable'));
+    return;
+  }
+  window.papPayOneTime({
+    submissionId: id,
+    kind: 'article_fee',
+    endpoints: {
+      order: '/api/article-submissions/paypal-order',
+      capture: '/api/article-submissions/paypal-capture',
+    },
+    onDone: function(ok){ if (ok) setTimeout(load, 800); },
+  });
+});
+
+function boot(){
+  if (!token()){ $('gate').style.display = ''; $('loading').style.display = 'none'; return; }
+  load();
+}
+</script>
+
+<script>
+/* ── 9개 언어 ────────────────────────────────────────────────────────── */
+var _lang = 'en';
+var L = {
+ko:{navNew:'새 기고 쓰기',navBack:'서브미션 전체',navGuide:'서브미션 안내',eyebrow:'아티클 기고',h1:'내 아티클 기고',lede:'각 글이 어디까지 왔는지, 게재료가 붙은 경우 그 안내를 여기서 봅니다. 게재되지 않으면 어떤 비용도 청구되지 않습니다.',gateTitle:'회원 전용',gateDesc:'로그인하면 내 기고 현황을 볼 수 있습니다.',gateLogin:'로그인 / 가입',loading:'불러오는 중…',loadFail:'목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.',emptyTitle:'아직 없습니다',emptyDesc:'아직 보내신 아티클이 없습니다.',emptyCta:'아티클 기고하기',stPending:'심사 중',stApproved:'게재 확정',stRejected:'게재하지 않음',stWithdrawn:'철회',feeFree:'무료',feeDue:'게재료 €790 미납',feePaid:'게재료 결제 완료',feeWaived:'게재료 면제',unitWords:'단어',unitChars:'자',fbLabel:'에디터 피드백',payNote:'이 글은 특정 브랜드나 아티스트를 알리는 홍보성 글로 분류되었습니다. 게재를 원하시면 게재료 €790 을 결제해 주세요. 결제하지 않으셔도 괜찮습니다 — 그 경우 글은 게재되지 않은 채로 남고, 청구되는 금액은 없습니다.',payBtn:'€790 결제하기',payUnavailable:'결제 모듈을 불러오지 못했습니다. 새로고침한 뒤 다시 시도해 주세요.',published:'게재된 기사:',approvedWait:'게재 확정 — 편집 일정에 따라 올라갑니다.'},
+en:{navNew:'Write another',navBack:'All submission tracks',navGuide:'Submission Guide',eyebrow:'Article submissions',h1:'My article submissions',lede:'Where each piece stands, and the publication fee when one applies. Nothing is charged unless we accept your piece.',gateTitle:'Members only',gateDesc:'Log in to see your article submissions.',gateLogin:'Log in / Sign up',loading:'Loading…',loadFail:'Could not load your submissions. Please try again in a moment.',emptyTitle:'Nothing here yet',emptyDesc:'You have not sent us an article yet.',emptyCta:'Write an article',stPending:'Under review',stApproved:'Accepted',stRejected:'Not published',stWithdrawn:'Withdrawn',feeFree:'Free',feeDue:'790 EUR fee due',feePaid:'Fee paid',feeWaived:'Fee waived',unitWords:' words',unitChars:' characters',fbLabel:'Editor feedback',payNote:'We read this piece as promotional — written to present one specific brand or artist. If you would like it published, settle the 790 EUR publication fee. You do not have to: if you leave it, the piece simply stays unpublished and nothing is charged.',payBtn:'Pay 790 EUR',payUnavailable:'The payment module did not load. Please refresh and try again.',published:'Published article:',approvedWait:'Accepted — it goes live according to our editorial schedule.'},
+de:{navNew:'Weiteren schreiben',navBack:'Alle Einreichungswege',navGuide:'Einreichungs-Guide',eyebrow:'Artikel-Einreichungen',h1:'Meine Artikel-Einreichungen',lede:'Wo jeder Text steht und, wenn eine Gebühr anfällt, welche. Es wird nichts berechnet, solange wir Ihren Text nicht annehmen.',gateTitle:'Nur für Mitglieder',gateDesc:'Melden Sie sich an, um Ihre Einreichungen zu sehen.',gateLogin:'Anmelden / Registrieren',loading:'Wird geladen…',loadFail:'Ihre Einreichungen konnten nicht geladen werden. Bitte später erneut versuchen.',emptyTitle:'Noch nichts',emptyDesc:'Sie haben uns noch keinen Artikel gesendet.',emptyCta:'Artikel schreiben',stPending:'In Prüfung',stApproved:'Angenommen',stRejected:'Nicht veröffentlicht',stWithdrawn:'Zurückgezogen',feeFree:'Kostenlos',feeDue:'790 EUR offen',feePaid:'Gebühr bezahlt',feeWaived:'Gebühr erlassen',unitWords:' Wörter',unitChars:' Zeichen',fbLabel:'Feedback der Redaktion',payNote:'Wir lesen diesen Text als werblich — geschrieben, um eine bestimmte Marke oder einen Künstler vorzustellen. Wenn Sie veröffentlichen möchten, zahlen Sie die Veröffentlichungsgebühr von 790 EUR. Sie müssen nicht: Wenn Sie es lassen, bleibt der Text unveröffentlicht und es wird nichts berechnet.',payBtn:'790 EUR bezahlen',payUnavailable:'Das Zahlungsmodul wurde nicht geladen. Bitte neu laden und erneut versuchen.',published:'Veröffentlichter Artikel:',approvedWait:'Angenommen — er erscheint gemäß unserem Redaktionsplan.'},
+it:{navNew:'Scrivine un altro',navBack:'Tutti i percorsi',navGuide:'Guida alle submission',eyebrow:'Invii di articoli',h1:'I miei articoli inviati',lede:'A che punto è ogni testo e, quando previsto, il costo di pubblicazione. Non ti viene addebitato nulla se non accettiamo il testo.',gateTitle:'Solo membri',gateDesc:'Accedi per vedere i tuoi invii.',gateLogin:'Accedi / Registrati',loading:'Caricamento…',loadFail:'Non è stato possibile caricare i tuoi invii. Riprova tra poco.',emptyTitle:'Ancora nulla',emptyDesc:'Non ci hai ancora inviato un articolo.',emptyCta:'Scrivi un articolo',stPending:'In revisione',stApproved:'Accettato',stRejected:'Non pubblicato',stWithdrawn:'Ritirato',feeFree:'Gratis',feeDue:'790 EUR da saldare',feePaid:'Costo saldato',feeWaived:'Costo esonerato',unitWords:' parole',unitChars:' caratteri',fbLabel:'Feedback editoriale',payNote:'Leggiamo questo testo come promozionale: scritto per presentare un brand o un artista specifico. Se desideri pubblicarlo, salda il costo di pubblicazione di 790 EUR. Non sei obbligato: se lasci così, il testo resta non pubblicato e non viene addebitato nulla.',payBtn:'Paga 790 EUR',payUnavailable:'Il modulo di pagamento non si è caricato. Ricarica la pagina e riprova.',published:'Articolo pubblicato:',approvedWait:'Accettato — uscirà secondo il nostro calendario editoriale.'},
+fr:{navNew:'En écrire un autre',navBack:'Tous les parcours',navGuide:'Guide des soumissions',eyebrow:'Soumissions d articles',h1:'Mes articles soumis',lede:'Où en est chaque texte et, le cas échéant, les frais de publication. Rien ne vous est facturé si nous ne retenons pas votre texte.',gateTitle:'Réservé aux membres',gateDesc:'Connectez-vous pour voir vos soumissions.',gateLogin:'Connexion / Inscription',loading:'Chargement…',loadFail:'Impossible de charger vos soumissions. Réessayez dans un instant.',emptyTitle:'Rien pour le moment',emptyDesc:'Vous ne nous avez pas encore envoyé d article.',emptyCta:'Écrire un article',stPending:'En cours d examen',stApproved:'Accepté',stRejected:'Non publié',stWithdrawn:'Retiré',feeFree:'Gratuit',feeDue:'790 EUR à régler',feePaid:'Frais réglés',feeWaived:'Frais offerts',unitWords:' mots',unitChars:' caractères',fbLabel:'Retour de l éditeur',payNote:'Nous lisons ce texte comme promotionnel : écrit pour présenter une marque ou un artiste en particulier. Si vous souhaitez le publier, réglez les frais de publication de 790 EUR. Vous n y êtes pas obligé : si vous laissez, le texte reste non publié et rien ne vous est facturé.',payBtn:'Payer 790 EUR',payUnavailable:'Le module de paiement ne s est pas chargé. Rechargez la page et réessayez.',published:'Article publié :',approvedWait:'Accepté — il paraîtra selon notre calendrier éditorial.'},
+es:{navNew:'Escribir otro',navBack:'Todas las vías',navGuide:'Guía de envíos',eyebrow:'Envíos de artículos',h1:'Mis artículos enviados',lede:'En qué punto está cada texto y, cuando corresponde, la tarifa de publicación. No se te cobra nada si no aceptamos tu texto.',gateTitle:'Solo miembros',gateDesc:'Inicia sesión para ver tus envíos.',gateLogin:'Iniciar sesión / Registrarse',loading:'Cargando…',loadFail:'No se pudieron cargar tus envíos. Inténtalo de nuevo en un momento.',emptyTitle:'Todavía nada',emptyDesc:'Aún no nos has enviado ningún artículo.',emptyCta:'Escribir un artículo',stPending:'En revisión',stApproved:'Aceptado',stRejected:'No publicado',stWithdrawn:'Retirado',feeFree:'Gratis',feeDue:'790 EUR pendientes',feePaid:'Tarifa pagada',feeWaived:'Tarifa exenta',unitWords:' palabras',unitChars:' caracteres',fbLabel:'Comentarios del editor',payNote:'Leemos este texto como promocional: escrito para presentar una marca o un artista concretos. Si quieres publicarlo, abona la tarifa de publicación de 790 EUR. No es obligatorio: si lo dejas, el texto queda sin publicar y no se cobra nada.',payBtn:'Pagar 790 EUR',payUnavailable:'El módulo de pago no se cargó. Recarga la página e inténtalo de nuevo.',published:'Artículo publicado:',approvedWait:'Aceptado — saldrá según nuestro calendario editorial.'},
+ja:{navNew:'もう一本書く',navBack:'サブミッション一覧',navGuide:'サブミッション案内',eyebrow:'記事の投稿',h1:'私の記事投稿',lede:'各原稿がどこまで進んだか、掲載料が生じた場合はその案内をここで確認できます。掲載に至らなければ費用は一切かかりません。',gateTitle:'会員限定',gateDesc:'ログインすると投稿状況を確認できます。',gateLogin:'ログイン / 登録',loading:'読み込み中…',loadFail:'投稿一覧を読み込めませんでした。しばらくしてからもう一度お試しください。',emptyTitle:'まだありません',emptyDesc:'まだ記事をお送りいただいていません。',emptyCta:'記事を書く',stPending:'審査中',stApproved:'掲載決定',stRejected:'掲載なし',stWithdrawn:'取り下げ',feeFree:'無料',feeDue:'掲載料 790 EUR 未納',feePaid:'掲載料お支払い済み',feeWaived:'掲載料免除',unitWords:' 単語',unitChars:'字',fbLabel:'エディターフィードバック',payNote:'この原稿は特定のブランドまたはアーティストを紹介する宣伝目的の記事と判断されました。掲載をご希望の場合は掲載料 790 EUR をお支払いください。お支払いにならなくても構いません — その場合、記事は未掲載のままとなり、費用は発生しません。',payBtn:'790 EUR を支払う',payUnavailable:'決済モジュールを読み込めませんでした。再読み込みしてからもう一度お試しください。',published:'掲載された記事:',approvedWait:'掲載決定 — 編集スケジュールに沿って公開されます。'},
+zh:{navNew:'再写一篇',navBack:'全部投稿方式',navGuide:'投稿指南',eyebrow:'文章投稿',h1:'我的文章投稿',lede:'每篇文稿的进展，以及适用刊发费用时的说明。若文稿未获刊发，不会产生任何费用。',gateTitle:'仅限会员',gateDesc:'登录后可查看您的投稿状态。',gateLogin:'登录 / 注册',loading:'加载中…',loadFail:'未能加载您的投稿，请稍后重试。',emptyTitle:'暂时没有',emptyDesc:'您还没有向我们投稿。',emptyCta:'撰写文章',stPending:'审核中',stApproved:'已采用',stRejected:'未刊发',stWithdrawn:'已撤回',feeFree:'免费',feeDue:'待付刊发费 790 欧元',feePaid:'刊发费已付',feeWaived:'刊发费已免',unitWords:' 词',unitChars:' 字',fbLabel:'编辑反馈',payNote:'我们认为这篇文稿属推广性内容——为介绍某一特定品牌或艺术家而写。若您希望刊发，请支付刊发费用 790 欧元。您也可以不支付：若不支付，文稿将保持未刊发状态，不会产生任何费用。',payBtn:'支付 790 欧元',payUnavailable:'支付模块未能加载，请刷新页面后重试。',published:'已刊发的文章：',approvedWait:'已采用 — 将按编辑排期上线。'},
+ru:{navNew:'Написать ещё',navBack:'Все способы подачи',navGuide:'Руководство по подаче',eyebrow:'Поданные статьи',h1:'Мои поданные статьи',lede:'На каком этапе каждый текст и, если применимо, плата за публикацию. Ничего не списывается, пока мы не примем ваш текст.',gateTitle:'Только для участников',gateDesc:'Войдите, чтобы увидеть свои заявки.',gateLogin:'Войти / Регистрация',loading:'Загрузка…',loadFail:'Не удалось загрузить ваши заявки. Попробуйте ещё раз через минуту.',emptyTitle:'Пока ничего',emptyDesc:'Вы ещё не присылали нам статью.',emptyCta:'Написать статью',stPending:'На рассмотрении',stApproved:'Принято',stRejected:'Не опубликовано',stWithdrawn:'Отозвано',feeFree:'Бесплатно',feeDue:'К оплате 790 EUR',feePaid:'Оплачено',feeWaived:'Плата не взимается',unitWords:' слов',unitChars:' знаков',fbLabel:'Комментарий редактора',payNote:'Мы прочитали этот текст как рекламный — написанный, чтобы представить один конкретный бренд или артиста. Если хотите опубликовать, внесите плату за публикацию 790 EUR. Это не обязательно: если оставить так, текст просто останется неопубликованным и с вас ничего не возьмут.',payBtn:'Оплатить 790 EUR',payUnavailable:'Платёжный модуль не загрузился. Обновите страницу и попробуйте снова.',published:'Опубликованная статья:',approvedWait:'Принято — выйдет согласно редакционному плану.'}
+};
+
+function setLang(l){
+  /* 폴백은 반드시 영어. 키 단위로도 영어로 떨어뜨린다
+     (사전에 없는 언어가 통째로 한국어로 뜨는 함정 방지 — frontend.md) */
+  var d = L[l] || L.en;
+  _lang = L[l] ? l : 'en';
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n');
+    var v = d[k] || (L.en && L.en[k]);
+    if (v) el.textContent = v;
+  });
+  document.documentElement.lang = l;
+  var sel = document.getElementById('langSelect'); if (sel) sel.value = l;
+  try { localStorage.setItem('pap-lang', l); } catch(e){}
+  /* 목록은 이미 그려진 상태일 수 있다 — 언어를 바꾸면 다시 그린다. */
+  try { if (window._papArtRows) render(window._papArtRows); } catch(e){}
+}
+
+/* pap-i18n.js 가 defer 로 전역 setLang 을 덮어쓴다. 덮어쓰이기 전에 참조를
+   잡아 두고 이어서 적용한다 (frontend.md 의 전역 setLang 충돌 함정). */
+var _papPageSetLang = setLang;
+document.addEventListener('DOMContentLoaded', function(){
+  var g = window.setLang;
+  if (typeof g !== 'function'){ window.setLang = _papPageSetLang; return; }
+  if (g === _papPageSetLang || g._papPageChained) return;
+  var chained = function(l){
+    try { g.apply(this, arguments); } catch(e){}
+    try { _papPageSetLang(l); } catch(e){}
+  };
+  chained._papPageChained = true;
+  window.setLang = chained;
+});
+
+(function(){
+  var l; try { l = localStorage.getItem('pap-lang'); } catch(e){}
+  if (!l) { var n = (navigator.language || 'en').slice(0,2).toLowerCase();
+            l = L[n] ? n : 'en'; }
+  _papPageSetLang(l);
+  boot();
+})();
+document.addEventListener('pap-lang-changed', function(ev){
+  try { var nl = (ev && ev.detail && ev.detail.lang) || localStorage.getItem('pap-lang'); if (nl) _papPageSetLang(nl); } catch(e){}
+});
+</script>
+</body>
+</html>

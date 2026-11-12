@@ -38,9 +38,16 @@ console.log('=== 무료 투고에는 결제가 붙지 않는다 ===');
 console.log('=== 승인 단계는 캡처가 아니다 (돈이 안 빠진다) ===');
 {
   ok("mode:'authorize' 로 부른다", /mode:\s*'authorize'/.test(sub));
-  ok('승인 모드는 paypal-authorize 로 간다',
-    /_isAuth \? '\/api\/submissions\/paypal-authorize' : '\/api\/submissions\/paypal-capture'/.test(fee),
+  /* 2026-11-12 — 엔드포인트가 옵션으로 빠졌다(아티클 기고 게재료가 같은 버튼을
+     쓴다). 검사하려는 것은 리터럴이 아니라 **갈림길**이다: 승인 모드는 authorize,
+     캡처 모드는 capture 로 가고, 기본값은 여전히 서브미션 엔드포인트여야 한다. */
+  ok('승인 모드는 authorize 로, 캡처 모드는 capture 로 간다',
+    /_isAuth \? _epAuthorize : _epCapture/.test(fee),
     '제출 시점에 캡처하면 떨어져도 돈이 빠진다');
+  ok('  → 기본 엔드포인트는 서브미션 쪽 그대로다 (에디토리얼 동작 불변)',
+    /_EP\.authorize\s*\|\|\s*'\/api\/submissions\/paypal-authorize'/.test(fee)
+    && /_EP\.capture\s*\|\|\s*'\/api\/submissions\/paypal-capture'/.test(fee)
+    && /_EP\.order\s*\|\|\s*'\/api\/submissions\/paypal-order'/.test(fee));
   ok('  → 승인 모드에서는 새로고침하지 않는다',
     /if\(_isAuth\)\{[\s\S]{0,400}?done\(true, 'authorized'\)/.test(fee));
 }

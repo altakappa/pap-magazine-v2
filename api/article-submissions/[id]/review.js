@@ -129,6 +129,17 @@ module.exports = async function handler(req, res) {
 
     // ── 거절 ──
     if (action === 'reject') {
+      /* 결제가 끝난 건을 코드로 거절하지 않는다 — 환불 대화이기 때문이다.
+         €790 판정은 사실상 "내면 싣는다" 는 수락이고, 제출자는 그 말을 믿고
+         결제했다. 그걸 뒤집는 결정은 돈을 돌려주는 절차와 함께 사람이 해야
+         한다. fee_type 을 free 로 되돌릴 때와 같은 이유, 같은 code 다. */
+      if (PAID_OK.indexOf(String(sub.payment_status)) !== -1) {
+        return res.status(409).json({
+          message: 'This submission is already paid. Handle the refund first, then reject it.',
+          code: 'already_settled',
+          payment_status: sub.payment_status,
+        });
+      }
       const feedback = String(body.feedback == null ? '' : body.feedback).slice(0, 4000);
       const { error: e } = await supabaseAdmin.from('article_submissions')
         .update({ status: 'rejected', feedback: feedback || null, reviewed_by: admin.id, reviewed_at: now, updated_at: now })

@@ -981,7 +981,7 @@ const templates = {
         </table>
         <p>${L.body2}</p>
         <p style="color:#999;font-size:13px;line-height:1.8;">${L.body3}</p>
-        <a href="${FRONTEND_URL}/mypage" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+        <a href="${FRONTEND_URL}/submission/article/status" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
       `, lang),
     };
   },
@@ -1006,7 +1006,7 @@ const templates = {
         </table>
         <p>${L.body2}</p>
         <p style="color:#999;font-size:13px;line-height:1.8;">${L.body3}</p>
-        <a href="${FRONTEND_URL}/mypage" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+        <a href="${FRONTEND_URL}/submission/article/status" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
       `, lang),
     };
   },
@@ -1023,7 +1023,7 @@ const templates = {
         <p>${L.body1.replace('{title}', t)}</p>
         <p>${L.body2}</p>
         <p style="color:#999;font-size:13px;line-height:1.8;">${L.body3}</p>
-        <a href="${FRONTEND_URL}/mypage" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+        <a href="${FRONTEND_URL}/submission/article/status" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
       `, lang),
     };
   },

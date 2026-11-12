@@ -702,6 +702,10 @@
       "destination": "/submission-article.html"
     },
     {
+      "source": "/submission/article/status",
+      "destination": "/submission-article-status.html"
+    },
+    {
       "source": "/subscribe",
       "destination": "/subscribe.html"
     },

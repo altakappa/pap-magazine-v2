@@ -67,6 +67,22 @@ async function paypalFetch(path, opts) {
  * @returns {{cents:number, label:string} | {error:string}}
  */
 function resolveAmount(sub, kind, addon) {
+  /* 아티클 기고 게재료 (2026-11-12) — €790, 홍보성으로 판정된 건만.
+   *
+   * 에디토리얼과 다른 점 하나: 금액의 근거가 **심사 결과**다.
+   *   에디토리얼은 제출 시점에 룩·브랜드 구성으로 유형이 정해지므로 제출과
+   *   동시에 금액이 나온다. 아티클은 도메니코가 심사에서 '홍보성' 으로
+   *   판정해야 비로소 €790 이 된다(도메니코 결정 2026-11-12: 심사 후 통보).
+   *   그래서 여기서는 article_submissions.fee_type 을 본다. 그 칸은 관리자
+   *   엔드포인트만 쓸 수 있으므로 클라이언트가 위조할 수 없다.
+   *
+   * 금액은 submissionPayment.SUBMISSION_FEE_CENTS.branded 를 그대로 빌려 쓴다 —
+   * 두 벌로 적으면 한쪽만 올라간다. */
+  if (kind === 'article_fee') {
+    if (!sub || String(sub.fee_type) !== 'branded') return { error: 'not_a_paid_article' };
+    const { SUBMISSION_FEE_CENTS } = require('./submissionPayment');
+    return { cents: SUBMISSION_FEE_CENTS.branded, label: 'PAP MAGAZINE article publication fee' };
+  }
   if (kind === 'submission_addon') {
     const cents = ADDON_FEE_CENTS[addon];
     if (!cents) return { error: 'unknown_addon' };
@@ -84,13 +100,16 @@ function resolveAmount(sub, kind, addon) {
 
 /** custom_id 로 되돌려 받을 식별자. PayPal 은 127자 제한이 있어 짧게 쓴다. */
 function buildCustomId(kind, submissionId, addon) {
-  return kind === 'submission_addon'
-    ? `a|${submissionId}|${addon}`
-    : `f|${submissionId}`;
+  if (kind === 'submission_addon') return `a|${submissionId}|${addon}`;
+  if (kind === 'article_fee') return `af|${submissionId}`;   // 2026-11-12 아티클 기고 게재료
+  return `f|${submissionId}`;
 }
 
 function parseCustomId(s) {
   const p = String(s || '').split('|');
+  // 'af' 를 'a' 보다 먼저 본다 — split 결과의 첫 칸을 정확히 비교하므로
+  // 접두어가 섞이지는 않지만, 읽는 사람이 헷갈리지 않게 순서를 맞춰 둔다.
+  if (p[0] === 'af') return { kind: 'article_fee', submissionId: p[1] };
   if (p[0] === 'a') return { kind: 'submission_addon', submissionId: p[1], addon: p[2] };
   if (p[0] === 'f') return { kind: 'submission_fee', submissionId: p[1] };
   return null;
