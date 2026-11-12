@@ -515,6 +515,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="sb-section-title">서브미션 / Pull-Letter</div>
     <a href="#" onclick="go('submissions',this)"><span>📝</span> <span>서브미션 심사</span></a>
     <a href="#" onclick="go('articlesubs',this)"><span>✍️</span> <span>아티클 기고</span></a>
+    <a href="#" onclick="go('newstips',this)"><span>🚨</span> <span>제보</span></a>
     <a href="#" onclick="go('pullletters',this)"><span>⭐</span> <span>Pull-Letter 심사</span></a>
   </div>
 
@@ -1377,6 +1378,26 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
         </tbody></table>
       </div>
+    </div>
+  </div>
+
+  <!-- NEWS TIPS -->
+  <!-- 2026-11-12 제보(특종) 열람. '기사로 전환' 버튼은 **의도적으로 없다** —
+       도메니코가 제보를 보고 확인하고 직접 기사를 쓴다. 증거가 있어도 인물·시점·
+       맥락 확인은 여전히 필요하고, 버튼이 있으면 그 확인을 건너뛰기 쉬워진다.
+       미디어는 비공개 버킷이라 1시간짜리 서명 URL 로 본다.
+       원본은 접수 후 7일에 삭제된다 — 채택했으면 '미디어 확보' 를 눌러야 한다. -->
+  <div class="tab" id="t-newstips">
+    <div class="mn-header"><div class="mn-title">제보</div><div class="mn-actions"><button class="btn" onclick="loadNewsTips()">↻ 새로고침</button></div></div>
+    <div class="mn-body">
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>제보 목록</h3><div class="tbl-filters"><button class="tf on" onclick="filterNewsTips('',this)">전체</button><button class="tf" onclick="filterNewsTips('new',this)"><span class="tf-dot" style="background:#dc2626"></span>새 제보</button><button class="tf" onclick="filterNewsTips('checking',this)"><span class="tf-dot" style="background:#ca8a04"></span>확인 중</button><button class="tf" onclick="filterNewsTips('used',this)"><span class="tf-dot" style="background:#16a34a"></span>채택</button><button class="tf" onclick="filterNewsTips('dropped',this)"><span class="tf-dot" style="background:#64748b"></span>미사용</button></div></div>
+        <table><thead><tr><th>제목 / 장소</th><th>제보자</th><th>미디어</th><th>발생</th><th>접수</th><th>상태</th><th>작업</th></tr></thead>
+        <tbody id="newsTipListBody">
+          <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
+        </tbody></table>
+      </div>
+      <div id="newsTipDetail" style="display:none;margin-top:18px"></div>
     </div>
   </div>
 
@@ -3742,7 +3763,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=176" defer></script>
+<script src="/pap-admin.js?v=177" defer></script>
 <script src="/pap-admin-campaigns.js?v=5" defer></script>
 </body>
 </html>

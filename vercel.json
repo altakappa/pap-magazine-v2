@@ -266,6 +266,10 @@
     {
       "schedule": "12,32,52 * * * *",
       "path": "/api/cron/celeb-account-watch"
+    },
+    {
+      "path": "/api/cron/purge-news-tips",
+      "schedule": "40 18 * * *"
     }
   ],
   "rewrites": [
@@ -704,6 +708,10 @@
     {
       "source": "/submission/article/status",
       "destination": "/submission-article-status.html"
+    },
+    {
+      "source": "/submission/tip",
+      "destination": "/submission-tip.html"
     },
     {
       "source": "/subscribe",

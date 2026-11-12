@@ -45,12 +45,13 @@ const CARD_RE = /class="card(?: [a-z]+)?"/g;
 t('트랙 카드가 3개', (PAGE.match(CARD_RE) || []).length === 3,
   String((PAGE.match(CARD_RE) || []).length));
 t('에디토리얼 카드가 새 경로로 간다', /href="\/submission\/editorial"/.test(PAGE));
-/* 2026-11-12 — 아티클 트랙을 열었다. 에디토리얼·아티클 2개가 live,
-   제보만 준비 중이다. 제보를 열 때 이 숫자를 함께 고친다. */
-t('열린 트랙은 2개 (에디토리얼 · 아티클)', (PAGE.match(/class="card live"/g) || []).length === 2,
+/* 2026-11-12 — 세 트랙 전부 열렸다(에디토리얼·아티클·제보).
+   새 트랙을 '준비 중' 으로 추가하면 soon 숫자를 함께 고친다. */
+t('세 트랙이 모두 열려 있다', (PAGE.match(/class="card live"/g) || []).length === 3,
   String((PAGE.match(/class="card live"/g) || []).length));
 t('아티클 카드가 아티클 폼으로 간다', /href="\/submission\/article"/.test(PAGE));
-t('아직 안 연 트랙은 1개(제보)이고 soon 으로 표시', (PAGE.match(/class="card soon"/g) || []).length === 1);
+t('제보 카드가 제보 폼으로 간다', /href="\/submission\/tip"/.test(PAGE));
+t('준비 중 카드는 없다', (PAGE.match(/class="card soon"/g) || []).length === 0);
 /* 준비 안 된 트랙이 링크를 가지면 404 로 간다 — 그게 이 테스트의 핵심이다. */
 const soonBlocks = PAGE.split('class="card soon"').slice(1).map((s) => s.split('</div>\n\n')[0]);
 t('준비 중 카드에 href 가 없다', soonBlocks.every((b) => !/href=/.test(b)),

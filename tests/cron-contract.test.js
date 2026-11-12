@@ -92,6 +92,7 @@ console.log('=== 2. 돈·삭제를 건드리는 크론은 예약 실행만 허�
     'api/cron/subscription-expiry-sweep.js',      // 구독 강등
     'api/cron/withdraw-purge.js',                 // 계정 삭제
     'api/cron/purge-rejected-submissions.js',     // 서브미션 삭제
+    'api/cron/purge-news-tips.js',                // 제보 미디어 삭제 (2026-11-12)
     'api/cron/send-due-campaigns.js',             // 대량 메일 발송
     'api/cron/trial-ending-reminder.js',          // 대량 메일 발송
   ];

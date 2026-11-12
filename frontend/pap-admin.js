@@ -948,6 +948,7 @@ function go(id,el,opts){
   if(id==='casting') loadCastingCalls();
   if(id==='submissions') loadSubmissions();
   if(id==='articlesubs') loadArticleSubs();
+  if(id==='newstips') loadNewsTips();
   if(id==='pullletters') loadPullLetters();
   if(id==='newpost'){
     // QA report: 새 게시글 작성 페이지에서 뒤로가기 후 다시 클릭 시
@@ -16639,4 +16640,292 @@ document.addEventListener('click', function (e) {
   if ((id = t.getAttribute('data-artreject'))) { artReject(id); return; }
   var fee = t.getAttribute('data-artfee');
   if (fee && (id = t.getAttribute('data-artid'))) { artSetFee(id, fee); return; }
+});
+
+/* ══════════════════════════════════════════════════════════════════════
+ * 제보(특종) 열람 (2026-11-12)
+ *
+ * 도메니코 2026-11-11: "제보는 확인 안 된 단서를 받는게 아니라 특종을 받는거임."
+ *
+ * ■ '기사로 전환' 버튼은 없다 — 의도된 공백이다
+ * 도메니코가 제보를 보고 확인하고 **직접** 기사를 쓴다. 증거가 있어도 확인은
+ * 여전히 필요하다: 영상 속 인물이 정말 그 사람인지, 언제 찍힌 것인지, 맥락이
+ * 맞는지. 버튼을 두면 그 확인을 건너뛰기 쉬워진다.
+ *
+ * ■ 미디어는 서명 URL 로 본다
+ * 버킷 news-tips 는 비공개다. 확인 전에 경로만 아는 사람이 볼 수 있으면
+ * 초상권이 걸린 영상에서는 그 자체가 사고다. 서버가 1시간짜리 링크를 만들어
+ * 내려준다.
+ *
+ * ■ 채택하면 '미디어 확보' 를 눌러야 한다
+ * 원본은 7일 뒤 삭제된다. 확보하지 않은 used 제보는 퍼지 크론이 건드리지 않지만
+ * (api/cron/purge-news-tips.js), 쓰려면 결국 확보해야 한다. 큰 영상은 서버가
+ * 옮길 수 없어 직접 내려받아야 한다 — 화면이 그걸 분명히 말한다.
+ *
+ * 렌더 안전(.claude/rules/frontend.md): 텍스트 esc() · 속성 escAttr() · 링크 safeUrl().
+ * 버튼은 data-*(UUID)만 달고 위임으로 받는다.
+ * ══════════════════════════════════════════════════════════════════════ */
+var newsTips = [];
+var newsTipFilter = '';
+
+function _tipStatusChip(s) {
+  var m = { new: ['#dc2626', '새 제보'], checking: ['#ca8a04', '확인 중'], used: ['#16a34a', '채택'], dropped: ['#64748b', '미사용'] };
+  var v = m[s] || ['#64748b', String(s || '—')];
+  return '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px">'
+    + '<span style="width:7px;height:7px;border-radius:50%;background:' + v[0] + '"></span>' + esc(v[1]) + '</span>';
+}
+function _tipMb(n) {
+  n = Number(n) || 0;
+  return n < 1073741824 ? (Math.round(n / 1048576) + ' MB') : ((n / 1073741824).toFixed(2) + ' GB');
+}
+/* 브라우저가 그릴 수 있는 것만 미리보기를 띄운다. HEIC/HEIF·MOV 는 그려지지
+   않는 경우가 많아서(submissions 에서 TIFF 를 뺀 것과 같은 문제) 내려받기
+   링크를 준다 — 검은 칸을 보여주는 것보다 정직하다. */
+function _tipPlayable(type) { return type === 'video/mp4'; }
+function _tipViewable(type) { return type === 'image/jpeg' || type === 'image/png' || type === 'image/webp'; }
+
+async function loadNewsTips() {
+  var tb = document.getElementById('newsTipListBody');
+  if (tb) tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>';
+  try {
+    var q = '/news-tips?limit=100' + (newsTipFilter ? '&status=' + encodeURIComponent(newsTipFilter) : '');
+    var j = await apiGet(q);
+    newsTips = (j && j.tips) || [];
+    renderNewsTips();
+  } catch (e) {
+    if (tb) tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#dc2626;padding:40px 0">목록을 불러오지 못했습니다.</td></tr>';
+    try { console.error('[newstips] load failed', e); } catch (_) {}
+  }
+}
+function filterNewsTips(s, el) {
+  newsTipFilter = s || '';
+  try {
+    var box = el && el.parentNode;
+    if (box) Array.prototype.forEach.call(box.querySelectorAll('.tf'), function (b) { b.classList.remove('on'); });
+    if (el) el.classList.add('on');
+  } catch (_) {}
+  loadNewsTips();
+}
+
+function renderNewsTips() {
+  var tb = document.getElementById('newsTipListBody');
+  if (!tb) return;
+  if (!newsTips.length) {
+    tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">제보가 없습니다.</td></tr>';
+    return;
+  }
+  tb.innerHTML = newsTips.map(function (t) {
+    var who = (t.reporter && (t.reporter.display_name || t.reporter.email)) || '—';
+    var media = Array.isArray(t.media) ? t.media : [];
+    var vids = media.filter(function (m) { return m.kind === 'video'; }).length;
+    var imgs = media.length - vids;
+    var purged = !!t.media_purged_at;
+    var arch = !!t.media_archived;
+    return '<tr>'
+      + '<td><div style="font-weight:600">' + esc(t.title || '—') + '</div>'
+      +   '<div style="font-size:11px;color:var(--text3)">' + esc(t.location || '') + '</div></td>'
+      + '<td>' + esc(who) + (t.contactable ? '' : ' <span style="font-size:10px;color:var(--text3)">(연락 불가)</span>') + '</td>'
+      + '<td style="font-size:11px">' + (purged
+          ? '<span style="color:var(--text3)">삭제됨</span>'
+          : ('영상 ' + esc(String(vids)) + ' · 사진 ' + esc(String(imgs))))
+        + (arch ? ' <span style="color:#16a34a">· 확보</span>' : '') + '</td>'
+      + '<td style="font-size:11px;color:var(--text3)">' + esc(String(t.happened_at_text || '').slice(0, 30)) + '</td>'
+      + '<td style="font-size:11px;color:var(--text3)">' + esc(String(t.created_at || '').slice(0, 10)) + '</td>'
+      + '<td>' + _tipStatusChip(t.status) + '</td>'
+      + '<td><button class="btn btn-sm" data-tipopen="' + escAttr(t.id) + '">열기</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function _tipById(id) {
+  for (var i = 0; i < newsTips.length; i++) if (newsTips[i].id === id) return newsTips[i];
+  return null;
+}
+
+function openNewsTip(id) {
+  var t = _tipById(id);
+  if (!t) return;
+  var box = document.getElementById('newsTipDetail');
+  if (!box) return;
+
+  var media = Array.isArray(t.media) ? t.media : [];
+  var purged = !!t.media_purged_at;
+  var mediaHtml;
+  if (purged) {
+    mediaHtml = '<p style="color:var(--text3);font-size:12.5px">원본 미디어는 ' + esc(String(t.media_purged_at).slice(0, 10))
+      + ' 에 삭제되었습니다 (접수 후 7일).</p>';
+  } else if (!media.length) {
+    mediaHtml = '<p style="color:var(--text3);font-size:12.5px">미디어가 없습니다.</p>';
+  } else {
+    mediaHtml = media.map(function (m) {
+      var u = safeUrl(m.url || '');
+      var head = '<div style="font-size:11px;color:var(--text3);margin-bottom:6px">'
+        + esc(m.kind === 'video' ? '영상' : '사진') + ' · ' + esc(m.type || '') + ' · ' + esc(_tipMb(m.size))
+        + (m.name ? ' · ' + esc(m.name) : '') + '</div>';
+      if (!u) return '<div style="margin-bottom:16px">' + head + '<p style="font-size:12px;color:#b45309">링크를 만들지 못했습니다.</p></div>';
+      var view;
+      if (_tipPlayable(m.type)) {
+        view = '<video src="' + escAttr(u) + '" controls preload="metadata" style="max-width:100%;max-height:420px;background:#000"></video>';
+      } else if (_tipViewable(m.type)) {
+        view = '<a href="' + escAttr(u) + '" target="_blank" rel="noopener"><img src="' + escAttr(u)
+          + '" alt="" style="max-width:100%;max-height:420px;object-fit:contain;border:1px solid var(--line,#ddd)"></a>';
+      } else {
+        // HEIC·HEIF·MOV — 브라우저가 못 그린다. 검은 칸 대신 내려받기를 준다.
+        view = '<p style="font-size:12.5px">브라우저에서 미리보기가 되지 않는 형식입니다. '
+          + '<a href="' + escAttr(u) + '" target="_blank" rel="noopener" download>내려받아 확인</a></p>';
+      }
+      return '<div style="margin-bottom:16px">' + head + view
+        + '<div style="margin-top:6px"><a href="' + escAttr(u) + '" target="_blank" rel="noopener" download '
+        + 'style="font-size:11px">⬇ 내려받기</a></div></div>';
+    }).join('');
+  }
+
+  var arch = t.media_archived;
+  var archHtml = '';
+  if (arch) {
+    var files = (arch.files || []).map(function (f) {
+      var u = safeUrl(f.url || '');
+      return '<li style="font-size:12px;line-height:1.8">' + (u
+        ? '<a href="' + escAttr(u) + '" target="_blank" rel="noopener">' + esc(f.name || f.path) + '</a>'
+        : esc(f.name || f.path)) + ' · ' + esc(_tipMb(f.size)) + '</li>';
+    }).join('');
+    var manual = (arch.manual || []).map(function (f) {
+      return '<li style="font-size:12px;line-height:1.8;color:#b45309">' + esc(f.name || f.path)
+        + ' · ' + esc(_tipMb(f.size)) + ' — 직접 내려받아 기사에 올려 주세요'
+        + (f.failed ? ' (복사 실패)' : ' (서버가 옮길 수 없는 크기)') + '</li>';
+    }).join('');
+    archHtml = '<div style="margin-top:12px;font-size:11px;color:var(--text3)">확보 '
+      + esc(String(arch.at || '').slice(0, 16)) + '</div>'
+      + (files ? '<ul style="margin:6px 0 0 16px">' + files + '</ul>' : '')
+      + (manual ? '<ul style="margin:6px 0 0 16px">' + manual + '</ul>' : '');
+  }
+
+  box.innerHTML =
+    '<div class="tbl-wrap" style="padding:20px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">'
+    +   '<div><h3 style="margin:0 0 6px">' + esc(t.title || '—') + '</h3>'
+    +     '<div style="font-size:11px;color:var(--text3)">' + _tipStatusChip(t.status)
+    +       ' · ' + esc(t.location || '') + ' · ' + esc(String(t.happened_at_text || ''))
+    +       ' · 접수 ' + esc(String(t.created_at || '').slice(0, 16)) + '</div></div>'
+    +   '<button class="btn btn-sm" data-tipclose="1">닫기</button>'
+    + '</div>'
+
+    + '<div style="margin-top:16px">'
+    +   '<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px">제보 내용</div>'
+    +   '<div style="font-size:13px;line-height:1.95;white-space:pre-wrap">' + esc(t.body || '') + '</div>'
+    + '</div>'
+
+    + '<div style="margin-top:18px">'
+    +   '<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px">제보자</div>'
+    +   '<p style="font-size:12.5px;margin:0">'
+    +     esc((t.reporter && (t.reporter.display_name || '')) || '')
+    +     ((t.reporter && t.reporter.email) ? ' · ' + esc(t.reporter.email) : '')
+    +     ((t.reporter && t.reporter.country) ? ' · ' + esc(t.reporter.country) : '')
+    +     ' · ' + esc(t.contactable ? '연락 가능' : '연락 불가')
+    +     ' · ' + esc(t.rewarded_at ? ('보상 완료 ' + String(t.rewarded_at).slice(0, 10)) : '보상 미처리')
+    +   '</p>'
+    +   '<p style="font-size:11px;color:var(--text3);margin:6px 0 0">제보자 신원은 외부에 공개되지 않습니다. 기사 크레딧은 동의 범위에서만.</p>'
+    + '</div>'
+
+    + '<div style="margin-top:18px">'
+    +   '<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px">미디어 (링크는 1시간 유효)</div>'
+    +   mediaHtml + archHtml
+    +   (!purged && media.length
+      ? '<button class="btn btn-sm" data-tiparchive="' + escAttr(t.id) + '" style="margin-top:8px">미디어 확보 (영구 보관)</button>'
+        + '<p style="font-size:11px;color:var(--text3);line-height:1.8;margin:8px 0 0">'
+        + '원본은 접수 후 7일에 삭제됩니다. 확보하지 않은 <strong>채택</strong> 제보는 삭제되지 않지만, 기사에 쓰려면 확보해야 합니다. '
+        + '큰 영상은 서버가 옮길 수 없어 직접 내려받아 기사에 올려 주세요.</p>'
+      : '')
+    + '</div>'
+
+    + '<div style="margin-top:20px;padding:14px;border:1px solid var(--line,#e5e5e5);border-radius:6px">'
+    +   '<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px">처리</div>'
+    +   '<button class="btn btn-sm" data-tipstatus="checking" data-tipid="' + escAttr(t.id) + '"'
+    +     (t.status === 'checking' ? ' disabled' : '') + '>확인 중</button> '
+    +   '<button class="btn btn-sm btn-green" data-tipstatus="used" data-tipid="' + escAttr(t.id) + '"'
+    +     (t.status === 'used' ? ' disabled' : '') + '>채택</button> '
+    +   '<button class="btn btn-sm" data-tipstatus="dropped" data-tipid="' + escAttr(t.id) + '"'
+    +     (t.status === 'dropped' ? ' disabled' : '') + '>미사용</button> '
+    +   '<button class="btn btn-sm" data-tiprewarded="' + escAttr(t.id) + '"'
+    +     (t.rewarded_at ? ' disabled' : '') + '>보상 처리함 (크레딧 + 프리미엄 1개월)</button>'
+    +   '<p style="font-size:11px;color:var(--text3);line-height:1.8;margin:10px 0 0">'
+    +     '기사는 직접 쓰십니다 — 제보를 기사로 바꾸는 버튼은 두지 않았습니다. '
+    +     '증거가 있어도 인물·시점·맥락 확인은 여전히 필요합니다.</p>'
+    + '</div>'
+
+    + '<div style="margin-top:14px">'
+    +   '<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px">관리자 메모</div>'
+    +   '<textarea id="tipNotes" style="width:100%;min-height:90px;font-size:13px;padding:10px;line-height:1.7">'
+    +     esc(t.admin_notes || '') + '</textarea>'
+    +   '<div style="margin-top:8px"><button class="btn btn-sm" data-tipnotes="' + escAttr(t.id) + '">메모 저장</button></div>'
+    + '</div>'
+    + '</div>';
+
+  box.style.display = '';
+  try { box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
+}
+
+function closeNewsTip() {
+  var box = document.getElementById('newsTipDetail');
+  if (box) { box.innerHTML = ''; box.style.display = 'none'; }
+}
+
+async function _tipAction(id, body, okMsg) {
+  try {
+    var j = await apiPost('/news-tips/' + encodeURIComponent(id) + '/review', body);
+    if (j && j.code) { alert(j.message || '처리하지 못했습니다. (' + j.code + ')'); return false; }
+    await loadNewsTips();
+    if (okMsg) alert(okMsg);
+    if (_tipById(id)) openNewsTip(id); else closeNewsTip();
+    return true;
+  } catch (e) {
+    try { console.error('[newstips] action failed', e); } catch (_) {}
+    alert('처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    return false;
+  }
+}
+async function tipSetStatus(id, status) {
+  if (status === 'used' && !confirm('이 제보를 채택으로 표시합니다. 이후 "미디어 확보" 를 눌러 원본을 영구 보관하세요. 계속할까요?')) return;
+  await _tipAction(id, { action: 'status', status: status });
+}
+async function tipSaveNotes(id) {
+  var el = document.getElementById('tipNotes');
+  await _tipAction(id, { action: 'notes', notes: el ? el.value : '' }, '메모를 저장했습니다.');
+}
+async function tipRewarded(id) {
+  if (!confirm('보상(크레딧 + 프리미엄 1개월)을 처리했다고 기록합니다. 실제 등급 변경은 회원 화면에서 직접 하셔야 합니다. 계속할까요?')) return;
+  await _tipAction(id, { action: 'rewarded' }, '보상 처리 시각을 기록했습니다.');
+}
+async function tipArchive(id) {
+  var btn = document.querySelector('[data-tiparchive="' + id + '"]');
+  if (btn) { btn.disabled = true; btn.textContent = '확보 중…'; }
+  try {
+    var j = await apiPost('/news-tips/' + encodeURIComponent(id) + '/review', { action: 'archive' });
+    if (j && j.code) { alert(j.message || '확보하지 못했습니다.'); return; }
+    await loadNewsTips();
+    openNewsTip(id);
+    var msg = '서버가 ' + (j.archived || 0) + '개를 영구 보관했습니다.';
+    if (j.manual) msg += '\n' + j.manual + '개는 크기가 커서 직접 내려받아 기사에 올려 주세요.';
+    alert(msg);
+  } catch (e) {
+    try { console.error('[newstips] archive failed', e); } catch (_) {}
+    alert('확보하지 못했습니다.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '미디어 확보 (영구 보관)'; }
+  }
+}
+
+/* 버튼은 data-*(UUID)만 달고 위임으로 받는다 — 인라인 onclick 에 제보 제목 같은
+   회원 글자를 넣지 않는다(2026-09-20 따옴표 사고). */
+document.addEventListener('click', function (e) {
+  var t = e.target;
+  if (!t || !t.getAttribute) return;
+  var id;
+  if ((id = t.getAttribute('data-tipopen'))) { openNewsTip(id); return; }
+  if (t.getAttribute('data-tipclose')) { closeNewsTip(); return; }
+  if ((id = t.getAttribute('data-tipnotes'))) { tipSaveNotes(id); return; }
+  if ((id = t.getAttribute('data-tiparchive'))) { tipArchive(id); return; }
+  if ((id = t.getAttribute('data-tiprewarded'))) { tipRewarded(id); return; }
+  var st = t.getAttribute('data-tipstatus');
+  if (st && (id = t.getAttribute('data-tipid'))) { tipSetStatus(id, st); return; }
 });

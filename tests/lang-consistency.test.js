@@ -98,6 +98,7 @@ const PAGES = [
   { file:'frontend/submission-select.html', dictVar:'L', exts:[], chained:true },
   { file:'frontend/submission-article.html', dictVar:'L', exts:[], chained:true },
   { file:'frontend/submission-article-status.html', dictVar:'L', exts:[], chained:true },
+  { file:'frontend/submission-tip.html', dictVar:'L', exts:[], chained:true },
   { file:'frontend/community.html',  dictVar:'L',    exts:[], chained:false },
 ];
 
