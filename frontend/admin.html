@@ -514,6 +514,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
   <div class="sb-section">
     <div class="sb-section-title">서브미션 / Pull-Letter</div>
     <a href="#" onclick="go('submissions',this)"><span>📝</span> <span>서브미션 심사</span></a>
+    <a href="#" onclick="go('articlesubs',this)"><span>✍️</span> <span>아티클 기고</span></a>
     <a href="#" onclick="go('pullletters',this)"><span>⭐</span> <span>Pull-Letter 심사</span></a>
   </div>
 
@@ -1376,6 +1377,25 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
         </tbody></table>
       </div>
+    </div>
+  </div>
+
+  <!-- ARTICLE SUBMISSIONS -->
+  <!-- 2026-11-12 아티클 기고 심사. €790 은 심사 후 통보다(도메니코 결정) —
+       '홍보성 €790 으로' 를 누르는 순간 안내 메일이 나가고 결제 대기가 된다.
+       결제 전에는 승인 버튼이 막힌다: 게재 뒤에는 받을 길이 없다.
+       AI 점수는 정렬·우선순위용 의견이고 요금을 정하지 않는다. -->
+  <div class="tab" id="t-articlesubs">
+    <div class="mn-header"><div class="mn-title">아티클 기고</div><div class="mn-actions"><button class="btn" onclick="loadArticleSubs()">↻ 새로고침</button></div></div>
+    <div class="mn-body">
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>기고 목록</h3><div class="tbl-filters"><button class="tf on" onclick="filterArticleSubs('',this)">전체</button><button class="tf" onclick="filterArticleSubs('pending',this)"><span class="tf-dot" style="background:#ca8a04"></span>대기 중</button><button class="tf" onclick="filterArticleSubs('approved',this)"><span class="tf-dot" style="background:#16a34a"></span>승인</button><button class="tf" onclick="filterArticleSubs('rejected',this)"><span class="tf-dot" style="background:#dc2626"></span>거절</button></div></div>
+        <table><thead><tr><th>제목</th><th>제출자</th><th>분량</th><th>AI 홍보성</th><th>자진신고</th><th>게재료</th><th>날짜</th><th>상태 / 작업</th></tr></thead>
+        <tbody id="articleSubListBody">
+          <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
+        </tbody></table>
+      </div>
+      <div id="articleSubDetail" style="display:none;margin-top:18px"></div>
     </div>
   </div>
 
@@ -3722,7 +3742,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=175" defer></script>
+<script src="/pap-admin.js?v=176" defer></script>
 <script src="/pap-admin-campaigns.js?v=5" defer></script>
 </body>
 </html>

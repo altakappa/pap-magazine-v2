@@ -947,6 +947,7 @@ function go(id,el,opts){
   if(id==='eom') loadEditorialOfMonth();
   if(id==='casting') loadCastingCalls();
   if(id==='submissions') loadSubmissions();
+  if(id==='articlesubs') loadArticleSubs();
   if(id==='pullletters') loadPullLetters();
   if(id==='newpost'){
     // QA report: 새 게시글 작성 페이지에서 뒤로가기 후 다시 클릭 시
@@ -16341,3 +16342,301 @@ async function submitCastingCall(){
   }catch(e){ msg.textContent='실패: '+e.message; }
   btn.disabled=false;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * 아티클 기고 심사 (2026-11-12)
+ *
+ * 도메니코 결정(2026-11-12 '추천대로'): €790 은 **심사 후** 통보다.
+ *   접수는 무료로 들어오고, 여기서 '홍보성' 으로 판정하는 순간 안내 메일이
+ *   나가고 결제 대기 상태가 된다. 결제(또는 면제) 전에는 승인 버튼이 막힌다 —
+ *   게재한 뒤에는 €790 을 받을 길이 없기 때문이다.
+ *
+ * AI 분석은 **의견**이다. 점수·근거·인용·브랜드 목록을 보여주지만 요금을
+ *   매기지 않는다. 인용에는 '본문에서 확인됨' 표시가 붙는다 — 확인되지 않은
+ *   인용은 AI 가 지어냈다는 뜻이고, 그러면 그 분석 전체를 의심해야 한다
+ *   (2026-11-08: AI 가 캡션에 없는 사실을 지어내 19개 기사를 고쳤다).
+ *
+ * 렌더 안전 규칙(.claude/rules/frontend.md): 텍스트는 esc(), 속성은 escAttr(),
+ *   href/src 는 safeUrl(). 인라인 onclick 에 회원 글자를 넣지 않는다 —
+ *   버튼은 data-id(UUID)만 달고 위임으로 받는다.
+ * ══════════════════════════════════════════════════════════════════════ */
+var articleSubs = [];
+var articleSubFilter = '';
+var _artSubOpenId = null;
+
+function _artStatusChip(s) {
+  var m = {
+    pending:  ['#ca8a04', '대기 중'],
+    approved: ['#16a34a', '승인'],
+    rejected: ['#dc2626', '거절'],
+    withdrawn:['#64748b', '철회'],
+  };
+  var v = m[s] || ['#64748b', String(s || '—')];
+  return '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px">'
+    + '<span style="width:7px;height:7px;border-radius:50%;background:' + v[0] + '"></span>' + esc(v[1]) + '</span>';
+}
+function _artFeeChip(sub) {
+  if (sub.fee_type !== 'branded') return '<span style="font-size:11px;color:var(--text3)">무료</span>';
+  var paid = (sub.payment_status === 'paid' || sub.payment_status === 'waived');
+  return '<span style="font-size:11px;font-weight:700;color:' + (paid ? '#16a34a' : '#dc2626') + '">€790 '
+    + esc(paid ? '결제됨' : '미결제') + '</span>';
+}
+/* AI 점수 배지. 점수는 정렬·우선순위용이고 판정이 아니다 — 색도 '빨강=유료'가
+   아니라 '진한 쪽 = 먼저 읽어볼 것' 이라는 뜻으로만 쓴다. */
+function _artAiChip(ai) {
+  if (!ai) return '<span style="font-size:11px;color:var(--text3)">—</span>';
+  if (!ai.ok) return '<span style="font-size:11px;color:#b45309" title="' + escAttr(String(ai.error || '')) + '">분석 실패</span>';
+  var n = Number(ai.score);
+  var c = n >= 70 ? '#dc2626' : (n >= 40 ? '#ca8a04' : '#16a34a');
+  return '<span style="font-size:11px;font-weight:700;color:' + c + '">' + esc(String(n)) + '</span>';
+}
+
+async function loadArticleSubs() {
+  var tb = document.getElementById('articleSubListBody');
+  if (tb) tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>';
+  try {
+    var q = '/article-submissions?limit=100' + (articleSubFilter ? '&status=' + encodeURIComponent(articleSubFilter) : '');
+    var j = await apiGet(q);
+    articleSubs = (j && j.submissions) || [];
+    renderArticleSubs();
+  } catch (e) {
+    if (tb) tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#dc2626;padding:40px 0">목록을 불러오지 못했습니다.</td></tr>';
+    try { console.error('[articlesubs] load failed', e); } catch (_) {}
+  }
+}
+function filterArticleSubs(s, el) {
+  articleSubFilter = s || '';
+  try {
+    var box = el && el.parentNode;
+    if (box) Array.prototype.forEach.call(box.querySelectorAll('.tf'), function (b) { b.classList.remove('on'); });
+    if (el) el.classList.add('on');
+  } catch (_) {}
+  loadArticleSubs();
+}
+
+function renderArticleSubs() {
+  var tb = document.getElementById('articleSubListBody');
+  if (!tb) return;
+  if (!articleSubs.length) {
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">기고가 없습니다.</td></tr>';
+    return;
+  }
+  tb.innerHTML = articleSubs.map(function (s) {
+    var who = (s.submitter && (s.submitter.display_name || s.submitter.email)) || s.author_name || '—';
+    var when = String(s.created_at || '').slice(0, 10);
+    var unit = s.body_lang === 'ko' ? '자' : '단어';
+    return '<tr>'
+      + '<td><div style="font-weight:600">' + esc(s.title || '—') + '</div>'
+      +   '<div style="font-size:11px;color:var(--text3)">' + esc(s.topic || '') + ' → ' + esc(s.category || '') + '</div></td>'
+      + '<td>' + esc(who) + '</td>'
+      + '<td>' + esc(String(s.word_count || 0)) + esc(unit) + ' · ' + esc(String(s.body_lang || '')) + '</td>'
+      + '<td>' + _artAiChip(s.promo_ai) + '</td>'
+      + '<td>' + (s.promo_self_declared ? '<span style="font-size:11px;color:#b45309">예</span>' : '<span style="font-size:11px;color:var(--text3)">아니오</span>') + '</td>'
+      + '<td>' + _artFeeChip(s) + '</td>'
+      + '<td style="font-size:11px;color:var(--text3)">' + esc(when) + '</td>'
+      + '<td>' + _artStatusChip(s.status)
+      +   ' <button class="btn btn-sm" data-artsub="' + escAttr(s.id) + '" style="margin-left:6px">열기</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+/* ── 상세 · 심사 ─────────────────────────────────────────────────────── */
+function _artSubById(id) {
+  for (var i = 0; i < articleSubs.length; i++) if (articleSubs[i].id === id) return articleSubs[i];
+  return null;
+}
+
+function openArticleSub(id) {
+  var s = _artSubById(id);
+  if (!s) return;
+  _artSubOpenId = id;
+  var box = document.getElementById('articleSubDetail');
+  if (!box) return;
+
+  var ai = s.promo_ai;
+  var aiHtml;
+  if (!ai) {
+    aiHtml = '<p style="color:var(--text3);font-size:12px">아직 분석되지 않았습니다. 자진신고가 \'예\' 인 건은 분석을 건너뜁니다.</p>';
+  } else if (!ai.ok) {
+    aiHtml = '<p style="color:#b45309;font-size:12px">분석 실패 (' + esc(String(ai.error || '')) + ') — 다시 분석을 눌러 보세요.</p>';
+  } else {
+    var quotes = (ai.quotes || []).map(function (q) {
+      var ok = q && q.verified;
+      return '<li style="margin-bottom:7px">'
+        + '<span style="font-size:10px;font-weight:700;color:' + (ok ? '#16a34a' : '#dc2626') + '">'
+        + esc(ok ? '본문에서 확인됨' : '본문에 없음 — AI 가 지어냈을 수 있습니다') + '</span><br>'
+        + '<span style="font-size:12.5px;line-height:1.75">' + esc((q && q.text) || '') + '</span></li>';
+    }).join('');
+    aiHtml = '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px">'
+      + '<span style="font-size:26px;font-weight:800">' + esc(String(ai.score)) + '</span>'
+      + '<span style="font-size:11px;color:var(--text3)">홍보성 점수 (0 = 비평 · 100 = 보도자료). 요금은 AI 가 정하지 않습니다.</span></div>'
+      + (ai.primarySubject ? '<p style="font-size:12.5px"><strong>중심 대상</strong> · ' + esc(ai.primarySubject) + '</p>' : '')
+      + ((ai.brands && ai.brands.length) ? '<p style="font-size:12.5px"><strong>언급된 브랜드·인물</strong> · ' + esc(ai.brands.join(', ')) + '</p>' : '')
+      + ((ai.reasons && ai.reasons.length) ? '<ul style="margin:8px 0 10px 16px">' + ai.reasons.map(function (r) {
+          return '<li style="font-size:12.5px;line-height:1.8">' + esc(r) + '</li>'; }).join('') + '</ul>' : '')
+      + (quotes ? '<div style="font-size:11px;font-weight:700;color:var(--text3);margin:10px 0 5px">근거가 된 본문 문장</div><ul style="margin:0 0 0 16px;padding:0;list-style:none">' + quotes + '</ul>' : '');
+  }
+
+  var imgs = [s.cover_url].concat(Array.isArray(s.image_urls) ? s.image_urls : []).filter(Boolean);
+  var imgHtml = imgs.map(function (u) {
+    var su = safeUrl(u);
+    return su ? '<a href="' + escAttr(su) + '" target="_blank" rel="noopener"><img src="' + escAttr(su)
+      + '" alt="" style="width:88px;height:110px;object-fit:cover;border:1px solid var(--line,#ddd)"></a>' : '';
+  }).join('');
+
+  var paidOk = (s.payment_status === 'paid' || s.payment_status === 'waived');
+  var approveBlocked = (s.fee_type === 'branded' && !paidOk);
+  var site = safeUrl(s.author_website);
+
+  box.innerHTML =
+    '<div class="tbl-wrap" style="padding:20px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">'
+    +   '<div><h3 style="margin:0 0 4px">' + esc(s.title || '—') + '</h3>'
+    +     (s.subtitle ? '<div style="font-size:13px;color:var(--text3)">' + esc(s.subtitle) + '</div>' : '')
+    +     '<div style="font-size:11px;color:var(--text3);margin-top:6px">'
+    +       esc(s.topic || '') + ' → ' + esc(s.category || '') + ' · ' + esc(String(s.word_count || 0))
+    +       esc(s.body_lang === 'ko' ? '자' : '단어') + ' · ' + _artStatusChip(s.status) + ' · ' + _artFeeChip(s) + '</div></div>'
+    +   '<button class="btn btn-sm" data-artclose="1">닫기</button>'
+    + '</div>'
+
+    + '<div style="margin-top:18px;padding:14px;border:1px solid var(--line,#e5e5e5);border-radius:6px">'
+    +   '<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px">AI 홍보성 분석 — 참고 의견</div>'
+    +   aiHtml
+    +   '<button class="btn btn-sm" data-artanalyze="' + escAttr(s.id) + '" style="margin-top:10px">↻ 다시 분석</button>'
+    + '</div>'
+
+    + '<div style="margin-top:18px">'
+    +   '<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px">바이라인</div>'
+    +   '<p style="font-size:12.5px;line-height:1.8;margin:0">'
+    +     esc(s.author_name || '—')
+    +     (s.author_instagram ? ' · @' + esc(s.author_instagram) : '')
+    +     (site ? ' · <a href="' + escAttr(site) + '" target="_blank" rel="noopener">' + esc(site) + '</a>' : '')
+    +   '</p>'
+    +   '<p style="font-size:12.5px;line-height:1.8;color:var(--text3);margin:6px 0 0">' + esc(s.author_bio || '') + '</p>'
+    + '</div>'
+
+    + (imgHtml ? '<div style="margin-top:18px"><div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px">이미지 ('
+        + esc(String(imgs.length)) + ')</div><div style="display:flex;gap:8px;flex-wrap:wrap">' + imgHtml + '</div></div>' : '')
+
+    + '<div style="margin-top:18px">'
+    +   '<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px">본문</div>'
+    +   '<div style="max-height:380px;overflow:auto;border:1px solid var(--line,#e5e5e5);padding:14px;font-size:13px;line-height:1.95;white-space:pre-wrap">'
+    +     esc(s.body || '') + '</div>'
+    + '</div>'
+
+    + (s.sources ? '<div style="margin-top:14px"><div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px">참고 출처</div>'
+        + '<div style="font-size:12.5px;line-height:1.8;white-space:pre-wrap">' + esc(s.sources) + '</div></div>' : '')
+
+    /* 홍보성 판정 — 여기서 €790 안내 메일이 나간다 */
+    + '<div style="margin-top:22px;padding:14px;border:1px solid var(--line,#e5e5e5);border-radius:6px">'
+    +   '<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px">게재료 판정</div>'
+    +   '<p style="font-size:12px;color:var(--text3);line-height:1.8;margin:0 0 10px">'
+    +     '홍보성으로 바꾸면 제출자에게 €790 안내 메일이 나가고 결제 대기 상태가 됩니다. '
+    +     '가르는 기준은 브랜드 수가 아니라 글의 목적입니다.</p>'
+    +   '<button class="btn btn-sm" data-artfee="free" data-artid="' + escAttr(s.id) + '"'
+    +     (s.fee_type === 'free' ? ' disabled' : '') + '>무료로</button> '
+    +   '<button class="btn btn-sm btn-red" data-artfee="branded" data-artid="' + escAttr(s.id) + '"'
+    +     (s.fee_type === 'branded' ? ' disabled' : '') + '>홍보성 €790 으로 + 안내 메일</button>'
+    + '</div>'
+
+    /* 승인·거절 */
+    + '<div style="margin-top:14px;padding:14px;border:1px solid var(--line,#e5e5e5);border-radius:6px">'
+    +   '<div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px">심사</div>'
+    +   '<textarea id="artSubFeedback" placeholder="제출자에게 보일 심사 의견 (거절 메일에 실립니다)" '
+    +     'style="width:100%;min-height:80px;font-size:13px;padding:10px;line-height:1.7"></textarea>'
+    +   (approveBlocked
+        ? '<p style="font-size:12px;color:#dc2626;line-height:1.8;margin:10px 0 0">'
+          + '홍보성(€790) 건이고 아직 결제되지 않았습니다. 결제가 확인된 뒤에 승인할 수 있습니다 — '
+          + '게재한 뒤에는 받을 길이 없습니다.</p>'
+        : '')
+    +   '<div style="margin-top:10px">'
+    +     '<button class="btn btn-sm btn-green" data-artapprove="' + escAttr(s.id) + '"'
+    +       (approveBlocked || s.status === 'approved' ? ' disabled' : '') + '>승인 → 기사 초안 생성</button> '
+    +     '<button class="btn btn-sm btn-red" data-artreject="' + escAttr(s.id) + '"'
+    +       (s.status === 'rejected' ? ' disabled' : '') + '>거절</button>'
+    +   '</div>'
+    +   '<p style="font-size:11px;color:var(--text3);line-height:1.8;margin:10px 0 0">'
+    +     '승인은 기사를 <strong>초안(draft)</strong>으로 만드는 데까지입니다. 발행은 기사 화면에서 직접 하세요.</p>'
+    + '</div>'
+
+    + (s.published_article_id
+      ? '<p style="font-size:12px;margin-top:12px">생성된 기사 초안 · <code>' + esc(s.published_article_id) + '</code></p>' : '')
+    + '</div>';
+
+  box.style.display = '';
+  try { box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
+}
+
+function closeArticleSub() {
+  _artSubOpenId = null;
+  var box = document.getElementById('articleSubDetail');
+  if (box) { box.innerHTML = ''; box.style.display = 'none'; }
+}
+
+async function _artReview(id, body, okMsg) {
+  try {
+    var j = await apiPost('/article-submissions/' + encodeURIComponent(id) + '/review', body);
+    if (j && j.code) {
+      alert(j.message || '처리하지 못했습니다. (' + j.code + ')');
+      return false;
+    }
+    await loadArticleSubs();
+    if (okMsg) alert(okMsg);
+    var still = _artSubById(id);
+    if (still) openArticleSub(id); else closeArticleSub();
+    return true;
+  } catch (e) {
+    try { console.error('[articlesubs] review failed', e); } catch (_) {}
+    alert('처리하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    return false;
+  }
+}
+
+async function artSetFee(id, feeType) {
+  if (feeType === 'branded'
+    && !confirm('홍보성 글로 판정하고 제출자에게 €790 안내 메일을 보냅니다. 계속할까요?')) return;
+  await _artReview(id, { action: 'set_fee', feeType: feeType },
+    feeType === 'branded' ? '€790 안내 메일을 보냈습니다.' : '무료로 되돌렸습니다.');
+}
+async function artApprove(id) {
+  if (!confirm('승인하고 기사 초안을 만듭니다. 발행은 따로 해야 합니다. 계속할까요?')) return;
+  var fb = document.getElementById('artSubFeedback');
+  await _artReview(id, { action: 'approve', feedback: fb ? fb.value : '' }, '승인했습니다. 기사 초안이 만들어졌습니다.');
+}
+async function artReject(id) {
+  var fb = document.getElementById('artSubFeedback');
+  var note = fb ? String(fb.value || '').trim() : '';
+  if (!note && !confirm('심사 의견 없이 거절 메일을 보냅니다. 계속할까요?')) return;
+  if (!confirm('거절하고 제출자에게 메일을 보냅니다. 계속할까요?')) return;
+  await _artReview(id, { action: 'reject', feedback: note }, '거절 처리했습니다.');
+}
+async function artAnalyze(id) {
+  var btn = document.querySelector('[data-artanalyze="' + id + '"]');
+  if (btn) { btn.disabled = true; btn.textContent = '분석 중…'; }
+  try {
+    var j = await apiPost('/article-submissions/' + encodeURIComponent(id) + '/analyze', {});
+    if (j && j.code) { alert(j.message || '분석하지 못했습니다.'); return; }
+    await loadArticleSubs();
+    openArticleSub(id);
+  } catch (e) {
+    try { console.error('[articlesubs] analyze failed', e); } catch (_) {}
+    alert('분석하지 못했습니다.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ 다시 분석'; }
+  }
+}
+
+/* 버튼은 data-* (UUID) 만 달고 위임으로 받는다 — 인라인 onclick 에 회원이 적은
+   글자를 넣지 않는다(제목에 따옴표가 있으면 핸들러가 깨지던 2026-09-20 사고). */
+document.addEventListener('click', function (e) {
+  var t = e.target;
+  if (!t || !t.getAttribute) return;
+  var id;
+  if ((id = t.getAttribute('data-artsub'))) { openArticleSub(id); return; }
+  if (t.getAttribute('data-artclose')) { closeArticleSub(); return; }
+  if ((id = t.getAttribute('data-artanalyze'))) { artAnalyze(id); return; }
+  if ((id = t.getAttribute('data-artapprove'))) { artApprove(id); return; }
+  if ((id = t.getAttribute('data-artreject'))) { artReject(id); return; }
+  var fee = t.getAttribute('data-artfee');
+  if (fee && (id = t.getAttribute('data-artid'))) { artSetFee(id, fee); return; }
+});
