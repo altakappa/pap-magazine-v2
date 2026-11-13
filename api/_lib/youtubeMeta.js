@@ -155,6 +155,26 @@ function classify(art) {
 }
 
 /** "[ CELEBRITY ] 제목 | PAP MAGAZINE" — 100자 안에서 제목만 줄인다. */
+/* ── YouTube 가 거부하는 글자 (2026-11-13 신설) ─────────────────────────
+ * `<` 와 `>` 가 제목·설명에 들어가면 업로드가 400 (invalid video title /
+ * description) 으로 죽는다.
+ *
+ * 2026-07-19 에 '<오디세이>' 기사가 그렇게 죽었고, 그때 **제목 줄에만**
+ * 필터를 넣었다. 그런데 설명은 제목 줄 말고도 기사 본문 첫 문장과 해시태그를
+ * 싣는다. 그 경로는 그대로 열려 있었고, 2026-11-10 에 같은 400 이 다시 났다
+ * (youtube_posts 에 'invalid video desc' 로 남은 행 2개 — 7/19 과 11/10).
+ *
+ * 줄마다 거르는 방식으로는 또 새 줄이 추가될 때 빠진다. 그래서 **조립이 끝난
+ * 문자열 전체**에 한 번 적용하는 함수를 두고, 설명을 만드는 세 곳이 모두
+ * 반환 직전에 이걸 통과시킨다:
+ *   api/cron/drive-youtube-post.js   buildDescription
+ *   api/cron/youtube-post.js         buildDescription
+ *   api/cron/drive-story-shorts.js   buildDescription (스토리용)
+ * 규칙이 세 벌이면 한쪽만 고쳐진다 — 규칙은 여기 한 벌만 둔다. */
+function ytSafeText(s) {
+  return String(s == null ? '' : s).replace(/[<>]/g, '');
+}
+
 function buildTitle(art) {
   const prefix = classify(art);
   /* < > 는 YouTube 제목 금지 문자. 2026-07-19 "<오디세이>" 기사가
@@ -232,6 +252,6 @@ function buildTagList(art, max) {
 module.exports = {
   PREFIX, CATEGORY_FALLBACK, CELEB_LEXICON, SUFFIX, MAX_TITLE,
   ACRONYM,
-  classify, buildTitle, toHashtag, buildHashtags, buildTagList,
+  classify, buildTitle, ytSafeText, toHashtag, buildHashtags, buildTagList,
   stripPrefix, stripSuffix,
 };

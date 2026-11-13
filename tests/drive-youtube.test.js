@@ -234,8 +234,18 @@ t('YouTube 스코프에 drive.readonly 가 추가됨',
   const ysrc = fs.readFileSync(path.join(ROOT, 'api', 'cron', 'drive-youtube-post.js'), 'utf8');
 
   // 사전 차단
-  t('업로드 전에 같은 기사의 기존 영상을 조회한다',
-    /\.eq\('article_id', art\.id\)[\s\S]{0,120}\.not\('video_id', 'is', null\)/.test(ysrc));
+  /* 2026-11-13 — 가드의 열쇠를 DB 제약에 맞췄다.
+     종전 가드는 (article_id 일치 + video_id NOT NULL) 로 봤는데, 제약은
+     youtube_posts_article_id_key — article_id **하나만** 보는 유니크다.
+     열쇠가 달라서, video_id 가 비어 있는 점유 행이 있는 기사는 가드를
+     통과한 뒤 기록 단계에서 유니크 위반으로 죽었다(11-10 실측 2건).
+     그래서 조건에서 video_id 를 뺀다. '조회한다' 는 의도는 그대로다 —
+     video_id 유무는 조회 **결과**로 갈라 준다(바로 아래 두 검사). */
+  t('업로드 전에 같은 기사를 점유한 행을 조회한다 (제약과 같은 열쇠: article_id)',
+    /\.select\('id, video_id, status, drive_file_id, detail'\)[\s\S]{0,120}\.eq\('article_id', art\.id\)/.test(ysrc));
+  t('영상이 있는 점유면 올리지 않는다', /already\.drive_file_id !== file\.id && already\.video_id/.test(ysrc));
+  t('영상 없는 껍데기 점유는 풀어 주고 진행한다',
+    /already\.drive_file_id !== file\.id && !already\.video_id/.test(ysrc) && /article_id: null,/.test(ysrc));
   const preIdx = ysrc.indexOf("eq('article_id', art.id)");
   const upIdx = ysrc.indexOf('await uploadVideo(');
   t('그 조회가 업로드보다 먼저 나온다', preIdx > 0 && upIdx > 0 && preIdx < upIdx,
@@ -245,8 +255,12 @@ t('YouTube 스코프에 drive.readonly 가 추가됨',
     /skippedDuplicate[\s\S]{0,600}|status: 'skipped'/.test(ysrc) && /status: 'skipped'/.test(ysrc));
   t('건너뛴 이유를 cronNote 에 남긴다', /중복 방지로 건너뜀/.test(ysrc));
   // failed 는 video_id 가 없으므로 재시도가 계속 허용돼야 한다
-  t('실패 기록은 재업로드를 막지 않는다 (video_id 기준으로 본다)',
-    /\.not\('video_id', 'is', null\)/.test(ysrc));
+  /* 같은 뜻을 다른 자리에서 지킨다. 종전엔 가드가 video_id NOT NULL 을
+     요구해서 '실패 기록(video_id 없음)' 이 그냥 안 걸렸다. 이제는 걸리지만
+     껍데기 점유로 판정해 연결을 풀고 진행하므로, 결과는 같고 유니크 위반은
+     없다. 검사를 그 해제 경로로 옮긴다. */
+  t('실패 기록(video_id 없음)은 재업로드를 막지 않는다 — 점유를 풀고 진행한다',
+    /!already\.video_id/.test(ysrc) && /article_id: null,/.test(ysrc));
 
   // 사후 안전망
   t('기록이 실패해도 영상 정보를 남긴다 (구제 기록)',

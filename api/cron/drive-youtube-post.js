@@ -36,7 +36,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { uploadVideo } = require('../_lib/youtube');
 const { withCronGuard } = require('../_lib/cronGuard');
-const { buildTitle, buildHashtags, buildTagList } = require('../_lib/youtubeMeta');
+const { buildTitle, buildHashtags, buildTagList, ytSafeText } = require('../_lib/youtubeMeta');
 const drive = require('../_lib/driveVideos');
 const { matchArticle, groupUnmatched, fileCore } = require('../_lib/koMatch');
 const { loadSubPosts, findSubPost, subPostAsArticle, subPostUrl } = require('../_lib/igSubPosts');
@@ -87,7 +87,9 @@ function buildDescription(art, url) {
   lines.push('▶ pap-magazine.com — 아트 기반 패션·뷰티·컬쳐 매거진');
   lines.push('');
   lines.push(buildHashtags(art).join(' '));
-  return lines.join('\n').slice(0, 4900);
+  /* 조립이 끝난 뒤 한 번에 거른다 — 줄마다 거르면 새 줄이 추가될 때 빠진다
+     (2026-07-19 제목만 고쳤다가 11-10 에 본문 첫 문장으로 같은 400 재발). */
+  return ytSafeText(lines.join('\n')).slice(0, 4900);
 }
 
 module.exports = withCronGuard('drive-youtube-post', async function handler(req, res) {
@@ -300,12 +302,24 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
      * 기록을 고치는 걸로는 부족하다. **유튜브 업로드는 되돌릴 수 없다.**
      * video_id 가 있는 행 = 실제로 채널에 올라간 것. 그러면 올리지 않는다.
      * status='failed' 는 video_id 가 없으므로 재시도가 계속 허용된다. */
+    /* 2026-11-13 — 가드와 제약이 같은 열쇠를 보게 맞췄다.
+     *
+     * 여기 가드는 `article_id + video_id IS NOT NULL` 을 봤고, DB 제약은
+     * `youtube_posts_article_id_key` 로 **article_id 하나만** 본다(부분 인덱스가
+     * 아니다). 그래서 어떤 기사에 video_id 가 없는 행(= 지난 실패 시도)이
+     * 남아 있으면 가드는 통과시키고 아래 기록이 유니크 위반으로 죽었다.
+     * 실측: 1110_코스모시 파일이 7회 연속 그렇게 실패했다.
+     *
+     * 이제 video_id 유무와 무관하게 '그 기사를 점유한 행' 을 보고 갈라준다:
+     *   · video_id 가 있다 → 채널에 이미 올라갔다. 올리지 않는다(종전과 같음).
+     *   · video_id 가 없다 → 영상이 없는 껍데기 점유다. 그 연결은 아무것도
+     *     뜻하지 않으므로 풀어 주고 진행한다. 풀지 않으면 그 기사는 영영
+     *     영상을 못 갖는다. */
     const { data: already } = art.id ? await supabaseAdmin.from('youtube_posts')
-      .select('video_id, status, drive_file_id')
+      .select('id, video_id, status, drive_file_id, detail')
       .eq('article_id', art.id)
-      .not('video_id', 'is', null)
       .limit(1).maybeSingle() : { data: null };
-    if (already && already.drive_file_id !== file.id) {
+    if (already && already.drive_file_id !== file.id && already.video_id) {
       const why = '이 기사는 이미 유튜브에 있다 (' + already.video_id + ')';
       await finishClaim('youtube_posts', file.id, {
         article_id: null, video_id: null, status: 'skipped',
@@ -316,6 +330,19 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
         existing_video_id: already.video_id, unmatched, skipped,
         note: note(res, '중복 방지로 건너뜀 — ' + file.name + ' → ' + art.title + ' · ' + why),
       });
+    }
+    if (already && already.drive_file_id !== file.id && !already.video_id) {
+      // 영상 없는 껍데기 점유를 푼다. 실패해도 멈추지 않는다 — 아래 기록이
+      // article_id 를 쓰지 않으므로(② 참고) 충돌로 죽지는 않는다.
+      const { error: relErr } = await supabaseAdmin.from('youtube_posts')
+        .update({
+          article_id: null,
+          detail: String(already.detail || '').slice(0, 300)
+            + ' · 영상 없는 기사 연결을 해제함 (' + file.name + ' 가 점유)',
+        })
+        .eq('id', already.id);
+      if (relErr) console.warn('[drive-youtube-post] 껍데기 점유 해제 실패', already.id, relErr.message);
+      else note(res, '영상 없는 기사 점유 해제: ' + already.id);
     }
 
     let videoId = null; let status = 'submitted'; let detail = null;
@@ -344,8 +371,13 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
      * 크론이 2시간마다 같은 영상을 공개 채널에 다시 올릴 뻔했다.
      * 오늘 하루 종일 잡던 그 침묵 패턴을 새 코드에 그대로 심었던 셈이다.
      * 기록이 안 되면 '올렸다'고 말하지 않는다 — 중복 업로드가 훨씬 나쁘다. */
+    /* 2026-11-13 — video_id 가 없으면 article_id 도 쓰지 않는다.
+     * 업로드가 실패하면 채널에 아무것도 없으므로 '이 기사의 영상' 이라는 연결은
+     * 아무 뜻이 없다. 그런데 그걸 쓰는 순간 article_id 유니크 제약과 부딪혀
+     * 기록 자체가 죽고, 거짓 경보가 매 회차 나간다(실측 7회).
+     * 성공했을 때만 연결한다. */
     const rec = await finishClaim('youtube_posts', file.id, {
-      article_id: art.id, video_id: videoId, status, detail,
+      article_id: videoId ? art.id : null, video_id: videoId, status, detail,
     });
     if (!rec.ok) {
       /* 안전망 (2026-08-17) — 여기서 그냥 500 을 내면 영상 정보가 어디에도

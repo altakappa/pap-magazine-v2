@@ -24,7 +24,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { uploadVideo } = require('../_lib/youtube');
 const { withCronGuard } = require('../_lib/cronGuard');
-const { buildTitle, buildHashtags, buildTagList } = require('../_lib/youtubeMeta');
+const { buildTitle, buildHashtags, buildTagList, ytSafeText } = require('../_lib/youtubeMeta');
 /* 2026-08-05 도메니코 — "캡션크레딧이 PAP일 경우에만 유튜브에 업로드" +
    "음악은 인스타에서 설정한거니 음소거해서". 두 규칙 모두 fail closed 다.  */
 const { verdictForMedia } = require('../_lib/igCredit');
@@ -91,7 +91,9 @@ function buildDescription(art, url) {
   /* 2026-08-04 도메니코 — 해시태그를 '기사에 관련있는 셀럽이나 내용의 단어'로.
      articles.tags 가 이미 셀럽명·브랜드명·제품명을 담고 있어 그대로 쓴다. */
   lines.push(buildHashtags(art).join(' '));
-  return lines.join('\n').slice(0, 4900);
+  /* 조립이 끝난 뒤 한 번에 거른다 — 줄마다 거르면 새 줄이 추가될 때 빠진다
+     (2026-07-19 제목만 고쳤다가 11-10 에 본문 첫 문장으로 같은 400 재발). */
+  return ytSafeText(lines.join('\n')).slice(0, 4900);
 }
 
 module.exports = withCronGuard('youtube-post', async function handler(req, res) {

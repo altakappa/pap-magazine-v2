@@ -41,7 +41,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { uploadVideo } = require('../_lib/youtube');
-const { buildTitle, buildHashtags, buildTagList } = require('../_lib/youtubeMeta');
+const { buildTitle, buildHashtags, buildTagList, ytSafeText } = require('../_lib/youtubeMeta');
 const drive = require('../_lib/driveVideos');
 const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim');
 
@@ -123,7 +123,9 @@ function buildDescription(title, tagLine) {
   /* 성장 헌법 3항 — 외부 발신 링크는 전부 utm. */
   lines.push('▶ PAP MAGAZINE : ' + SITE + '/?utm_source=youtube&utm_medium=social&utm_campaign=pap_story');
   if (tagLine) { lines.push(''); lines.push(tagLine); }
-  return lines.join('\n');
+  /* 2026-11-13 — 여기엔 < > 필터가 아예 없었다. 스토리 제목이 그대로 들어가고
+     기사 제목에 꺾쇠가 있으면 업로드가 400 으로 죽는다(기사 쪽에서 두 번 겪었다). */
+  return ytSafeText(lines.join('\n'));
 }
 
 module.exports = withCronGuard('drive-story-shorts', async function handler(req, res) {

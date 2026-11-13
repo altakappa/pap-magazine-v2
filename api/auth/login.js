@@ -50,6 +50,28 @@ module.exports = async function handler(req, res) {
       .eq('id', userId)
       .single();
 
+    /* 정지된 계정은 토큰을 받지 못한다 (2026-11-13).
+     *
+     * 그전까지 subscription_status='suspended' 는 **아무것도 막지 않았다.**
+     * 관리자 화면에서 '정지' 로 바꿀 수 있는데(member-update.js 의 허용 목록),
+     * 로그인 핸들러는 그 칸을 보지 않았다. 즉 정지시킨 계정이 그대로 들어왔다.
+     * 2026-11-10 Serena 계정 정리 때 발견했고, 그때는 auth.users.banned_until
+     * 로 우회했다 — 구조는 그대로 남아 있었다.
+     *
+     * cancelled·inactive 는 막지 않는다. 구독이 끝난 사람은 무료 회원으로
+     * 계속 들어와야 한다. 행정적으로 멈춘 상태는 'suspended' 하나다.
+     *
+     * 응답 문구는 영어 한 줄로 둔다 — 프런트가 code 로 9개 언어 토스트를
+     * 고르지만, 매핑이 빠져도 사용자가 읽고 무엇을 해야 할지 아는 문장이
+     * 남아야 한다. */
+    if (String(profile && profile.subscription_status || '').toLowerCase() === 'suspended') {
+      try { console.warn('[login] 정지 계정 로그인 차단 user=%s', userId); } catch (_) {}
+      return res.status(401).json({
+        message: 'This account is suspended. Please contact contact@pap-magazine.com',
+        code: 'ACCOUNT_SUSPENDED',
+      });
+    }
+
     const user = {
       id: userId,
       email: profile?.email || email,

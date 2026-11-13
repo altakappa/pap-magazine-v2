@@ -175,8 +175,16 @@ module.exports = async function handler(req, res) {
     // the role didn't change (plan/status edits) so we don't kick users
     // off for unrelated profile updates.
     const roleChanged = role !== undefined && profile.role !== role;
+    /* 2026-11-13 — '정지' 로 바꿀 때도 기존 토큰을 끊는다.
+     * 로그인 쪽에서 정지 계정을 막게 했지만(api/auth/login.js), 이미 로그인해
+     * 있는 사람의 JWT 는 그대로 유효하다. 토큰이 만료될 때까지 정지가 아무
+     * 효과가 없으면 '정지' 버튼이 거짓말을 하는 셈이다.
+     * 정지 해제는 끊지 않는다 — 끊을 토큰이 애초에 없다. */
+    const suspendedNow = subscriptionStatus !== undefined
+      && String(subscriptionStatus).toLowerCase() === 'suspended'
+      && String(profile.subscription_status || '').toLowerCase() !== 'suspended';
     let tokenInvalidated = false;
-    if (roleChanged) {
+    if (roleChanged || suspendedNow) {
       try {
         await invalidateTokens(memberId);
         tokenInvalidated = true;

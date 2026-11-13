@@ -714,6 +714,10 @@
       "destination": "/submission-tip.html"
     },
     {
+      "source": "/submission/tip/status",
+      "destination": "/submission-tip-status.html"
+    },
+    {
       "source": "/subscribe",
       "destination": "/subscribe.html"
     },

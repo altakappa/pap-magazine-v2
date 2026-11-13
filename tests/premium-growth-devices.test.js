@@ -119,7 +119,7 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   ok('submission.html 에 옛 "1-3 business days" 없음', !/1-3 business days|영업일 기준 1-3일|1–3 business days/.test(sub));
   const land = read('frontend/submissions.html');
   ok('submissions 랜딩·JSON-LD·OG 에 옛 1–3 없음, 7영업일 + Premium 2', !/1–3 business days/.test(land) && /7 business days \(Premium/.test(land) && /심사는 최대 7영업일\(프리미엄 회원은 2영업일 이내\)/.test(land));
-  ok('submissions 사전 8개 언어 키 갱신', ['en','de','it','fr','es','ja','zh','ru'].every((l) => Object.keys(JSON.parse(read('frontend/i18n/ui/submissions.' + l + '.json'))).some((k) => k.includes('심사는 최대 7영업일(프리미엄 회원은 2영업일 이내).'))) && /content="submissions" data-v="6"/.test(land));
+  ok('submissions 사전 8개 언어 키 갱신', ['en','de','it','fr','es','ja','zh','ru'].every((l) => Object.keys(JSON.parse(read('frontend/i18n/ui/submissions.' + l + '.json'))).some((k) => k.includes('심사는 최대 7영업일(프리미엄 회원은 2영업일 이내).'))) && /content="submissions" data-v="7"/.test(land));
   const em = read('api/_lib/email.js');
   ok('접수 메일 etaValue(최대 7) + etaValuePremium(2) 9개 언어', (em.match(/etaValuePremium: '/g) || []).length === 9 && !/etaValue: '1–3|etaValue: '영업일 1~3일'/.test(em));
   const E = require(path.join(ROOT, 'api', '_lib', 'email'));
