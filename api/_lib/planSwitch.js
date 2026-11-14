@@ -18,7 +18,14 @@ const MIN_LEAD_MS = 10 * 60 * 1000;   // 종료까지 10분도 안 남았으면 
 function switchStartTime(row, nowMs) {
   if (!row) return null;
   const st = String(row.status || '').toLowerCase();
-  if (st !== 'active' && st !== 'past_due') return null;
+  /* 2026-11-14 — 'canceled' 추가 (실측: Yufan Feng, 프리미엄 월간 해지 후 연간으로
+     바꿀 수 없었다).
+     해지해도 이미 낸 기간까지는 접근권이 남는다(handleTermination 의 규칙). 그 사람이
+     다른 플랜을 고를 때 '지금 시작' 시키면 남은 날이 그대로 사라진다 — 활성 구독자에게
+     하지 않기로 한 바로 그 일이다. PayPal 쪽 구독은 이미 끊겨 있으니 해지할 것도 없고,
+     종료일에 새 구독이 시작되면 끊김도 겹침도 없다.
+     paused(쉬어가기)는 넣지 않는다 — 그쪽의 답은 플랜 변경이 아니라 '다시 시작'이다. */
+  if (st !== 'active' && st !== 'past_due' && st !== 'canceled') return null;
   if (String(row.provider || 'paypal') !== 'paypal') return null;
   const end = row.current_period_end ? new Date(row.current_period_end).getTime() : NaN;
   if (!Number.isFinite(end)) return null;

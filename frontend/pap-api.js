@@ -907,7 +907,8 @@ const PAP = (function() {
   function _switchStartTime(cur) {
     if (!cur) return null;
     var st = String(cur.status || '').toLowerCase();
-    if (st !== 'active' && st !== 'past_due') return null;
+    // 2026-11-14 canceled 포함 — api/_lib/planSwitch.js switchStartTime 과 같은 규칙.
+    if (st !== 'active' && st !== 'past_due' && st !== 'canceled') return null;
     if (String(cur.provider || 'paypal') !== 'paypal') return null;
     var end = cur.current_period_end ? new Date(cur.current_period_end).getTime() : NaN;
     if (!isFinite(end) || end - Date.now() < 10 * 60 * 1000) return null;

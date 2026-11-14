@@ -50,7 +50,7 @@ async function handler(req, res) {
   // 1) 만료됐는데 아직 활성으로 남은 구독.
   const { data: rows, error: scanErr } = await supabaseAdmin
     .from('subscriptions')
-    .select('user_id, plan, status, current_period_end')
+    .select('user_id, plan, status, current_period_end, pending_plan, pending_start_at')
     .lt('current_period_end', cutoff)
     // 2026-08-10 'canceled' 추가 — 해지해도 결제한 기간까지는 접근권을 유지하도록
     // 웹훅을 고쳤다(api/paypal-webhook.js handleTermination). 그러면 남은 기간이
@@ -67,6 +67,15 @@ async function handler(req, res) {
 
   const flagged = [];
   for (const row of (rows || [])) {
+    /* 2026-11-14 — 플랜 변경 예약이 아직 시작되지 않았으면 건드리지 않는다.
+       해지 상태에서도 종료일 시작으로 플랜을 바꿀 수 있게 되면서(planSwitch), 이 행은
+       "기간은 끝났지만 새 플랜이 곧 시작" 인 상태로 잠깐 머문다. 그때 강등하면 첫 결제
+       웹훅이 도착하기 전까지 유료 회원을 무료로 떨어뜨린다. 시작일이 지난 예약은
+       (= 결제가 끝내 안 됨) 평소대로 강등 대상이다. */
+    const pendStart = row.pending_start_at ? new Date(row.pending_start_at).getTime() : NaN;
+    if (row.pending_plan && Number.isFinite(pendStart) && pendStart >= new Date(cutoff).getTime()) {
+      continue;
+    }
     // 대상 유저의 role 확인 — 스태프/어드민(수동 증정 등급)은 만료 강등 대상 아님.
     const { data: prof } = await supabaseAdmin
       .from('profiles')

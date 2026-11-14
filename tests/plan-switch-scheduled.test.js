@@ -19,7 +19,18 @@ const DAY = 86400000;
 // ── 순수 함수 ──
 t('switchStartTime: 활성 + 종료일 미래 → 종료일 ISO', ps.switchStartTime({ status: 'active', provider: 'paypal', current_period_end: '2026-10-31T10:00:00+00:00' }, NOW) === '2026-10-31T10:00:00.000Z');
 t('switchStartTime: past_due 도 됨', !!ps.switchStartTime({ status: 'past_due', current_period_end: new Date(NOW + 5 * DAY).toISOString() }, NOW));
-t('switchStartTime: canceled/paused → null(즉시)', ps.switchStartTime({ status: 'canceled', current_period_end: new Date(NOW + 5 * DAY).toISOString() }, NOW) === null && ps.switchStartTime({ status: 'paused', current_period_end: new Date(NOW + 5 * DAY).toISOString() }, NOW) === null);
+/* 2026-11-14 — 'canceled' 를 null 에서 떼어냈다.
+   실측(Yufan Feng, 프리미엄 월간): 해지하면 결제한 기간까지 접근권은 남는데, 그 사람이
+   연간으로 바꾸려 하면 /subscribe 의 자기 등급 카드가 "이용 중" 으로 잠겨 있어
+   누를 버튼이 하나도 없었다. 지금 시작시키는 것도 답이 아니다 — 이미 낸 남은 날이
+   사라지므로 활성 구독자에게 하지 않기로 한 그 일을 해지자에게 하는 셈이 된다.
+   그래서 해지자도 '종료일 시작' 예약 대상이다. paused 는 그대로 null — 쉬어가기의
+   답은 플랜 변경이 아니라 '다시 시작' 이다. */
+t('switchStartTime: 해지 + 기간 남음 → 종료일 예약 (남은 날을 버리지 않는다)',
+  ps.switchStartTime({ status: 'canceled', provider: 'paypal', current_period_end: '2026-12-12T10:00:00+00:00' }, NOW) === '2026-12-12T10:00:00.000Z');
+t('switchStartTime: 해지 + 기간 끝남 → null(즉시 시작 = 새 구독)',
+  ps.switchStartTime({ status: 'canceled', provider: 'paypal', current_period_end: new Date(NOW - DAY).toISOString() }, NOW) === null);
+t('switchStartTime: paused → null(즉시)', ps.switchStartTime({ status: 'paused', current_period_end: new Date(NOW + 5 * DAY).toISOString() }, NOW) === null);
 t('switchStartTime: 10분 미만 남음 → null(즉시)', ps.switchStartTime({ status: 'active', current_period_end: new Date(NOW + 5 * 60000).toISOString() }, NOW) === null);
 t('switchStartTime: 포트원 구독 → null', ps.switchStartTime({ status: 'active', provider: 'portone', current_period_end: new Date(NOW + 5 * DAY).toISOString() }, NOW) === null);
 t('isSamePlan: plan 키 동일만 true', ps.isSamePlan({ plan: 'standard_monthly' }, 'standard_monthly') && !ps.isSamePlan({ plan: 'standard_monthly' }, 'standard_yearly'));
@@ -30,6 +41,26 @@ const pp = ps.pendingPatch({ id: 'I-NEW', start_time: '2026-10-31T10:00:00Z', bi
 t('pendingPatch: plan/cycle/id/start', pp.pending_plan === 'premium_yearly' && pp.pending_billing_cycle === 'yearly' && pp.pending_paypal_subscription_id === 'I-NEW' && pp.pending_start_at === '2026-10-31T10:00:00.000Z');
 const cp = ps.clearPendingPatch();
 t('clearPendingPatch: 4칸 전부 null', ['pending_plan', 'pending_billing_cycle', 'pending_paypal_subscription_id', 'pending_start_at'].every((k) => k in cp && cp[k] === null));
+
+// ── 해지자 전환이 네 곳에서 같은 규칙인가 (2026-11-14) ──
+{
+  const wh2 = R('api/paypal-webhook.js');
+  t('웹훅: 해지 상태의 이전 구독도 예약으로 받는다 — 단 기간이 남아 있을 때만',
+    /prevStatus === 'canceled' && prevStillPaid/.test(wh2)
+    && /prevEndMs > Date\.now\(\)/.test(wh2)
+    && /&& prevSwitchable\)/.test(wh2));
+  const api2 = R('frontend/pap-api.js');
+  t("프런트 _switchStartTime 도 canceled 를 포함한다 (서버 규칙과 거울)",
+    /st !== 'active' && st !== 'past_due' && st !== 'canceled'/.test(api2));
+  const sub2 = R('frontend/subscribe.html');
+  t('카드가 해지자를 잠그지 않는다 (_switchable 에 canceled, 같은 플랜은 다시 구독)',
+    /\['active','past_due','canceled'\]\.indexOf/.test(sub2)
+    && /function _lapsing\(\)/.test(sub2) && /if\(!_lapsing\(\)\)\{ markCurrent\(c\); return; \}/.test(sub2));
+  t('다시 구독하기 문구가 9개 언어에 있다', (sub2.match(/ctaResubscribe:'/g) || []).length === 9);
+  const sweep = R('api/cron/subscription-expiry-sweep.js');
+  t('만료 스윕이 아직 시작 안 된 예약을 강등하지 않는다 (첫 결제 전 무료 추락 방지)',
+    /pending_plan, pending_start_at/.test(sweep) && /pendStart >= new Date\(cutoff\)\.getTime\(\)/.test(sweep));
+}
 
 // ── 마이그레이션 ──
 const mig = R('supabase_migrations/179_subscriptions_pending_switch.sql');

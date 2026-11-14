@@ -236,9 +236,18 @@ async function upsertSubscription(sub, userId) {
   // 살아 있는 다른 구독이 있으면, 행은 지금 플랜 그대로 두고 pending_* 에만 적는다.
   // 이전 구독은 지금 PayPal 에서 해지한다(종료일에 둘 다 청구되는 것 방지). 이미 낸
   // 기간은 그대로 쓴다. 첫 결제(PAYMENT.SALE.COMPLETED)가 오면 아래 즉시 경로로 바꾼다.
+  /* 2026-11-14 — 'canceled' 를 받아들인다(기간이 남아 있을 때만).
+     해지자도 종료일 시작으로 플랜을 바꿀 수 있게 하면서(planSwitch.switchStartTime),
+     여기서 받지 않으면 아래 즉시 경로로 떨어져 '12/12까지 프리미엄' 이라는 사실이
+     미래 날짜로 덮여 버린다. 기간이 이미 지난 해지 행은 예약이 아니라 새 구독이다. */
+  const prevEndMs = prev && prev.current_period_end ? new Date(prev.current_period_end).getTime() : NaN;
+  const prevStillPaid = Number.isFinite(prevEndMs) && prevEndMs > Date.now();
+  const prevStatus = String((prev && prev.status) || '');
+  const prevSwitchable = ['active', 'past_due', 'paused'].includes(prevStatus)
+    || (prevStatus === 'canceled' && prevStillPaid);
   if (planSwitch.isScheduledStart(sub) && prev && prev.paypal_subscription_id
       && prev.paypal_subscription_id !== sub.id
-      && ['active', 'past_due', 'paused'].includes(String(prev.status || ''))) {
+      && prevSwitchable) {
     const patch = planSwitch.pendingPatch(sub, plan);
     const { error: pErr } = await supabaseAdmin.from('subscriptions').update(patch).eq('user_id', userId);
     if (pErr) throw new Error('pending switch save failed: ' + pErr.message);
