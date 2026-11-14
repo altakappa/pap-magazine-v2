@@ -147,6 +147,7 @@
     + '.pap-engage .pe-list li{padding:16px 0;border-bottom:1px solid rgba(255,255,255,.08)}'
     + '.pap-engage .pe-who{font-size:12px;color:#8f8f8f;margin-bottom:6px;display:flex;gap:8px;align-items:center}'
     + '.pap-engage .pe-body{font-size:14.5px;line-height:1.7;color:#e8e8e8;white-space:pre-wrap;word-break:break-word}'
+    + '.pap-engage .pe-pap{font-style:normal;font-size:10px;font-weight:700;letter-spacing:.06em;line-height:15px;border:1px solid currentColor;padding:0 5px}'
     + '.pap-engage .pe-del{background:none;border:0;color:#777;font-size:11px;cursor:pointer;padding:0;margin-left:auto;font-family:inherit}'
     + '.pap-engage .pe-empty{color:#7d7d7d;font-size:13.5px;padding:14px 0}'
     + '@media(max-width:640px){.pap-engage{padding:0 18px}}';
@@ -321,8 +322,8 @@
           chip = '<span class="pe-chip' + (c.verified ? ' ok' : '') + '">' + (c.verified ? '✓ ' : '') + esc(c.brand)
             + (c.item ? ' · ' + esc(c.item) : '') + (c.verified ? ' · ' + esc(t.verified) : '') + '</span>';
         }
-        li.innerHTML = '<div class="pe-who"><strong>' + esc(c.author) + '</strong><span>' + esc(when(c.created_at, t)) + '</span>'
-          + (c.mine ? '<button type="button" class="pe-del" data-id="' + esc(c.id) + '">' + esc(t.del) + '</button>' : '')
+        li.innerHTML = '<div class="pe-who"><strong>' + esc(c.author) + '</strong>' + (c.official ? '<em class="pe-pap">PAP</em>' : '') + '<span>' + esc(when(c.created_at, t)) + '</span>'
+          + ((c.mine || c.can_delete) ? '<button type="button" class="pe-del" data-id="' + esc(c.id) + '">' + esc(t.del) + '</button>' : '')
           + '</div>' + chip + '<div class="pe-body">' + esc(c.body) + '</div>';
         listEl.appendChild(li);
       });

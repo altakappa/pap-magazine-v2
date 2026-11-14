@@ -50,6 +50,47 @@ function actorFor(req) {
   return { userId: null, anonKey: 'ip:' + hashIp(extractClientIp(req)), anon: true };
 }
 
+/* ── 2026-11-15 — 익명을 열었으면 치울 수단과 알림이 같이 있어야 한다 ──
+   11/14 에 익명 댓글을 열면서 세 가지를 빠뜨렸다:
+     ① 지울 수 있는 사람이 글쓴이뿐 — 셀럽 기사에 악플이 달려도 PAP 는 DB 를 직접 고쳐야 했다.
+     ② 댓글이 달려도 아무도 모른다 — 답이 안 달리는 방에는 두 번째 글이 안 온다.
+     ③ 닉네임이 자유 입력 — 누구나 'PAP 에디터' 를 자칭할 수 있었다.
+   그래서: 운영진(admin·staff)은 어떤 댓글이든 내릴 수 있고, 새 댓글은 개인방으로 알리고,
+   운영진처럼 보이는 닉네임은 익명에게 주지 않는다. 운영진 표시(official)는 로그인한
+   운영진 계정에만 서버가 붙인다 — 닉네임으로는 절대 얻을 수 없다. */
+async function isStaff(userId) {
+  if (!userId) return false;
+  try {
+    const { data } = await supabaseAdmin.from('profiles').select('role').eq('id', userId).maybeSingle();
+    return !!(data && (data.role === 'admin' || data.role === 'staff'));
+  } catch (_e) { return false; } // 확인 실패는 '운영진 아님' — 권한은 닫힌 쪽으로 넘어진다
+}
+
+const RESERVED_NICK = /pap|에디터|관리자|운영자|운영진|공식|editor|admin|staff|official|moderator/;
+function safeNickname(raw) {
+  const n = cleanShort(raw, MAX_NICK);
+  if (!n) return null;
+  /* 전각(ＰＡＰ)·띄어 쓰기(P A P)·기호 끼우기(P.A.P)로 피해 가지 못하게 펴서 본다 */
+  const flat = n.normalize('NFKC').toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+  return RESERVED_NICK.test(flat) ? null : n; // 막힌 닉네임은 '익명' 으로 표시된다 (댓글은 받는다)
+}
+
+async function alertNewComment(type, id, row, anon) {
+  try {
+    let title = '', slug = '';
+    if (type === 'article') {
+      const { data } = await supabaseAdmin.from('articles').select('title, slug').eq('id', id).maybeSingle();
+      title = (data && data.title) || ''; slug = (data && data.slug) || '';
+    }
+    const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
+    const who = anon ? ('익명 · ' + (row.nickname || '닉네임 없음')) : '회원';
+    const lines = ['💬 새 댓글 (' + who + ')', title ? ('글: ' + title) : ('대상: ' + type), '', String(row.body || '').slice(0, 300), ''];
+    if (slug) lines.push('https://www.pap-magazine.com/article/' + slug);
+    lines.push('답글은 운영진 계정으로 로그인해서 달면 PAP 표시가 붙는다. 지울 때도 그 계정으로 댓글 옆 삭제.');
+    await sendTextToTelegramPersonalSafe(lines.join('\n'));
+  } catch (e) { console.warn('[content/comments] 새 댓글 알림 실패(무시)', e && e.message); }
+}
+
 function cleanShort(raw, max) {
   const s = String(raw == null ? '' : raw).replace(/[\u0000-\u001F\u007F]/g, '').replace(/\s+/g, ' ').trim();
   if (!s) return '';
@@ -99,13 +140,14 @@ module.exports = async function handler(req, res) {
       /* profiles 는 left join — !inner 였을 땐 비로그인 댓글(user_id null)이 통째로 빠진다 (2026-11-14) */
       const { data, error, count } = await supabaseAdmin
         .from('content_comments')
-        .select('id, body, created_at, user_id, anon_key, nickname, kind, brand, item, verified, profiles(name, avatar_url)', { count: 'exact' })
+        .select('id, body, created_at, user_id, anon_key, nickname, kind, brand, item, verified, profiles(name, avatar_url, role)', { count: 'exact' })
         .eq('target_type', t.type).eq('target_id', t.id).eq('status', 'visible')
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
 
       const me = actorFor(req);
+      const viewerStaff = me.userId ? await isStaff(me.userId) : false;
       const items = (data || []).map((c) => ({
         id: c.id,
         body: c.body,
@@ -117,6 +159,9 @@ module.exports = async function handler(req, res) {
         item: c.item || null,
         verified: !!c.verified,
         mine: me.userId ? me.userId === c.user_id : (!!c.anon_key && c.anon_key === me.anonKey),
+        /* 운영진 표시 — role 자체는 내보내지 않는다. 로그인한 운영진 계정의 댓글에만 붙는다. */
+        official: !!(c.profiles && (c.profiles.role === 'admin' || c.profiles.role === 'staff')),
+        can_delete: viewerStaff || (me.userId ? me.userId === c.user_id : (!!c.anon_key && c.anon_key === me.anonKey)),
       }));
       const outfits = items.filter((i) => i.kind === 'outfit').length;
       return res.status(200).json({ items, total: Number(count) || items.length, outfits });
@@ -140,7 +185,7 @@ module.exports = async function handler(req, res) {
       /* 착장 식별은 본문이 비어도 된다 — 브랜드·아이템이 곧 내용이다. */
       const c = cleanBody(src.body || (kind === 'outfit' ? [brand, item].filter(Boolean).join(' · ') : ''));
       if (c.error) return res.status(400).json({ error: c.error });
-      const nickname = actor.anon ? (cleanShort(src.nickname, MAX_NICK) || null) : null;
+      const nickname = actor.anon ? safeNickname(src.nickname) : null;
 
       let verified = false;
       if (kind === 'outfit' && t.type === 'article') {
@@ -159,6 +204,9 @@ module.exports = async function handler(req, res) {
         .insert(row).select('id, body, created_at, kind, brand, item, verified').single();
       if (error) throw error;
 
+      /* 운영진이 쓴 글은 알리지 않는다 (자기 글에 자기가 울린다). 알림 실패는 댓글을 막지 않는다. */
+      if (actor.anon || !(await isStaff(actor.userId))) await alertNewComment(t.type, t.id, row, actor.anon);
+
       return res.status(201).json({ item: { ...data, mine: true, anon: actor.anon } });
     }
 
@@ -173,7 +221,9 @@ module.exports = async function handler(req, res) {
       let q = supabaseAdmin.from('content_comments')
         .update({ status: 'deleted', updated_at: new Date().toISOString() })
         .eq('id', id).eq('status', 'visible');
-      q = actor.userId ? q.eq('user_id', actor.userId) : q.eq('anon_key', actor.anonKey);
+      /* 운영진은 주인 조건 없이 내릴 수 있다 (2026-11-15). 그 밖에는 여전히 자기 글만. */
+      const staff = actor.userId ? await isStaff(actor.userId) : false;
+      if (!staff) q = actor.userId ? q.eq('user_id', actor.userId) : q.eq('anon_key', actor.anonKey);
       const { data, error } = await q.select('id');
       if (error) throw error;
       if (!(data || []).length) return res.status(404).json({ error: '내 댓글이 아니거나 이미 지워짐' });
@@ -194,3 +244,5 @@ module.exports.cleanShort = cleanShort;
 module.exports.brandMatchesTags = brandMatchesTags;
 module.exports.actorFor = actorFor;
 module.exports.ANON_WRITE_LIMIT = ANON_WRITE_LIMIT;
+module.exports.safeNickname = safeNickname;
+module.exports.isStaff = isStaff;

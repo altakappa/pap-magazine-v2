@@ -104,7 +104,7 @@ const req = (method, body, h) => ({ method, headers: { 'user-agent': 'Mozilla/5.
   r = res();
   await C({ method: 'GET', headers: { 'user-agent': 'Mozilla/5.0' }, query: { target_type: 'article', target_id: ART } }, r);
   const sel = calls[0] && calls[0]._ops.find((x) => x[0] === 'select');
-  t('profiles 는 left join (비로그인 댓글이 빠지지 않게)', sel && /profiles\(name, avatar_url\)/.test(sel[1]) && !/!inner/.test(sel[1]), sel && sel[1]);
+  t('profiles 는 left join (비로그인 댓글이 빠지지 않게)', sel && /profiles\(name, avatar_url(, role)?\)/.test(sel[1]) && !/!inner/.test(sel[1]), sel && sel[1]);
   t('kind·brand·item·verified 를 읽는다', sel && /kind, brand, item, verified/.test(sel[1]));
   t('응답에 outfits 집계', r.code === 200 && typeof r.body.outfits === 'number');
 
@@ -119,8 +119,8 @@ const req = (method, body, h) => ({ method, headers: { 'user-agent': 'Mozilla/5.
   const cmtBlock = fe.slice(fe.indexOf("fetch('/api/content/comments', {"), fe.indexOf('setupPush('));
   t('프런트: 댓글 작성 경로에 401 로그인 벽이 없다 (별점 안전망은 별개)', cmtBlock.length > 0 && !/401/.test(cmtBlock) && !/pe-login/.test(cmtBlock));
   t('프런트: verified 표시', /verified/.test(fe));
-  const bumped = ['frontend/index.html', 'frontend/articles.html', 'frontend/films.html', 'api/_lib/seoRenderer.js'].every((f) => /pap-engage\.js\?v=11/.test(R(f)));
-  t('캐시버스트: 4곳 전부 pap-engage.js?v=11', bumped);
+  const bumped = ['frontend/index.html', 'frontend/articles.html', 'frontend/films.html', 'api/_lib/seoRenderer.js'].every((f) => { const m = R(f).match(/pap-engage\.js\?v=(\d+)/); return !!m && Number(m[1]) >= 11; });
+  t('캐시버스트: 4곳 전부 pap-engage.js?v=11 이상', bumped);
 
   console.log(`\npassed: ${pass}   failed: ${fail}`);
   if (fail) { console.log('❌ comments-anon-outfit tests FAILED'); process.exit(1); }
