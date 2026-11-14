@@ -62,6 +62,42 @@ t('clearPendingPatch: 4칸 전부 null', ['pending_plan', 'pending_billing_cycle
     /pending_plan, pending_start_at/.test(sweep) && /pendStart >= new Date\(cutoff\)\.getTime\(\)/.test(sweep));
 }
 
+// ── '지금 바로 시작하기' (2026-11-14) ──
+/* 기본은 종료일 시작이다. 그 기본이 "28일 기다려라" 가 되는 사람에게 선택지를 준다.
+   지키는 것: ① 기본값은 바뀌지 않았다 ② 고를 때는 잃는 것을 먼저 말한다
+   ③ 중복 결제 가드(SAME_PLAN·PENDING_SWITCH)는 그대로다. */
+{
+  const api3 = R('frontend/pap-api.js');
+  t('checkoutIntl 가 opts.startNow 로 예약을 건너뛴다',
+    /async checkoutIntl\(plan, billing, opts\)/.test(api3)
+    && /var _o = opts \|\| \{\};/.test(api3)
+    && /if \(_o\.startNow\) startTime = null;/.test(api3));
+  t('기본값은 그대로 예약이다 (startNow 를 안 주면 _switchStartTime 결과를 쓴다)',
+    /startTime = _switchStartTime\(cur\);/.test(api3));
+  t('startNow 가 중복 결제 가드를 건너뛰지 않는다 (SAME_PLAN·PENDING_SWITCH 가 먼저)',
+    api3.indexOf("code = 'SAME_PLAN'") < api3.indexOf('if (_o.startNow) startTime = null;')
+    || /SAME_PLAN/.test(api3.slice(0, api3.indexOf('if (_o.startNow) startTime = null;'))));
+
+  const sub3 = R('frontend/subscribe.html');
+  t('안내문에 지금 시작 링크를 단다 (예약 가능한 카드에만)',
+    /function _setSwitchNote\(note, d, endDate, base\)/.test(sub3)
+    && (sub3.match(/_setSwitchNote\(note, d, endDate, base\);/g) || []).length === 2);
+  t('예약이 이미 걸린 카드에는 달지 않는다 (더 못 바꾼다)',
+    /note\.textContent = String\(d\.pendingNote\|\|''\)/.test(sub3)
+      || /d\.pendingNote/.test(sub3));
+  t('누르기 전에 잃는 것을 묻는다 (confirm)',
+    /if\(!window\.confirm\(warn\)\) return;/.test(sub3)
+    && /handleCta\(base, \{ startNow:true \}\)/.test(sub3));
+  t('handleCta 가 옵션을 체크아웃까지 넘긴다',
+    /async function handleCta\(plan, opts\)/.test(sub3)
+    && /checkoutIntl\(plan, billing, opts \|\| \{\}\)/.test(sub3));
+  t('문구 9개 언어 (링크 + 경고)',
+    (sub3.match(/ctaStartNow:'/g) || []).length === 9
+    && (sub3.match(/startNowWarn:'/g) || []).length === 9);
+  t('경고가 날짜를 넣어 말한다 — 무엇을 잃는지 숫자로 보인다',
+    (sub3.match(/startNowWarn:'[^']*\{date\}/g) || []).length === 9);
+}
+
 // ── 마이그레이션 ──
 const mig = R('supabase_migrations/179_subscriptions_pending_switch.sql');
 t('마이그레이션 179: pending 4칸', ['pending_plan', 'pending_billing_cycle', 'pending_paypal_subscription_id', 'pending_start_at'].every((c) => new RegExp('add column if not exists ' + c).test(mig)));

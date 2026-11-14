@@ -777,7 +777,15 @@ const PAP = (function() {
      * 심는 것이라 위조가 가능하므로, 웹훅이 결제자 이메일과 대조한다.
      * 등급 반영은 paypal-webhook 단독 — 여기서는 절대 등급을 올리지 않는다.
      */
-    async checkoutIntl(plan, billing) {
+    /* opts.startNow — 종료일 예약을 건너뛰고 지금 시작한다 (2026-11-14).
+       기본은 예약이다(이미 낸 남은 날을 버리지 않는다). 그런데 "지금 바로 올리고
+       싶다" 는 사람에게는 그 기본이 28일을 기다리라는 말이 된다 — 실측: 프리미엄
+       월간 회원이 연간으로 바꾸려다 두 번 막히고 세 번째로 사람에게 말했다.
+       잃는 것(남은 기간은 넘어가지 않는다)을 먼저 보여주고 본인이 고르게 한다.
+       같은 플랜 중복 결제 방지(SAME_PLAN)와 이미 걸린 예약(PENDING_SWITCH)은
+       그대로 막는다 — 이 옵션은 '언제 시작하나' 만 바꾼다. */
+    async checkoutIntl(plan, billing, opts) {
+      var _o = opts || {};
       var user = auth.getUser();
       if (!user || !user.id) {
         throw new Error('Please sign in first to subscribe with international payment.');
@@ -824,6 +832,7 @@ const PAP = (function() {
             throw _pe3;
           }
           startTime = _switchStartTime(cur);
+          if (_o.startNow) startTime = null;   // 본인이 '지금 시작' 을 골랐다
         } catch (e2) {
           if (e2 && (e2.code === 'PENDING_SWITCH' || e2.code === 'SAME_PLAN')) throw e2;
           startTime = null;   // 404(구독 없음)·네트워크 오류 → 즉시 시작
