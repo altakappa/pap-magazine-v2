@@ -37,6 +37,7 @@
           nick: '닉네임', outfitQ: '이 착장, 어디 거인지 아세요?', outfitBtn: '브랜드 알려주기', outfitCancel: '그냥 댓글',
           brand: '브랜드', item: '아이템 (선택)', verified: '기사와 일치', outfitEmpty: '아직 아무도 안 알려줬어요. 첫 번째가 되어보세요.',
           anonNudge: '로그인하면 내 댓글이 기기를 옮겨도 남아요', anonNudgeCta: '로그인',
+          outfitTitle: '이 착장 어디 거?', outfitYes: '맞아요', outfitNo: '아니에요', outfitConfirmed: '확정', outfitProposed: '제안됨',
           kakao: '카카오톡 공유',
           push: '새 화보 알림 받기', pushOn: '알림 받는 중', pushAria: '새 화보 웹 알림 켜기/끄기',
           rateQ: '이 화보가 마음에 드셨나요?', rateAria: '별점 {n}점 주기', rateAvg: '평균',
@@ -47,6 +48,7 @@
           nick: 'Nickname', outfitQ: 'Know where this look is from?', outfitBtn: 'Name the brand', outfitCancel: 'Just a comment',
           brand: 'Brand', item: 'Item (optional)', verified: 'Matches the story', outfitEmpty: 'Nobody has named it yet. Be the first.',
           anonNudge: 'Sign in and your comments follow you across devices', anonNudgeCta: 'Sign in',
+          outfitTitle: 'Where is this look from?', outfitYes: 'Yes', outfitNo: 'No', outfitConfirmed: 'Confirmed', outfitProposed: 'Suggested',
           empty: 'Be the first to comment.', placeholder: 'Share your thoughts on this story',
           send: 'Post', login: 'Sign in to comment', del: 'Delete', now: 'just now',
           kakao: 'Share on KakaoTalk',
@@ -129,6 +131,17 @@
     + '.pap-engage .pe-chip.ok{border-color:#9be39b;color:#9be39b}'
     + '.pap-engage .pe-nudge{margin:10px 0 0;font-size:12.5px;color:#999}'
     + '.pap-engage .pe-nudge a{color:#ddd;margin-left:6px}'
+    /* 2026-11-14 착장 칩 (article_outfit_items) */
+    + '.pap-engage .pe-outfit{margin:0 0 18px;padding:14px 16px;border:1px solid rgba(255,255,255,.12);border-radius:4px}'
+    + '.pap-engage .pe-outfit h3{margin:0 0 10px;font-size:13.5px;font-weight:600;letter-spacing:.02em;color:#eee}'
+    + '.pap-engage .pe-oi{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)}'
+    + '.pap-engage .pe-oi:first-of-type{border-top:0}'
+    + '.pap-engage .pe-oi a.pe-ob,.pap-engage .pe-oi span.pe-ob{font-size:13.5px;color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.35)}'
+    + '.pap-engage .pe-oi .pe-op{font-size:12.5px;color:#bbb}'
+    + '.pap-engage .pe-oi .pe-ok{font-size:11px;color:#9be39b;border:1px solid #9be39b;border-radius:999px;padding:1px 7px}'
+    + '.pap-engage .pe-ov{margin-left:auto;display:flex;gap:6px}'
+    + '.pap-engage .pe-ov button{background:none;border:1px solid rgba(255,255,255,.3);color:#ddd;font-size:12px;padding:4px 10px;border-radius:999px;cursor:pointer}'
+    + '.pap-engage .pe-ov button[aria-pressed="true"]{background:#fff;color:#111;border-color:#fff}'
     + '.pap-engage .pe-login:hover{color:#fff;border-color:rgba(255,255,255,.4)}'
     + '.pap-engage .pe-list{list-style:none;padding:0;margin:22px 0 0}'
     + '.pap-engage .pe-list li{padding:16px 0;border-bottom:1px solid rgba(255,255,255,.08)}'
@@ -208,6 +221,7 @@
 
     root.innerHTML =
       '<section class="pap-engage" data-target-type="' + esc(kind) + '" data-target-id="' + esc(id) + '">'
+      + (kind === 'article' ? '<div class="pe-outfit" hidden></div>' : '')
       + '<div class="pe-bar">'
       + evalHtml
       + '<button type="button" class="kko-btn pe-kko" hidden>' + esc(t.kakao) + '</button>'
@@ -249,6 +263,49 @@
           .then(function (d) { paint(d || { count: before, mine: wasOn }); })
           .catch(function () { paint({ count: before, mine: wasOn }); })
           .then(function () { busy = false; });
+      });
+    }
+
+    // ── 착장 칩 "이 착장 어디 거?" (2026-11-14, api/articles/:id/outfit) ──
+    //    확정: 브랜드 칩(/brand/<id>) · 제안됨: 맞아요/아니에요 한 번 탭(로그인 불필요).
+    //    항목이 없으면 블록 자체를 안 보인다 — "알려주기" 는 아래 댓글의 착장 식별 칸이 맡는다.
+    var outfitEl = $('.pe-outfit');
+    function paintOutfit(d) {
+      if (!outfitEl) return;
+      var items = (d && d.items) || [];
+      if (!items.length) { outfitEl.hidden = true; return; }
+      var h = '<h3>' + esc(t.outfitTitle) + '</h3>';
+      items.forEach(function (i) {
+        var name = i.brand_id
+          ? '<a class="pe-ob" href="/brand/' + encodeURIComponent(i.brand_id) + '">' + esc(i.brand_name) + '</a>'
+          : '<span class="pe-ob">' + esc(i.brand_name) + '</span>';
+        var prod = i.product ? '<span class="pe-op">' + esc(i.product) + '</span>' : '';
+        var tail = i.status === 'confirmed'
+          ? '<span class="pe-ok">✓ ' + esc(t.outfitConfirmed) + '</span>'
+          : '<span class="pe-ov">'
+            + '<button type="button" data-id="' + esc(i.id) + '" data-v="1" aria-pressed="' + (i.mine > 0 ? 'true' : 'false') + '">' + esc(t.outfitYes) + ' ' + (i.yes_count || 0) + '</button>'
+            + '<button type="button" data-id="' + esc(i.id) + '" data-v="-1" aria-pressed="' + (i.mine < 0 ? 'true' : 'false') + '">' + esc(t.outfitNo) + ' ' + (i.no_count || 0) + '</button>'
+            + '</span>';
+        h += '<div class="pe-oi">' + name + prod + tail + '</div>';
+      });
+      outfitEl.innerHTML = h; outfitEl.hidden = false;
+    }
+    function loadOutfit() {
+      if (!outfitEl) return;
+      fetch('/api/articles/' + encodeURIComponent(id) + '/outfit', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { if (d) paintOutfit(d); }).catch(function () {});
+    }
+    if (outfitEl) {
+      loadOutfit();
+      outfitEl.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('button[data-v]');
+        if (!b || busy) return; busy = true;
+        fetch('/api/articles/' + encodeURIComponent(id) + '/outfit', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'vote', item_id: b.dataset.id, vote: Number(b.dataset.v) }),
+        }).then(function () { loadOutfit(); }).catch(function () {}).then(function () { busy = false; });
       });
     }
 

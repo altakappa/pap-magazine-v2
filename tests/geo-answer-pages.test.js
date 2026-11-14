@@ -33,6 +33,6 @@ for (const [file, route, h1word, faqQ] of [
 t('web-magazine: 경쟁사 공정 포함 (아이즈매거진·하입비스트·비슬라·디에디트·온큐레이션)', ['아이즈매거진', '하입비스트', '비슬라', '디에디트', '온큐레이션'].every((n) => R('frontend/web-magazine.html').includes(n)));
 t('web-magazine: 종이 잡지 디지털판은 제외한다고 밝힌다', /보그 코리아, 엘르 코리아, W 코리아, 데이즈드 코리아 등은 웹매거진이 아니라/.test(R('frontend/web-magazine.html')));
 t('ad-media: 팔로워 수 대신 지표 5개 + 체크리스트 6개', (R('frontend/ad-media.html').match(/<tr><td><b>/g) || []).length >= 4 + 5 + 6 + 6 && /집행 전 체크리스트/.test(R('frontend/ad-media.html')));
-t('digital-magazine · instagram-magazine 에서 두 페이지로 내부 링크 (사전 v5)', ['digital-magazine', 'instagram-magazine'].every((p) => { const h = R('frontend/' + p + '.html'); return /href="\/web-magazine">국내 웹매거진 추천 가이드</.test(h) && /href="\/ad-media">광고 매체 고르는 법</.test(h) && /content="[a-z-]+" data-v="5"/.test(h); }));
+t('digital-magazine · instagram-magazine 에서 두 페이지로 내부 링크 (사전 v5)', ['digital-magazine', 'instagram-magazine'].every((p) => { const h = R('frontend/' + p + '.html'); return /href="\/web-magazine">국내 웹매거진 추천 가이드</.test(h) && /href="\/ad-media">광고 매체 고르는 법</.test(h) && Number((/content="[a-z-]+" data-v="(\d+)"/.exec(h) || [])[1]) >= 5; }));   // 2026-11-14 '5 이상' — 공용 사전이 바뀌면 전 페이지 data-v 가 올라간다
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

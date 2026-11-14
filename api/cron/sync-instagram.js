@@ -33,6 +33,8 @@ const { pingNewContent, SITE } = require('../_lib/pingSearch');
 // 2026-08-09 — 골든아워 부스트: 새 에디토리얼 IG 게시물 감지 즉시 스레드·X 가
 // 그 게시물로 트래픽을 쏜다 (실측: 첫 3시간 좋아요 ↔ 최종 도달 corr 0.94).
 const { maybeBoostPost } = require('../_lib/goldenBoost');
+const outfitItems = require('../_lib/outfitItems');     // 2026-11-14 착장 식별 자동 제안
+let _outfitBrandIdx = null;                                // brands 사전, 함수 인스턴스 안에서 재사용
 
 /* 부스트 결과를 한 곳에서 센다 (2026-09-10).
    왜 ── 부스트 호출부가 3군데인데 셋 다 `if (b.boosted) results.boosted++` 만
@@ -374,6 +376,15 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         throw insErr;
       }
       results.imported++;
+      /* 2026-11-14 — "이 착장 어디 거?" 자동 제안. 태그 ↔ brands 대조해 '제안됨' 항목을
+         만든다(api/_lib/outfitItems). 실패해도 발행을 막지 않는다. 백필 제외. */
+      if (inserted && !backfillMode){
+        try {
+          if (!_outfitBrandIdx) _outfitBrandIdx = await outfitItems.loadBrandIndex();
+          const n = await outfitItems.proposeFromTags({ id: inserted.id, tags: generated.tags }, _outfitBrandIdx);
+          if (n) results.outfit_proposed = (results.outfit_proposed || 0) + n;
+        } catch (e) { console.warn('[sync-ig] 착장 제안 실패(발행엔 영향 없음):', (e && e.message) || e); }
+      }
       if (inserted){
         /* 2026-08-03 — slug 우선. 사이트맵(api/sitemap-articles.js:50)은
            slug || custom_url || id 순으로 정본 URL 을 내보내는데, 여기만

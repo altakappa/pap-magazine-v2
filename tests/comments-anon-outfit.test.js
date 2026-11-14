@@ -119,8 +119,8 @@ const req = (method, body, h) => ({ method, headers: { 'user-agent': 'Mozilla/5.
   const cmtBlock = fe.slice(fe.indexOf("fetch('/api/content/comments', {"), fe.indexOf('setupPush('));
   t('프런트: 댓글 작성 경로에 401 로그인 벽이 없다 (별점 안전망은 별개)', cmtBlock.length > 0 && !/401/.test(cmtBlock) && !/pe-login/.test(cmtBlock));
   t('프런트: verified 표시', /verified/.test(fe));
-  const bumped = ['frontend/index.html', 'frontend/articles.html', 'frontend/films.html', 'api/_lib/seoRenderer.js'].every((f) => /pap-engage\.js\?v=10/.test(R(f)));
-  t('캐시버스트: 4곳 전부 pap-engage.js?v=10', bumped);
+  const bumped = ['frontend/index.html', 'frontend/articles.html', 'frontend/films.html', 'api/_lib/seoRenderer.js'].every((f) => /pap-engage\.js\?v=11/.test(R(f)));
+  t('캐시버스트: 4곳 전부 pap-engage.js?v=11', bumped);
 
   console.log(`\npassed: ${pass}   failed: ${fail}`);
   if (fail) { console.log('❌ comments-anon-outfit tests FAILED'); process.exit(1); }
