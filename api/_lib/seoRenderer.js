@@ -1946,7 +1946,7 @@ function renderSeoHtml(kind, record, opts) {
   return `<!DOCTYPE html>
 <html lang="${lang}" prefix="og: https://ogp.me/ns#">
 <head>
-<meta name="pap-ui-i18n" content="_shared" data-v="7">
+<meta name="pap-ui-i18n" content="_shared" data-v="8">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>${escText(seoTitle)}</title>
@@ -2572,7 +2572,7 @@ window.__PAP_ENGAGE = ${JSON.stringify({
   image: ogImage || '',
 })};
 </script>
-<script src="/pap-engage.js?v=9" defer></script>
+<script src="/pap-engage.js?v=10" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var host = document.getElementById('papEngageMount');

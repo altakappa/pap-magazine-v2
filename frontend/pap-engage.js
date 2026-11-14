@@ -34,6 +34,9 @@
     ko: { like: '좋아요', likeAria: '이 글에 좋아요', comments: '댓글', jump: '댓글 보기',
           empty: '첫 댓글을 남겨보세요.', placeholder: '이 기사에 대한 생각을 남겨주세요',
           send: '등록', login: '로그인하고 댓글 남기기', del: '삭제', now: '방금',
+          nick: '닉네임', outfitQ: '이 착장, 어디 거인지 아세요?', outfitBtn: '브랜드 알려주기', outfitCancel: '그냥 댓글',
+          brand: '브랜드', item: '아이템 (선택)', verified: '기사와 일치', outfitEmpty: '아직 아무도 안 알려줬어요. 첫 번째가 되어보세요.',
+          anonNudge: '로그인하면 내 댓글이 기기를 옮겨도 남아요', anonNudgeCta: '로그인',
           kakao: '카카오톡 공유',
           push: '새 화보 알림 받기', pushOn: '알림 받는 중', pushAria: '새 화보 웹 알림 켜기/끄기',
           rateQ: '이 화보가 마음에 드셨나요?', rateAria: '별점 {n}점 주기', rateAvg: '평균',
@@ -41,6 +44,9 @@
           rateLogin: '로그인하고 별점 남기기', rateNone: '첫 별점을 남겨보세요',
           rateNudge: '로그인하면 내 별점이 기기를 옮겨도 남아요', rateNudgeCta: '로그인' },
     en: { like: 'Like', likeAria: 'Like this story', comments: 'Comments', jump: 'Jump to comments',
+          nick: 'Nickname', outfitQ: 'Know where this look is from?', outfitBtn: 'Name the brand', outfitCancel: 'Just a comment',
+          brand: 'Brand', item: 'Item (optional)', verified: 'Matches the story', outfitEmpty: 'Nobody has named it yet. Be the first.',
+          anonNudge: 'Sign in and your comments follow you across devices', anonNudgeCta: 'Sign in',
           empty: 'Be the first to comment.', placeholder: 'Share your thoughts on this story',
           send: 'Post', login: 'Sign in to comment', del: 'Delete', now: 'just now',
           kakao: 'Share on KakaoTalk',
@@ -113,6 +119,16 @@
     + '.pap-engage .pe-send{margin-top:10px;background:#fff;color:#111;border:0;padding:11px 26px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;font-family:inherit}'
     + '.pap-engage .pe-send[disabled]{opacity:.4;cursor:default}'
     + '.pap-engage .pe-login{display:block;padding:18px;border:1px dashed rgba(255,255,255,.2);color:#bbb;font-size:13.5px;text-align:center;text-decoration:none}'
+    /* 2026-11-14 익명 댓글 + 착장 식별 */
+    + '.pap-engage .pe-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}'
+    + '.pap-engage .pe-row input{flex:1;min-width:120px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:#fff;padding:9px 10px;font-size:13.5px;border-radius:3px}'
+    + '.pap-engage .pe-outfit-q{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:13.5px;color:#ddd}'
+    + '.pap-engage .pe-outfit-btn{background:none;border:1px solid rgba(255,255,255,.35);color:#fff;padding:6px 12px;font-size:12.5px;border-radius:999px;cursor:pointer}'
+    + '.pap-engage .pe-outfit-btn[aria-pressed="true"]{background:#fff;color:#111}'
+    + '.pap-engage .pe-chip{display:inline-block;margin:0 6px 6px 0;padding:3px 9px;border:1px solid rgba(255,255,255,.3);border-radius:999px;font-size:12px;color:#eee}'
+    + '.pap-engage .pe-chip.ok{border-color:#9be39b;color:#9be39b}'
+    + '.pap-engage .pe-nudge{margin:10px 0 0;font-size:12.5px;color:#999}'
+    + '.pap-engage .pe-nudge a{color:#ddd;margin-left:6px}'
     + '.pap-engage .pe-login:hover{color:#fff;border-color:rgba(255,255,255,.4)}'
     + '.pap-engage .pe-list{list-style:none;padding:0;margin:22px 0 0}'
     + '.pap-engage .pe-list li{padding:16px 0;border-bottom:1px solid rgba(255,255,255,.08)}'
@@ -171,7 +187,7 @@
     var id = String(o.id || '');
     if (!TYPES[kind] || !UUID.test(id)) { root.innerHTML = ''; return; }
 
-    var t = T[o.lang] || T.en;
+    var t = Object.assign({}, T.en, T[o.lang] || {});   /* 2026-11-14 새 키는 en 폴백 */
     var qs = '?target_type=' + encodeURIComponent(kind) + '&target_id=' + encodeURIComponent(id);
 
     /* 다시 그리기 — SPA 는 같은 자리에 다른 기사를 끼우므로 매번 새로 만든다.
@@ -239,13 +255,18 @@
     // ── 댓글 ───────────────────────────────────────────────
     function paintList(items) {
       listEl.innerHTML = '';
-      if (!items.length) { emptyEl.hidden = false; return; }
+      if (!items.length) { emptyEl.textContent = (kind === 'article' ? t.outfitEmpty : t.empty); emptyEl.hidden = false; return; }
       emptyEl.hidden = true;
       items.forEach(function (c) {
         var li = document.createElement('li');
+        var chip = '';
+        if (c.kind === 'outfit' && c.brand) {
+          chip = '<span class="pe-chip' + (c.verified ? ' ok' : '') + '">' + (c.verified ? '✓ ' : '') + esc(c.brand)
+            + (c.item ? ' · ' + esc(c.item) : '') + (c.verified ? ' · ' + esc(t.verified) : '') + '</span>';
+        }
         li.innerHTML = '<div class="pe-who"><strong>' + esc(c.author) + '</strong><span>' + esc(when(c.created_at, t)) + '</span>'
           + (c.mine ? '<button type="button" class="pe-del" data-id="' + esc(c.id) + '">' + esc(t.del) + '</button>' : '')
-          + '</div><div class="pe-body">' + esc(c.body) + '</div>';
+          + '</div>' + chip + '<div class="pe-body">' + esc(c.body) + '</div>';
         listEl.appendChild(li);
       });
     }
@@ -264,30 +285,67 @@
       }).then(load).catch(function () {});
     });
 
-    /* 로그인 여부를 미리 묻지 않는다. 폼을 먼저 보여주고 401 이 오면 그때
-       안내한다 — "쓰려고 했는데 로그인이 필요하다" 가 가입 전환이 제일 잘
-       되는 순간이다. (httpOnly 쿠키라 프런트가 로그인 여부를 못 읽기도 한다) */
+    /* 2026-11-14 — 로그인 없이 쓴다 (도메니코 결정 "익명 허용"). 실측 3개월 댓글 0건.
+       닉네임은 기기에 기억한다. 셀럽 기사에는 '착장 식별' 칸을 먼저 보여준다 —
+       패션 독자가 매일 하는 참여는 "저거 어디 거?" 다. 로그인은 벽이 아니라
+       댓글을 남긴 직후의 한 줄 권유(별점과 같은 사다리). */
+    var NICK_KEY = 'pap-nick';
+    var savedNick = '';
+    try { savedNick = localStorage.getItem(NICK_KEY) || ''; } catch (e) {}
+    var isCeleb = !!o.celeb || kind === 'article';
     composeEl.innerHTML = '<div class="pe-form" style="display:block">'
+      + (isCeleb ? '<div class="pe-outfit-q"><span>' + esc(t.outfitQ) + '</span>'
+        + '<button type="button" class="pe-outfit-btn" aria-pressed="false">' + esc(t.outfitBtn) + '</button></div>' : '')
+      + '<div class="pe-row pe-outfit-row" hidden>'
+      + '<input class="pe-brand" maxlength="40" placeholder="' + esc(t.brand) + '">'
+      + '<input class="pe-item" maxlength="80" placeholder="' + esc(t.item) + '"></div>'
+      + '<div class="pe-row"><input class="pe-nick" maxlength="20" placeholder="' + esc(t.nick) + '" value="' + esc(savedNick) + '"></div>'
       + '<textarea maxlength="1000" placeholder="' + esc(t.placeholder) + '"></textarea>'
-      + '<button type="button" class="pe-send">' + esc(t.send) + '</button></div>';
+      + '<button type="button" class="pe-send">' + esc(t.send) + '</button>'
+      + '<div class="pe-nudge" hidden></div></div>';
     var bodyEl = composeEl.querySelector('textarea');
     var sendEl = composeEl.querySelector('.pe-send');
+    var nickEl = composeEl.querySelector('.pe-nick');
+    var brandEl = composeEl.querySelector('.pe-brand');
+    var itemEl = composeEl.querySelector('.pe-item');
+    var outfitRow = composeEl.querySelector('.pe-outfit-row');
+    var outfitBtn = composeEl.querySelector('.pe-outfit-btn');
+    var nudgeEl = composeEl.querySelector('.pe-nudge');
+    var outfitMode = false;
+    if (outfitBtn) {
+      outfitBtn.addEventListener('click', function () {
+        outfitMode = !outfitMode;
+        outfitBtn.setAttribute('aria-pressed', outfitMode ? 'true' : 'false');
+        outfitBtn.textContent = outfitMode ? t.outfitCancel : t.outfitBtn;
+        outfitRow.hidden = !outfitMode;
+        if (outfitMode) brandEl.focus();
+      });
+    }
     sendEl.addEventListener('click', function () {
       var v = (bodyEl.value || '').trim();
-      if (!v) return;
+      var brand = outfitMode ? (brandEl.value || '').trim() : '';
+      if (outfitMode && brand.length < 2) { brandEl.focus(); return; }
+      if (!outfitMode && !v) return;
+      var nick = (nickEl.value || '').trim();
+      try { if (nick) localStorage.setItem(NICK_KEY, nick); } catch (e) {}
       sendEl.disabled = true;
+      var payload = { target_type: kind, target_id: id, body: v, nickname: nick };
+      if (outfitMode) { payload.kind = 'outfit'; payload.brand = brand; payload.item = (itemEl.value || '').trim(); }
       fetch('/api/content/comments', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_type: kind, target_id: id, body: v }),
-      }).then(function (r) {
-        if (r.status === 401) {
-          composeEl.innerHTML = '<a class="pe-login" href="/auth?next='
-            + encodeURIComponent(location.pathname) + '">' + esc(t.login) + '</a>';
-          return null;
-        }
-        return r.ok ? r.json() : null;
-      }).then(function (d) { if (d) { bodyEl.value = ''; load(); } })
+        body: JSON.stringify(payload),
+      }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d) return;
+          bodyEl.value = ''; if (brandEl) brandEl.value = ''; if (itemEl) itemEl.value = '';
+          load();
+          /* 비로그인으로 남겼으면 한 번만, 조용히 — 벽이 아니라 초대 */
+          if (d.item && d.item.anon && nudgeEl && !nudgeEl.dataset.shown) {
+            nudgeEl.dataset.shown = '1'; nudgeEl.hidden = false;
+            nudgeEl.innerHTML = esc(t.anonNudge) + '<a href="/auth?next=' + encodeURIComponent(location.pathname) + '">' + esc(t.anonNudgeCta) + '</a>';
+          }
+        })
         .catch(function () {})
         .then(function () { sendEl.disabled = false; });
     });
