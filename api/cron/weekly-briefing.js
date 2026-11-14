@@ -19,6 +19,7 @@
 const { bearerOk } = require('../_lib/secretCompare');
 const { reportAiResponse } = require('../_lib/aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
+const { affiliateClickLine } = require('../_lib/clickGuard'); // 2026-11-15 크롤러 의심 표시
 const { withCronGuard } = require('../_lib/cronGuard');
 const { requireAdmin } = require('../_lib/auth');
 const { sendEmail } = require('../_lib/email');
@@ -109,7 +110,7 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     const dow = now.getUTCDay(); // KST 보정된 요일
     const weekStart = kstDate(dow === 0 ? 6 : dow - 1);
 
-    const [reports, events, clicks] = await Promise.all([
+    const [reports, events, clicks, clicksMobile] = await Promise.all([
       supabaseAdmin.from('growth_reports').select('report_date, audit')
         .gte('report_date', d14).order('report_date', { ascending: true }).limit(20),
       supabaseAdmin.from('growth_events').select('event_date, kind, title, detail, expected, review_date, outcome')
@@ -125,7 +126,15 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       supabaseAdmin.from('affiliate_clicks_human').select('*', { count: 'exact', head: true })
         .eq('counted', true).not('referrer_path', 'is', null)
         .gte('clicked_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+      // 2026-11-15 — 같은 조건에서 휴대폰만 따로 센다. 11월의 새 크롤러는 리퍼러를
+      // 달고 와서 위 필터를 통과한다 (30일 유효 7,057건 중 3,241건이 매일 00시 UTC
+      // 폭주, 휴대폰 0건). 이 줄을 "브랜드 클릭 7배 성장"으로 읽고 수익 계획을
+      // 세웠다가 철회했다. 숫자 옆에 휴대폰 몫을 같이 실어 AI 도 사람도 속지 않게 한다.
+      supabaseAdmin.from('affiliate_clicks_human').select('*', { count: 'exact', head: true })
+        .eq('counted', true).not('referrer_path', 'is', null).eq('device_type', 'mobile')
+        .gte('clicked_at', new Date(Date.now() - 7 * 86400000).toISOString()),
     ]);
+    const clicksMobileN = (clicksMobile && !clicksMobile.error) ? (clicksMobile.count || 0) : null;
 
     // 채널 성적표 — 실패해도 브리핑 본체를 막지 않는다 (best-effort).
     let scorecard = null;
@@ -182,7 +191,7 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       '전주 데일리 요약(' + lastWeek.length + '일):', JSON.stringify(lastWeek),
       '운영 이벤트 로그(14일):', JSON.stringify(evs),
       '검증 기한 도래한 미검증 결정:', JSON.stringify(dueDecisions),
-      '어필리에이트 클릭(7일): ' + (clicks.error ? '집계 실패(0 아님 — 원인 확인 필요)' : (clicks.count || 0)),
+      '어필리에이트 클릭(7일): ' + (clicks.error ? '집계 실패(0 아님 — 원인 확인 필요)' : affiliateClickLine(clicks.count || 0, clicksMobileN)),
       // 성적표 원자료도 AI 서사의 근거로 넘긴다 (표 자체는 아래에서 결정론으로 붙는다).
       '채널 성적표(7일 vs 전 7일 — 두 도달점 유입):', JSON.stringify(scorecard || {}),
       'IG 일별 장부 요약(28일 — 팔로워 증가 출처, 잔차=릴스·스토리·프로필):',
@@ -249,6 +258,7 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
     const metrics = {
       daily_reports: thisWeek.length,
       affiliate_clicks_7d: clicks.error ? null : (clicks.count || 0),
+      affiliate_clicks_mobile_7d: clicksMobileN, // 2026-11-15 크롤러를 뺀 하한선
       events_14d: evs.length,
       decisions_due: dueDecisions.length,
       // 2026-08-08 — 북극성·플라이휠 수치 (대시보드 시계열용)

@@ -34,7 +34,7 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
-const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer } = require('../_lib/clickGuard');
+const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer, fetchMeta } = require('../_lib/clickGuard');
 const { pickAffiliateUrl, applyItemCategory, regionFromCountry } = require('../_lib/affiliateUrl');
 
 const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
@@ -127,6 +127,8 @@ async function recordClick({ brandId, region, req, now, destType }) {
       session_expires_at: sessionExpiresAt,
       counted: counted,
       destination_type: destType || null, // 'affiliate' | 'instagram' | 'search'
+      // 2026-11-15 — 사람 신호 기록(190). 기록만 한다. counted 판정은 1주 관찰 뒤에.
+      ...fetchMeta(req),
       // editorial_id + lead_creator_id intentionally null in Phase 0;
       // Phase 1 backfills both via the credit-extraction job.
     });
