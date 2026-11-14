@@ -125,8 +125,19 @@ t('AI 는 결과·요금을 정하지 않는다고 프롬프트에 적혀 있다
     thrown && thrown.ok === false && !!thrown.error);
   const noText = await AI.analyzePromo({ title: 'T', body: 'b' }, { ask: async () => ({ error: 'http_529' }) });
   t('AI 가 안 되면 ok:false + error', noText.ok === false && noText.error === 'http_529');
-  const unparsed = await AI.analyzePromo({ title: 'T', body: 'b' }, { ask: async () => ({ text: 'not json' }) });
+  // 2026-11-14: 이 가짜 응답이 실제 aiCreditWatch 로 흘러가 운영 텔레그램에 울렸다.
+  // 알림도 주입해서 받고, 운영 모듈이 호출되지 않았음을 같이 확인한다.
+  const reported = [];
+  const unparsed = await AI.analyzePromo({ title: 'T', body: 'b' },
+    { ask: async () => ({ text: 'not json' }), reportParseFailure: async (w, h) => { reported.push([w, h]); } });
   t('파싱 실패도 ok:false (점수를 추측하지 않는다)', unparsed.ok === false && unparsed.error === 'parse_failed');
+  t('파싱 실패 알림은 주입된 reporter 로 간다 (where=articlePromoAi, 앞부분 전달)',
+    reported.length === 1 && reported[0][0] === 'articlePromoAi' && reported[0][1] === 'not json');
+  const unparsed2 = await AI.analyzePromo({ title: 'T', body: 'b' }, { ask: async () => ({ text: 'not json' }) });
+  t('ask 만 주입한 테스트 호출은 실제 알림 모듈을 로드하지 않는다 (운영 텔레그램 오경보 방지)',
+    unparsed2.ok === false && !require.cache[require.resolve('../api/_lib/aiCreditWatch')]);
+  const SRC = CODE('api/_lib/articlePromoAi.js');
+  t('소스: 알림 reporter 가 deps 로 주입 가능하다', /deps\.reportParseFailure/.test(SRC));
 
   // ── 5. 접수 API 의 검증 ──
   console.log('\n=== 5. 접수 API ===');

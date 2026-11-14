@@ -148,7 +148,14 @@ async function analyzePromo(sub, deps) {
     if (!r || !r.text) return { ok: false, error: (r && r.error) || 'ai_unavailable', at };
     const v = parseVerdict(r.text);
     if (!v) {
-      try { await require('./aiCreditWatch').reportAiParseFailure('articlePromoAi', String(r.text).slice(0, 200)); } catch (_) {}
+      /* 2026-11-14: 알림 경로도 주입 가능해야 한다. 테스트가 ask 에 가짜 응답
+         ('not json')을 넣었는데 알림은 실제 aiCreditWatch 로 나가서 운영 텔레그램에
+         "AI 응답 JSON 파싱 실패 … 응답 앞부분: not json" 이 울렸다(bufferBreaker 와
+         같은 함정: 상대경로 require 는 테스트 모의를 우회한다). ask 를 주입한 호출은
+         reportParseFailure 도 함께 주입하고, 운영 경로(ask 미주입)만 실제 알림을 쓴다. */
+      const report = (deps && deps.reportParseFailure)
+        || (deps && deps.ask ? async () => {} : (w, h) => require('./aiCreditWatch').reportAiParseFailure(w, h));
+      try { await report('articlePromoAi', String(r.text).slice(0, 200)); } catch (_) {}
       return { ok: false, error: 'parse_failed', at };
     }
     return {
