@@ -89,7 +89,10 @@ const LANGS = ['ko', 'en', 'de', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
   ok('접수 알림 문구: ⭐ 프리미엄 · 마감일 · submission id', /⭐ 프리미엄 회원 서브미션/.test(at) && /결과 마감: 2026-09-15/.test(at) && /submission=abc/.test(at));
   ok('초과 목록 문구', /SLA 초과 1건/.test(S.overdueAlertText([{ id: 'a', title: 'T', created_at: fri }], '2026-09-17T00:00:00Z')) && S.overdueAlertText([], Date.now()) === '');
   ok('POST: 프리미엄 제출 시 우선 심사 텔레그램(await)', /if \(_isPremium\) \{[\s\S]{0,120}await sendTextToTelegramSafe\(premiumSubmissionAlertText\(submission/.test(idx));
-  ok('접수 메일: 프리미엄은 2영업일 ETA', /templates\.submissionReceived\([\s\S]{0,120}\{ isPremium: _isPremium \}\)/.test(idx));
+  /* 2026-11-14 — opts 에 키가 늘어났다(canPickCollaborators). 객체 전체를 박아 두면
+     옵션이 하나 늘 때마다 이 단정이 깨진다. 지키려던 사실은 '프리미엄 여부를 넘긴다'
+     하나다. 그것만 본다. */
+  ok('접수 메일: 프리미엄은 2영업일 ETA', /templates\.submissionReceived\([\s\S]{0,400}isPremium: _isPremium/.test(idx));
 
   console.log('\n=== 1. SLA 크론 ===');
   const Module = require('module'); const origLoad = Module._load;

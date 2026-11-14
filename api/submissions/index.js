@@ -16,7 +16,7 @@ const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit, lookItemsMissingInstagram, MIN_TOTAL_IMAGES } = require('../_lib/submissionType');
-const { validateCollaborators, collaboratorAlertText } = require('../_lib/collaborators');
+const { validateCollaborators, collaboratorAlertText, canPickCollaborators } = require('../_lib/collaborators');
 const { collabCreditText, dispatchCollabImages } = require('../_lib/collabTelegram');   // 2026-09-24 크레딧·인스타용 이미지
 const { isPremiumUser, resolveCoverIndex } = require('../_lib/premiumCover');   // 2026-09-12 커버 선택은 프리미엄만
 const { brandRolesIn } = require('../_lib/brandRoleGuard');   // 2026-09-12 브랜드/디자이너는 팀 크레딧 금지
@@ -314,8 +314,19 @@ module.exports = async function handler(req, res) {
           .single();
         if (_prof && _prof.email) {
           const _lang = resolveEmailLang(_prof);
+          /* 2026-11-14 — 공동작업자를 직접 고를 수 없는 제출자에게만 한 칸 더 싣는다.
+             실측(도메니코): 그게 연간 프리미엄 혜택인 줄 모르고 메일·DM 으로 "무료로
+             걸어달라" 는 요청이 반복됐다. 요청이 오기 전에, 그리고 아직 쓸 수 있는
+             동안에 알려 준다 — 심사가 끝나기 전에 연간으로 올리면 본인이 지정할 수
+             있다(승인 때 review.js 가 자격을 다시 판정한다).
+             판정은 폼과 같은 canPickCollaborators 하나로만 한다. 조회가 실패하면
+             null 로 두어 아무 말도 하지 않는다 — 연간 회원에게 잘못 권하지 않는다. */
+          let _canCollab = null;
+          try { _canCollab = await canPickCollaborators(supabaseAdmin, { userId: user.id }); }
+          catch (_ce) { _canCollab = null; }
           await sendEmail(_prof.email, templates.submissionReceived(
-            { name: _prof.display_name || '' }, { title: submission.title }, _lang, { isPremium: _isPremium }));   // 2026-09-13 프리미엄은 2영업일
+            { name: _prof.display_name || '' }, { title: submission.title }, _lang,
+            { isPremium: _isPremium, canPickCollaborators: _canCollab }));   // 2026-09-13 프리미엄은 2영업일
         }
       } catch (_e) {
         console.error('[submissions] 접수 메일 실패(접수는 저장됨):', (_e && _e.message) || _e);

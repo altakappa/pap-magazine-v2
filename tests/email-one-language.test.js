@@ -127,5 +127,46 @@ console.log('\n=== 3. 인증번호 메일 ===');
   t('핸들러가 lang 을 써서 만든다', /buildVerificationEmail\(code, codeLang, purpose\), \{ transactional: true \}/.test(R('api/auth/send-code.js')));
 }
 
+console.log('\n=== 접수 메일의 공동작업자 안내 (2026-11-14) ===');
+/* 공동작업자 지정이 연간 프리미엄 혜택인 줄 모르고 메일·DM 으로 "무료로 걸어달라" 는
+   요청이 반복됐다(도메니코 실측). 요청이 오기 전에 접수 메일이 먼저 말한다.
+   CALLS 는 opts 를 비워 호출하므로 이 칸은 거기서 안 그려진다 — 따로 검사한다. */
+{
+  const _u = { name: 'A' }, _s = { title: 'T' };
+  const off = LANGS.map((l) => templates.submissionReceived(_u, _s, l, {}));
+  const yes = LANGS.map((l) => templates.submissionReceived(_u, _s, l, { canPickCollaborators: true }));
+  const no  = LANGS.map((l) => templates.submissionReceived(_u, _s, l, { canPickCollaborators: false }));
+  const mark = (h) => /submission_received_collab/.test(h);
+  /* 연간 회원에게는 권하지 않는다. 조회 실패(null·undefined)도 아무 말 안 한다 —
+     모르면 입을 닫는 쪽이 잘못 권하는 쪽보다 낫다. */
+  t('고를 수 있는 사람에게는 안 보낸다', yes.every((r) => !mark(r.html)));
+  t('자격을 모를 때도 안 보낸다 (조회 실패 시 조용히)', off.every((r) => !mark(r.html)));
+  t('고를 수 없는 사람에게만 9개 언어로 보낸다', no.every((r) => mark(r.html)));
+  t('9개 언어가 서로 다른 문구다 (영어 폴백 없음)',
+    new Set(no.map((r) => (r.html.match(/letter-spacing:2px;">([^<]*)</g) || []).join('|'))).size === 9);
+  /* en 이 아닌 메일에 영어 틀 문구가 섞이지 않는가 — 위쪽 BANNED 와 같은 기준 */
+  const leaked = [];
+  LANGS.forEach((l, i) => {
+    if (l === 'en') return;
+    const txt = vis(no[i].subject) + ' || ' + vis(no[i].html);
+    BANNED.forEach((b) => { if (txt.includes(b)) leaked.push(l + ': ' + b); });
+  });
+  t('en 이 아닌 8개 메일에 영어 틀 문구 0개', leaked.length === 0, leaked.join(' | '));
+  t('한국어 안내에 영어 화면 이름이 없다 (마이페이지로 쓴다)',
+    /마이페이지/.test(no[LANGS.indexOf('ko')].html));
+  /* 거절이 아니라 길을 준다 — 심사 중에 올리면 본인이 지정할 수 있다는 사실이 핵심이다.
+     이 문장이 빠지면 메일은 그냥 "안 됩니다" 가 되고 문의는 그대로 온다. */
+  t('아직 쓸 수 있다고 말한다 (심사가 끝나기 전 · 연간)',
+    /심사가 끝나기 전에/.test(no[LANGS.indexOf('ko')].html)
+    && /before the review finishes/.test(no[LANGS.indexOf('en')].html));
+  /* 폼이 잠그는 기준과 메일이 말하는 기준이 한 군데서 나오는가 */
+  const idx = R('api/submissions/index.js');
+  t('판정은 폼과 같은 canPickCollaborators 로 한다',
+    /canPickCollaborators \} = require\('\.\.\/_lib\/collaborators'\)/.test(idx)
+    && /canPickCollaborators\(supabaseAdmin, \{ userId: user\.id \}\)/.test(idx)
+    && /canPickCollaborators: _canCollab/.test(idx));
+  t('조회 실패는 삼키고 메일은 보낸다 (안내만 빠진다)', /catch \(_ce\) \{ _canCollab = null; \}/.test(idx));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
