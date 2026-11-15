@@ -54,7 +54,8 @@ function fullContent(raw) {
       }).filter(Boolean).map(x => '<p>' + String(x) + '</p>').join('\n');
     } catch (_) { /* JSON 이 아니면 원문 그대로 */ }
   }
-  s = s.trim();
+  /* 2026-11-15 — 피드 리더도 HTML 로 그린다. 꺾쇠 제목을 글자로 바꿔 싣는다. */
+  s = escapeAngleTitles(s.trim());
   if (!s) return '';
   return s.length > 40000 ? s.slice(0, 40000) + '…' : s;
 }
@@ -65,6 +66,7 @@ function cdata(s) {
 
 /* 신디케이션 utm — 규칙·이유는 _lib/rssUtm.js (rss-editorials.js 와 공유) */
 const { srcParam, withRssUtm } = require('./_lib/rssUtm');
+const { escapeAngleTitles } = require('./_lib/stripHtml');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;

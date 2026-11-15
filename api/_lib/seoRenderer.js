@@ -15,7 +15,7 @@ const ARTICLE_BOUNCE = process.env.SSR_ARTICLE_BOUNCE === '1';
 
 /* 2단계 상품매칭 — 품목 매핑의 단일 출처는 affiliateUrl.js 다. 여기서는
    "매핑 가능한 품목인가"의 판정에만 쓴다 (칩 표기·?item= 전달 게이트). */
-const { HTML_TAG_RE, dropKnownTags } = require('./stripHtml');
+const { HTML_TAG_RE, dropKnownTags, escapeAngleTitles } = require('./stripHtml');
 const { ITEM_CATEGORY_PATHS, normalizeItemWord } = require('./affiliateUrl');
 
 /* 카카오 공유 JavaScript 키 (2026-08-07 신설).
@@ -1874,7 +1874,9 @@ function renderSeoHtml(kind, record, opts) {
       blocks = content;
     }
     if (!blocks) {
-      return typeof content === 'string' ? content : escText(JSON.stringify(content));
+      /* 2026-11-15 — 꺾쇠 제목(<PAP> · <Alter Ego>)을 글자로 바꿔 그린다. 그대로 두면
+         브라우저가 모르는 태그로 읽고 지운다 (stripHtml.js escapeAngleTitles). */
+      return typeof content === 'string' ? escapeAngleTitles(content) : escText(JSON.stringify(content));
     }
     const iframe = (src) => `<div style="margin:36px 0;position:relative;padding-bottom:56.25%;height:0;overflow:hidden"><iframe src="${escAttr(src)}" loading="lazy" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%"></iframe></div>`;
     const vid = (u) => {

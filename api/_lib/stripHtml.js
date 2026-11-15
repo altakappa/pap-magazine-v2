@@ -103,4 +103,56 @@ function dropKnownTags(gap) {
   return (m, name) => (HTML_TAGS.has(String(name).toLowerCase()) ? g : m);
 }
 
-module.exports = { stripHtml, stripHtmlTight, dropKnownTags, HTML_TAG_RE, HTML_TAGS };
+/* ── 화면에 HTML 로 그릴 본문용 (2026-11-15) ───────────────────────────
+ *
+ * ■ 무슨 일이 있었나
+ *   9/3 에 "글자로 내보내는 곳"(트윗·메타 설명·RSS 요약)은 고쳤다. 그런데 정작
+ *   **기사 본문 화면**은 그대로였다. 본문은 HTML 로 그리므로 브라우저가
+ *   <PAP> · <Alter Ego> 를 '모르는 태그' 로 읽고 통째로 지운다.
+ *
+ *     화면:  "의 에디터가 직접 만나본 결과, 팀버랜드의 …"
+ *     원문:  "<PAP>의 에디터가 직접 만나본 결과, 팀버랜드의 …"
+ *
+ *   실측(11/15, 발행 3,412건): <PAP> 52건 · 영문 꺾쇠 제목 약 80건. 구글이 읽는
+ *   SSR 화면도 같다. 한글·숫자로 시작하는 꺾쇠(<더 드라마> · <2026 LACMA …>)는
+ *   브라우저가 원래 글자로 그리므로 문제가 없다 — 영문자로 시작할 때만 사라진다.
+ *
+ * ■ 규칙 — 지우지 않고 글자로 바꾼다 (&lt; … &gt;)
+ *   글자로   모르는 이름                      <PAP> <Alter Ego> <Woman's House>
+ *   글자로   아는 이름이지만 낱말이 따라옴      <A Star Is Born>   (속성엔 = 가 있다)
+ *   글자로   아는 이름인데 닫는 짝이 없음       <Ruby>             (제니 앨범 제목)
+ *   그대로   진짜 태그                        <br> <p> <a href="…"> <center>…</center>
+ *   그대로   <script> · <style> 안쪽           (a<b 같은 코드를 건드리면 깨진다)
+ *
+ * 이름은 브라우저와 같은 방식으로 자른다(공백 · / · > 앞까지). stripHtml 의 TAG 는
+ * 이름에 ' 나 : 가 끼면 안 걸려서(<Woman's House> · <JENNIE: …>) 화면용으로는 못 쓴다.
+ * 프런트 거울: frontend/pap-content-article.js 의 _papAngleTitles (같은 표, 테스트가 대조).
+ */
+const VOID_TAGS = new Set('area base br col embed hr img input link meta param source track wbr'.split(' '));
+/* 닫는 태그를 생략해도 되는 원소 — "짝이 없으니 제목" 이라고 판단하면 안 된다 */
+const OPTIONAL_END_TAGS = new Set('p li dt dd td th tr thead tbody tfoot colgroup caption option optgroup rp rt body head html'.split(' '));
+const BOOLEAN_ATTRS = new Set('controls open allowfullscreen autoplay muted loop playsinline hidden reversed async defer nowrap checked disabled'.split(' '));
+const ANGLE = /<(\/?)([a-zA-Z][^\s\/<>]*)([^<>]*)>/g;
+const RAW_BLOCK = /(<script\b[\s\S]*?<\/script\s*>|<style\b[\s\S]*?<\/style\s*>)/gi;
+
+function escapeAngleTitles(input) {
+  const s = String(input == null ? '' : input);
+  if (s.indexOf('<') === -1) return s;
+  const closed = new Set();
+  s.replace(/<\/([a-zA-Z][^\s\/<>]*)\s*>/g, (m, n) => { closed.add(n.toLowerCase()); return m; });
+  const fix = (chunk) => chunk.replace(ANGLE, (m, slash, name, rest) => {
+    const n = name.toLowerCase();
+    const asText = '&lt;' + m.slice(1, -1) + '&gt;';
+    if (!HTML_TAGS.has(n)) return asText;
+    if (slash) return m;
+    const tail = rest.replace(/\/\s*$/, '').trim();
+    if (tail) {
+      if (tail.indexOf('=') !== -1) return m;
+      return tail.split(/\s+/).every((w) => BOOLEAN_ATTRS.has(w.toLowerCase())) ? m : asText;
+    }
+    return (VOID_TAGS.has(n) || OPTIONAL_END_TAGS.has(n) || closed.has(n)) ? m : asText;
+  });
+  return s.split(RAW_BLOCK).map((part, i) => (i % 2 ? part : fix(part))).join('');
+}
+
+module.exports = { stripHtml, stripHtmlTight, dropKnownTags, HTML_TAG_RE, HTML_TAGS, escapeAngleTitles, VOID_TAGS, OPTIONAL_END_TAGS, BOOLEAN_ATTRS };

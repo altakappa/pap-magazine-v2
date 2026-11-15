@@ -284,6 +284,41 @@ function _papInitSlideBlocks(root){
 //   video   → embedded YouTube/Vimeo iframe (with a graceful URL fallback)
 // Anything else (unknown type) is rendered as escaped plain text so
 // unknown content never silently disappears.
+/* ANGLE-TITLES:BEGIN — 2026-11-15
+   본문을 innerHTML 로 그리면 브라우저가 <PAP> · <Alter Ego> 를 모르는 태그로 읽고 지운다.
+   진짜 태그는 두고 꺾쇠 제목만 글자(&lt;…&gt;)로 바꾼다. 서버 거울: api/_lib/stripHtml.js
+   escapeAngleTitles — 표 네 개와 판단이 같아야 한다 (tests/angle-title-display.test.js 가 대조). */
+var _PAP_AT_TAGS=' a abbr address area article aside audio b base bdi bdo blockquote body br button canvas caption cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav noscript object ol optgroup option output p param picture pre progress q rp rt ruby s samp script section select slot small source span strong style sub summary sup svg path g rect circle table tbody td template textarea tfoot th thead time title tr track u ul var video wbr center font strike tt big marquee nobr blink amp-img amp-video amp-story amp-story-page amp-story-grid-layer amp-analytics ';
+var _PAP_AT_VOID=' area base br col embed hr img input link meta param source track wbr ';
+var _PAP_AT_OPT=' p li dt dd td th tr thead tbody tfoot colgroup caption option optgroup rp rt body head html ';
+var _PAP_AT_BOOL=' controls open allowfullscreen autoplay muted loop playsinline hidden reversed async defer nowrap checked disabled ';
+function _papAngleTitles(input){
+  var s=String(input==null?'':input);
+  if(s.indexOf('<')===-1) return s;
+  var closed={};
+  s.replace(/<\/([a-zA-Z][^\s\/<>]*)\s*>/g,function(m,n){closed[n.toLowerCase()]=1;return m;});
+  function has(list,n){return list.indexOf(' '+n+' ')!==-1;}
+  function fix(chunk){
+    return chunk.replace(/<(\/?)([a-zA-Z][^\s\/<>]*)([^<>]*)>/g,function(m,slash,name,rest){
+      var n=name.toLowerCase();
+      var asText='&lt;'+m.slice(1,-1)+'&gt;';
+      if(!has(_PAP_AT_TAGS,n)) return asText;
+      if(slash) return m;
+      var tail=rest.replace(/\/\s*$/,'').replace(/^\s+|\s+$/g,'');
+      if(tail){
+        if(tail.indexOf('=')!==-1) return m;
+        var ws=tail.split(/\s+/);
+        for(var i=0;i<ws.length;i++){ if(!has(_PAP_AT_BOOL,ws[i].toLowerCase())) return asText; }
+        return m;
+      }
+      return (has(_PAP_AT_VOID,n)||has(_PAP_AT_OPT,n)||closed[n])?m:asText;
+    });
+  }
+  var parts=s.split(/(<script\b[\s\S]*?<\/script\s*>|<style\b[\s\S]*?<\/style\s*>)/gi);
+  for(var j=0;j<parts.length;j+=2){ parts[j]=fix(parts[j]); }
+  return parts.join('');
+}
+/* ANGLE-TITLES:END */
 function _renderArticleBlocks(blocks, altFallback){
   // 2026-07-27 (Ahrefs missing alt 12건) — 캡션 없는 이미지 블록은 alt 가 빈 값이었다.
   // 기사 제목을 alt 폴백으로 사용해 접근성·이미지 SEO를 채운다.
@@ -593,7 +628,7 @@ function _renderArticleDetail(a,det){
     var _enBody = (_bodyL !== 'ko' && a.desci18n) ? (a.desci18n[_bodyL] || a.desci18n.en || '') : '';
     if(_enBody){
       if(_enBody.indexOf('<')!==-1 && _enBody.indexOf('>')!==-1){
-        descEl.innerHTML=_enBody;
+        descEl.innerHTML=_papAngleTitles(_enBody);
       } else {
         descEl.innerHTML=_enBody.split('\n').filter(function(p){return p.trim();}).map(function(p){return '<p style="margin:0 0 22px;line-height:1.9">'+escapeHtml(p)+'</p>';}).join('');
       }
@@ -605,7 +640,7 @@ function _renderArticleDetail(a,det){
       try { _papInitSlideBlocks(descEl); } catch(_){}
     } else if(a.desc){
       if(a.desc.indexOf('<')!==-1&&a.desc.indexOf('>')!==-1){
-        descEl.innerHTML=a.desc;
+        descEl.innerHTML=_papAngleTitles(a.desc);
       } else {
         // QA #282 — legacy plain-text fallback도 동일한 paragraph spacing.
         descEl.innerHTML=a.desc.split('\n').filter(function(p){return p.trim();}).map(function(p){return '<p style="margin:0 0 22px;line-height:1.9">'+escapeHtml(p)+'</p>';}).join('');
