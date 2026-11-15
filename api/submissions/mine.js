@@ -3,6 +3,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
+const { canPickCollaborators } = require('../_lib/collaborators');   // 2026-11-15 공동작업자 수정 자격
 const { loadPlan, shapeForOwner } = require('../_lib/submissionFeedbackGate');   // 2026-09-12 피드백=스탠다드+, 대기 중 수정=프리미엄
 const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
@@ -54,9 +55,15 @@ module.exports = async function handler(req, res) {
     // 2026-09-12 — 등급 혜택 게이트: 무료 회원에겐 심사 피드백 본문을 비우고(feedbackLocked),
     // 대기 중 자기 수정 가능 여부(canSelfEdit)는 서버가 계산해 내려준다(프론트가 등급을 판단하지 않는다).
     const _plan = await loadPlan(supabaseAdmin, user.id);
+    /* 2026-11-15 — 공동작업자를 고를 자격(연간 프리미엄)을 서버가 계산해 내려준다.
+       프런트가 등급을 판단하면 폼·메일·여기가 또 갈라진다. canSelfEdit 과 같은 방식. */
+    let _canPickCollab = false;
+    try { _canPickCollab = await canPickCollaborators(supabaseAdmin, { userId: user.id }); }
+    catch (_pc) { _canPickCollab = false; }
     const hydrated = (submissions || []).map(s => ({
       ...shapeForOwner(s, _plan),
       linked_editorial: linkedBySubId[s.id] || null,
+      canPickCollab: _canPickCollab,
     }));
 
     return res.status(200).json({ submissions: hydrated });

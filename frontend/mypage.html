@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta name="pap-ui-i18n" content="mypage" data-v="19">
+<meta name="pap-ui-i18n" content="mypage" data-v="20">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP Magazine - My Page">
@@ -1814,10 +1814,64 @@ function _mpActionBtn(ds, s){
     return btn(_papUIL('게시물 보러가기','View post'),
       "window.open('/editorial/" + encodeURIComponent(s.linked_editorial.slug) + "','_blank')");
   }
+  /* 2026-11-15 — 승인이 끝난 뒤에도 인스타그램 게시 전이면 공동작업자는 바꿀 수 있다.
+     심사 내용(제목·이미지·크레딧)은 그대로 잠겨 있고 이 한 칸만 열린다. 발행된 건
+     (ds==='uploaded')에는 붙이지 않는다 — 올라간 게시물에는 공동작업자를 붙일 수 없다.
+     자격(연간 프리미엄)은 서버가 계산해 내려준 canPickCollab 로만 판단한다. */
+  if (ds === 'final_approved' && s.canPickCollab) {
+    return btn(_papUIL('공동작업자','Collaborators'), "mpEditCollab('" + id + "')");
+  }
   if (ds === 'rejected') {
     return btn(_papUIL('사유 확인','See reason'), "mpToggleSubDetail('" + id + "')");
   }
   return '';
+}
+
+/* 2026-11-15 — 공동작업자만 고치기 (승인 뒤 · 게시 전).
+   서버 PUT /api/submissions/:id/collaborators 가 소유자·발행 여부·연간 프리미엄을
+   다시 판정한다. 여기 화면 상태가 낡아 있어도 서버가 막는다.
+   입력은 쉼표로 받는다 — 칸을 5개 그리는 대신, 서버가 어느 아이디가 왜 안 되는지
+   정확히 돌려주므로 그 답을 그대로 보여 준다. */
+async function mpEditCollab(id){
+  function T(ko,en){ return _papUIL(ko,en); }
+  function toast(m,k){ try{ if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(m,k||'error'); else alert(m); }catch(_){ alert(m); } }
+  var sub=(window._mpSubs||[]).filter(function(x){ return x && x.id===id; })[0];
+  var cur=[];
+  try{
+    var d=sub&&sub.description?JSON.parse(sub.description):{};
+    cur=(Array.isArray(d.collaborators)?d.collaborators:[]).map(function(c){
+      return '@'+String((c&&c.handle)||c||'').replace(/^@/,''); }).filter(function(h){ return h!=='@'; });
+  }catch(_){}
+  var raw=window.prompt(T('인스타그램 공동작업자를 쉼표로 구분해 최대 5명까지 적어 주세요. 각자 PAP 회원이고 마이페이지에 인스타그램 아이디를 등록해 둔 상태여야 합니다. 비우면 지정이 해제됩니다.','List up to 5 Instagram collaborators, separated by commas. Each one must be a PAP member who has registered an Instagram handle on My Page. Leave it empty to remove them.'), cur.join(', '));
+  if(raw===null) return;
+  var list=String(raw).split(/[,\s]+/).map(function(x){ return x.trim(); }).filter(Boolean);
+  var token=localStorage.getItem('pap-token')||'';
+  try{
+    var r=await fetch('/api/submissions/'+encodeURIComponent(id)+'/collaborators',{
+      method:'PUT',
+      headers:{ 'Content-Type':'application/json','Authorization':'Bearer '+token,'X-Requested-With':'XMLHttpRequest' },
+      credentials:'same-origin',
+      body:JSON.stringify({ collaborators:list })
+    });
+    var j=await r.json().catch(function(){ return {}; });
+    if(r.ok){
+      if(j && j.unchanged) toast(T('바뀐 내용이 없습니다.','Nothing changed.'),'success');
+      else toast(T('공동작업자를 저장했습니다.','Collaborators saved.'),'success');
+      loadRecentSubmissions();
+      return;
+    }
+    var c=(j&&j.code)||'';
+    var hs=(j&&j.handles&&j.handles.length)?(' @'+j.handles.join(', @')):'';
+    if(c==='editorial_published') toast(T('이미 발행된 에디토리얼은 공동작업자를 바꿀 수 없습니다.','This editorial is already published, so collaborators can no longer be changed.'));
+    else if(c==='COLLAB_YEARLY_PREMIUM_ONLY') toast(T('공동작업자 지정은 연간 프리미엄 회원만 할 수 있습니다.','Only Yearly Premium members can choose collaborators.'));
+    else if(c==='COLLAB_NOT_MEMBER') toast(T('다음 아이디는 PAP 회원이 아니거나 마이페이지에 인스타그램 아이디를 등록하지 않았습니다:','These handles are not PAP members, or have not registered an Instagram handle on My Page:')+hs);
+    else if(c==='COLLAB_HANDLE_INVALID') toast(T('올바른 인스타그램 아이디가 아닙니다:','Not a valid Instagram handle:')+hs);
+    else if(c==='COLLAB_MAX') toast(T('공동작업자는 최대 5명까지 지정할 수 있습니다.','You can choose at most 5 collaborators.'));
+    else if(c==='not_editable') toast(T('이 서브미션은 공동작업자를 바꿀 수 없습니다.','Collaborators can no longer be changed for this submission.'));
+    else toast(T('저장하지 못했습니다. 잠시 후 다시 시도해 주세요.','Could not save. Please try again shortly.'));
+  }catch(_e){
+    toast(T('저장하지 못했습니다. 잠시 후 다시 시도해 주세요.','Could not save. Please try again shortly.'));
+  }
 }
 
 function _formatDate(dt){
@@ -1869,6 +1923,7 @@ function loadRecentSubmissions(){
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(j){
       var subs = (j && j.submissions) || [];
+      window._mpSubs = subs;   // 2026-11-15 공동작업자 편집기가 현재 값을 읽는다
       if (!subs.length) {
         box.innerHTML = '<div class="mp-empty">' + _t.emptySubs + '</div>';
         return;

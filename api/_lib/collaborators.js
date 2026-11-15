@@ -128,7 +128,10 @@ async function validateCollaborators(supabaseAdmin, list, picker) {
 function collaboratorAlertText(kind, sub, collaborators, submitter) {
   const hs = (collaborators || []).map((c) => '@' + ((c && c.handle) || c)).filter((h) => h !== '@');
   if (!hs.length) return '';
-  return '🤝 인스타그램 공동작업자 지정 (' + (kind === 'resubmit' ? '재제출' : '신규 제출') + ')\n'
+  /* 2026-11-15 — 'collab_edit' 추가: 승인 뒤 게시 전에 공동작업자만 고친 경우.
+     모르는 값이 '신규 제출' 로 찍히면 알림이 거짓말을 한다(그 건은 이미 심사가 끝났다). */
+  const _kindLabel = kind === 'resubmit' ? '재제출' : (kind === 'collab_edit' ? '공동작업자 수정' : '신규 제출');
+  return '🤝 인스타그램 공동작업자 지정 (' + _kindLabel + ')\n'
     + '제목: ' + String((sub && sub.title) || '').slice(0, 80) + '\n'
     + '제출자: ' + String(submitter || '').slice(0, 80) + '\n'
     + '공동작업자(' + hs.length + '/' + MAX_COLLABORATORS + '): ' + hs.join(' ') + '\n'
