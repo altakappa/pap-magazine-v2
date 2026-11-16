@@ -39,9 +39,18 @@ const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.c
 /* 2026-07-29(2차): 미디어킷 개편으로 파일이 교체돼 링크가 바뀌었다.
    같은 값을 site_settings.business_page 에도 반영했으므로 평소엔 그쪽이 쓰인다.
    여기는 설정 조회가 실패할 때만 쓰이는 최후 폴백. 링크가 또 바뀌면 두 곳을 함께 고칠 것. */
+/* 2026-11-16(3차) — 또 같은 일이 났다. 설정(site_settings.business_page)과 이 폴백이
+   둘 다 **휴지통에 들어간 파일**을 가리키고 있었다: KO 1wjL9Qe…('미디어키트 2026_09',
+   8/24), EN 1rjZPyD…('MEDIA KIT (ENG)_ May_2026', 7/29). 도메니코는 새 키트를 올리고
+   옛 파일을 휴지통에 넣었는데, 드라이브는 파일을 바꾸면 ID 가 바뀌므로 사이트가 따라가지
+   못한다. 소유자는 로그인 상태에서 휴지통 파일도 그냥 열려서 '옛 키트가 뜬다' 로 보이고,
+   광고주에게는 '소유자의 휴지통에 있습니다' 가 뜬다 — 광고주 대면 경로다.
+   7/29 에도 같은 사고였고 그때는 '링크가 또 바뀌면 두 곳을 함께 고칠 것' 이라는 주석만
+   남겼다. 주석은 재발을 막지 못했다. 그래서 이번엔 매일 점검(api/cron/mediakit-link-watch.js)
+   을 붙였다 — 링크가 죽으면 사람이 알게 된다. */
 const DEFAULT_LINKS = {
-  ko: 'https://drive.google.com/file/d/1uFbkibaSwtlODUUciieVExFZ-oWyZaCE/view?usp=sharing',
-  en: 'https://drive.google.com/file/d/1rjZPyD5wy_amn_OMhlysuUJiN_zb_nBY/view?usp=sharing',
+  ko: 'https://drive.google.com/file/d/1dAV7cMwsDOuyLucU_ponpLxwwuJmxCuf/view?usp=sharing',
+  en: 'https://drive.google.com/file/d/1SXhmU1FDYvnXqVuv_sqylJvqyKT_ImE1/view?usp=sharing',
 };
 
 // 관리자가 settings 에 저장한 링크를 허용할 호스트. 그 외에는 내장 링크로 폴백.
@@ -192,3 +201,7 @@ module.exports = async function handler(req, res) {
 
   return res.redirect(302, dest || HOME_URL);
 };
+
+/* 2026-11-16 — 매일 점검(api/cron/mediakit-link-watch.js)이 이 폴백도 같이 열어 본다.
+   설정과 폴백이 함께 썩는 것이 7/29·11/16 두 번의 사고였다. */
+module.exports.DEFAULT_LINKS = DEFAULT_LINKS;

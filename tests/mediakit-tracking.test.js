@@ -112,14 +112,18 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
   let sent = null, statusCode = null;
   const res = () => ({ setHeader(){}, redirect(c, u){ redirected = { c, u }; }, status(c){ statusCode = c; return this; }, send(b){ sent = b; } });
 
+  /* 2026-11-16 — 하드코딩한 파일 ID 를 모듈의 링크로 바꿨다(위 주석 참조) */
+  const LINKS = handler.DEFAULT_LINKS;
+  const idOf = (u) => { const m = /\/file\/d\/([A-Za-z0-9_-]+)/.exec(String(u || '')); return m ? m[1] : ''; };
+
   return (async () => {
     await handler(req({ lang: 'ko', src: 'ig_bio' }), res());
-    t('ko → 한글판 링크로 302', redirected.c === 302 && redirected.u.includes('1uFbkiba'));
+    t('ko → 한글판 링크로 302', redirected.c === 302 && idOf(redirected.u) === idOf(LINKS.ko), redirected.u);
     t('mediakit_downloads 에 기록', inserted && inserted.tb === 'mediakit_downloads' && inserted.row.lang === 'ko' && inserted.row.src === 'ig_bio');
 
     inserted = null;
     await handler(req({ lang: 'en', src: 'IG_post_DVyq0eF!!<script>' }), res());
-    t('en → 영문판 링크', redirected.u.includes('1rjZPyD5'));
+    t('en → 영문판 링크', idOf(redirected.u) === idOf(LINKS.en) && idOf(LINKS.en) !== idOf(LINKS.ko), redirected.u);
     // 게시물별 추적(ig_post_<shortcode>)은 살리되 위험문자는 제거된다.
     // 남는 문자는 [a-z0-9_-] 뿐이라 SQL·HTML 어느 쪽으로도 새지 않는다.
     t('src 정규화 — 소문자 + [a-z0-9_-] 만', inserted.row.src === 'ig_post_dvyq0efscript');
@@ -135,13 +139,13 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
 
     inserted = null;
     await handler(req({}), res());
-    t('lang 누락 시 en 폴백 · src 는 other', redirected.u.includes('1rjZPyD5') && inserted.row.src === 'other');
+    t('lang 누락 시 en 폴백 · src 는 other', idOf(redirected.u) === idOf(LINKS.en) && inserted.row.src === 'other', redirected.u);
 
     // 경로형 — 쿼리가 통째로 지워져도 귀속이 살아있어야 한다
     inserted = null;
     await handler(req({}, null, '/mediakit/ko/ig_bio'), res());
     t('경로 /mediakit/ko/ig_bio → ko + ig_bio',
-      inserted.row.lang === 'ko' && inserted.row.src === 'ig_bio' && redirected.u.includes('1uFbkiba'));
+      inserted.row.lang === 'ko' && inserted.row.src === 'ig_bio' && idOf(redirected.u) === idOf(LINKS.ko));
 
     inserted = null;
     await handler(req({}, null, '/mediakit/ig_post_dvyq0ef'), res());

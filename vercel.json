@@ -270,6 +270,10 @@
     {
       "path": "/api/cron/purge-news-tips",
       "schedule": "40 18 * * *"
+    },
+    {
+      "path": "/api/cron/mediakit-link-watch",
+      "schedule": "37 22 * * *"
     }
   ],
   "rewrites": [
