@@ -48,25 +48,22 @@ const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.c
    7/29 에도 같은 사고였고 그때는 '링크가 또 바뀌면 두 곳을 함께 고칠 것' 이라는 주석만
    남겼다. 주석은 재발을 막지 못했다. 그래서 이번엔 매일 점검(api/cron/mediakit-link-watch.js)
    을 붙였다 — 링크가 죽으면 사람이 알게 된다. */
+/* 사이트가 실제로 내보내는 파일. 봇 응답·사람 리다이렉트가 같은 것을 가리킨다. */
+const PUBLIC_PDF = {
+  ko: '/media-kit/PAP-Magazine-Media-Kit-2026-KO.pdf',
+  en: '/media-kit/PAP-Magazine-Media-Kit-2026-EN.pdf',
+};
+
 const DEFAULT_LINKS = {
   ko: 'https://drive.google.com/file/d/1dAV7cMwsDOuyLucU_ponpLxwwuJmxCuf/view?usp=sharing',
   en: 'https://drive.google.com/file/d/1SXhmU1FDYvnXqVuv_sqylJvqyKT_ImE1/view?usp=sharing',
 };
 
-// 관리자가 settings 에 저장한 링크를 허용할 호스트. 그 외에는 내장 링크로 폴백.
-const ALLOWED_HOSTS = new Set([
-  'drive.google.com', 'docs.google.com',
-  'www.pap-magazine.com', 'pap-magazine.com',
-]);
-
-function safeExternal(raw) {
-  if (!raw) return null;
-  let u;
-  try { u = new URL(String(raw)); } catch (_) { return null; }
-  if (u.protocol !== 'https:') return null;
-  if (!ALLOWED_HOSTS.has(u.hostname.toLowerCase())) return null;
-  return u.href;
-}
+/* 2026-11-16 — 외부 URL 허용 호스트 검사(safeExternal·ALLOWED_HOSTS)를 지웠다.
+   목적지가 바깥 링크였을 때는 "허용 호스트만" 이라는 방어가 필요했지만, 이제
+   목적지는 코드 안의 경로(PUBLIC_PDF) 하나뿐이다. 외부 URL 을 아예 받지 않으므로
+   오픈 리다이렉터가 될 길이 없다 — 검사할 것이 없어서 지운 것이지, 느슨해진 게
+   아니다. 쓰지 않는 안전장치를 남겨두면 검사하고 있다는 착시만 준다. */
 
 /** src 정규화 — 게시물별 추적을 살리되 로그 오염은 막는다. */
 function normalizeSrc(raw) {
@@ -120,22 +117,18 @@ module.exports = async function handler(req, res) {
 
   const { lang, src } = readParams(req);
 
-  // 목적지 결정: 관리자 저장 링크 우선, 없거나 부적합하면 내장 링크
-  let dest = DEFAULT_LINKS[lang];
-  try {
-    const { data } = await supabaseAdmin
-      // ★ 테이블명은 site_settings 다 (api/settings.js 와 동일).
-      //   2026-07-29 첫 배포에서 'settings' 로 조회해 항상 실패했고, try/catch 가
-      //   경고만 남기고 삼켜서 조용히 내장 폴백으로 떨어졌다. 그 폴백이 휴지통에
-      //   들어간 옛 파일이라 라이브에서 "파일이 소유자의 휴지통에 있습니다" 가 떴다.
-      .from('site_settings').select('value').eq('key', 'business_page').maybeSingle();
-    const v = data && data.value;
-    const override = v && (lang === 'ko' ? v.mediakit_link_ko : v.mediakit_link_en);
-    const safe = safeExternal(override);
-    if (safe) dest = safe;
-  } catch (e) {
-    console.warn('[mediakit] settings lookup failed', e && e.message);
-  }
+  /* 목적지: 우리가 호스팅하는 PDF (2026-11-16, 도메니코 "미디어키트를 누르면 pdf 가
+     뜨게 하면 되지 않아?").
+     종전에는 관리자 설정의 드라이브 링크로 보냈다. 그 구조가 두 번 터졌다(7/29 · 11/16):
+     드라이브는 파일을 교체하면 ID 가 바뀌는데, 새 키트를 올리고 옛 파일을 휴지통에
+     넣으면 사이트는 죽은 ID 를 계속 가리킨다. 소유자는 로그인 상태라 그 파일이 그냥
+     열려서 증상이 보이지도 않는다.
+     이제 파일은 frontend/media-kit/ 에 우리가 들고 있다. 바깥 ID 에 의존하지 않으므로
+     그 사고 경로 자체가 없어지고, 브라우저에서 바로 열린다(vercel.json 의 inline 헤더).
+     계측은 그대로다 — 이 핸들러를 거치는 것이 목적이고, 목적지만 바뀌었다.
+     설정의 드라이브 링크는 지우지 않았다. 도메니코가 직접 보내는 공유용으로 남아
+     있고, 매일 점검(api/cron/mediakit-link-watch.js)이 그쪽도 함께 본다. */
+  const dest = HOME_URL + PUBLIC_PDF[lang];
 
   /* 크롤러는 리다이렉트하지 않는다 (2026-09-08, GSC 서버 오류 760건 실측).
      8/25 에 봇을 리미터 앞에서 302 로 보냈더니 5xx 가 162 → 760 으로 늘었다.
@@ -154,9 +147,9 @@ module.exports = async function handler(req, res) {
       + '<p>PAP Magazine media kit is available to advertisers on request.</p>'
       + '<p><a href="' + HOME_URL + '/business">Advertise with PAP Magazine</a></p>'
       /* 2026-10-15 — 봇에게도 읽을 거리를 준다: 공개 정적 PDF 링크 (frontend/media-kit/).
-       * 영문판은 4월판(373K·유로 가격)이라 공개하지 않는다. 언어와 무관하게 한국어판만 (도메니코 10/15). */
-      + '<p><a href="' + HOME_URL + '/media-kit/PAP-Magazine-Media-Kit-2026-KO.pdf">PAP Magazine Media Kit 2026 (PDF, Korean)</a></p>'
-      + '<p><a href="' + HOME_URL + '/media-kit/PAP-Magazine-Media-Kit-2026-EN.pdf">PAP Magazine Media Kit 2026 (PDF, English)</a></p>'
+       * 2026-11-16 영문판도 공개(11/15 신규본). 언어와 무관하게 두 개를 다 건다. */
+      + '<p><a href="' + HOME_URL + PUBLIC_PDF.ko + '">PAP Magazine Media Kit 2026 (PDF, Korean)</a></p>'
+      + '<p><a href="' + HOME_URL + PUBLIC_PDF.en + '">PAP Magazine Media Kit 2026 (PDF, English)</a></p>'
       + '</body></html>');
   }
   const ua = uaEarly;
@@ -206,3 +199,4 @@ module.exports = async function handler(req, res) {
 /* 2026-11-16 — 매일 점검(api/cron/mediakit-link-watch.js)이 이 폴백도 같이 열어 본다.
    설정과 폴백이 함께 썩는 것이 7/29·11/16 두 번의 사고였다. */
 module.exports.DEFAULT_LINKS = DEFAULT_LINKS;
+module.exports.PUBLIC_PDF = PUBLIC_PDF;

@@ -112,8 +112,8 @@ module.exports = withCronGuard('mediakit-link-watch', async function handler(req
       .select('value').eq('key', 'business_page').maybeSingle();
     const v = (data && data.value) || {};
     const val = typeof v === 'string' ? JSON.parse(v) : v;
-    targets.push({ what: '설정 KO', url: val.mediakit_link_ko || '' });
-    targets.push({ what: '설정 EN', url: val.mediakit_link_en || '' });
+    targets.push({ what: '공유용 드라이브 KO', url: val.mediakit_link_ko || '' });
+    targets.push({ what: '공유용 드라이브 EN', url: val.mediakit_link_en || '' });
   } catch (e) {
     targets.push({ what: '설정', url: '', err: String((e && e.message) || e).slice(0, 80) });
   }
@@ -123,8 +123,8 @@ module.exports = withCronGuard('mediakit-link-watch', async function handler(req
     const mk = require('../mediakit.js');
     const fb = (mk && mk.DEFAULT_LINKS) || null;
     if (fb) {
-      targets.push({ what: '폴백 KO', url: fb.ko || '' });
-      targets.push({ what: '폴백 EN', url: fb.en || '' });
+      targets.push({ what: '폴백 드라이브 KO', url: fb.ko || '' });
+      targets.push({ what: '폴백 드라이브 EN', url: fb.en || '' });
     }
   } catch (_) { /* 폴백을 못 읽는 건 이 점검의 실패가 아니다 */ }
 
@@ -151,7 +151,8 @@ module.exports = withCronGuard('mediakit-link-watch', async function handler(req
     await sendTextToTelegramSafe(
       '🚨 미디어킷 링크가 죽었다 (' + dead.length + '건)\n'
       + lines.join('\n')
-      + '\n\n드라이브는 파일을 교체하면 ID 가 바뀐다. 새 파일 링크로 바꿔야 할 곳:\n'
+      + '\n\n드라이브는 파일을 교체하면 ID 가 바뀐다. 2026-11-16 부터 사이트 버튼은 우리 PDF 로 가므로\n'
+      + '사이트는 멀쩡하지만, 아래 두 곳의 드라이브 링크는 직접 공유용이라 죽으면 받는 사람이 못 연다:\n'
       + '· 어드민 → 비즈니스 페이지 (미디어킷 링크 KO·EN)\n'
       + '· api/mediakit.js DEFAULT_LINKS (폴백)\n'
       + '광고주가 누르는 경로다 — 소유자 본인은 로그인 상태라 휴지통 파일도 그냥 열려서 멀쩡해 보인다.'

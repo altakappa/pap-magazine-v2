@@ -47,16 +47,24 @@ t('경로형이 /mediakit 단독보다 앞 (더 구체적인 규칙 우선)',
 console.log('=== 오픈 리다이렉터 방지 ===');
 t('쿼리로 받은 URL 을 목적지로 쓰지 않는다', !/req\.query\.(url|dest|to)/.test(src),
   'url 파라미터를 그대로 리다이렉트하면 피싱 도구가 된다');
-t('관리자 저장 링크도 https + 허용 호스트만', /ALLOWED_HOSTS/.test(src) && /u\.protocol !== 'https:'/.test(src));
+/* 사고 경위를 적은 주석에 옛 이름이 나오므로 주석을 떼고 코드만 본다 */
+const srcCode = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+t('목적지는 코드 내장 경로뿐 — 외부 URL 을 아예 받지 않는다 (2026-11-16)',
+  /const PUBLIC_PDF = \{/.test(srcCode) && /dest = HOME_URL \+ PUBLIC_PDF\[lang\]/.test(srcCode)
+  && !/ALLOWED_HOSTS/.test(srcCode) && !/safeExternal\(/.test(srcCode));
 
 /* 2026-07-29 라이브 장애: 관리자 링크 조회를 'settings' 테이블에서 하고 있었는데
- * 실제 이름은 site_settings 다(api/settings.js 와 동일). try/catch 가 경고만 남기고
- * 삼켜서 조용히 내장 폴백으로 떨어졌고, 그 폴백 파일이 드라이브 휴지통에 있어
- * "파일이 소유자의 휴지통에 있습니다" 가 떴다. 같은 파일 ID 가 business.html·
- * contact.html 에도 하드코딩돼 있었으므로 사이트의 미디어킷 버튼도 동일 증상이었다. */
+ * 실제 이름은 site_settings 다. try/catch 가 경고만 남기고 삼켜서 조용히 내장
+ * 폴백으로 떨어졌고, 그 폴백 파일이 드라이브 휴지통에 있어 "파일이 소유자의
+ * 휴지통에 있습니다" 가 떴다. 11/16 에 같은 사고가 또 났다(설정·폴백 둘 다 휴지통).
+ *
+ * 2026-11-16 — 그 사고 경로를 없앴다. 목적지가 더 이상 바깥 링크가 아니라 우리가
+ * 호스팅하는 PDF 다. 설정 조회가 실패하든 말든 떨어질 곳이 없고, 드라이브 파일을
+ * 교체해 ID 가 바뀌어도 이 경로는 멀쩡하다. 그래서 "site_settings 에서 읽는다" 는
+ * 단정은 더 이상 지킬 사실이 아니다 — 읽지 않는 것이 맞다. */
 console.log('=== 링크 소스 (라이브 장애 재발 방지) ===');
-t('관리자 설정은 site_settings 에서 읽는다', /from\('site_settings'\)/.test(src),
-  "'settings' 로 읽으면 항상 실패하고 조용히 폴백으로 떨어진다");
+t('목적지를 바깥 설정에서 읽지 않는다 (조용한 폴백으로 죽은 링크에 떨어질 길이 없다)',
+  !/from\('site_settings'\)/.test(srcCode));
 t('휴지통에 들어간 옛 파일 ID 를 폴백으로 쓰지 않는다',
   !/file\/d\/1gUeTUJrg|file\/d\/1gVKLuOP/.test(src));
 t('폴백 링크는 drive.google.com 만', /DEFAULT_LINKS/.test(src) && /drive\.google\.com/.test(src));
@@ -113,17 +121,19 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
   const res = () => ({ setHeader(){}, redirect(c, u){ redirected = { c, u }; }, status(c){ statusCode = c; return this; }, send(b){ sent = b; } });
 
   /* 2026-11-16 — 하드코딩한 파일 ID 를 모듈의 링크로 바꿨다(위 주석 참조) */
-  const LINKS = handler.DEFAULT_LINKS;
-  const idOf = (u) => { const m = /\/file\/d\/([A-Za-z0-9_-]+)/.exec(String(u || '')); return m ? m[1] : ''; };
+  /* 2026-11-16 — 버튼을 누르면 우리 PDF 가 바로 열린다(도메니코). 목적지가 드라이브에서
+     자체 호스팅 PDF 로 바뀌었다. 드라이브 ID 대신 경로로 본다. */
+  const PDF = handler.PUBLIC_PDF;
+  const pathOf = (u) => { try { return new URL(String(u || ''), 'https://x').pathname; } catch (_) { return ''; } };
 
   return (async () => {
     await handler(req({ lang: 'ko', src: 'ig_bio' }), res());
-    t('ko → 한글판 링크로 302', redirected.c === 302 && idOf(redirected.u) === idOf(LINKS.ko), redirected.u);
+    t('ko → 한글판 PDF 로 302', redirected.c === 302 && pathOf(redirected.u) === PDF.ko, redirected.u);
     t('mediakit_downloads 에 기록', inserted && inserted.tb === 'mediakit_downloads' && inserted.row.lang === 'ko' && inserted.row.src === 'ig_bio');
 
     inserted = null;
     await handler(req({ lang: 'en', src: 'IG_post_DVyq0eF!!<script>' }), res());
-    t('en → 영문판 링크', idOf(redirected.u) === idOf(LINKS.en) && idOf(LINKS.en) !== idOf(LINKS.ko), redirected.u);
+    t('en → 영문판 PDF', pathOf(redirected.u) === PDF.en && PDF.en !== PDF.ko, redirected.u);
     // 게시물별 추적(ig_post_<shortcode>)은 살리되 위험문자는 제거된다.
     // 남는 문자는 [a-z0-9_-] 뿐이라 SQL·HTML 어느 쪽으로도 새지 않는다.
     t('src 정규화 — 소문자 + [a-z0-9_-] 만', inserted.row.src === 'ig_post_dvyq0efscript');
@@ -139,13 +149,13 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
 
     inserted = null;
     await handler(req({}), res());
-    t('lang 누락 시 en 폴백 · src 는 other', idOf(redirected.u) === idOf(LINKS.en) && inserted.row.src === 'other', redirected.u);
+    t('lang 누락 시 en 폴백 · src 는 other', pathOf(redirected.u) === PDF.en && inserted.row.src === 'other', redirected.u);
 
     // 경로형 — 쿼리가 통째로 지워져도 귀속이 살아있어야 한다
     inserted = null;
     await handler(req({}, null, '/mediakit/ko/ig_bio'), res());
     t('경로 /mediakit/ko/ig_bio → ko + ig_bio',
-      inserted.row.lang === 'ko' && inserted.row.src === 'ig_bio' && idOf(redirected.u) === idOf(LINKS.ko));
+      inserted.row.lang === 'ko' && inserted.row.src === 'ig_bio' && pathOf(redirected.u) === PDF.ko);
 
     inserted = null;
     await handler(req({}, null, '/mediakit/ig_post_dvyq0ef'), res());

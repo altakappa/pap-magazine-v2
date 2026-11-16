@@ -76,7 +76,10 @@ t('/:slug SSR 리라이트는 점(.)이 든 경로를 안 잡는다 (.pdf 보호
 t('/media-kit/ 를 잡는 리라이트가 없다', !(v.rewrites || []).some((x) => /media-kit/.test(x.source)));
 
 const mk = R('api/mediakit.js');
-t('봇용 /mediakit 응답에 KO PDF 링크 (언어 무관)', mk.includes("'/media-kit/PAP-Magazine-Media-Kit-2026-KO.pdf\""));
+/* 2026-11-16 — 봇 응답이 경로를 PUBLIC_PDF 상수에서 가져온다. 경로가 한 곳에만 있으니
+   문자열을 박아 두는 대신 상수와 봇 분기가 그것을 쓰는지를 본다. */
+t('봇용 /mediakit 응답에 KO PDF 링크 (언어 무관)',
+  /PUBLIC_PDF = \{[\s\S]*?Media-Kit-2026-KO\.pdf/.test(mk) && mk.includes("HOME_URL + PUBLIC_PDF.ko"));
 t('봇용 /mediakit 응답에 EN PDF 링크', mk.includes('Media-Kit-2026-EN'));
 
 /* 2026-11-16 — 공개본이 둘이 됐으니 매일 점검도 둘을 다 봐야 한다 */

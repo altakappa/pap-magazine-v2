@@ -137,7 +137,7 @@ function t(n, c, d) { if (c) { pass++; console.log('  ✓', n); } else { fail++;
     RESPONSES[KO] = { status: 200, type: 'text/html', body: '소유자의 휴지통' };
     const r2 = await run();
     t('하나라도 죽으면 텔레그램', telegram.length === 1, telegram.join(' | '));
-    t('어느 것이 왜 죽었는지 적는다', /설정 KO/.test(telegram[0] || ''), telegram[0]);
+    t('어느 것이 왜 죽었는지 적는다', /공유용 드라이브 KO/.test(telegram[0] || ''), telegram[0]);
     /* 고치는 곳이 두 군데라 매번 한쪽만 고쳐 왔다. 알림이 둘 다 말해 준다. */
     t('고쳐야 할 두 곳을 함께 알려준다',
       /어드민/.test(telegram[0] || '') && /DEFAULT_LINKS/.test(telegram[0] || ''));
