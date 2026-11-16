@@ -156,6 +156,7 @@ module.exports = async function handler(req, res) {
       /* 2026-10-15 — 봇에게도 읽을 거리를 준다: 공개 정적 PDF 링크 (frontend/media-kit/).
        * 영문판은 4월판(373K·유로 가격)이라 공개하지 않는다. 언어와 무관하게 한국어판만 (도메니코 10/15). */
       + '<p><a href="' + HOME_URL + '/media-kit/PAP-Magazine-Media-Kit-2026-KO.pdf">PAP Magazine Media Kit 2026 (PDF, Korean)</a></p>'
+      + '<p><a href="' + HOME_URL + '/media-kit/PAP-Magazine-Media-Kit-2026-EN.pdf">PAP Magazine Media Kit 2026 (PDF, English)</a></p>'
       + '</body></html>');
   }
   const ua = uaEarly;

@@ -130,6 +130,7 @@ module.exports = withCronGuard('mediakit-link-watch', async function handler(req
 
   /* ③ 공개 정적 PDF — AI 검색이 읽는 파일 */
   targets.push({ what: '공개 PDF KO', url: SITE + '/media-kit/PAP-Magazine-Media-Kit-2026-KO.pdf' });
+  targets.push({ what: '공개 PDF EN', url: SITE + '/media-kit/PAP-Magazine-Media-Kit-2026-EN.pdf' });   // 2026-11-16 영문 공개
 
   const seen = new Set();
   const results = [];
