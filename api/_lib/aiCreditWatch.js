@@ -35,6 +35,10 @@ function _deps() {
 }
 
 const ALERT_KEY = 'anthropic-api-health';
+/* 공급자별로 쿨다운 칸을 따로 둔다 — Anthropic 이 멀쩡한데 OpenAI 알림이
+   Anthropic 칸의 쿨다운을 먹으면, 그 3시간 안의 진짜 Anthropic 장애가 묻힌다. */
+const OPENAI_ALERT_KEY = 'openai-api-health';
+const _recent = new Map();
 const COOLDOWN_H = Number(process.env.AI_ALERT_COOLDOWN_H || 3);
 const SITE = 'https://www.pap-magazine.com';
 
@@ -44,6 +48,12 @@ function classifyAiFailure(status, bodyText) {
   const s = Number(status);
   // 크레딧 소진은 400 + 특정 문구로 온다 (Anthropic 실측 문구)
   if (/credit balance is too low/i.test(body)) return 'credit';
+  /* OpenAI 는 크레딧 소진을 **429** 로 보낸다(2026-11-17 실측 본문:
+     "You have no credits remaining…" · type insufficient_quota · code
+     credit_balance_exhausted). 아래 429→rate 규칙보다 먼저 봐야 한다 —
+     안 그러면 '보통 자동 회복' 이라는 틀린 조치가 나간다. 실제로 15일 동안
+     임베딩이 0건이었는데 어디서도 울리지 않았다. */
+  if (/insufficient_quota|credit_balance_exhausted|no credits remaining/i.test(body)) return 'credit';
   if (/billing|payment.?required/i.test(body) && s !== 429) return 'credit';
   if (s === 401 || s === 403 || /invalid[_ ]?api[_ ]?key|authentication/i.test(body)) return 'auth';
   if (s === 429 || /rate[_ ]?limit/i.test(body)) return 'rate';
@@ -75,6 +85,33 @@ const MESSAGES = {
   },
 };
 
+/* OpenAI 는 쓰는 곳이 둘뿐이다: 임베딩(추천 재료 · backfill-embeddings)과
+   AI 점유율 프로브의 chatgpt 칸. 꺼지면 사이트가 죽지 않고 조용히 비기만
+   해서 더 위험하다(교훈 1: 돌았다 ≠ 했다). */
+const MESSAGES_OPENAI = {
+  credit: {
+    title: '🛑 OpenAI 크레딧 소진 — 임베딩·ChatGPT 점유율 측정 정지',
+    lines: [
+      '새 글이 추천(관련 글)에서 빠지고, AI 점유율 프로브의 chatgpt 칸이 전부 실패합니다.',
+      '조치: platform.openai.com → Settings → Billing 에서 크레딧 충전',
+      '재발 방지: 같은 화면에서 자동 충전(auto recharge) 활성화',
+    ],
+  },
+  auth: {
+    title: '🔑 OpenAI API 키 오류 — 인증 실패',
+    lines: [
+      '임베딩·ChatGPT 점유율 측정이 정지됩니다.',
+      '조치: 키 재발급 → Vercel env OPENAI_API_KEY 교체 → 재배포',
+    ],
+  },
+  rate: {
+    title: '⏳ OpenAI 레이트리밋 — 호출이 밀리고 있습니다',
+    lines: [
+      '보통 자동 회복됩니다. 반복되면 backfill-embeddings 간격·건수를 낮춰야 합니다.',
+    ],
+  },
+};
+
 /**
  * Anthropic 호출이 실패했을 때 부르면 된다. 알릴 사안이면 알린다.
  * @param {number} status  HTTP 상태
@@ -82,20 +119,26 @@ const MESSAGES = {
  * @param {string} where   호출 지점 (예: 'editorialAi.vision')
  * @returns {Promise<{kind:string|null, alerted:boolean}>}
  */
-async function reportAiFailure(status, bodyText, where) {
+async function reportAiFailure(status, bodyText, where, provider) {
   const kind = classifyAiFailure(status, bodyText);
   if (!kind) return { kind: null, alerted: false };
+  const isOpenAi = provider === 'openai';
+  const key = isOpenAi ? OPENAI_ALERT_KEY : ALERT_KEY;
+  // 같은 프로세스의 동시 실패(프로브 10병렬)가 DB 쿨다운을 읽기 전에 한꺼번에 알리지 않게
+  const memo = _recent.get(key);
+  if (memo && memo.kind === kind && Date.now() - memo.at < COOLDOWN_H * 3600000) return { kind, alerted: false };
+  _recent.set(key, { kind, at: Date.now() });
   try {
     const { supabaseAdmin, pushAlert } = _deps();
     const { data: st } = await supabaseAdmin.from('ops_alert_state')
-      .select('last_alert_at, last_payload').eq('key', ALERT_KEY).maybeSingle();
+      .select('last_alert_at, last_payload').eq('key', key).maybeSingle();
     const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
     const lastKind = st && st.last_payload && st.last_payload.kind;
     // 유형이 바뀌면 쿨다운을 무시한다 — 크레딧 문제와 키 문제는 다른 조치가 필요하다.
     const cooled = Date.now() - lastAt > COOLDOWN_H * 3600000 || lastKind !== kind;
     if (!cooled) return { kind, alerted: false };
 
-    const m = MESSAGES[kind];
+    const m = (isOpenAi ? MESSAGES_OPENAI : MESSAGES)[kind];
     await pushAlert({
       personalOnly: true,
       title: m.title,
@@ -103,7 +146,7 @@ async function reportAiFailure(status, bodyText, where) {
       url: `${SITE}/admin`, urlLabel: '어드민',
     });
     await supabaseAdmin.from('ops_alert_state').upsert({
-      key: ALERT_KEY,
+      key,
       last_alert_at: new Date().toISOString(),
       last_payload: { kind, status: Number(status) || null, where: String(where || '').slice(0, 60) },
       updated_at: new Date().toISOString(),
@@ -117,11 +160,11 @@ async function reportAiFailure(status, bodyText, where) {
 }
 
 /** fetch 응답을 그대로 넘기면 본문까지 읽어 판정한다(본문은 200자만 사용). */
-async function reportAiResponse(resp, where) {
+async function reportAiResponse(resp, where, provider) {
   try {
     let body = '';
     try { body = (await resp.clone().text()).slice(0, 200); } catch (_) {}
-    return await reportAiFailure(resp.status, body, where);
+    return await reportAiFailure(resp.status, body, where, provider);
   } catch (_) {
     return { kind: null, alerted: false };
   }
@@ -173,4 +216,4 @@ async function reportAiParseFailure(where, headText) {
   }
 }
 
-module.exports = { reportAiFailure, reportAiResponse, reportAiParseFailure, classifyAiFailure, ALERT_KEY, PARSE_ALERT_KEY };
+module.exports = { reportAiFailure, reportAiResponse, reportAiParseFailure, classifyAiFailure, ALERT_KEY, OPENAI_ALERT_KEY, PARSE_ALERT_KEY };

@@ -26,7 +26,21 @@ const OPENAI_URL = 'https://api.openai.com/v1/embeddings';
 const MODEL = 'text-embedding-3-small';
 const MAX_INPUT_CHARS = 8000;
 
+/* 2026-11-17 — 마지막 실패의 '종류' 를 남긴다. embed() 는 null 만 돌려줘서(폴백 약속은 그대로)
+ * 15일째 OpenAI 크레딧 소진이 note 에 '실패 73 (ed …)' 로만 찍혔다.
+ * kind: credit·auth·rate(aiCreditWatch 판정) | http | network | shape */
+let _lastFailure = null;
+function lastEmbedFailure() { return _lastFailure; }
+function _fail(status, kind) {
+  _lastFailure = { status: status || 0, kind: kind || 'http', at: Date.now() };
+}
+/* 계정 단위 고장(크레딧·키)은 다음 호출도 100% 같은 결과다 — 배치를 멈춰도 된다. */
+function isFatalEmbedFailure(f) {
+  return !!(f && (f.kind === 'credit' || f.kind === 'auth'));
+}
+
 async function embed(text) {
+  _lastFailure = null;   // 매 호출 새로 — 지난 실패가 이번 결과로 읽히면 안 된다
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     console.warn('[embeddings] OPENAI_API_KEY missing — returning null');
@@ -47,17 +61,29 @@ async function embed(text) {
     if (!resp.ok) {
       const body = await resp.text().catch(function () { return ''; });
       console.error('[embeddings] OpenAI', resp.status, body.slice(0, 300));
+      /* 판정·알림은 공용 감시(aiCreditWatch)에 맡긴다 — 규칙 두 벌 금지.
+         늦게 불러온다: 이 파일을 순수 함수만 쓰려고 require 하는 테스트가 있다.
+         감시는 절대 throw 하지 않지만, 혹시 모를 실패도 여기서 삼킨다. */
+      let kind = null;
+      try {
+        const w = require('./aiCreditWatch');
+        kind = w.classifyAiFailure(resp.status, body);
+        await w.reportAiFailure(resp.status, body.slice(0, 200), 'embeddings', 'openai');
+      } catch (_) { /* 감시 실패가 폴백을 깨면 안 된다 */ }
+      _fail(resp.status, kind || 'http');
       return null;
     }
     const json = await resp.json();
     const vec = json && json.data && json.data[0] && json.data[0].embedding;
     if (!Array.isArray(vec) || vec.length !== 1536) {
       console.error('[embeddings] unexpected response shape');
+      _fail(resp.status, 'shape');
       return null;
     }
     return vec;
   } catch (err) {
     console.error('[embeddings] fetch failed', err && err.message);
+    _fail(0, 'network');
     return null;
   }
 }
@@ -151,5 +177,6 @@ async function embedAndStoreArticle(a) {
 }
 
 module.exports = { embed, toPgVectorString, MODEL,
+  lastEmbedFailure, isFatalEmbedFailure,
   editorialEmbeddingText, embedAndStoreEditorial,
   articleEmbeddingText, embedAndStoreArticle };

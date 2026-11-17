@@ -40,7 +40,17 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const {
   embedAndStoreEditorial, editorialEmbeddingText,
   embedAndStoreArticle, articleEmbeddingText,
+  lastEmbedFailure, isFatalEmbedFailure,
 } = require('../_lib/embeddings');
+
+/* 2026-11-17 — 실패 사유를 note 에 싣고, 계정 고장이면 멈춘다. 11/02~11/17 크레딧
+ * 소진 동안 note 엔 글 id 뿐이었고 10분마다 73번씩 같은 429 를 두드렸다. */
+function failTag(f) {
+  if (!f) return '';
+  const label = { credit: '크레딧 소진', auth: '키 오류', rate: '레이트리밋',
+    network: '네트워크', shape: '응답 형태 이상' }[f.kind] || 'HTTP';
+  return 'openai ' + (f.status || '-') + ' ' + label;
+}
 
 function envInt(name, dflt, min, max) {
   const n = parseInt(process.env[name] || '', 10);
@@ -81,6 +91,8 @@ module.exports = withCronGuard('backfill-embeddings', async function handler(req
 
   let edDone = 0, artDone = 0, failed = 0;
   const errors = [];
+  let lastFail = null;     // 마지막 임베딩 실패(종류 포함)
+  let halted = false;      // 크레딧·키 고장으로 배치를 멈췄나
 
   // ── 1) 에디토리얼 고아부터 (추천 UI 가 이미 붙어 있어 효과가 즉시다)
   const { data: eds, error: edErr } = await supabaseAdmin
@@ -95,12 +107,16 @@ module.exports = withCronGuard('backfill-embeddings', async function handler(req
     if (left() < 3000) break;
     if (!editorialEmbeddingText(ed)) { failed += 1; errors.push('빈 텍스트(ed) ' + ed.id); continue; }
     const ok = await embedAndStoreEditorial(ed);
-    if (ok) edDone += 1; else { failed += 1; errors.push('ed ' + ed.id); }
+    if (ok) edDone += 1; else {
+      failed += 1; errors.push('ed ' + ed.id);
+      lastFail = lastEmbedFailure() || lastFail;
+      if (isFatalEmbedFailure(lastEmbedFailure())) { halted = true; break; }
+    }
   }
 
   // ── 2) 기사 — 최신순 (검색 유입이 최신에 몰린다)
   const roomLeft = MAX_ITEMS - edDone;
-  if (roomLeft > 0 && left() > 3000) {
+  if (!halted && roomLeft > 0 && left() > 3000) {
     const { data: arts, error: artErr } = await supabaseAdmin
       .from('articles').select('id, title, subtitle, category, tags, content')
       .eq('status', 'published').is('embedding', null)
@@ -113,7 +129,11 @@ module.exports = withCronGuard('backfill-embeddings', async function handler(req
       if (left() < 3000) break;
       if (!articleEmbeddingText(a)) { failed += 1; errors.push('빈 텍스트(art) ' + a.id); continue; }
       const ok = await embedAndStoreArticle(a);
-      if (ok) artDone += 1; else { failed += 1; errors.push('art ' + a.id); }
+      if (ok) artDone += 1; else {
+        failed += 1; errors.push('art ' + a.id);
+        lastFail = lastEmbedFailure() || lastFail;
+        if (isFatalEmbedFailure(lastEmbedFailure())) { halted = true; break; }
+      }
     }
   }
 
@@ -131,17 +151,21 @@ module.exports = withCronGuard('backfill-embeddings', async function handler(req
   } catch (_e) { /* 못 세도 처리 결과는 남긴다 */ }
 
   const total = edDone + artDone;
-  const msg = total === 0
+  const why = failed ? failTag(lastFail) : '';
+  const tail = (why ? ' [' + why + ']' : '')
+    + (halted ? ' · 계정 고장이라 이번 회차 중단(남은 대기 ' + ((edLeft || 0) + (artLeft || 0)) + ')' : '');
+  const msg = (total === 0
     ? (edLeft === 0 && artLeft === 0
       ? '임베딩 대기 없음 — 완주'
       : '이번 실행 0건' + (failed ? (' · 실패 ' + failed + ' (' + errors[0] + ')') : ''))
     : '임베딩 ' + total + '건 (에디토리얼 ' + edDone + ' · 기사 ' + artDone + ')'
       + ' · 남은 대기 에디토리얼 ' + (edLeft == null ? '?' : edLeft)
       + ' · 기사 ' + (artLeft == null ? '?' : artLeft)
-      + (failed ? ' · 실패 ' + failed : '');
+      + (failed ? ' · 실패 ' + failed : '')) + tail;
 
   return res.status(200).json({
     ok: true, editorials: edDone, articles: artDone, failed,
+    failure: lastFail ? { status: lastFail.status, kind: lastFail.kind } : null, halted,
     remaining: { editorials: edLeft, articles: artLeft },
     elapsedMs: Date.now() - started,
     errors: errors.slice(0, 3),

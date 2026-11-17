@@ -331,7 +331,21 @@ async function askChatGpt(question, mode, timeoutMs) {
     lastStatus = res.status;
     if (res.status !== 400) break;   // 도구 이름 문제가 아니면 재시도해도 같다
   }
-  if (!res || !res.ok) throw new Error('openai ' + (lastStatus || (res && res.status)));
+  if (!res || !res.ok) {
+    /* 2026-11-17 — 상태 코드만 남기면 '429' 가 레이트리밋인지 크레딧 소진인지
+       못 가른다(11/05~11/15 네 회차 chatgpt 칸 100% 'openai 429' — 실제로는
+       크레딧 소진). 본문으로 종류를 판정해 사유에 붙이고, 공용 감시로 알린다
+       (쿨다운이 있어 한 회차 16칸이 죽어도 알림은 한 번). */
+    const st = lastStatus || (res && res.status);
+    let kind = null;
+    try {
+      const body = res ? (await res.text()).slice(0, 200) : '';
+      const w = require('./aiCreditWatch');
+      kind = w.classifyAiFailure(st, body);
+      await w.reportAiFailure(st, body, 'ai-sov-probe', 'openai');
+    } catch (_) { /* 감시 실패가 프로브를 깨면 안 된다 */ }
+    throw new Error('openai ' + st + (kind ? ' ' + kind : ''));
+  }
   const j = await res.json();
 
   let text = '';
@@ -523,8 +537,8 @@ function reasonOf(msg) {
   const m = String(msg || '');
   if (/aborted due to timeout|abort/i.test(m)) return '타임아웃';
   if (/웹검색 미실행/.test(m)) return '웹검색 미실행';
-  const http = m.match(/(anthropic|openai)\s+(\d{3})/i);
-  if (http) return http[1].toLowerCase() + ' ' + http[2];
+  const http = m.match(/(anthropic|openai)\s+(\d{3})(?:\s+(credit|auth|rate)\b)?/i);
+  if (http) return http[1].toLowerCase() + ' ' + http[2] + (http[3] ? ' ' + http[3].toLowerCase() : '');
   return m.replace(/[A-Za-z0-9_-]{20,}/g, '…').slice(0, 40) || '사유없음';
 }
 
