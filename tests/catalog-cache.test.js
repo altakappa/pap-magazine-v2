@@ -52,7 +52,15 @@ function run({ pages = 3, ttlSkewMs = 0, noCaches = false }) {
   const c = await run({ pages: 2, noCaches: true });
   t('Cache API 없는 환경: 그냥 네트워크 (2+2)', c.n1 === 2 && c.n2 === 2 && c.all2.length === 2, JSON.stringify(c));
   const htmls = fs.readdirSync(path.join(ROOT, 'frontend')).filter((f) => f.endsWith('.html')).filter((f) => fs.readFileSync(path.join(ROOT, 'frontend', f), 'utf8').includes('pap-content-api-sync.js?v='));
-  t('api-sync 캐시버스트 v=130 (' + htmls.length + '개 HTML)', htmls.length >= 10 && htmls.every((f) => /pap-content-api-sync\.js\?v=130"/.test(fs.readFileSync(path.join(ROOT, 'frontend', f), 'utf8'))));
+  /* 2026-11-17 — 버전을 숫자로 못 박고 있었다(v=130). 캐시버스트를 올릴 때마다
+     무관한 테스트가 깨지고, 고치는 사람은 "숫자만 맞추면 되는 것" 으로 배운다.
+     지켜야 하는 건 특정 숫자가 아니라 **10개 HTML 이 같은 버전을 가리킨다** 는 것이다
+     — 한 파일만 빠뜨리면 그 페이지만 옛 스크립트를 캐시에서 계속 쓴다. */
+  const verSet = new Set(htmls.map((f) => (fs.readFileSync(path.join(ROOT, 'frontend', f), 'utf8')
+    .match(/pap-content-api-sync\.js\?v=(\d+)"/) || [])[1]));
+  t('api-sync 캐시버스트가 10개 HTML 전부 같다 (v=' + [...verSet].join('/') + ')',
+    htmls.length >= 10 && verSet.size === 1 && !verSet.has(undefined),
+    htmls.length + '개 / 버전 ' + [...verSet].join(', '));
   console.log(`\n${pass} passed, ${fail} failed`);
   if (fail) process.exit(1);
 })();

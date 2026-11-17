@@ -106,15 +106,70 @@ if (!window._papEdHref) {
 window._papShortsRender = function(){ buildShortsCarousel(); };
 
 // 홈 메인 플레이어에 넣을 videoId 로 iframe 을 세팅한다(자동재생·무음·루프).
+//
+// 2026-11-17 도메니코 — "필름 페이지가 보여지면 자동으로 재생돼야 해."
+// 그전까지는 **데이터가 도착한 순간** src 를 심었다. 필름 섹션은 홈 한참
+// 아래에 있으니 화면 밖에서 autoplay 를 시작하는 꼴이었고, 모바일 브라우저는
+// 화면 밖 iframe 의 자동재생을 미루거나 막는다(muted 여도). 그래서 스크롤해
+// 내려오면 재생이 아니라 유튜브 재생 버튼이 떠 있었다. 실측 스크린샷이 그것이다.
+// 이제 섹션이 화면에 들어온 뒤에 심는다 — 아래 _papHomeVideoOnView 참조.
+//
+// enablejsapi=1 은 다시 들어왔을 때 멈춤/재개를 postMessage 로 보내기 위한 것이다.
+// 유튜브 iframe API 스크립트는 부르지 않는다 — CSP script-src 에 youtube.com 이
+// 없고, 영상 하나 재개하자고 CSP 를 넓힐 이유는 없다.
 function _papSetHomeVideo(vid){
   if(!vid) return false;
   var fp = document.getElementById('filmMainPlayer');
   if(!fp || !(fp.src === 'about:blank' || fp.src === '')) return false;
   // 개선요청 2026-07-16 — playsinline=1. iOS/모바일 사파리·크롬은 인라인 재생
   // 허용이 없으면 muted 여도 자동재생을 차단한다(전체화면 강제 전환 방지 정책).
-  fp.src = 'https://www.youtube.com/embed/' + vid + '?rel=0&autoplay=1&mute=1&loop=1&playsinline=1&playlist=' + vid;
+  fp.src = 'https://www.youtube.com/embed/' + vid
+    + '?rel=0&autoplay=1&mute=1&loop=1&playsinline=1&enablejsapi=1&playlist=' + vid;
   return true;
 }
+
+/* 이미 심어 둔 플레이어에 명령만 보낸다. 실패는 삼킨다 — 재개 명령이 안 먹는다고
+   홈이 깨질 이유는 없고, 최악이라도 영상이 멈춰 있을 뿐이다. */
+function _papHomeVideoCmd(func){
+  try{
+    var fp = document.getElementById('filmMainPlayer');
+    if(!fp || !fp.contentWindow) return;
+    if(String(fp.src).indexOf('youtube.com/embed/') === -1) return;
+    fp.contentWindow.postMessage(
+      JSON.stringify({ event: 'command', func: func, args: [] }),
+      'https://www.youtube.com'
+    );
+  }catch(_){}
+}
+
+function _papFilmSectionVisible(){
+  if(typeof window.__papFilmInView === 'boolean') return window.__papFilmInView;
+  try{
+    var sec = document.getElementById('films');
+    if(!sec) return false;
+    var r = sec.getBoundingClientRect();
+    return r.top < (window.innerHeight || 0) && r.bottom > 0;
+  }catch(_){ return false; }
+}
+
+/* 필름 섹션이 화면에 들어오고 나갈 때 pap-content-film.js 의 옵서버가 부른다.
+   첫 진입에서만 src 를 심고, 그 뒤로는 재생/정지 명령만 보낸다 — src 를 다시
+   쓰면 영상을 처음부터 다시 받는다. 나갈 때 멈추는 건 덤이 아니라 본론이다:
+   24초짜리를 무음 루프로 계속 돌리면 모바일 데이터와 배터리를 그냥 태운다. */
+window._papHomeVideoOnView = function(inView){
+  var fp = document.getElementById('filmMainPlayer');
+  if(!fp) return;
+  var armed = String(fp.src).indexOf('youtube.com/embed/') !== -1;
+  if(inView){
+    if(!armed){
+      if(window.__papHomeVideoId) _papSetHomeVideo(window.__papHomeVideoId);
+      return;                                  // 막 심은 것은 autoplay=1 이 튼다
+    }
+    _papHomeVideoCmd('playVideo');
+  }else if(armed){
+    _papHomeVideoCmd('pauseVideo');
+  }
+};
 
 // Auto-play in main player when film data loads (muted for autoplay policy)
 //
@@ -122,20 +177,43 @@ function _papSetHomeVideo(vid){
 // 홈페이지 영상으로 대체되게." 유튜브 채널 대표 영상(트레일러)을 /api/home-video
 // 로 조회해 그걸 우선 튼다. 값이 없거나 조회 실패면 기존대로 최신 필름을 튼다.
 // 폴백이 있어 유튜브 쪽 문제로 홈이 비지 않는다.
+// 2026-11-17 — 여기서 하는 일은 **어느 영상을 틀지 정하는 것까지**다.
+// 실제로 심는 시점은 섹션이 화면에 들어왔을 때(_papHomeVideoOnView).
+// 이미 들어와 있으면 바로 심는다 — 작은 화면에서는 처음부터 보일 수 있다.
 window._papFilmAutoPlay = function(){
   var fp = document.getElementById('filmMainPlayer');
   if(!fp || !(fp.src === 'about:blank' || fp.src === '')) return;
+  if(window.__papHomeVideoId) return;                  // 이미 정해졌다(중복 호출 방지)
   var apiBase = (window.PAP_API_BASE || '/api').replace(/\/$/, '');
+
+  function arm(vid){
+    if(!vid || window.__papHomeVideoId) return;
+    window.__papHomeVideoId = vid;
+    if(_papFilmSectionVisible()) window._papHomeVideoOnView(true);
+    /* 옵서버가 한 번도 보고하지 않으면(IntersectionObserver 미지원·예외) 영상이
+       영영 안 뜬다. 그건 고치려던 것보다 나쁘다 — 스크롤로 대신 본다. */
+    setTimeout(function(){
+      if(typeof window.__papFilmInView === 'boolean') return;   // 옵서버 정상
+      var onScroll = function(){
+        if(!_papFilmSectionVisible()) return;
+        window.removeEventListener('scroll', onScroll);
+        window._papHomeVideoOnView(true);
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    }, 3000);
+  }
+
   fetch(apiBase + '/home-video')
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(j){
-      var vid = j && j.videoId;
-      if(vid && _papSetHomeVideo(vid)) return;         // 대표 영상 우선
-      if(filmAllData.length > 0) _papSetHomeVideo(filmAllData[0].yt); // 폴백: 최신 필름
+      var vid = j && j.videoId;                        // 대표 영상 우선
+      if(!vid && filmAllData.length > 0) vid = filmAllData[0].yt; // 폴백: 최신 필름
+      arm(vid);
     })
     .catch(function(){
       // 네트워크 실패 — 기존 동작(최신 필름)으로 폴백
-      if(filmAllData.length > 0) _papSetHomeVideo(filmAllData[0].yt);
+      if(filmAllData.length > 0) arm(filmAllData[0].yt);
     });
 };
 

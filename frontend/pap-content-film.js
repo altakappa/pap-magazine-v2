@@ -510,10 +510,24 @@ function stopFilm(){
   filmPlaying=false;
 }
 
-// Film section visibility (no auto-play since films now link to PAP website)
+// Film section visibility.
+//
+// 2026-11-17 도메니코 — "필름 페이지가 보여지면 자동으로 재생돼야 해."
+// 이 옵서버는 그동안 filmInView 에 적어 두기만 하고 아무것도 하지 않았다
+// (윗줄 주석도 "no auto-play" 라고 적혀 있었다). 그사이 홈 메인 플레이어는
+// 데이터가 도착하는 순간, 즉 아직 화면 밖일 때 autoplay 를 시작하고 있었다.
+// 이제 보임 여부를 pap-content-api-sync.js 에 넘긴다 — 심기·재개·정지는 그쪽이 한다.
+//
+// __papFilmInView 를 전역에 적는 이유: 이 파일이 api-sync 보다 **먼저** 로드돼서
+// 첫 보고가 _papHomeVideoOnView 가 생기기 전에 올 수 있다. 그때는 전역만 남고,
+// 영상이 정해지는 순간 api-sync 가 그 값을 읽어 간다.
 var filmObserver=new IntersectionObserver(function(entries){
   entries.forEach(function(e){
     filmInView=e.isIntersecting;
+    window.__papFilmInView=e.isIntersecting;
+    if(typeof window._papHomeVideoOnView==='function'){
+      window._papHomeVideoOnView(e.isIntersecting);
+    }
   });
 },{threshold:0.3});
 
