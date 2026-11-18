@@ -374,7 +374,10 @@ function msgForCode(code, data) {
     URL_NOT_OWNED: 'errUpload', SOCIAL_CONSENT_REQUIRED: 'errSocial', TERMS_REQUIRED: 'errTerms',
     PROMO_DECLARATION_REQUIRED: 'errPromo', INSTAGRAM_INVALID: 'errInsta', WEBSITE_INVALID: 'errWebsite',
     SOURCES_HTML_REJECTED: 'errSourcesHtml', FIELD_HTML_REJECTED: 'errFieldHtml',
-    too_many_files: 'errTooMany', no_files: 'errCover', invalid_type: 'errType', file_too_large: 'errSize'
+    /* 2026-11-18 — 'invalid_type' 은 서버에 없는 코드였다(서버는
+       'unsupported_type' 을 보낸다). 그래서 GIF 를 올린 사람은 "JPG·PNG·WebP 만
+       올릴 수 있습니다" 대신 일반 오류를 봤다. 코드 이름은 서버 쪽이 정본이다. */
+    too_many_files: 'errTooMany', no_files: 'errCover', unsupported_type: 'errType', file_too_large: 'errSize'
   };
   var k = m[code];
   var s = k ? tr(k) : tr('errGeneric');

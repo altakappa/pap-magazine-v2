@@ -56,6 +56,27 @@ const ALLOWED_MIME = new Set([
   // 검은 칸이 된다(MODERN TEARS 재제출 20장 중 14장). 허용 목록에 있던 6개월간 실제 TIFF 제출은 1건.
 ]);
 
+/* 어느 트랙이 올리는 이미지인지 알려 주는 꼬리표. 저장 경로에는 쓰이지 않고
+   응답에 그대로 되돌려 줄 뿐이지만, 모르는 값은 거절한다 — 오타가 조용히
+   통과하면 나중에 분류가 어긋난다.
+
+   2026-11-18 사고: 'look' · 'additional' 만 있었고 이건 에디토리얼의 어휘다.
+   11/11 에 연 아티클 트랙은 'article' 을 보내는데 그 값이 여기 없어서 모든
+   아티클 이미지 업로드가 400 으로 막혔다. 대표 이미지는 필수라 **아티클 접수가
+   트랙 공개 이후 단 한 건도 성공하지 못했다** (article_submissions 0행).
+   제출자에게는 "요청을 처리하지 못했습니다" 라는 일반 문구만 떴다 —
+   invalid_category 가 폼의 코드 표에 없어 errGeneric 으로 떨어졌기 때문이다.
+   실측 피해: 2026-11-17 Vandelay Visuals 9회, 11-18 Oumayma Rezgui 3회.
+
+   새 트랙을 열 때 이 목록에 값을 더하는 것을 잊지 않도록, 거절 응답에 허용
+   목록을 함께 실어 보낸다. tests/article-submission.test.js 가 폼이 보내는
+   값과 이 목록이 맞는지 교차 검사한다. */
+const ALLOWED_CATEGORY = new Set([
+  'look',        // 에디토리얼 — 룩 이미지
+  'additional',  // 에디토리얼 — 추가 이미지
+  'article',     // 아티클 기고 — 대표 이미지 + 본문 이미지 (2026-11-18)
+]);
+
 const MIME_TO_EXT = {
   'image/jpeg': '.jpg',
   'image/jpg':  '.jpg',
@@ -147,12 +168,16 @@ module.exports = async function handler(req, res) {
         maxBytes: MAX_FILE_SIZE,
       });
     }
-    if (category !== 'look' && category !== 'additional') {
-      console.error('[upload-url] rejected: invalid category', JSON.stringify(category), 'idx=', i, 'user=', user.id);
+    if (!ALLOWED_CATEGORY.has(category)) {
+      console.error('[upload-url] rejected: invalid category', JSON.stringify(category),
+        'idx=', i, 'user=', user.id, 'allowed=', [...ALLOWED_CATEGORY].join(','));
       return res.status(400).json({
         message: `File ${i + 1}: invalid category`,
         code: 'invalid_category',
         index: i + 1,
+        /* 허용 목록을 같이 보낸다 — 이 불일치를 세 달 동안 아무도 못 봤다.
+           다음에는 응답만 열어 봐도 무엇이 빠졌는지 바로 보이게 한다. */
+        allowed: [...ALLOWED_CATEGORY],
       });
     }
   }

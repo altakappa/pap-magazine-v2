@@ -227,6 +227,36 @@ t('AI 는 결과·요금을 정하지 않는다고 프롬프트에 적혀 있다
     /if \(!\$\('social'\)\.checked\)/.test(F) && /if \(!\$\('terms'\)\.checked\)/.test(F) && /if \(!promoEl\)/.test(F));
   t('이미지는 기존 버킷의 2단계 직접 업로드를 쓴다 (버킷 MIME 어긋남을 안 만든다)',
     /\/api\/submissions\/upload-url/.test(F) && /u\.contentType \|\| files\[i\]\.type/.test(F));
+
+  /* ── 2026-11-18 사고: 폼과 엔드포인트가 다른 어휘를 쓰고 있었다 ──────────
+     폼은 category:'article' 을 보내는데 upload-url 은 'look'·'additional' 만
+     받았다. 대표 이미지는 필수라, 11/11 트랙 공개 이후 **아티클 접수가 한 건도
+     성공하지 못했다** (article_submissions 0행). 제출자는 "요청을 처리하지
+     못했습니다" 만 봤다 — invalid_category 가 아래 코드 표에 없어서다.
+
+     위의 기존 단언은 URL 과 contentType 만 봤다. 둘 다 맞아도 category 하나가
+     어긋나면 전부 막힌다. 한 파일만 보는 단언은 두 파일 사이의 불일치를 못 잡는다.
+     그래서 여기서 **교차 검사**한다: 폼이 실제로 보내는 값을 뽑아, 엔드포인트의
+     허용 목록에 들어 있는지 본다. */
+  const UP = R('api/submissions/upload-url.js');
+  const sentCats = [...F.matchAll(/category:\s*'([a-z_]+)'/g)].map((m) => m[1]);
+  t('폼이 업로드에 쓸 category 를 실제로 보낸다', sentCats.length > 0, sentCats.join(','));
+  const allowBlock = (UP.match(/const ALLOWED_CATEGORY = new Set\(\[([\s\S]*?)\]\)/) || ['', ''])[1];
+  const allowed = [...allowBlock.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  t('upload-url 이 허용 목록을 하나의 집합으로 선언한다', allowed.length >= 3, allowed.join(','));
+  const missing = sentCats.filter((c) => allowed.indexOf(c) === -1);
+  t('폼이 보내는 category 를 upload-url 이 전부 받는다',
+    missing.length === 0,
+    '거절될 값: ' + missing.join(',') + ' / 허용: ' + allowed.join(','));
+  t("아티클 트랙의 'article' 이 허용 목록에 있다", allowed.indexOf('article') !== -1);
+  /* 거절 응답이 허용 목록을 같이 실어 보낸다 — 다음 불일치는 응답만 봐도 보인다. */
+  t('invalid_category 응답에 허용 목록이 실린다', /allowed: \[\.\.\.ALLOWED_CATEGORY\]/.test(UP));
+  /* 코드 이름은 서버가 정본. 폼의 표에 없는 코드를 쓰면 전부 errGeneric 으로 떨어진다. */
+  const serverCodes = [...UP.matchAll(/code: '([a-z_]+)'/g)].map((m) => m[1]);
+  t("서버가 보내는 'unsupported_type' 이 폼 표에 있다",
+    serverCodes.indexOf('unsupported_type') !== -1 && /unsupported_type: 'errType'/.test(F),
+    '서버 코드: ' + serverCodes.join(','));
+  t("폼이 더 이상 없는 코드('invalid_type')를 매핑하지 않는다", !/invalid_type:/.test(F));
   t('홍보성 €790 안내가 폼에도 적혀 있다', /glPaidTitle/.test(F) && /790/.test(F));
 
   console.log(`\npassed: ${pass}   failed: ${fail}`);
