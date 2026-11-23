@@ -72,6 +72,27 @@ t('가격을 적은 푸터는 전부 €5.49 / €8.99',
   withPrice.every(f => STD.test(f) && PREM.test(f)),
   withPrice.filter(f => !(STD.test(f) && PREM.test(f))).map(s=>s.slice(0,80)).join(' | '));
 
+console.log('\n=== 6. 상담봇 사실 카드 (2026-11-23) ===');
+/* 상담봇은 가격을 말한다. 저장소에 가격 단일 상수 파일이 없으므로, 이 파일이
+   '다섯 번째 가격표' 가 된 셈이다. 그래서 여기서 함께 지킨다 — 가격을 바꾸면서
+   봇을 빠뜨리면 봇만 옛 숫자를 말하게 되고, 그 말은 우리 이름으로 한 약속이 된다.
+   (이번 주 사고 셋이 전부 '두 곳 중 한 곳만 고침' 이었다) */
+const kn = require('../api/_lib/assistantKnowledge.js');
+const sheet = kn.factSheet(kn.FACTS);
+t('봇이 말하는 스탠다드 월간 = €5.49',  STD.test(sheet),  kn.FACTS.membership.standardMonthly);
+t('봇이 말하는 프리미엄 월간 = €8.99',  PREM.test(sheet), kn.FACTS.membership.premiumMonthly);
+t('봇이 말하는 스탠다드 연간 = €54.90', /€\s?54[.,]90/.test(sheet), kn.FACTS.membership.standardYearly);
+t('봇이 말하는 프리미엄 연간 = €89.90', /€\s?89[.,]90/.test(sheet), kn.FACTS.membership.premiumYearly);
+t('봇이 결제 화면과 같은 숫자를 쓴다 (subscribe.html 이 기준)',
+  /std_m:\s*5\.49/.test(sub) && STD.test(sheet)
+  && /prem_m:\s*8\.99/.test(sub) && PREM.test(sheet));
+t('봇 사실 카드에 옛 통화가 없다', !/₩|\$|¥|₽/.test(sheet));
+/* 제출 게재료도 같은 이유로 여기서 본다 — 사이트 문구와 봇이 갈라지면 안 된다. */
+t('봇이 말하는 게재료 = €380 / €790', /€380/.test(sheet) && /€790/.test(sheet));
+const subsPage = read('frontend','submissions.html');
+t('제출 안내 페이지와 같은 숫자다',
+  /€380/.test(subsPage) && /€790/.test(subsPage));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ subscription-price-single-source tests FAILED'); process.exit(1); }
 console.log('✅ subscription-price-single-source tests passed');

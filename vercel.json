@@ -274,7 +274,8 @@
     {
       "path": "/api/cron/mediakit-link-watch",
       "schedule": "37 22 * * *"
-    }
+    },
+    { "path": "/api/cron/assistant-purge", "schedule": "41 3 * * *" }
   ],
   "rewrites": [
     {
