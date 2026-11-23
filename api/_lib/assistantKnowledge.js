@@ -190,33 +190,45 @@ function keywords(q, max) {
   return out;
 }
 
-/** 제목에 키워드가 들어간 발행물을 찾는다. 못 찾으면 빈 배열 — 지어내지 않는다. */
-async function findContent(db, question, limit) {
+/** 제목에 키워드가 들어간 발행물을 찾는다. 못 찾으면 빈 배열 — 지어내지 않는다.
+ *
+ *  2026-11-23 실측으로 고침: 처음엔 title 만 봤는데 `title` 은 **한국어 정본**이다.
+ *  'luxury' 로 세어 보니 title 0건 · title_en 19건이었다(발행 3,485편 전부 title_en
+ *  보유). 영어로 물으면 기사를 영영 못 찾는 상태였다. slug 도 함께 본다 — 영문
+ *  슬러그가 사실상 또 하나의 영어 제목이라 브랜드명이 잘 걸린다.
+ *  답에 보여줄 제목은 묻는 사람의 언어에 맞춘다 — 한국어로 물었는데 영어 제목을
+ *  돌려주면 그 자체로 틀린 답처럼 보인다. */
+async function findContent(db, question, limit, lang) {
   const words = keywords(question, 4);
   if (!words.length) return [];
-  const pattern = words.map((w) => '%' + w.replace(/[%_,]/g, '') + '%');
-  const out = [];
-  try {
-    const { data: arts } = await db.from('articles')
-      .select('title, slug')
-      .eq('status', 'published')
-      .or(pattern.map((p) => 'title.ilike.' + p).join(','))
-      .limit(limit || 6);
-    for (const a of (arts || [])) {
-      if (a && a.slug) out.push({ kind: 'article', title: a.title, url: '/article/' + a.slug });
+  const pat = words.map((w) => '%' + w.replace(/[%_,()]/g, '') + '%').filter((p) => p.length > 2);
+  if (!pat.length) return [];
+  const ko = String(lang || '') === 'ko';
+  const orFor = (cols) => cols.flatMap((c) => pat.map((p) => c + '.ilike.' + p)).join(',');
+
+  async function look(table, cols, prefix, take) {
+    try {
+      const { data } = await db.from(table)
+        .select('title, title_en, slug')
+        .eq('status', 'published')
+        .or(orFor(cols))
+        .limit(take);
+      return (data || [])
+        .filter((r) => r && r.slug)
+        .map((r) => ({
+          kind: table === 'articles' ? 'article' : 'editorial',
+          title: (ko ? (r.title || r.title_en) : (r.title_en || r.title)) || r.slug,
+          url: prefix + r.slug,
+        }));
+    } catch (_) {
+      return [];   /* 조회 실패가 답변 자체를 막을 이유는 없다 */
     }
-  } catch (_) { /* 조회 실패가 답변 자체를 막을 이유는 없다 */ }
-  try {
-    const { data: eds } = await db.from('editorials')
-      .select('title, slug')
-      .eq('status', 'published')
-      .or(pattern.map((p) => 'title.ilike.' + p).join(','))
-      .limit(4);
-    for (const e of (eds || [])) {
-      if (e && e.slug) out.push({ kind: 'editorial', title: e.title, url: '/editorial/' + e.slug });
-    }
-  } catch (_) { /* 위와 같다 */ }
-  return out.slice(0, limit || 8);
+  }
+
+  const cols = ['title', 'title_en', 'slug'];
+  const arts = await look('articles', cols, '/article/', (limit || 8));
+  const eds = await look('editorials', cols, '/editorial/', 4);
+  return arts.concat(eds).slice(0, limit || 8);
 }
 
 module.exports = { FACTS, factSheet, loadKnowledge, findContent, keywords };

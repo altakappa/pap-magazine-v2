@@ -127,7 +127,7 @@ module.exports = async function handler(req, res) {
   } catch (_) { /* 사용량 조회 실패로 봇을 멈추지는 않는다 */ }
 
   let found = [];
-  try { found = await findContent(supabaseAdmin, message, 8); } catch (_) { found = []; }
+  try { found = await findContent(supabaseAdmin, message, 8, lang); } catch (_) { found = []; }
 
   let sheet = '';
   try { ({ sheet } = await loadKnowledge(supabaseAdmin)); } catch (_) { sheet = ''; }

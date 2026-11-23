@@ -51,6 +51,13 @@ t('콘텐츠를 못 찾으면 있다고 하지 말라고 한다', /Do not claim 
 /* ILIKE 는 부분일치라 두 글자 라틴 토큰이 들어가면 엉뚱한 기사를 긁어 온다. */
 t('짧은 라틴 토큰을 검색어로 쓰지 않는다', /function longEnough/.test(KN));
 t('한글·CJK 는 2자부터 허용한다', /Script=Hangul/.test(KN));
+/* 2026-11-23 실측: articles.title 은 **한국어 정본**이다. 'luxury' 로 세니 title 0건 ·
+   title_en 19건(발행 3,485편 전부 title_en 보유). title 만 보면 영어 질문이 기사를 영영
+   못 찾는다 — 전 세계 독자를 받는 매거진에서 이건 기능이 없는 것과 같다. */
+t('영어 제목(title_en)도 검색한다', /title_en/.test(KN));
+t('영문 슬러그도 검색한다 (브랜드명이 잘 걸린다)', /'title', 'title_en', 'slug'/.test(KN));
+t('보여주는 제목은 질문한 언어에 맞춘다', /ko \? \(r\.title \|\| r\.title_en\)/.test(KN));
+t('질문 언어를 조회에 넘긴다', /findContent\(supabaseAdmin, message, 8, lang\)/.test(ASK));
 
 console.log('\n=== 4. 조용히 죽지 않는다 ===');
 t('하루 상한이 있다', /DAILY_CALLS/.test(ASK));
