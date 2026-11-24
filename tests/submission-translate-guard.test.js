@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { normalizeRole } = require('../api/_lib/creditRoles');
-const { CANONICAL_ITEM_TYPES, normalizeItemType, hasCjk } = require('../api/_lib/itemTypes');
+const { CANONICAL_ITEM_TYPES, BEAUTY_ITEM_TYPES, normalizeItemType, hasCjk } = require('../api/_lib/itemTypes');
 
 let pass = 0, fail = 0;
 function t(n, c, d) { if (c) { pass++; console.log('  ✓', n); } else { fail++; console.log('  ✗', n); if (d) console.log('     ', d); } }
@@ -30,14 +30,43 @@ t('모든 고정 역할 div 에 data-role', roleDivs.every((d) => /data-role="[^
 t('모든 고정 역할 div 에 translate="no"', roleDivs.every((d) => /translate="no"/.test(d)));
 const dataRoles = roleDivs.map((d) => /data-role="([^"]+)"/.exec(d)[1].replace(/&amp;/g, '&'));
 t('data-role 값은 전부 표준 역할', dataRoles.every((r) => normalizeRole(r) === r), dataRoles.join(' | '));
-const itemFn = /function itemOptions\(\)\{\n  return '([^\n]*)';\n\}/.exec(html);
-t('itemOptions 존재', !!itemFn);
-const opts = itemFn ? (itemFn[1].match(/<option value="([^"]*)">([^<]*)<\/option>/g) || []) : [];
-t('품목 option 전부 value 명시(24 + Select)', opts.length === 25, opts.length);
-const optVals = opts.map((o) => /value="([^"]*)"/.exec(o)[1]).filter(Boolean);
-t('option value == 표시 글자', opts.every((o) => { const m = /value="([^"]*)">([^<]*)</.exec(o); return m[1] === '' || m[1] === m[2]; }));
-t('폼 옵션 == itemTypes CANONICAL 목록', JSON.stringify(optVals) === JSON.stringify(CANONICAL_ITEM_TYPES));
-t('value 없는 <option> 이 itemOptions 에 없음', !/<option>[A-Z]/.test(itemFn ? itemFn[1] : ''));
+/* 2026-11-24 — 품목 목록이 장르별로 둘이 됐다(의상 / 뷰티). 둘 다 **한 줄 상수**라
+   여기서 정적으로 뽑아 서버 itemTypes.js 와 대조할 수 있다. 상수를 함수 안으로
+   옮기거나 여러 줄로 쪼개면 이 대조가 조용히 비어 버리므로, 모양 자체를 지킨다. */
+function optionBlock(name){
+  const m = new RegExp('var ' + name + "='([^\\n]*)';").exec(html);
+  return m ? m[1] : null;
+}
+function checkList(name, canon, label){
+  const raw = optionBlock(name);
+  t(label + ' 상수 존재(한 줄)', !!raw);
+  const opts = raw ? (raw.match(/<option value="([^"]*)">([^<]*)<\/option>/g) || []) : [];
+  t(label + ' option 전부 value 명시(' + canon.length + ' + Select)', opts.length === canon.length + 1, opts.length);
+  t(label + ' option value == 표시 글자',
+    opts.every((o) => { const m = /value="([^"]*)">([^<]*)</.exec(o); return m[1] === '' || m[1] === m[2]; }));
+  const vals = opts.map((o) => /value="([^"]*)"/.exec(o)[1]).filter(Boolean);
+  t(label + ' == itemTypes 목록', JSON.stringify(vals) === JSON.stringify(canon), vals.join(','));
+  t(label + ' 에 value 없는 <option> 없음', !/<option>[A-Z]/.test(raw || ''));
+  return vals;
+}
+const optVals = checkList('_PAP_FASHION_ITEM_OPTIONS', CANONICAL_ITEM_TYPES, '의상 품목');
+const beautyVals = checkList('_PAP_BEAUTY_ITEM_OPTIONS', BEAUTY_ITEM_TYPES, '뷰티 품목');
+
+/* 도메니코 2026-11-24 — "뷰티 에디토리얼은 패션 크레딧을 쓸 수 없다. 만약 패션
+   크레딧을 쓰고자 한다면 그것은 패션 에디토리얼이다."
+   그러므로 뷰티 목록에 의상이 섞이면 안 된다('Other' 만 양쪽에 공통). */
+const CLOTHING_ONLY = CANONICAL_ITEM_TYPES.filter((v) => v !== 'Other');
+t('뷰티 목록에 의상 품목이 섞여 있지 않다',
+  beautyVals.every((v) => CLOTHING_ONLY.indexOf(v) === -1),
+  beautyVals.filter((v) => CLOTHING_ONLY.indexOf(v) !== -1).join(','));
+t('itemOptions 가 장르를 보고 고른다', /_papBeautyOnlyGenre\(\) \? _PAP_BEAUTY_ITEM_OPTIONS : _PAP_FASHION_ITEM_OPTIONS/.test(html));
+t('BEAUTY 만 고른 경우에만 뷰티 목록을 쓴다 (FASHION 이 함께면 의상)',
+  /indexOf\('BEAUTY'\)!==-1 && g\.indexOf\('FASHION'\)===-1/.test(html));
+t('장르가 바뀌면 이미 그린 select 를 다시 그린다', /_papRefreshItemOptions/.test(html));
+t('목록에 없는 값은 비우고, 몇 개를 비웠는지 말해 준다',
+  /lookItemsCleared/.test(html) && /cleared\+\+/.test(html));
+t('제출 전에도 한 번 더 막는다 (장르를 나중에 바꾼 경우)',
+  /_papBeautyOnlyGenre\(\)\)\{[\s\S]{0,400}_papItemTypeValid/.test(html));
 t('look-select 에 translate="no"', (html.match(/<select class="look-select" translate="no">/g) || []).length === 2);
 t('수집 코드가 data-role 을 먼저 읽음 (제출)', /var role = roleEl \? \(roleEl\.getAttribute\('data-role'\) \|\| roleEl\.textContent\)/.test(html));
 t('검증 코드가 data-role 을 먼저 읽음 (필수 크레딧)', /roleText = \(roleEl\.getAttribute\('data-role'\) \|\| roleEl\.textContent/.test(html));
