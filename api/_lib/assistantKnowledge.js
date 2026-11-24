@@ -28,6 +28,20 @@
    가리키는 다른 파일들도 같이 바꿔야 한다. */
 const FACTS = {
   membership: {
+    /* 2026-11-24 도메니코 — "회원은 무료회원도 있는데 문의하기에서 유료회원에
+       대해서만 설명하는것 같아."
+       맞는 지적이었다. 이 카드에 유료 두 등급만 적어 두었더니, 봇은 "사실
+       카드에 없는 건 모른다고 답하라" 는 규칙을 그대로 지켜서 무료 회원에
+       대해서는 아무 말도 못 하거나 바로 구독 얘기로 넘어갔다. 회원 대다수가
+       무료 등급인데 그쪽 설명이 비어 있었던 셈이다.
+       아래 문장은 전부 frontend/subscribe.html 의 features.free 와 comparison
+       표(= 등급의 단일 출처)를 그대로 옮긴 것이다. 지어낸 혜택은 없다. */
+    tiers: '등급은 셋이다 — 무료 · 스탠다드 · 프리미엄. 유료 구독은 선택이다.',
+    free: '무료 등급은 €0 이다.',
+    browse: '둘러보기와 최신 에디토리얼 10개 열람에는 회원가입조차 필요 없다.',
+    signup: '서브미션 제출(에디토리얼 · 아티클 · 제보)에는 무료 회원가입이 필요하다. 제출 자체는 무료 회원이면 할 수 있고 유료 구독은 필요하지 않다.',
+    freeIncludes: '무료 회원에 포함 — 최신 에디토리얼 10개 열람, 서브미션 제출, 심사 결과 최대 7영업일(스탠다드와 같다), 다른 사람의 게재물에 인스타그램 공동작업자로 지정될 수 있음.',
+    freeExcludes: '무료 회원에 없는 것 — 광고가 보인다, 서브미션 피드백, 풀레터 신청, 이미지 · 로고 이미지 · 티어시트 다운로드, 최신 10개를 넘는 아카이브 열람.',
     standardMonthly: '€5.49',
     standardYearly: '€54.90',
     premiumMonthly: '€8.99',
@@ -97,6 +111,8 @@ function factSheet(f) {
     '◆ PAP', b.who, b.tracks,
     '',
     '◆ 멤버십 (통화: ' + m.currency + ')',
+    m.tiers,
+    m.free, m.browse, m.signup, m.freeIncludes, m.freeExcludes,
     '스탠다드 월간 ' + m.standardMonthly + ' · 스탠다드 연간 ' + m.standardYearly,
     '프리미엄 월간 ' + m.premiumMonthly + ' · 프리미엄 연간 ' + m.premiumYearly,
     m.yearlyNote,

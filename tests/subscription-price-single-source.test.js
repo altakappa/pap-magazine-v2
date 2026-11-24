@@ -93,6 +93,32 @@ const subsPage = read('frontend','submissions.html');
 t('제출 안내 페이지와 같은 숫자다',
   /€380/.test(subsPage) && /€790/.test(subsPage));
 
+console.log('\n=== 7. 상담봇이 무료 회원도 설명한다 (도메니코 2026-11-24) ===');
+/* 도메니코: "회원은 무료회원도 있는데 문의하기에서 유료회원에 대해서만
+   설명하는것 같아."
+   사실 카드에 유료 두 등급만 있으면 봇은 "카드에 없는 건 모른다" 규칙을
+   그대로 지켜서 무료 회원 질문에 답하지 못한다. 회원 대다수가 무료 등급인데
+   그쪽 설명이 비어 있었다. subscribe.html 의 등급표가 단일 출처이므로,
+   여기서 둘이 갈라지지 않게 묶어 둔다. */
+t('봇이 €0 무료 등급을 말한다', /€0/.test(sheet), kn.FACTS.membership.free);
+t('봇이 등급 셋을 말한다', /무료/.test(sheet) && /스탠다드/.test(sheet) && /프리미엄/.test(sheet));
+t('봇이 "무료 회원도 제출할 수 있다" 를 말한다',
+  /무료 회원이면 할 수 있고/.test(sheet) && /유료 구독은 필요하지 않다/.test(sheet));
+t('봇이 무료 등급의 한계도 말한다 (혜택만 말하지 않는다)',
+  /무료 회원에 없는 것/.test(sheet) && /광고/.test(sheet) && /풀레터/.test(sheet));
+/* 아래 넷은 subscribe.html 의 features.free / comparison 과 짝을 맞춘다.
+   등급표를 고치면서 봇을 빠뜨리면 여기서 걸린다. */
+t('결제 화면도 무료 등급이 €0 이다', /priceFree:'€0'/.test(sub));
+t('결제 화면: 무료도 서브미션 제출 가능 → 봇도 같다',
+  /\['서브미션 제출',true,true,true\]/.test(sub) && /서브미션 제출/.test(sheet));
+t('결제 화면: 무료 열람은 최신 10개 → 봇도 같다',
+  /최신 10개/.test(sub) && /최신 에디토리얼 10개/.test(sheet));
+t('결제 화면: 무료 심사도 최대 7영업일 → 봇도 같다',
+  /\['심사 결과','최대 7영업일','최대 7영업일'/.test(sub) && /최대 7영업일\(스탠다드와 같다\)/.test(sheet));
+t('봇이 묻는 사람을 유료 회원으로 가정하지 않는다 (프롬프트 규칙)',
+  /Never assume the asker has, or needs, a paid plan/.test(read('api','assistant','ask.js'))
+  && /Do not turn an answer into a sales pitch/.test(read('api','assistant','ask.js')));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ subscription-price-single-source tests FAILED'); process.exit(1); }
 console.log('✅ subscription-price-single-source tests passed');
