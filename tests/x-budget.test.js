@@ -53,7 +53,7 @@ function fillTo(usd) {           // 링크 트윗으로 usd 근처까지 채운�
 }
 
 (async () => {
-  process.env.X_MONTHLY_BUDGET_USD = '150';
+  process.env.X_MONTHLY_BUDGET_USD = '150';   // 테스트는 계산만 보므로 값은 고정해 둔다
 
   console.log('\n=== 1) 단가와 단계 (순수 함수) ===');
   t('링크 든 트윗은 $0.20', xb.priceOf('보기 ' + LINK) === 0.20);
@@ -63,7 +63,10 @@ function fillTo(usd) {           // 링크 트윗으로 usd 근처까지 채운�
   t('90% 에서 trim', xb.modeFor(135, 150) === 'trim');
   t('100% 에서 stop', xb.modeFor(150, 150) === 'stop');
   t('초과해도 stop', xb.modeFor(999, 150) === 'stop');
-  t('기본 예산은 $150 (도메니코 선택)', xb.DEFAULT_BUDGET_USD === 150);
+  /* 2026-11-24 — 처음엔 $150 이었다. X 콘솔 청구 내역을 직접 보고 월 $43(11월
+     속도)·$70(10월 속도)로 정정한 뒤 $75 로 내렸다. $150 은 실제의 2~3배라
+     사실상 걸리지 않아 안전장치 구실을 못 했다. */
+  t('기본 예산은 $75 (실측 정정 후)', xb.DEFAULT_BUDGET_USD === 75);
   t('예산은 env 로 바꾼다', xb.budgetUsd() === 150);
 
   console.log('\n=== 2) normal — 그대로 ===');
