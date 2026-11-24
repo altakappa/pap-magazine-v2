@@ -162,7 +162,21 @@ async function postTweet(text, creds) {
 }
 
 /** @pepperitmag 계정으로 트윗 (X_PEPPERIT_* 미설정 시 조용히 스킵). */
+/* 2026-11-24 도메니코 — "x의 페퍼릿 계정은 더이상 시도하지 말아줘."
+ * @pepperitmag 은 2026-09-03 부터 X 에서 계정 정지다(403 "The user used for
+ * authentication is suspended"). 그 뒤 386번 시도해 성공은 0건이고, 11월만
+ * 117번이었다. 계속 두면 두 가지가 나빠진다: x_posts 에 실패 행만 쌓여
+ * 실패율이 오염되고(진짜 고장이 묻힌다), X API 를 분당으로 때리는 호출이
+ * 영구히 남는다. 그래서 **기본값을 끈 상태로** 둔다 — env 없이도 멈춘다.
+ * 정지가 풀려 다시 켤 때만 X_PEPPERIT_ENABLED=true 를 넣는다. */
+function isPepperitEnabled() {
+  return String(process.env.X_PEPPERIT_ENABLED || '').toLowerCase() === 'true';
+}
+
 async function postPepperitTweet(text) {
+  if (!isPepperitEnabled()) {
+    return { ok: false, skipped: 'pepperit 계정 정지 — 시도 중단 (X_PEPPERIT_ENABLED=true 로 재개)' };
+  }
   if (!isPepperitConfigured()) return { ok: false, skipped: 'X_PEPPERIT env 미설정' };
   return postTweet(text, {
     token: process.env.X_PEPPERIT_ACCESS_TOKEN,
@@ -691,7 +705,7 @@ function withIgHandle(body, kind) {
 module.exports = {
   weightedLen, URL_PLACEHOLDER, recordTweet, withIgHandle, IG_HANDLE_LINE,
   buildConversationalTweet, buildThreadsParityTweet,
-  postTweet, postPepperitTweet, buildArticleTweet, buildPepperitTweet,
+  postTweet, postPepperitTweet, buildArticleTweet, buildPepperitTweet, isPepperitEnabled,
   isConfigured, isPepperitConfigured, requestToken, accessToken,
   uploadMedia, uploadMediaFromUrl, selectArticleMedia, uploadArticleMedia, getTweetMetrics,
 };

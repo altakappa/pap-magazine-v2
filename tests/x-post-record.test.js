@@ -79,6 +79,31 @@ t('기록 함수 안에서 지연 로딩한다',
   t('페퍼릿 계정을 구분해 남긴다', /label: 'pepperit'/.test(SRC));
   t('계정 기본값은 매거진이다', /c\.label \|\| \(c\.token \? 'pepperit' : 'magazine'\)/.test(SRC));
 
+  console.log('\n[2b] 페퍼릿 계정 정지 — 시도 중단 (도메니코 2026-11-24)');
+  /* @pepperitmag 은 2026-09-03 부터 X 계정 정지(403 suspended)다. 그 뒤 386번
+     시도해 성공 0건 · 11월만 117번. 도메니코: "x의 페퍼릿 계정은 더이상
+     시도하지 말아줘." 기본값을 끈 상태로 두는 게 핵심이다 — env 를 넣어야
+     멈추는 설계면 아무도 넣지 않아서 계속 돈다. */
+  const xpSuspend = require(path.join(ROOT, 'api/_lib/xPost.js'));
+  t('isPepperitEnabled 를 내보낸다', typeof xpSuspend.isPepperitEnabled === 'function');
+  const savedEnv = process.env.X_PEPPERIT_ENABLED;
+  delete process.env.X_PEPPERIT_ENABLED;
+  t('env 가 없으면 꺼져 있다 (기본 차단)', xpSuspend.isPepperitEnabled() === false);
+  process.env.X_PEPPERIT_ENABLED = 'false';
+  t("'false' 도 꺼져 있다", xpSuspend.isPepperitEnabled() === false);
+  process.env.X_PEPPERIT_ENABLED = 'TRUE';
+  t("'TRUE' 로 다시 켤 수 있다 (대소문자 무시)", xpSuspend.isPepperitEnabled() === true);
+  delete process.env.X_PEPPERIT_ENABLED;
+  const blocked = await xpSuspend.postPepperitTweet('test');
+  t('꺼진 상태의 게시는 네트워크 전에 멈춘다', blocked && blocked.ok === false && /정지/.test(String(blocked.skipped)), JSON.stringify(blocked));
+  t('차단이 env 검사보다 먼저다 (키가 있어도 안 나간다)',
+    /isPepperitEnabled\(\)\)\s*\{[\s\S]{0,200}isPepperitConfigured\(\)/.test(SRC));
+  const SYNC = fs.readFileSync(path.join(ROOT, 'api/cron/sync-pepperit.js'), 'utf8');
+  t('크론의 트윗 호출부도 같이 막는다', /if \(isPepperitEnabled\(\) && isPepperitConfigured\(\)\)/.test(SYNC));
+  t('기사 수집은 그대로 돈다 (트윗만 멈춘다)',
+    /pepperit_articles'\)\.insert\(row\)/.test(SYNC) && /generatePepperitArticle\(post\)/.test(SYNC));
+  if (savedEnv === undefined) delete process.env.X_PEPPERIT_ENABLED; else process.env.X_PEPPERIT_ENABLED = savedEnv;
+
   console.log('\n[3] 마이그레이션');
   const sql = fs.readFileSync(path.join(ROOT, 'supabase_migrations', '141_x_posts.sql'), 'utf8');
   t('x_posts 표를 만든다', /create table if not exists public\.x_posts/.test(sql));

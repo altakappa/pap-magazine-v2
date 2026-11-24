@@ -16,7 +16,7 @@ const { requireAdmin } = require('../_lib/auth');
 const { archiveImagesToStorage, archiveVideosToStorage } = require('../_lib/instagramImport');
 const { listPepperitMedia, normalizePepperitMedia, generatePepperitArticle } = require('../_lib/pepperitImport');
 const { submitIndexNowPepperit, pingWebSub, PEPPERIT_SITE } = require('../_lib/pingSearch');
-const { postPepperitTweet, buildPepperitTweet, isPepperitConfigured } = require('../_lib/xPost');
+const { postPepperitTweet, buildPepperitTweet, isPepperitConfigured, isPepperitEnabled } = require('../_lib/xPost');
 
 /** 메타 레이트리밋(code 4·17·32·613 / 'request limit reached') 인가. 판단 안 서면 false. */
 function isMetaRateLimit(msg) {
@@ -92,9 +92,12 @@ module.exports = withCronGuard('sync-pepperit', async function handler(req, res)
         if (inserted && (inserted.slug || inserted.id)) {
           const artUrl = PEPPERIT_SITE + '/article/' + encodeURIComponent(inserted.slug || inserted.id);
           newUrls.push(artUrl);
-          // X 자동 게시 — @pepperitmag (키 미설정 시 조용히 스킵).
-          // 아이돌·그룹명 해시태그 중심 → X 검색 유입.
-          if (isPepperitConfigured()) {
+          /* X 자동 게시 — @pepperitmag (키 미설정 시 조용히 스킵).
+             2026-11-24 — 계정이 정지돼 있어 기본적으로 끈다(도메니코 지시).
+             여기서도 함께 막는다: xPost 가 막아도 이 줄이 남아 있으면
+             results.tweets 에 '실패:undefined' 가 매 실행 쌓인다.
+             기사 수집 자체는 그대로 돈다 — 멈추는 건 트윗뿐이다. */
+          if (isPepperitEnabled() && isPepperitConfigured()) {
             try {
               const tw = await postPepperitTweet(buildPepperitTweet({ title: row.title, url: artUrl, tags: generated.tags }));
               results.tweets = (results.tweets || []).concat(tw.ok ? [tw.id] : ['실패:' + (tw.detail || tw.status)]);
