@@ -72,6 +72,50 @@ t('수집 코드가 data-role 을 먼저 읽음 (제출)', /var role = roleEl \?
 t('검증 코드가 data-role 을 먼저 읽음 (필수 크레딧)', /roleText = \(roleEl\.getAttribute\('data-role'\) \|\| roleEl\.textContent/.test(html));
 t('삭제 방어가 data-role 을 먼저 읽음', /roleEl\.getAttribute\('data-role'\)\|\|roleEl\.textContent/.test(html));
 
+console.log('\n=== 1c) 뷰티 = 메이크업 룩 (도메니코 2026-11-24) ===');
+/* 도메니코: "뷰티는 패션 룩이 없는 거지 메이크업 룩이 있는 거기 때문에 그것
+   기준으로 정렬하면 어떨까?" — 그래서 룩 구조는 그대로 두고 호칭과 카피만
+   장르에 따라 갈라진다. 구조를 없애면 커버 선택·이미지 순서·수정 모드·어드민
+   화면이 함께 흔들리므로, 이 테스트는 "구조는 그대로"까지 같이 지킨다. */
+t('_papLookWord 가 장르로 갈린다', /function _papLookWord\(\)\{ return _papBeautyOnlyGenre\(\) \? 'MAKEUP LOOK' : 'LOOK'; \}/.test(html));
+const addLookBody = (/function addLook\(\)\{[\s\S]*?\n\}/.exec(html) || [''])[0];
+t('addLook 이 그 단어를 쓴다 (LOOK 하드코딩 없음)',
+  /look-title">'\+_lw\+' '\+n/.test(addLookBody) && /look-img-label">'\+_lw\+' '\+n\+' IMAGES/.test(addLookBody)
+  && !/look-title">LOOK /.test(addLookBody), addLookBody ? 'ok' : 'addLook 못 찾음');
+t('이미 그려 둔 룩의 머리말도 다시 쓴다',
+  /\.look-title'\)/.test(html) && /\.look-img-label'\)/.test(html) && /w\+' '\+n\+' IMAGES'/.test(html));
+t('4단계 라벨 3종을 키째로 바꾼다',
+  /\['sectionLookCredits','sectionMakeupLooks'\]/.test(html)
+  && /\['lookCreditsDesc','makeupLookCreditsDesc'\]/.test(html)
+  && /\['btnAddLook','btnAddMakeupLook'\]/.test(html));
+/* 2026-11-24 — 처음엔 '#step4 의 첫 .section-title' 처럼 위치로 찾았는데,
+   그러면 이웃한 ADDITIONAL IMAGES 제목을 잘못 집는다. 속성 기준으로 못 박는다. */
+t('라벨을 위치가 아니라 data-i18n 값으로 찾는다',
+  /cur===pair\[0\]\|\|cur===pair\[1\]/.test(html) && !/#step4 p\[data-i18n\]/.test(html));
+/* 선택자를 문자열로 조립하면 lang-consistency 의 사전 스캐너가 '+pair[0]+' 를
+   키로 읽어 "어느 사전에도 없는 키" 로 터진다. 한 번 당했으니 못 박는다. */
+t('선택자 문자열로 data-i18n 키를 만들지 않는다', !/\[data-i18n="'\+/.test(html));
+t('장르를 바꾸면 호칭도 따라 바뀐다', /_papRefreshLookWording\(\);/.test(html) && (html.match(/_papRefreshLookWording\(\)/g) || []).length >= 3);
+t('초안 복원 경로도 호칭을 다시 맞춘다',
+  /_papRefreshItemOptions==='function'\) _papRefreshItemOptions\(\); \}catch\(_\)\{\}[\s\S]{0,160}_papRefreshLookWording/.test(html));
+['sectionMakeupLooks','btnAddMakeupLook','makeupLookCreditsDesc'].forEach((k) => {
+  t('i18n ' + k + ' 9개 언어', (html.match(new RegExp(k + ':', 'g')) || []).length === 9,
+    (html.match(new RegExp(k + ':', 'g')) || []).length);
+});
+/* 뷰티는 genreMode==='beauty' 라서 무조건 무료다. 패션 카피를 그대로 쓰면
+   "룩 3개 미만이면 €380" 이 뷰티 제출자에게 뜬다 — 그게 돈 사고의 입구였다. */
+const mkDescs = (html.match(/makeupLookCreditsDesc:'((?:\\.|[^'])*)'/g) || []);
+t('뷰티 카피 9개를 다 읽었다', mkDescs.length === 9, mkDescs.length);
+t('뷰티 카피에 유료 금액(€380/€790)이 없다',
+  mkDescs.every((d) => !/380|790/.test(d)),
+  mkDescs.filter((d) => /380|790/.test(d)).length + '건');
+t('뷰티 카피가 FASHION 선택을 안내한다', mkDescs.every((d) => /FASHION/.test(d)));
+/* 도메니코: "6장 그대로 두자." 룩 호칭만 바뀌고 장수 요건은 건드리지 않는다. */
+t('MIN_TOTAL_IMAGES 는 프론트·서버 모두 6 그대로',
+  /MIN_TOTAL_IMAGES\s*=\s*6/.test(html) && /MIN_TOTAL_IMAGES\s*=\s*6/.test(read('api/_lib/submissionType.js')));
+t('룩 구조 자체는 그대로 (lookList·lookFiles·커버 선택 유지)',
+  /id="lookList"/.test(html) && /lookFiles\[n\]=\[\]/.test(html) && /block\.id='look'\+lookCount/.test(html));
+
 console.log('\n=== 1b) 장르 버튼 (2026-09-07 러시아 회원 400 사고) ===');
 const genreBtns = html.match(/<button class="genre-tag"[^>]*>/g) || [];
 t('장르 버튼 8개', genreBtns.length === 8, genreBtns.length);
