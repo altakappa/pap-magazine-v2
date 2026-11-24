@@ -796,21 +796,28 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       /* 2026-08-17 — X·스레드 발행 결과도 노트에 싣는다. X 가 8/1부터 조용히
          죽어 있었는데 노트에 트윗 결과가 없어 17일간 아무도 몰랐다.
          성공은 'X 1건', 실패는 실패 문자열 그대로 (상태코드가 보여야 한다). */
-      const twArr = results.tweets || [];
-      const twFail = twArr.filter(t => String(t).startsWith('실패'));
-      const thArr = results.threads || [];
-      const thFail = thArr.filter(t => String(t).startsWith('실패'));
+      /* 2026-11-24 — '건너뜀·스킵' 은 분모에서 빼고, '마감초과·이월' 은 성공으로 세지 않는다.
+         종전엔 '실패' 로 시작하지 않으면 전부 성공이라 7일간 X 성공 30건을 주장했는데
+         x_posts 실제 성공은 0건이었다 (api/_lib/postTally.js 머리말). */
+      const { splitPosts, skipNote } = require('../_lib/postTally');
+      const twS = splitPosts(results.tweets), thS = splitPosts(results.threads);
+      const twArr = twS.counted;
+      const twFail = twS.notOk;
+      const thArr = thS.counted;
+      const thFail = thS.notOk;
       res.locals.cronNote = 'account=' + (account || 'magazine')
         + ' · 수집 ' + (results.imported || 0) + '건'
         + (results.deferred ? ' · 다음 회차로 이월 ' + results.deferred + '건' : '')
         + (results.failed ? ' · 실패 ' + results.failed + '건' : '')
         + (twArr.length ? ' · X ' + (twArr.length - twFail.length) + '/' + twArr.length + '건'
             + (twFail.length ? ' [' + twFail.join('; ').slice(0, 160) + ']' : '') : '')
+        + skipNote('X', twS.skipped)
         /* 2026-09-10 — 스레드는 thFail 을 세어 놓고 사유를 버렸다 (X 만 [..] 로
            실렸다). 성공 개수만으로는 "왜 죽었나" 를 영원히 못 본다 — X 와 같은
            모양으로 맞춘다. */
         + (thArr.length ? ' · 스레드 ' + (thArr.length - thFail.length) + '/' + thArr.length + '건'
             + (thFail.length ? ' [' + thFail.join('; ').slice(0, 160) + ']' : '') : '')
+        + skipNote('스레드', thS.skipped)
         /* 골든아워 부스트 결과 (2026-09-10 신설) — 부스트는 IG 도달을 직접
            겨누는 장치인데 note 에 한 글자도 없었다. */
         + (function (){
