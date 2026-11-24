@@ -20,6 +20,10 @@
       "schedule": "40 17 * * *"
     },
     {
+      "path": "/api/cron/subscription-access-reconcile",
+      "schedule": "10 18 * * *"
+    },
+    {
       "path": "/api/cron/withdraw-purge",
       "schedule": "55 18 * * *"
     },
