@@ -483,7 +483,11 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                      웹은 2순위 도달점이고 유료 사다리가 거기 있다. */
                   /* body 갈래는 인스타 링크가 이미 본문에 있다 — 답글은 웹 링크만. */
                   const replyText = abBody ? ('웹에서 전문 보기 → ' + gen.url) : igFirstLinkBlock(post || {}, 'x', gen.url);
-                  const rep = await postTweet(replyText, { replyToId: tw.id });
+                  /* 2026-11-24 예산 90% 'trim' 단계에서 답글을 생략한다(도메니코
+                     "기사당 1건으로 줄인다"). 단 abBody 가 없는 갈래는 본문에
+                     링크가 없어서 이 답글이 유일한 출구다 — essential 로 표시해
+                     예외를 둔다. 안 그러면 아무 데도 못 가는 트윗이 남는다. */
+                  const rep = await postTweet(replyText, { replyToId: tw.id, essential: !abBody });
                   if (!rep.ok) {
                     mark += '(링크답글실패:' + (rep.status || '') + ')';
                     console.error('[sync-ig] X 링크 답글 실패:', rep.status || '', rep.detail || rep.skipped || '');

@@ -104,6 +104,20 @@ async function postTweet(text, creds) {
   const c = creds || {};
   const configured = c.token ? !!(process.env.X_API_KEY && process.env.X_API_SECRET) : isConfigured();
   if (!configured) return { ok: false, skipped: 'X env 미설정' };
+  /* 2026-11-24 — 월 예산 게이트. 도메니코가 X 쪽 지출 한도를 $150 로 올리기로
+     했으므로, 천장을 우리 쪽으로 옮긴다(xBudget 주석 참고). 게이트를 여기 두는
+     이유는 X 로 나가는 모든 길이 이 함수를 지나기 때문이다 — 호출부마다 달면
+     한 곳이 빠진다. 페퍼릿(c.token)은 이미 따로 막혀 있어 제외한다.
+     essential: 본문에 링크가 없어 답글이 유일한 출구인 경우(막다른 트윗 방지). */
+  if (!c.token) {
+    try {
+      const g = await require('./xBudget').gate({ isReply: !!c.replyToId, essential: !!c.essential });
+      if (!g.allow) {
+        console.warn('[x-post] 월 예산으로 건너뜀:', g.reason, '$' + g.state.spent + '/$' + g.state.budget);
+        return { ok: false, skipped: g.reason, budget: g.state };
+      }
+    } catch (e) { /* 예산 계산이 흔들려도 게시를 막지 않는다 */ }
+  }
   try {
     const url = 'https://api.twitter.com/2/tweets';
     const payload = { text: String(text).slice(0, 3000) };
