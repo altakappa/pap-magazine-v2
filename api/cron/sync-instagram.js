@@ -34,6 +34,7 @@ const { pingNewContent, SITE } = require('../_lib/pingSearch');
 // 그 게시물로 트래픽을 쏜다 (실측: 첫 3시간 좋아요 ↔ 최종 도달 corr 0.94).
 const { maybeBoostPost } = require('../_lib/goldenBoost');
 const outfitItems = require('../_lib/outfitItems');     // 2026-11-14 착장 식별 자동 제안
+const dupTopicWatch = require('../_lib/dupTopicWatch'); // 2026-11-24 같은 뉴스 중복 기사 경고(막지 않음)
 let _outfitBrandIdx = null;                                // brands 사전, 함수 인스턴스 안에서 재사용
 
 /* 부스트 결과를 한 곳에서 센다 (2026-09-10).
@@ -384,6 +385,20 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
           const n = await outfitItems.proposeFromTags({ id: inserted.id, tags: generated.tags }, _outfitBrandIdx);
           if (n) results.outfit_proposed = (results.outfit_proposed || 0) + n;
         } catch (e) { console.warn('[sync-ig] 착장 제안 실패(발행엔 영향 없음):', (e && e.message) || e); }
+      }
+      /* 2026-11-24 (도메니코 "경고만") — 48시간 안에 같은 주제 기사가 이미 있으면
+         적어 두고 회차 끝에 텔레그램 한 통. 발행은 그대로 둔다 (api/_lib/dupTopicWatch). */
+      if (inserted && !backfillMode && pubStatus === 'published'){
+        try {
+          const dupHits = await dupTopicWatch.findRecentSameTopic({ id: inserted.id, tags: generated.tags });
+          if (dupHits.length){
+            (results.dup_topic = results.dup_topic || []).push({
+              slug: inserted.slug || inserted.custom_url || inserted.id,
+              title: generated.title_ko || row.title,
+              matches: dupHits,
+            });
+          }
+        } catch (e) { console.warn('[sync-ig] 중복 주제 확인 실패(발행엔 영향 없음):', (e && e.message) || e); }
       }
       if (inserted){
         /* 2026-08-03 — slug 우선. 사이트맵(api/sitemap-articles.js:50)은
@@ -853,7 +868,15 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
             }
             return ' · 본문 평균 ' + avg + '자 (600자↑ ' + ok + '/' + L.length + ')' + src;
           })()
+        + ((results.dup_topic || []).length ? ' · 중복의심 ' + results.dup_topic.length + '건' : '')
         + ' · ' + Math.round((Date.now() - SYNC_STARTED) / 1000) + '초';
+      /* 2026-11-24 — 중복 의심은 회차당 한 통으로 묶어 개인방에. 실패해도 무시. */
+      if ((results.dup_topic || []).length){
+        try {
+          const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
+          await sendTextToTelegramPersonalSafe(dupTopicWatch.formatAlert(results.dup_topic, SITE));
+        } catch (_) {}
+      }
     }
     // (백필 완주 감지·done 플래그·텔레그램 통보는 커서 백필 브랜치에서 처리 —
     //  최근-동기화/dry 경로는 여기까지.)
