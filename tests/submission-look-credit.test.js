@@ -50,7 +50,14 @@ t('폼: _papValidHandle 미러 + _lookInstaAudit + 4단계 검증 + 서버 코�
 t('폼 미러의 핸들 정규식이 서버와 같다', /\/\^\[a-z0-9\._\]\{1,30\}\$\/\.test\(s\)/.test(html));
 t('문구 lookNeedsInstagram · lookInstagram 9개 언어', (html.match(/lookNeedsInstagram:'/g)||[]).length===9 && /lookInstagram:\{ko:'[^']+',en:'[^']+',de:'[^']+',it:'[^']+',fr:'[^']+',es:'[^']+',ja:'[^']+',zh:'[^']+',ru:'[^']+'\}/.test(html));
 t('가이드라인 필수 자료: 브랜드마다 인스타 필수·없으면 브랜드 아님 (9개 언어)', (html.match(/glReqBody:'(?:\\.|[^'])*?(인스타그램이 없는 브랜드는 브랜드로 세지 않습니다|does not count as a brand|zählt nicht als Marke|non conta come brand|ne compte pas comme marque|no cuenta como marca|ブランドとして数えません|不计为品牌|не считается брендом)/g)||[]).length===9);
-t('인스타 입력칸 placeholder 에 required', (html.match(/placeholder="@instagram \(required\)"/g)||[]).length===2);
+/* 2026-11-24 — 품목 줄 마크업을 lookItemRowHtml() 한 곳으로 모았다.
+   예전에는 addLook·addLookItem 두 곳에 같은 문자열이 있어 이 테스트가
+   "2건" 을 셌는데, 복사 기능까지 세 곳이 되자 숫자가 깨졌다. 숫자를 올리는
+   대신 단일 출처를 못 박는다 — 리터럴은 딱 한 번, 쓰는 곳은 모두 헬퍼로. */
+t('인스타 입력칸 placeholder 에 required (리터럴은 한 곳)', (html.match(/placeholder="@instagram \(required\)"/g)||[]).length===1);
+t('품목 줄 마크업을 만드는 곳이 하나다', /function lookItemRowHtml\(\)\{/.test(html));
+t('룩 추가·품목 추가·이전 복사가 모두 그 헬퍼를 쓴다', (html.match(/lookItemRowHtml\(\)/g)||[]).length===4,
+  (html.match(/lookItemRowHtml\(\)/g)||[]).length);
 
 /* 2026-09-14 도메니코 — "브랜드명 쓸 때 철칙. 가장 앞글자 대문자 그다음 소문자. 전체 소문자나 전체 대문자 적용 안 됨." */
 console.log('\n=== 브랜드명 표기 철칙 (brandCase) ===');

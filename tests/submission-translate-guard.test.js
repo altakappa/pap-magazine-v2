@@ -67,7 +67,11 @@ t('목록에 없는 값은 비우고, 몇 개를 비웠는지 말해 준다',
   /lookItemsCleared/.test(html) && /cleared\+\+/.test(html));
 t('제출 전에도 한 번 더 막는다 (장르를 나중에 바꾼 경우)',
   /_papBeautyOnlyGenre\(\)\)\{[\s\S]{0,400}_papItemTypeValid/.test(html));
-t('look-select 에 translate="no"', (html.match(/<select class="look-select" translate="no">/g) || []).length === 2);
+/* 2026-11-24 — 품목 줄 마크업을 lookItemRowHtml() 한 곳으로 모았으니
+   리터럴도 한 번뿐이다. 구글 번역이 품목 값을 번역해 서버가 400 을 내던
+   사고(2026-09-07) 때문에 translate="no" 는 반드시 붙어 있어야 한다. */
+t('look-select 에 translate="no" (리터럴은 한 곳)', (html.match(/<select class="look-select" translate="no">/g) || []).length === 1);
+t('품목 줄을 만드는 곳이 lookItemRowHtml() 하나다', /function lookItemRowHtml\(\)\{/.test(html) && (html.match(/lookItemRowHtml\(\)/g) || []).length === 4);
 t('수집 코드가 data-role 을 먼저 읽음 (제출)', /var role = roleEl \? \(roleEl\.getAttribute\('data-role'\) \|\| roleEl\.textContent\)/.test(html));
 t('검증 코드가 data-role 을 먼저 읽음 (필수 크레딧)', /roleText = \(roleEl\.getAttribute\('data-role'\) \|\| roleEl\.textContent/.test(html));
 t('삭제 방어가 data-role 을 먼저 읽음', /roleEl\.getAttribute\('data-role'\)\|\|roleEl\.textContent/.test(html));
@@ -115,6 +119,42 @@ t('MIN_TOTAL_IMAGES 는 프론트·서버 모두 6 그대로',
   /MIN_TOTAL_IMAGES\s*=\s*6/.test(html) && /MIN_TOTAL_IMAGES\s*=\s*6/.test(read('api/_lib/submissionType.js')));
 t('룩 구조 자체는 그대로 (lookList·lookFiles·커버 선택 유지)',
   /id="lookList"/.test(html) && /lookFiles\[n\]=\[\]/.test(html) && /block\.id='look'\+lookCount/.test(html));
+
+console.log('\n=== 1d) 이전 룩 크레딧 복사 (도메니코 2026-11-24) ===');
+/* 도메니코: "사진마다 따로 쓰되 이전 크레딧과 동일하면 이전크레딧과 동일을
+   누르면 자동으로 채워지게 하면 어떨까?" — 메이크업 룩 구조를 유지하기로
+   했으니 룩 단위 복사 버튼으로 구현했다. */
+t('copyPrevLookItems 가 있다', /function copyPrevLookItems\(n\)\{/.test(html));
+t('버튼이 룩마다 붙고 기본은 숨김', /id="lookCopyPrev'\+n\+'"/.test(html) && /copyPrevLookItems\('\+n\+'\)/.test(html)
+  && /<button class="add-btn-sm" style="display:none;margin-left:8px"/.test(html));
+t('버튼 문구는 textContent 로 넣는다 (마크업에 사전 문자열 이어 붙이지 않음)',
+  /_cp\.textContent=_t\('btnSamePrevLook'\)/.test(html) && !/>'\+_t\('btnSamePrevLook'\)\+'</.test(html));
+/* '앞 룩'을 n-1 로 찾으면 안 된다. removeLook() 이 번호를 다시 매기지 않아서
+   look1 을 지우면 look2 다음이 look3 이고, n-1 은 없는 번호가 된다. */
+t("'앞 룩'을 DOM 순서로 찾는다 (n-1 금지)",
+  /previousElementSibling/.test(html) && /function _papPrevLookBlock\(n\)\{/.test(html)
+  && !/getElementById\('lookItems'\+\(n-1\)\)/.test(html) && !/getElementById\('look'\+\(n-1\)\)/.test(html));
+const copyBody = (/function copyPrevLookItems\(n\)\{[\s\S]*?\n\}/.exec(html) || [''])[0];
+t('복사 본체를 읽었다', copyBody.length > 300, copyBody.length);
+/* 가장 중요한 성질: 제출자가 쓴 브랜드명·인스타그램 아이디는 .value 로만
+   들어간다. 문자열로 이어 붙이면 그게 그대로 주입 경로가 된다. */
+t('제출자 입력값은 .value 로만 넣는다 (innerHTML 이어 붙이기 없음)',
+  /ins\[0\]\.value=r\.brand/.test(copyBody) && /ins\[1\]\.value=r\.insta/.test(copyBody)
+  && !/innerHTML[\s\S]{0,80}r\.brand/.test(copyBody) && !/innerHTML[\s\S]{0,80}r\.insta/.test(copyBody)
+  && !/value="'\+/.test(copyBody));
+t('복사한 품목도 현재 목록에 있는 값만 넣는다', /_papItemTypeValid\(r\.type\)/.test(copyBody));
+t('빈 줄만 있으면 복사하지 않고 안내만 한다',
+  /rows=rows\.filter/.test(copyBody) && /if\(!rows\.length\)\{ _papLookCopyNote\(n,_t\('lookCopyEmpty'\)\); return; \}/.test(copyBody));
+t('안내줄도 textContent 다', /el\.textContent=msg/.test(html) && !/lookCopyNote[\s\S]{0,60}innerHTML/.test(html));
+t('룩 추가·삭제 뒤에 첫 룩 여부를 다시 계산한다',
+  (html.match(/_papRefreshSamePrevButtons\(\)/g) || []).length >= 3
+  && /function removeLook\(n\)\{[\s\S]{0,200}_papRefreshSamePrevButtons/.test(html));
+['btnSamePrevLook','lookCopyDone','lookCopyEmpty'].forEach((k) => {
+  t('i18n ' + k + ' 9개 언어', (html.match(new RegExp(k + ':', 'g')) || []).length === 9,
+    (html.match(new RegExp(k + ':', 'g')) || []).length);
+});
+t('lookCopyDone 9개 모두 {n} 자리를 가진다',
+  (html.match(/lookCopyDone:'((?:\\.|[^'])*)'/g) || []).filter((d) => /\{n\}/.test(d)).length === 9);
 
 console.log('\n=== 1b) 장르 버튼 (2026-09-07 러시아 회원 400 사고) ===');
 const genreBtns = html.match(/<button class="genre-tag"[^>]*>/g) || [];
