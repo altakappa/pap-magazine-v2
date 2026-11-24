@@ -42,6 +42,8 @@ const {
   embedAndStoreArticle, articleEmbeddingText,
   lastEmbedFailure, isFatalEmbedFailure,
 } = require('../_lib/embeddings');
+const bb = require('../_lib/billingBackoff');   // 결제 막힘 백오프 (2026-11-24)
+const BB_KEY = 'openai-embeddings';
 
 /* 2026-11-17 — 실패 사유를 note 에 싣고, 계정 고장이면 멈춘다. 11/02~11/17 크레딧
  * 소진 동안 note 엔 글 id 뿐이었고 10분마다 73번씩 같은 429 를 두드렸다. */
@@ -84,6 +86,21 @@ module.exports = withCronGuard('backfill-embeddings', async function handler(req
   if (!process.env.OPENAI_API_KEY) {
     return res.status(200).json({ ok: true,
       note: note(res, 'OPENAI_API_KEY 미설정 — 건너뜀 (추천은 폴백으로 계속 돈다)') });
+  }
+
+  /* 2026-11-24 — 결제로 막혔는데 30분마다 같은 429 를 두드리던 걸 멈춘다.
+     11/02~11/24 동안 약 1,050회가 그랬다. 창이 닫혀 있으면 OpenAI 를
+     아예 부르지 않고, 연속 3회부터는 503 으로 돌려 cronGuard 가 실패로
+     적게 한다 — 그 1,050회는 전부 ok=true 로 기록됐다.
+     어드민이 ?force=1 로 부르면 창을 무시한다(충전 직후 즉시 확인용). */
+  const forced = !!(req.query && (req.query.force === '1' || req.query.force === 'true'));
+  const block = await bb.check(BB_KEY);
+  if (block.skip && !forced) {
+    const msg = note(res, '건너뜀 — ' + bb.describe(block));
+    return res.status(block.shouldFail ? 503 : 200).json({
+      ok: !block.shouldFail, skipped: 'billing_blocked', note: msg,
+      consecutive: block.consecutive, nextAttemptAt: block.nextAt,
+    });
   }
 
   const started = Date.now();
@@ -150,10 +167,20 @@ module.exports = withCronGuard('backfill-embeddings', async function handler(req
     artLeft = typeof a1.count === 'number' ? a1.count : null;
   } catch (_e) { /* 못 세도 처리 결과는 남긴다 */ }
 
+  /* 결과를 백오프에 적는다. 한 건이라도 성공했으면 계정은 살아 있다 —
+     줄을 지워 즉시 정상으로 돌린다. 반대로 계정 고장이면 창을 뒤로 민다. */
+  let bbState = null;
+  if (halted && lastFail) {
+    bbState = await bb.recordBlocked(BB_KEY, lastFail.status, lastFail.kind);
+  } else if (edDone + artDone > 0 || (!failed && !halted)) {
+    if (block.consecutive) await bb.clear(BB_KEY);
+  }
+
   const total = edDone + artDone;
   const why = failed ? failTag(lastFail) : '';
   const tail = (why ? ' [' + why + ']' : '')
-    + (halted ? ' · 계정 고장이라 이번 회차 중단(남은 대기 ' + ((edLeft || 0) + (artLeft || 0)) + ')' : '');
+    + (halted ? ' · 계정 고장이라 이번 회차 중단(남은 대기 ' + ((edLeft || 0) + (artLeft || 0)) + ')' : '')
+    + (bbState ? ' · 다음 시도 ' + bbState.waitMin + '분 뒤(연속 ' + bbState.consecutive + '회)' : '');
   const msg = (total === 0
     ? (edLeft === 0 && artLeft === 0
       ? '임베딩 대기 없음 — 완주'
@@ -163,8 +190,11 @@ module.exports = withCronGuard('backfill-embeddings', async function handler(req
       + ' · 기사 ' + (artLeft == null ? '?' : artLeft)
       + (failed ? ' · 실패 ' + failed : '')) + tail;
 
-  return res.status(200).json({
-    ok: true, editorials: edDone, articles: artDone, failed,
+  /* 연속 3회 이상 결제로 막혔으면 5xx. cronGuard 가 ok=false 로 적고
+     cron-failing-streak 감시가 그걸 집어 든다. 돌았다는 게 한 일은 아니다. */
+  const failNow = !!(bbState && bbState.shouldFail);
+  return res.status(failNow ? 503 : 200).json({
+    ok: !failNow, editorials: edDone, articles: artDone, failed,
     failure: lastFail ? { status: lastFail.status, kind: lastFail.kind } : null, halted,
     remaining: { editorials: edLeft, articles: artLeft },
     elapsedMs: Date.now() - started,

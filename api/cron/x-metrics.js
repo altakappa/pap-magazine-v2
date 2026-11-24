@@ -15,6 +15,8 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard, reportProduction } = require('../_lib/cronGuard');
 const { getTweetMetrics, isConfigured } = require('../_lib/xPost');
+const bb = require('../_lib/billingBackoff');   // 결제 막힘 백오프 (2026-11-24)
+const BB_KEY = 'x-read';
 
 const STAGE1_AFTER_MS = 24 * 3600 * 1000;
 const STAGE2_AFTER_MS = 7 * 86400000;
@@ -46,6 +48,20 @@ module.exports = withCronGuard('x-metrics', async function handler(req, res) {
   if (!isConfigured()) {
     res.locals.cronNote = 'X env 미설정 — 수집 대기';
     return res.status(200).json({ ok: true, note: res.locals.cronNote });
+  }
+
+  /* 2026-11-24 — 결제로 막혔는데 1시간마다 같은 402 를 다시 묻던 걸 멈춘다.
+     11/12 이후 약 290회가 그랬고 전부 ok=true 로 기록됐다. 창이 닫혀 있으면
+     X 를 부르지 않고, 연속 3회부터 503 으로 돌려 실패로 적게 한다.
+     ?force=1 은 충전 직후 즉시 확인용(창 무시). */
+  const forced = !!(req.query && (req.query.force === '1' || req.query.force === 'true'));
+  const block = await bb.check(BB_KEY);
+  if (block.skip && !forced) {
+    res.locals.cronNote = '건너뜀 — ' + bb.describe(block);
+    return res.status(block.shouldFail ? 503 : 200).json({
+      ok: !block.shouldFail, skipped: 'billing_blocked', note: res.locals.cronNote,
+      consecutive: block.consecutive, nextAttemptAt: block.nextAt,
+    });
   }
 
   /* 후보: 본문 트윗(답글 제외) · 성공 · tweet_id 보유 · 확정 전. 최근 14일만 본다 —
@@ -81,12 +97,22 @@ module.exports = withCronGuard('x-metrics', async function handler(req, res) {
 
   const r = await getTweetMetrics(due.map((x) => x.row.tweet_id));
   if (!r.ok) {
+    /* 402 credits-depleted · 403 spend cap 은 '돈' 이다 — 창을 뒤로 민다.
+       그 밖의 실패(일시적 5xx·네트워크)는 백오프 대상이 아니다. 그것까지
+       미루면 잠깐 끊긴 것 때문에 반나절을 쉬게 된다. */
+    const st0 = Number(r.status) || 0;
+    const bbState = (st0 === 402 || st0 === 403) ? await bb.recordBlocked(BB_KEY, st0, 'credits') : null;
     /* 요금제·권한 문제는 전 건 동일 — 사유를 그대로 노트에. 거짓 '권한 없음' 단정 금지. */
     console.error('[x-metrics] 지표 조회 막힘:', r.status || '', r.detail || r.skipped || '');
-    res.locals.cronNote = '⚠️ X 지표 조회 막힘 (HTTP ' + (r.status || '?') + ') · 대기 ' + due.length + '건 · 사유: ' + String(r.detail || r.skipped || '알 수 없음').slice(0, 120);
+    res.locals.cronNote = '⚠️ X 지표 조회 막힘 (HTTP ' + (r.status || '?') + ') · 대기 ' + due.length + '건 · 사유: ' + String(r.detail || r.skipped || '알 수 없음').slice(0, 120)
+      + (bbState ? ' · 다음 시도 ' + bbState.waitMin + '분 뒤(연속 ' + bbState.consecutive + '회)' : '');
     reportProduction(res, { produced: 0, remaining: due.length });
-    return res.status(200).json({ ok: true, note: res.locals.cronNote, blocked: true, status: r.status || null });
+    const failNow = !!(bbState && bbState.shouldFail);
+    return res.status(failNow ? 503 : 200).json({
+      ok: !failNow, note: res.locals.cronNote, blocked: true, status: r.status || null });
   }
+
+  if (block.consecutive) await bb.clear(BB_KEY);   // 됐다 — 즉시 정상으로
 
   let collected = 0; let dead = 0; let failed = 0;
   const nowIso = new Date().toISOString();
