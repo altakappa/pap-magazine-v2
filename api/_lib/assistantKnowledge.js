@@ -84,6 +84,16 @@ const FACTS = {
     collaborators: '연간 프리미엄 제출자는 인스타그램 공동작업자를 최대 5명까지 지정할 수 있다.',
     pullLetter: '프리미엄 회원은 월 1회 PAP 풀레터(샘플 대여·협조 요청 공문)를 신청할 수 있다.',
   },
+  /* 2026-11-25 도메니코 — "유료서비스와 결제관련이 아니면 이메일로 답변 못 받는다고
+     쓰고, 나머지는 웹사이트 AI 상담사를 통해" + "DM도 마찬가지".
+     이 봇이 그 정책의 **받는 쪽**이다. 그래서 봇이 규칙을 알아야 하고, 무엇보다
+     "모르면 contact@ 로 보내세요" 를 아무 질문에나 하면 안 된다 — 그렇게 하면
+     정책이 무색해지고, 회원은 답 없는 곳으로 보내진다. */
+  channels: {
+    emailScope: '이메일과 인스타그램 DM 은 유료 서비스·결제·계정 문의만 답한다 — 구독, 환불, 게재료, 개인정보·계정 삭제 요청. 그 밖의 문의에는 답하지 않는다.',
+    elsewhere: '그 밖의 모든 질문(제출 방법, 심사, 광고, 회원 혜택 등)은 이 AI 상담사가 받는다. 즉 지금 이 대화가 그 창구다.',
+    note: '이 정책은 /contact 페이지에 9개 언어로 적혀 있다.',
+  },
   about: {
     who: 'PAP 매거진은 서울에서 발행하는 아트 기반 패션·뷰티·컬쳐 매거진이고, 밀라노에 데스크를 두고 있다.',
     tracks: '제출 경로는 셋이다 — 에디토리얼(완성된 화보), 아티클(긴 글), 제보(직접 촬영한 특종).',
@@ -105,6 +115,7 @@ const FACTS = {
 /** 사실 카드를 모델에게 줄 평문으로 편다. 숫자는 여기서만 나온다. */
 function factSheet(f) {
   const m = f.membership, e = f.editorial, a = f.article, t = f.tip, r = f.review, p = f.perks, b = f.about, L = f.links;
+  const c = f.channels || {};
   return [
     '[PAP 사실 카드 — 아래 숫자와 규칙만 사용할 것. 여기 없는 수치는 "모른다"고 답할 것]',
     '',
@@ -136,6 +147,9 @@ function factSheet(f) {
     p.languages, p.instagram, p.pick, p.collaborators, p.pullLetter,
     '',
     '◆ 광고', b.advertising, '미디어키트: ' + L.mediakit + ' · 비즈니스 안내: ' + L.business,
+    '',
+    '◆ 어디로 물어야 하나',
+    c.emailScope || '', c.elsewhere || '', c.note || '',
     '',
     '◆ 링크',
     '제출 안내 ' + L.submissions + ' · 에디토리얼 ' + L.editorial + ' · 아티클 ' + L.article + ' · 제보 ' + L.tip,

@@ -119,6 +119,44 @@ t('봇이 묻는 사람을 유료 회원으로 가정하지 않는다 (프롬프
   /Never assume the asker has, or needs, a paid plan/.test(read('api','assistant','ask.js'))
   && /Do not turn an answer into a sales pitch/.test(read('api','assistant','ask.js')));
 
+console.log('\n=== 8. 문의 창구 정책 (도메니코 2026-11-25) ===');
+/* 도메니코: "유료서비스와 결제관련된 내용이 아니라면 이메일로 문의해도 답변을
+   못받는다고 쓰고 나머지 사항은 웹사이트 ai 상담사를 통해" + "dm도 마찬가지".
+   이 정책은 **두 곳이 같은 말을 해야** 성립한다 — /contact 페이지(사람이 읽는 곳)와
+   상담봇(그 정책 때문에 질문을 받게 되는 곳). 한쪽만 바꾸면 봇이 계속 "메일 주세요"
+   라고 해서 정책이 무색해진다. 오늘 하루 사고가 전부 '두 곳 중 한 곳만 고침' 이었다. */
+const contact = read('frontend','contact.html');
+t('contact 페이지에 안내 블록이 있다', /class="contact-notice"/.test(contact));
+/* ru 가 두 번 정의돼 있고 뒤쪽이 이긴다. 한쪽만 고치면 러시아어에서 안 보인다. */
+t('안내가 모든 body 에 있다 (ru 중복 2곳 포함)',
+  (contact.match(/class="contact-notice"/g) || []).length
+  === (contact.match(/body:'<div class="contact-notice"/g) || []).length
+  && (contact.match(/class="contact-notice"/g) || []).length === 10,
+  String((contact.match(/class="contact-notice"/g) || []).length));
+/* 파일 전체로 비교하면 상단 CSS 의 .contact-grid 에 걸린다. body 단위로 본다 —
+   안내 없이 주소부터 시작하는 body 가 하나도 없어야 한다. */
+t('안내 없이 주소부터 시작하는 body 가 없다',
+  (contact.match(/body:'<div class="contact-grid"/g) || []).length === 0);
+t('DM 도 같은 규칙이라고 적혀 있다', /인스타그램 DM|Instagram DMs|Instagram-DM|DM Instagram|Instagram の DM|InstagramのDM|Instagram 私信|DM de Instagram|Instagram/.test(contact));
+/* 범위에 '계정' 을 넣은 이유: privacy·refund·terms·data-deletion 이 contact@ 를
+   공식 창구로 명시한다. 결제만 남기면 그 문서들과 어긋나고, 삭제·열람 요구는
+   법으로 보장된 창구라 더 위험하다. */
+['privacy','refund','terms','data-deletion'].forEach((p) => {
+  t(p + ' 가 여전히 contact@ 를 창구로 쓴다 (안내와 모순되면 안 됨)',
+    /contact@pap-magazine\.com/.test(read('frontend', p + '.html')));
+});
+t('안내가 계정·개인정보·삭제 요청을 이메일 범위에 포함한다',
+  /개인정보·계정 삭제 요청/.test(contact) && /account-deletion requests/.test(contact));
+
+const sheet8 = kn.factSheet(kn.FACTS);
+t('봇도 같은 규칙을 안다', /이메일과 인스타그램 DM 은 유료 서비스·결제·계정 문의만 답한다/.test(sheet8));
+t('봇이 "나머지는 내가 받는다" 를 안다', /이 AI 상담사가 받는다/.test(sheet8));
+const ask8 = read('api','assistant','ask.js');
+t('봇이 아무 질문에나 메일로 떠넘기지 않는다',
+  /Do NOT hand people off to email by default/.test(ask8)
+  && !/If you do not know, say so plainly in one sentence and give contact@pap-magazine\.com/.test(ask8));
+t('봇이 "메일로 답해 주겠다" 고 약속하지 않는다', /Never promise that someone will email back/.test(ask8));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ subscription-price-single-source tests FAILED'); process.exit(1); }
 console.log('✅ subscription-price-single-source tests passed');
