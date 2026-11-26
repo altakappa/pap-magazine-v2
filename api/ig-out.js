@@ -64,7 +64,10 @@ const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', '
      에디토리얼 부스트 트윗 'boost_x'(지금 문구) vs 'boost_x_cta'(전체 화보는 아래 링크에서). */
   'x_body_cta', 'boost_x', 'boost_x_cta',
   /* 2026-10-18 — X 다이제스트(social-digest) 프로필 링크. 이전엔 instagram.com 직링크라 0 계측. */
-  'x_digest']);
+  'x_digest',
+  /* 2026-11-26 — /archive 푸터 링크(api/seo/archive.js, 8/12 신설). 링크는 src=archive 를
+     달고 나갔는데 여기 등록이 빠져 있어서 석 달 동안 'other' 로 뭉개졌다. */
+  'archive']);
 const IG_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 
 /* 경로형 단축 링크 /ig/:src (2026-07-30 신설).
@@ -85,6 +88,23 @@ function readPathSrc(req) {
   return String(seg[1]).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
 }
 
+/* src 판정 (2026-11-26 목요일 확장).
+ * 종전엔 '등록 안 된 src' 와 'src 가 아예 없음' 이 둘 다 'other' 한 통이었다.
+ * 그런데 사이트의 ig-out 링크는 **전부 src 를 달고 나간다**(api·frontend 전수 grep).
+ * 즉 src 가 아예 없는 클릭은 우리 화면에서 나온 게 아니다 — 외부 옛 링크이거나
+ * ig-out 을 직접 두드리는 스크립트다. 11/19~11/26 실측: 'other'·referrer '/' 가
+ * 하루 18~79건, 건마다 IP 가 전부 다르고 데스크톱 100%, 3분 안에 50건씩 몰린다
+ * (교훈 7 의 봇 함대 모양). 이 둘을 갈라 놓아야 다음 주에 '없음' 이 정말 그 함대인지
+ * 데이터로 판정하고 걸러낼 수 있다. 기록 동작은 그대로(지우지도 막지도 않는다).
+ *   ''       → 'nosrc'  (src 파라미터·경로 세그먼트 둘 다 없음)
+ *   등록됨   → 그대로
+ *   그 외    → 'other'  (모르는 이름 — 화이트리스트 등록 누락 신호) */
+function classifySrc(srcRaw) {
+  const s = String(srcRaw == null ? '' : srcRaw).trim().toLowerCase();
+  if (!s) return 'nosrc';
+  return SRC_WHITELIST.has(s) ? s : 'other';
+}
+
 /** instagram.com URL만 통과. 쿼리스트링(igshid 등 추적 노이즈)은 제거. */
 function normalizeIgUrl(raw) {
   if (!raw) return null;
@@ -95,7 +115,7 @@ function normalizeIgUrl(raw) {
   return 'https://www.instagram.com' + u.pathname;
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).send('Method not allowed');
   }
@@ -126,7 +146,7 @@ module.exports = async function handler(req, res) {
 
   // 쿼리 우선, 없으면 경로 세그먼트 (외부 앱이 쿼리를 지워도 귀속이 남는다)
   const srcRaw = String(req.query.src || pathSrc || '').toLowerCase();
-  const src = SRC_WHITELIST.has(srcRaw) ? srcRaw : 'other';
+  const src = classifySrc(srcRaw);
 
   const toRaw = String(req.query.to || '').toLowerCase();
   const toType = (toRaw === 'profile' || toRaw === 'post')
@@ -152,4 +172,8 @@ module.exports = async function handler(req, res) {
   }
 
   return res.redirect(302, dest);
-};
+}
+
+module.exports = handler;
+module.exports.classifySrc = classifySrc;
+module.exports.SRC_WHITELIST = SRC_WHITELIST;
