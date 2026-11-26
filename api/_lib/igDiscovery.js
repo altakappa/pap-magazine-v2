@@ -5,6 +5,8 @@
  */
 
 const IG_API = 'https://graph.facebook.com/v25.0';
+// 2026-11-26: 광고 표시는 캡션 '전체' 로 판정한다. caption_head(앞 200자)만 보면 끝에 붙인 #광고 를 놓친다.
+const { detectAdTag } = require('./competitorAdWatch');
 
 /**
  * @param {string} username  조회할 공개 프로페셔널 계정
@@ -36,6 +38,7 @@ async function discoverAccount(username, limit) {
       ts: m.timestamp,
       permalink: m.permalink,
       caption_head: String(m.caption || '').slice(0, 200),
+      ad: detectAdTag(m.caption),
     })),
   };
 }

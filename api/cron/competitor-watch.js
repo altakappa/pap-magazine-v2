@@ -34,6 +34,9 @@ const { submitIndexNow, SITE } = require('../_lib/pingSearch');
 // 실패해도 아무도 몰랐다는 뜻이다.
 const { withCronGuard } = require('../_lib/cronGuard');
 const { parseJsonArray } = require('../_lib/jsonRepair');
+// 2026-11-26: 경쟁사 광고주 알림. 7개 계정 게시물을 쌓고 새 #광고 를 하루 한 번 묶어 알린다.
+const { runAdWatch } = require('../_lib/competitorAdWatch');
+const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
 
 const COMPETITORS = ['eyesmag', 'fastpapermag', 'dailyfashion_news', 'hipkr_', 'newsourcemag'];
 
@@ -50,12 +53,13 @@ const PEPPERIT_COMPETITORS = ['celeb_fashion_magazine', 'hypejackmag'];
 
 /* 페퍼릿 경쟁 계정 최근 게시물 수집 → pepperit_watch_ig 적재.
    실패해도 본지 파이프라인을 막지 않는다(전부 try 안에서 조용히 넘어간다). */
-async function collectPepperitFeed(cutoff, dry) {
+async function collectPepperitFeed(cutoff, dry, adAccs) {
   const rows = [];
   for (const u of PEPPERIT_COMPETITORS) {
     try {
       const acc = await discoverAccount(u, 15);
       if (acc.error) continue;
+      if (adAccs) adAccs.push({ handle: u, acc });
       (acc.media || []).forEach((m) => {
         if (!m.ts || new Date(m.ts).getTime() < cutoff) return;
         const score = (m.likes || 0) + (m.comments || 0) * 3;
@@ -102,10 +106,12 @@ module.exports = withCronGuard('competitor-watch', async function handler(req, r
     // 1) 경쟁 5곳 최근 게시물 (24시간 창)
     const cutoff = Date.now() - 24 * 3600000;
     const hot = [];
+    const adAccs = [];
     for (const u of COMPETITORS) {
       try {
         const acc = await discoverAccount(u, 15);
         if (acc.error) continue;
+        adAccs.push({ handle: u, acc });
         (acc.media || []).forEach((m) => {
           if (!m.ts || new Date(m.ts).getTime() < cutoff) return;
           const score = (m.likes || 0) + (m.comments || 0) * 3;
@@ -114,10 +120,25 @@ module.exports = withCronGuard('competitor-watch', async function handler(req, r
       } catch (_) {}
     }
     // 페퍼릿 경쟁 계정은 본지 파이프라인과 분리해 따로 적재한다 (2026-08-05)
-    const pepCollected = await collectPepperitFeed(cutoff, dry);
+    const pepCollected = await collectPepperitFeed(cutoff, dry, adAccs);
+
+    /* 광고주 알림 (2026-11-26). 본지 브리핑과 별개로 돈다. 실패해도 아래를 막지 않는다.
+       '24시간 내 게시물 없음' 으로 일찍 끝나는 경로보다 앞에 둔다. 거기 뒤에 두면 조용한 날엔 안 돈다. */
+    let adWatch = { stored: 0, paid_seen: 0, pending: 0, sent: false, skipped: 'error' };
+    try {
+      adWatch = await runAdWatch({
+        db: supabaseAdmin, accounts: adAccs, nowMs: Date.now(), dry,
+        apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
+        send: sendTextToTelegramPersonalSafe,
+      });
+    } catch (e) {
+      console.warn('[competitor-watch] 광고주 알림 실패:', (e && e.message) || e);
+    }
+    const adNote = ' · 광고감시 저장 ' + adWatch.stored + ' 대기 ' + adWatch.pending
+      + (adWatch.sent ? ' 알림보냄' : (adWatch.skipped ? ' (' + adWatch.skipped + ')' : ''));
 
     if (!hot.length) return res.status(200).json({ message: '24시간 내 경쟁사 게시물 없음.', new_items: 0, pepperit_collected: pepCollected,
-      note: note('24시간 내 경쟁사 게시물 없음 · 페퍼릿 수집 ' + pepCollected + '건') });
+      note: note('24시간 내 경쟁사 게시물 없음 · 페퍼릿 수집 ' + pepCollected + '건' + adNote), ad_watch: adWatch });
     hot.forEach((h) => { h.norm = h.followers ? +(h.score / h.followers * 1000).toFixed(2) : 0; });
     hot.sort((a, b) => b.norm - a.norm);
 
@@ -235,11 +256,12 @@ module.exports = withCronGuard('competitor-watch', async function handler(req, r
     note('스캔 ' + hot.length + ' · 신규 ' + fresh.length + ' · 브리핑 ' + items.length + '건'
       + (pinged.length ? ' · 재핑 ' + pinged.length : '')
       + (saved ? ' · 저장' : (items.length ? ' · 저장실패' : ''))
-      + (dry ? ' · dry' : '') + repairedNote);
+      + (dry ? ' · dry' : '') + repairedNote + adNote);
     return res.status(200).json({
       scanned: hot.length, fresh: fresh.length, new_items: items.length,
       briefing: items, repinged: pinged, saved, dry,
       pepperit_collected: pepCollected,
+      ad_watch: adWatch,
       note: res.locals.cronNote,
     });
   } catch (e) {
