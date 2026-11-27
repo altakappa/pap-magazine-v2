@@ -336,6 +336,8 @@ async function migrateOtherS3(res, started, failSet) {
 
   console.log('[migrate-external-images] s3-others', { articles: stats.articles, films: stats.films, images: stats.images, failures: newFailures.length, left, ms: Date.now() - started });
   const done = left === 0 && stats.images === 0 && !newFailures.length;
+  /* 기사·필름까지 끝났으면 3단계(정적 파일 사본)로 넘어간다 (2026-11-27). */
+  if (done) return mirrorStaticS3(res, started, failSet);
   return res.status(200).json({
     ok: true, phase: 's3-others', done, articlesDone: stats.articles, filmsDone: stats.films,
     imagesMoved: stats.images, failures: newFailures.length, remaining: left,
@@ -346,6 +348,103 @@ async function migrateOtherS3(res, started, failSet) {
         + (newFailures.length ? ' · 실패 ' + newFailures.length + '건' : '')
         + (left === null ? '' : ' · 잔량 ' + left + '장')
         + (stats.images === 0 && left ? ' ⚠️ 진전 0 — 큐가 막혔는지 확인' : '')),
+  });
+}
+
+/* ─── 3단계: 정적 파일에 박힌 구 S3 이미지의 사본 (2026-11-27, 도메니코 "아마존 서버부터 옮기자") ───
+ *
+ * 왜: DB(화보·기사·필름)는 1·2단계가 끝냈는데, 라이브 페이지는 아직 구 S3 를 부른다.
+ *     2026-11-27 실측 — /magazine 6장, 옛 화보 상세 6~7장씩이 pap-korea-bucket 에서 내려왔다.
+ *     출처는 배포되는 정적 파일(시드 JSON·HTML)이다: editorial-details.json 1,769 ·
+ *     editorials.json 882 · pap-article-db.json 327 · HTML 211 … 고유 5,527장.
+ *     S3 는 저장보다 '내려보내는 양'에 돈을 받으니, 이걸 끊어야 AWS 요금(월 25~40만)이 빠진다.
+ *
+ * 동작: api/_data/s3-legacy-keys.json(scripts/build-s3-legacy-keys.js 가 만든 키 목록)을 보고
+ *       media 버킷 s3/<같은 이름> 으로 사본을 만든다. 같은 이름이라서, 사본이 다 생기면
+ *       정적 파일은 주소 앞부분(호스트)만 바꾸면 된다 — 그건 다음 커밋(사본 완주 확인 뒤).
+ *  · 이미 있는 사본은 건너뛴다(목록 조회로 판정 → 멱등).
+ *  · 실패는 1·2단계와 같은 image_migration_failures 에 남기고, 같은 재시도 규칙을 탄다.
+ *  · 잔량 = 사본도 없고 실패 기록도 없는 키 수. 0 이면 완주.
+ * ⚠️ 이 단계는 S3 의 원본을 지우지 않는다. 버킷 정리는 사람(도메니코)이 백업 뒤에 한다. */
+const S3_BASE = 'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/';
+const MIRROR_FOLDER = 's3';
+let _keysForTest = null;
+function loadStaticKeys() {
+  if (_keysForTest) return _keysForTest;
+  try {
+    const k = require('../_data/s3-legacy-keys.json');
+    return Array.isArray(k) ? k : [];
+  } catch (_) { return []; }
+}
+
+/** media/s3 폴더에 이미 있는 파일 이름 전부 (1,000개씩 넘겨 본다) */
+async function listMirrored() {
+  const have = new Set();
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await supabaseAdmin.storage.from('media')
+      .list(MIRROR_FOLDER, { limit: 1000, offset, sortBy: { column: 'name', order: 'asc' } });
+    if (error) throw new Error('mirror list failed: ' + error.message);
+    const rows = data || [];
+    rows.forEach((o) => { if (o && o.name) have.add(o.name); });
+    if (rows.length < 1000) break;
+  }
+  return have;
+}
+
+/** 아직 사본이 없고, 실패 기록에도 없는 키 */
+function pendingMirrorKeys(keys, have, failSet) {
+  return keys.filter((k) => !have.has(k) && !failSet.has(S3_BASE + k));
+}
+
+async function mirrorStaticS3(res, started, failSet) {
+  const over = () => Date.now() - started > TIME_BUDGET_MS;
+  const keys = loadStaticKeys();
+  const have = await listMirrored();
+  const todo = pendingMirrorKeys(keys, have, failSet);
+  let copied = 0, shrunk = 0, saved = 0;
+  const newFailures = [];
+
+  for (const k of todo) {
+    if (over()) break;
+    const url = S3_BASE + k;
+    try {
+      const { buf, contentType, shrunkFrom, resizedFrom } = await fetchImage(url);
+      const from = shrunkFrom || resizedFrom;
+      if (from) { shrunk++; saved += (from - buf.length); }
+      const { error: upErr } = await supabaseAdmin.storage.from('media')
+        .upload(MIRROR_FOLDER + '/' + k, buf, { contentType, upsert: true, cacheControl: '31536000' });
+      if (upErr) throw new Error('storage: ' + upErr.message);
+      copied++;
+    } catch (e) {
+      newFailures.push({ url, editorial_id: null, reason: ((e && e.message) || 'unknown').slice(0, 200) });
+      failSet.add(url);
+    }
+  }
+
+  if (newFailures.length) {
+    await supabaseAdmin.from('image_migration_failures')
+      .upsert(newFailures, { onConflict: 'url' })
+      .then(() => {}, (e) => console.error('[migrate-external-images] mirror failure log', e && e.message));
+    const byReason = {};
+    newFailures.forEach((f) => { const r = String(f.reason).split(':')[0]; byReason[r] = (byReason[r] || 0) + 1; });
+    await sendTextToTelegramSafe('🖼 정적 파일 구 S3 사본 만들기 중 실패 ' + newFailures.length + '건 — '
+      + Object.entries(byReason).map(([r, n]) => r + ' ' + n).join(', ')
+      + '\n→ 이 주소들은 정적 파일에서 S3 그대로 남는다(호스트 교체 대상에서 빠짐).').catch(() => {});
+  }
+
+  const left = todo.length - copied - newFailures.length;
+  const done = left === 0 && copied === 0 && !newFailures.length;
+  console.log('[migrate-external-images] s3-static-mirror', { total: keys.length, copied, failures: newFailures.length, left, ms: Date.now() - started });
+  return res.status(200).json({
+    ok: true, phase: 's3-static-mirror', done, total: keys.length, copied,
+    failures: newFailures.length, remaining: left,
+    note: note(res, done
+      ? '완주 — 화보·기사·필름 구 S3 0건 + 정적 파일 사본 ' + keys.length + '장 준비 끝 (실패 기록분 제외)'
+      : '정적 파일 구 S3 사본: ' + copied + '장 복사'
+        + (shrunk ? ' · 축소 ' + Math.round(saved / 1048576) + 'MB 절감' : '')
+        + (newFailures.length ? ' · 실패 ' + newFailures.length + '건' : '')
+        + ' · 잔량 ' + left + '장 / 전체 ' + keys.length + '장'
+        + (copied === 0 && left ? ' ⚠️ 진전 0 — 큐가 막혔는지 확인' : '')),
   });
 }
 
@@ -574,3 +673,4 @@ module.exports = withCronGuard('migrate-external-images', async function handler
   });
 });
 module.exports._s3 = { articleS3Targets, pendingS3, S3_RE };
+module.exports._mirror = { pendingMirrorKeys, S3_BASE, MIRROR_FOLDER, _setKeysForTest(k) { _keysForTest = k; } };

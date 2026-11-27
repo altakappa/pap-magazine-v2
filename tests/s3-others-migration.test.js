@@ -11,6 +11,7 @@ let pass = 0, fail = 0;
 function t(n, c, d) { if (c) { pass++; console.log('  ✓', n); } else { fail++; console.log('  ✗', n); if (d !== undefined) console.log('     ', d); } }
 const stub = (rel, exports) => { const a = path.join(ROOT, 'api', '_lib', rel); require.cache[a] = { id: a, filename: a, loaded: true, exports }; };
 
+const ALL_KEYS = require(path.join(ROOT, 'api', '_data', 's3-legacy-keys.json'));
 const S3 = (n) => 'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/' + n + '.jpg';
 let DB, updates, failRows, tg, clockStep = 0, fakeNow = 1e12;
 function reset(articles, films, fails) {
@@ -38,7 +39,9 @@ function chain(table) {
 stub('supabase.js', { supabaseAdmin: {
   from: chain,
   rpc: () => Promise.resolve({ data: [], error: null }),
-  storage: { from: () => ({ upload: () => Promise.resolve({ error: null }), getPublicUrl: (p) => ({ data: { publicUrl: 'https://sb.test/' + p } }) }) },
+  storage: { from: () => ({ upload: () => Promise.resolve({ error: null }), getPublicUrl: (p) => ({ data: { publicUrl: 'https://sb.test/' + p } }),
+    // 3단계(정적 파일 사본) — 이 시험에서는 사본이 전부 이미 있다고 본다
+    list: (folder, o) => Promise.resolve({ data: ALL_KEYS.slice(o.offset, o.offset + o.limit).map((name) => ({ name })), error: null }) }) },
 }, supabase: {} });
 stub('cronGuard.js', { withCronGuard: (n, fn) => fn });
 stub('secretCompare.js', { bearerOk: () => true });
@@ -92,7 +95,7 @@ async function run() {
   console.log('\n[3] 전부 끝나면 완주');
   reset([], [], []);
   const o3 = await run();
-  t('done + "완주" note', o3.json.done === true && /완주/.test(o3.json.note), o3.json);
+  t('done + "완주" note (3단계 사본까지 끝난 상태)', o3.json.done === true && /완주/.test(o3.json.note) && o3.json.phase === 's3-static-mirror', o3.json);
 
   console.log('\n[4] 대상 고르기');
   const X = cron._s3; const fs0 = new Set([S3('x')]);
