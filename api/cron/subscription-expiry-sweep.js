@@ -114,13 +114,59 @@ async function handler(req, res) {
     }
   }
 
+  /* 2026-11-27 — 결제 기간이 아예 없는 행(current_period_end IS NULL).
+     위 스캔은 .lt('current_period_end', cutoff) 라서 NULL 을 집지 못한다. 가입만
+     하고 결제가 끝내 들어오지 않은 회원(PayPal 이 PENDING 에서 멈춘 경우 등)은
+     profiles.subscription_plan 이 premium/standard 로 남은 채 두 스윕 모두에
+     한 번도 보이지 않았다 — 실측 4명(2026-07~08 가입, 결제 0건, 구독 ID 없음).
+     게이트가 subscription_status 를 함께 보므로 접근권이 샌 것은 아니지만 등급
+     필드가 사실과 달랐다. 돈이 들어온 증거가 없으면 등급도 없어야 한다.
+     'pending' 은 일부러 뺀다 — 체크아웃 중인 회원을 내리면 안 된다. */
+  const { data: orphans, error: orphErr } = await supabaseAdmin
+    .from('subscriptions')
+    .select('user_id, plan, status')
+    .is('current_period_end', null)
+    .in('status', ['canceled', 'expired', 'past_due', 'payment_failed'])
+    .limit(MAX_PER_RUN);
+  if (orphErr) throw orphErr;
+
+  for (const row of (orphans || [])) {
+    stats.scanned += 1;
+    const { data: prof } = await supabaseAdmin
+      .from('profiles')
+      .select('role, subscription_plan, subscription_status, email')
+      .eq('id', row.user_id)
+      .maybeSingle();
+    if (!prof) continue;
+    if (prof.role === 'admin' || prof.role === 'staff') continue;   // 수동 증정 등급
+    if (String(prof.subscription_plan || 'free') === 'free') continue;
+
+    flagged.push({
+      user_id: row.user_id,
+      email: prof.email,
+      plan: row.plan,
+      status: row.status,
+      current_period_end: null,
+    });
+
+    if (AUTODOWNGRADE) {
+      // 구독 행의 status 는 이미 종료 상태다 — 등급만 내린다.
+      const { error: dErr } = await downgradeToFree(supabaseAdmin, row.user_id);
+      if (dErr) stats.errors.push({ user_id: row.user_id, message: dErr.message });
+      else stats.downgraded += 1;
+    } else {
+      stats.reported += 1;
+    }
+  }
+
   // 알림 — 만료 대상이 있으면 도메니코에게 알린다(자동강등이든 보고든).
   if (flagged.length) {
     const head = AUTODOWNGRADE
       ? `⏬ 구독 만료 자동강등 ${stats.downgraded}건`
       : `⚠️ 만료됐는데 활성인 구독 ${flagged.length}건 (자동강등 OFF — 확인 필요)`;
     const lines = flagged.slice(0, 20).map(f =>
-      `· ${f.email || f.user_id} · ${f.plan} · 만료 ${String(f.current_period_end).slice(0, 10)}`);
+      `· ${f.email || f.user_id} · ${f.plan} · `
+      + (f.current_period_end ? `만료 ${String(f.current_period_end).slice(0, 10)}` : '결제 기록 없음'));
     await sendTextToTelegramSafe(
       head + '\n' + lines.join('\n')
       + (flagged.length > 20 ? `\n… 외 ${flagged.length - 20}건` : '')

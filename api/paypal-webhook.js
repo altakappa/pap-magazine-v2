@@ -45,7 +45,7 @@
 
 const { supabaseAdmin } = require('./_lib/supabase');
 const { sendTextToTelegramSafe } = require('./_lib/telegram');
-const { downgradeToFree } = require('./_lib/subscriptionAccess');
+const { downgradeToFree, restoreTier } = require('./_lib/subscriptionAccess');
 const planSwitch = require('./_lib/planSwitch');   // 2026-10-12 플랜 변경 예약
 const { handleCaptureCompleted, handleCaptureRefunded } = require('./_lib/paypalCaptureRecovery');
 
@@ -186,14 +186,49 @@ function mapStatus(s) {
   }
 }
 
+/* 2026-11-27 — 매칭 실패를 조용히 200 으로 넘기지 않는다.
+   해지 웹훅이 "아예 오지 않은" 것처럼 보였던 사고의 실제 원인이 이 침묵이었다.
+   PayPal 은 200 을 받으면 재시도하지 않으므로, 못 붙인 이벤트는 영구히 사라진다. */
+async function alertUnmatched(sub, eventType) {
+  const em = (sub && sub.subscriber && sub.subscriber.email_address) || '-';
+  console.error('[paypal-webhook] user 미해석 —', eventType, 'sub:', sub && sub.id, 'payer:', em);
+  await sendTextToTelegramSafe(
+    '🚨 PayPal ' + eventType + ' — 회원을 찾지 못해 처리하지 못했습니다.\n'
+    + 'sub=' + (sub && sub.id) + ' payer=' + em
+    + '\n\n구독 ID 와 결제자 이메일 모두 우리 DB 와 어긋납니다. 수동 확인이 필요합니다.'
+  );
+}
+
 /**
- * user_id 해석.
- * custom_id 는 체크아웃 때 우리가 심는 값이라 위조 가능성이 있다.
- * 결제자 이메일로 해석한 유저와 대조해, 어긋나면 이메일 쪽을 신뢰하고 알린다.
- * (paddle-webhook 의 2026-07-20 감사 교정과 같은 규칙)
+ * user_id 해석. 증거가 강한 순서대로 본다.
+ *
+ * 1) paypal_subscription_id — PayPal 이 보내온 구독 ID 를 우리 행과 맞춘 것. 위조
+ *    여지가 없고, 어차피 우리가 고칠 대상이 바로 그 행이다. (예약 중인 플랜 변경의
+ *    새 구독이면 pending_paypal_subscription_id 쪽에 있다.)
+ * 2) 결제자 이메일 — 가입 이메일과 다를 수 있다. 실측(2026-11-27): PayPal
+ *    raulnavalon@hotmail.com vs 가입 raulnavalongomez@gmail.com,
+ *    sibelistaveras@gmail.com vs sibelistav@gmail.com. 이 어긋남 때문에 해지
+ *    이벤트 네 건이 user 를 못 찾고 조용히 버려졌다.
+ * 3) custom_id — 체크아웃 때 우리가 심는 값이라 위조 가능성이 있다. 이메일로 해석한
+ *    유저와 어긋나면 이메일 쪽을 신뢰하고 알린다.
+ *    (paddle-webhook 의 2026-07-20 감사 교정과 같은 규칙)
  */
 async function resolveUserId(sub) {
   const claimed = (sub && sub.custom_id) || null;
+
+  let subIdUserId = null;
+  if (sub && sub.id) {
+    const { data: byId } = await supabaseAdmin
+      .from('subscriptions').select('user_id')
+      .eq('paypal_subscription_id', sub.id).maybeSingle();
+    if (byId) subIdUserId = byId.user_id;
+    if (!subIdUserId) {
+      const { data: byPend } = await supabaseAdmin
+        .from('subscriptions').select('user_id')
+        .eq('pending_paypal_subscription_id', sub.id).maybeSingle();
+      if (byPend) subIdUserId = byPend.user_id;
+    }
+  }
 
   let emailUserId = null;
   const email = sub && sub.subscriber && sub.subscriber.email_address;
@@ -201,6 +236,15 @@ async function resolveUserId(sub) {
     const { data: p } = await supabaseAdmin
       .from('profiles').select('id').ilike('email', email).maybeSingle();
     if (p) emailUserId = p.id;
+  }
+
+  if (subIdUserId) {
+    if (emailUserId && emailUserId !== subIdUserId) {
+      console.error('[paypal-webhook] user_id MISMATCH subId:', subIdUserId, 'email:', emailUserId, 'sub:', sub.id);
+      await sendTextToTelegramSafe('🚨 PayPal 구독 user_id 불일치 — 구독 ID 기준 배정. subId='
+        + subIdUserId + ' email=' + emailUserId + ' sub=' + sub.id);
+    }
+    return subIdUserId;
   }
 
   if (claimed && emailUserId && claimed !== emailUserId) {
@@ -427,14 +471,20 @@ module.exports = async function handler(req, res) {
       case 'BILLING.SUBSCRIPTION.SUSPENDED':
       case 'BILLING.SUBSCRIPTION.EXPIRED': {
         const userId = await resolveUserId(resource);
-        if (!userId) return res.status(200).json({ received: true, unmatched: true });
+        if (!userId) {
+          await alertUnmatched(resource, type);
+          return res.status(200).json({ received: true, unmatched: true });
+        }
         const r = await handleTermination(resource, userId, type);
         return res.status(200).json({ received: true, ...r });
       }
 
       case 'BILLING.SUBSCRIPTION.PAYMENT.FAILED': {
         const userId = await resolveUserId(resource);
-        if (!userId) return res.status(200).json({ received: true, unmatched: true });
+        if (!userId) {
+          await alertUnmatched(resource, type);
+          return res.status(200).json({ received: true, unmatched: true });
+        }
         // 접근권은 아직 끊지 않는다 — PayPal 이 3회까지 재시도한다(플랜 설정).
         // 기간 만료로 자연 종료되거나 CANCELLED 가 오면 그때 강등된다.
         await supabaseAdmin.from('subscriptions')
@@ -472,6 +522,21 @@ module.exports = async function handler(req, res) {
           if (String(sub.status || '').toUpperCase() === 'ACTIVE') patch.status = 'active';
           await supabaseAdmin.from('subscriptions').update(patch)
             .eq('paypal_subscription_id', subId);
+          /* 2026-11-27 — 돈이 들어왔으면 등급도 그 자리에서 되돌린다.
+             종전에는 기간만 늘리고 profiles 는 건드리지 않았다. 그래서 만료 스윕이
+             이미 free 로 내려 둔 회원이 재시도 결제에 성공해도, 다음 reconcile
+             크론(하루 1회)까지 최대 24시간 무료 등급으로 남아 있었다. */
+          try {
+            const { data: pr } = await supabaseAdmin.from('subscriptions')
+              .select('user_id, plan').eq('paypal_subscription_id', subId).maybeSingle();
+            if (pr && pr.user_id) {
+              const rt = await restoreTier(supabaseAdmin, pr.user_id, pr.plan);
+              if (rt.changed) {
+                await sendTextToTelegramSafe('🔼 결제 도착 → 등급 복구 ' + rt.from + ' → ' + rt.to
+                  + ' user=' + pr.user_id + ' sub=' + subId);
+              }
+            }
+          } catch (e3) { console.warn('[paypal-webhook] 등급 복구 건너뜀:', e3.message); }
           // 2026-10-01 — 월간 2번째 결제면 연간 제안 메일 한 번 (yearlyOffer.js). 실패해도 갱신 처리는 그대로.
           try {
             const { data: row } = await supabaseAdmin.from('subscriptions')

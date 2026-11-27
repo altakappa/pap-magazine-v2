@@ -57,6 +57,44 @@ async function downgradeToFree(db, userId) {
 }
 
 /**
+ * 결제가 확인된 뒤의 등급 복구. downgradeToFree 의 반대 방향만 수행한다 —
+ * 절대 내리지 않는다(내리는 일은 downgradeToFree·만료 스윕의 몫).
+ *
+ * 2026-11-27 — 도메니코: "돈이 안 들어왔는데 왜 등급을 유지해? 돈이 들어오면
+ * 다시 강등된 걸 복구하면 되잖아." 그 원칙을 코드로 옮긴 것이 이 함수다.
+ * 증빙(결제 도착) 없이는 아무것도 올리지 않고, 증빙이 오면 그 자리에서 올린다.
+ *
+ * @param {object} db      supabaseAdmin
+ * @param {string} userId
+ * @param {string} planKey 원본 플랜키('premium_monthly' 등)
+ * @returns {Promise<{error?:any, changed:boolean, from?:string, to?:string}>}
+ */
+async function restoreTier(db, userId, planKey) {
+  if (!userId) return { error: 'no_user', changed: false };
+  const want = basePlanFromPlanKey(planKey);
+  if (want === 'free') return { changed: false };   // 모르는 플랜은 건드리지 않는다
+
+  const { data: prof } = await db
+    .from('profiles')
+    .select('role, subscription_plan, subscription_status')
+    .eq('id', userId)
+    .maybeSingle();
+  if (!prof) return { error: 'no_profile', changed: false };
+  if (prof.role === 'admin' || prof.role === 'staff') return { changed: false };  // 수동 증정 등급
+
+  const have = basePlanFromPlanKey(prof.subscription_plan);
+  const statusOk = ACTIVE_STATUSES.has(String(prof.subscription_status || '').toLowerCase());
+  if ((TIER_RANK[have] || 0) >= (TIER_RANK[want] || 0) && statusOk) return { changed: false };
+
+  const patch = { subscription_status: 'active', updated_at: new Date().toISOString() };
+  if ((TIER_RANK[want] || 0) > (TIER_RANK[have] || 0)) patch.subscription_plan = want;  // 내리지 않는다
+
+  const { error } = await db.from('profiles').update(patch).eq('id', userId);
+  if (error) return { error, changed: false };
+  return { changed: true, from: have + '/' + (prof.subscription_status || '-'), to: want };
+}
+
+/**
  * 서버측 등급 게이트. 이미 인증된 user가 minTier 이상 활성 구독인지 검증한다.
  * - 운영진(admin/staff)은 통과 (DB의 최신 role 기준).
  * - 미달이면 res에 403을 쓰고 false를 반환 → 호출부는 `if(!ok) return;`.
@@ -96,6 +134,7 @@ module.exports = {
   hasActivePremium,
   assertActivePlan,
   downgradeToFree,
+  restoreTier,
   TIER_RANK,
   ACTIVE_STATUSES,
 };
